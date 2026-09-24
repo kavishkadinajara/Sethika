@@ -1,0 +1,8 @@
+CREATE TABLE auth.RecoveryCodes (
+    Id        INT          IDENTITY(1,1) PRIMARY KEY,
+    UserId    UNIQUEIDENTIFIER NOT NULL REFERENCES auth.Users(Id),
+    CodeHash  CHAR(64)     NOT NULL,
+    CreatedAt DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+    UsedAt    DATETIME2(3) NULL
+);
+GO

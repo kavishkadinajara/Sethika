@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- TargetFramework, Nullable and ImplicitUsings come from Directory.Build.props -->
+  <!-- Domain references nothing, by design. -->
+
+</Project>

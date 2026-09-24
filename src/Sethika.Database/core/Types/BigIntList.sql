@@ -1,0 +1,2 @@
+CREATE TYPE core.BigIntList AS TABLE (Id BIGINT           NOT NULL PRIMARY KEY);
+GO

@@ -1,0 +1,6 @@
+CREATE TABLE auth.Portals (
+    Id   TINYINT      PRIMARY KEY,
+    Code VARCHAR(20)  NOT NULL UNIQUE,
+    Name NVARCHAR(50) NOT NULL
+);
+GO

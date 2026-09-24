@@ -1,0 +1,8 @@
+CREATE TABLE core.Provinces (
+    Id      TINYINT       IDENTITY(1,1) PRIMARY KEY,
+    Code    VARCHAR(10)   NOT NULL UNIQUE,
+    Name    NVARCHAR(100) NOT NULL,
+    NameSi  NVARCHAR(100) NULL,
+    NameTa  NVARCHAR(100) NULL
+);
+GO

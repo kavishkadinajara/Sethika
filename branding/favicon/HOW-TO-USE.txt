@@ -1,0 +1,9 @@
+Next.js (App Router): copy favicon.ico, icon-192.png, icon-512.png, apple-touch-icon.png into /app or /public.
+
+Plain HTML <head>:
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+favicon.svg switches automatically between light and dark browser themes.
+favicon.ico / PNGs use the green tile so they are visible on any tab colour.

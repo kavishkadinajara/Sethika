@@ -1,0 +1,2 @@
+CREATE TYPE core.DateList   AS TABLE (Value DATE          NOT NULL PRIMARY KEY);
+GO
