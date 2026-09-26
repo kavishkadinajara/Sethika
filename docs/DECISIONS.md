@@ -61,6 +61,28 @@ Filtered-index predicates (`WHERE Status IN (...)`) are not affected and may kee
 To check: `SqlPackage /Action:Script` against the target should produce a script containing only the
 post-deployment seed MERGEs and no schema statements.
 
+## Scope revision (proposal v2)
+
+The proposal originally listed **online payments** and **a Sinhala/Tamil interface** under
+"beyond the scope of this project". Both were brought into scope, and
+`docs/proposal/Sethika_Project_Proposal.docx` was revised accordingly
+(`Sethika_Project_Proposal_v1_original.docx` keeps the pre-revision text so the change is auditable).
+
+| # | Decision | Why |
+|---|----------|-----|
+| S1 | Trilingual interface (en/si/ta) is built from Phase A, not retrofitted | The schema already carries `NameSi`/`NameTa`/`PreferredLanguage`; adding i18n after the screens exist means rewriting every one of them |
+| S2 | Online donation payments via PayHere, Phase D, sandbox in development | A money donation can also simply be *recorded* by the institution, so the booking flow never depends on a gateway being reachable |
+| S3 | The final report must reconcile two places where the proposal understates the build | The proposal describes ~10 snake_case tables in 3NF; the delivered schema is 83 tables across 8 schemas with temporal history, RLS and data masking |
+
+Four statements in the proposal contradicted the implementation and were corrected in the same
+revision: EF Core "migrations" (the SQL Database Project is the source of truth), Docker Compose
+for local dev (not required), query-scoped access control (it is Row-Level Security in the
+database), and "one active booking per slot per date" (shared slots hold up to their configured
+maximum).
+
+> PayHere's notify URL is a server-to-server callback, so it cannot reach `localhost`. Local
+> development needs a tunnel (ngrok or cloudflared) or payment confirmations never arrive.
+
 ## Redis (local development)
 | # | Decision | Why |
 |---|----------|-----|
