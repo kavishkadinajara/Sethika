@@ -182,7 +182,7 @@ month.
 
 Store E.164 (`+94771234567`). Display through the mask (`partial(4, "XXXXX", 3)`) or format client-side.
 
-### A9 — `Guid.CreateVersion7()` for new user ids, generated in C#
+### A9 — `Guid.CreateVersion7()` for new user ids, generated in C# rather than by the database
 
 `auth.Users.Id` defaults to `NEWSEQUENTIALID()`, but signup must write `Users`, `UserRoles`,
 `DonorProfiles`, `UserConsents` and an outbox row in **one transaction**, which needs the id before the
@@ -227,13 +227,40 @@ every stored secret undecryptable. Production needs keys in Azure Blob Storage p
 Local dev's file-based ring is fine. This is a deployment prerequisite, recorded here so it is not
 discovered after real data exists.
 
+### A14 — SMS: `ISmsSender` with a console sender for development, a real gateway before deployment *(decided 2026-09-27)*
+
+Development uses `ConsoleSmsSender`, which writes the OTP to the log instead of sending it. Signup
+therefore works end to end from day one, costs nothing, and integration tests can assert on a real
+code without a network call or a provider account.
+
+A gateway **is** required before this is deployed anywhere real, so the abstraction is built for two
+implementations from the start, not retrofitted:
+
+- `ISmsSender` lives in Application and exposes one method. Nothing above Infrastructure knows a
+  provider exists.
+- The implementation is chosen by configuration (`Sms:Provider` = `Console` | `NotifyLk`), and the
+  API **refuses to start with `Console` selected outside Development** — a silent console sender in
+  production means no user ever receives an OTP and login appears simply broken.
+- Every send, whichever sender is used, writes `notify.Notifications` with `Channel = 'SMS'`,
+  `SmsSegments` and `CostLkr`. So the delivery log, the dedup key and the per-plan SMS cost tracking
+  are exercised by the console sender too, and switching providers changes one class and no data path.
+- Provider credentials go in User Secrets locally and host configuration in Azure. Never in
+  `appsettings.json`.
+
+Deployment prerequisite, alongside A13: pick and fund a provider (Notify.lk, Text.lk or Dialog),
+register the sender ID, and set `Sms:Provider` + the credentials. Sri Lankan gateways require a
+registered alphanumeric sender ID, and approval takes days — so start that paperwork before the
+week it is needed, not during it.
+
 ---
 
-## 3. Open questions that block work
+## 3. Open questions
+
+Q1 is decided (see A14). Q2–Q5 still block the first slice.
 
 | # | Question | Blocks | Default if you say nothing |
 |---|---|---|---|
-| Q1 | **SMS provider.** Do you have a Notify.lk / Text.lk / Dialog account, or should `ISmsSender` be built with a dev implementation that logs the OTP to the console and a real provider behind the same interface? | Every OTP flow (§5.1) | **Build the interface plus a console dev sender.** Signup works end-to-end today, costs nothing during development, and the real gateway is one class later. Recommended. |
+| ~~Q1~~ | ~~SMS provider~~ — **decided 2026-09-27: console sender for development, real provider behind the same interface before deployment. See A14.** | — | — |
 | Q2 | **A1** — Identity primitives instead of full Identity? | §5.1 | Proceed as described in A1. |
 | Q3 | **A8** — add `libphonenumber-csharp`? | §5.1 | Add it. |
 | Q4 | **Legal text.** `core.LegalDocuments` is empty, and signup must record consent against a real version plus SHA-256. Do you have Terms / Privacy text, or should a clearly-marked `0.1-draft` be seeded? | signup consent, §5.5 | Seed `0.1-draft` in en/si/ta, marked as draft, with a TODO. Consent rows point at the draft version, which is honest and replaceable. |
