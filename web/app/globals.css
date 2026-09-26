@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+/*  Sethika brand palette (branding/ and CLAUDE.md). Faith-neutral by design: no single
+    religion's symbolism or colour in shared UI.                                       */
+@theme {
+  --color-estate: #16513d;
+  --color-gold: #e0a33e;
+  --color-ink: #0e2a21;
+  --color-ivory: #f7f4ec;
+
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+}

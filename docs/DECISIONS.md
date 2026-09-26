@@ -61,7 +61,29 @@ Filtered-index predicates (`WHERE Status IN (...)`) are not affected and may kee
 To check: `SqlPackage /Action:Script` against the target should produce a script containing only the
 post-deployment seed MERGEs and no schema statements.
 
+## Redis (local development)
+| # | Decision | Why |
+|---|----------|-----|
+| R1 | Sethika uses a dedicated logical database (`defaultDatabase=3`) | db 0 on this machine is shared with another application's cache (`EstateList_*`, `RoleMenuList_*`). A `FLUSHDB` while testing would wipe those keys, and both would compete for the same eviction budget |
+| R2 | Connection strings and the JWT signing key live in User Secrets | Nothing secret in `appsettings.json` or source control. `dotnet user-secrets set "ConnectionStrings:Redis" ...` |
+
+> **Local Redis is 3.2.100** — the archived Microsoft Windows port, not the WSL2 install
+> `docs/LOCAL_SETUP.md` describes (WSL is not installed on this machine). Everything the
+> permission cache needs works on it, but it has had no security patches since ~2016 and
+> production Azure Redis will be 6.x/7.x. Worth replacing before relying on anything newer
+> than Redis 3.2 semantics.
+
 ## RBAC
+- Effective permissions come from `auth.vw_EffectivePermissions` and are **never** re-derived in C#.
+  Deny-wins and the module-enabled intersection are both implemented in that view; a second
+  implementation in application code could disagree with it, and the database is what decides access.
+- Cached in Redis under `perm:{userId}:{institutionId}:v{userVersion}.{institutionVersion}`. The versions
+  are part of the key, so bumping either one *is* the invalidation: the next read builds a different key,
+  misses and reloads. No eviction call to forget, and it works across every API instance. A null
+  institution (donors, platform staff) renders as the literal segment `global` with version `0`.
+- A Redis outage degrades to a SQL read, never to a denial — a cache failure must not lock everyone out.
+- `[HasPermission("CODE")]` on every endpoint. Policies are materialised per code on demand by
+  `PermissionPolicyProvider`, so adding a permission never means editing `Program.cs`.
 - Portal → Module → Screen → ScreenElement (Button, Dropdown, DropdownOption, Field, Tab, Section, GridColumn, ExportAction)
 - Permission = Screen/Element + Action; permission dependencies (EDIT requires VIEW)
 - Roles: platform roles, template roles (cloned on approval), institution-owned roles

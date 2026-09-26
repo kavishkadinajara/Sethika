@@ -9,7 +9,10 @@
     <!-- CA1707 bans underscores in member names. Test methods are named
          Subject_does_the_expected_thing by convention, which reads far better in
          test output, so the rule is off for tests only - never for src. -->
-    <NoWarn>$(NoWarn);CA1707</NoWarn>
+    <!-- CA1711 reserves the "Collection" suffix for ICollection implementations, but
+         [CollectionDefinition] classes are named XyzCollection by xunit convention and
+         keeping that convention is worth more here than a rule aimed at public API design. -->
+    <NoWarn>$(NoWarn);CA1707;CA1711</NoWarn>
   </PropertyGroup>
 
   <!-- Shared by every test project, so the dependency-rule reader lives in one file
