@@ -1,0 +1,41 @@
+version: 2
+
+updates:
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # One PR for the EF Core family: their versions move together and splitting them
+      # produces PRs that cannot pass CI on their own.
+      entity-framework:
+        patterns: ["Microsoft.EntityFrameworkCore*"]
+      aspnet:
+        patterns: ["Microsoft.AspNetCore*", "Microsoft.Extensions*"]
+      test:
+        patterns: ["xunit*", "Microsoft.NET.Test.Sdk", "coverlet*"]
+
+  - package-ecosystem: npm
+    directory: "/web"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      next:
+        patterns: ["next", "react", "react-dom", "eslint-config-next"]
+      tooling:
+        patterns: ["eslint*", "@typescript-eslint/*", "typescript", "prettier"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "chore(ci)"

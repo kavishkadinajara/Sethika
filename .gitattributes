@@ -1,0 +1,30 @@
+# Normalise line endings on checkin so the working tree is LF everywhere regardless of who
+# cloned it or which editor touched it. Without this, files drift to CRLF on Windows and
+# `dotnet format --verify-no-changes` fails in CI for reasons unrelated to the change.
+* text=auto eol=lf
+
+# Visual Studio rewrites solution files with CRLF, so let it.
+*.sln text eol=crlf
+
+# Windows-only scripts must keep CRLF or cmd mis-parses them.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Never touched
+*.dacpac binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary
+*.docx binary
+*.xlsx binary
+*.pptx binary
+
+# Treated as text but excluded from diffs to keep PRs reviewable
+package-lock.json -diff linguist-generated

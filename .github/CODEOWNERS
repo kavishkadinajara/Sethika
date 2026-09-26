@@ -1,0 +1,15 @@
+# Every PR needs a review from the owner of the paths it touches.
+# Requires "Require review from Code Owners" in branch protection to have any effect.
+
+*                               @kavishkadinajara
+
+# The schema is the source of truth for the whole system, and RLS lives here.
+/src/Sethika.Database/          @kavishkadinajara
+
+# Authorization and tenant isolation.
+/src/Sethika.Api/Security/      @kavishkadinajara
+/src/Sethika.Infrastructure/Security/    @kavishkadinajara
+/src/Sethika.Infrastructure/Persistence/ @kavishkadinajara
+
+# Changing the pipeline changes what every other PR is checked against.
+/.github/                       @kavishkadinajara

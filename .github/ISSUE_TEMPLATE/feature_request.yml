@@ -1,0 +1,40 @@
+name: Feature request
+description: Propose a change in behaviour
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What cannot be done today, and who is blocked by it?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+    validations:
+      required: true
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Delivery phase
+      description: See CLAUDE.md
+      options:
+        - "A - auth, RBAC, RLS, onboarding, booking engine"
+        - "B - public pages, cross-institution search"
+        - "C - recurring, memorial planner, SignalR"
+        - "D - donations, needs, dashboards"
+        - "Unscheduled"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: schema
+    attributes:
+      label: Does this need a schema change?
+      options:
+        - label: Yes, and it will be made by editing src/Sethika.Database
+        - label: No

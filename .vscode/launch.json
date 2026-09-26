@@ -1,0 +1,95 @@
+{
+  // Sethika debug configurations.
+  //
+  // "Full stack" is the one to press F5 on: it starts the API and the Next.js dev server
+  // together, since almost nothing in this app is testable with only one of them running.
+  //
+  // Ports come from src/Sethika.Api/Properties/launchSettings.json (http 5182, https 7186)
+  // and Next.js (3000). Change them in one place - launchSettings - not here.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "API",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: api",
+      "program": "${workspaceFolder}/src/Sethika.Api/bin/Debug/net10.0/Sethika.Api.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/Sethika.Api",
+      "stopAtEntry": false,
+      // Connection strings and the signing key come from User Secrets, so nothing
+      // sensitive belongs in this file.
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "serverReadyAction": {
+        "action": "startDebugging",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
+        "name": "Web: Chrome"
+      },
+      "sourceFileMap": {
+        "/Views": "${workspaceFolder}/Views"
+      }
+    },
+    {
+      "name": "API (attach)",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:pickProcess}"
+    },
+    {
+      "name": "Web: Next.js server",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "skipFiles": ["<node_internals>/**"],
+      "serverReadyAction": {
+        "action": "debugWithChrome",
+        "pattern": "- Local:\\s+(https?://\\S+)",
+        "uriFormat": "%s",
+        "webRoot": "${workspaceFolder}/web"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Web: Chrome",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/web",
+      // Next.js serves client bundles from these virtual roots; without the mapping
+      // breakpoints in .tsx files bind to the wrong file or not at all.
+      "sourceMapPathOverrides": {
+        "webpack://_N_E/*": "${workspaceFolder}/web/*",
+        "webpack://*": "${workspaceFolder}/web/*",
+        "turbopack://[project]/*": "${workspaceFolder}/web/*"
+      }
+    },
+    {
+      "name": "Tests: all",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: solution",
+      "program": "dotnet",
+      "args": ["test", "${workspaceFolder}/Sethika.sln", "--no-build"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full stack (API + Web)",
+      "configurations": ["API", "Web: Next.js server"],
+      "preLaunchTask": "build: solution",
+      "stopAll": true,
+      "presentation": {
+        "group": "00-fullstack",
+        "order": 1
+      }
+    }
+  ]
+}

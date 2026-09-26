@@ -10,17 +10,20 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Secrets are never committed: connection strings and the signing key come from User
 // Secrets locally (dotnet user-secrets) and from the host's configuration in Azure.
-var sqlConnectionString = builder.Configuration.GetConnectionString("Sql")
-    ?? throw new InvalidOperationException(
-        "ConnectionStrings:Sql is not configured. Run: dotnet user-secrets set \"ConnectionStrings:Sql\" \"...\"");
+var sqlConnectionString = Required(builder.Configuration.GetConnectionString("Sql"), "ConnectionStrings:Sql");
+var redisConnectionString = Required(builder.Configuration.GetConnectionString("Redis"), "ConnectionStrings:Redis");
+var jwtSigningKey = Required(builder.Configuration["Jwt:SigningKey"], "Jwt:SigningKey");
 
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
-    ?? throw new InvalidOperationException(
-        "ConnectionStrings:Redis is not configured. Run: dotnet user-secrets set \"ConnectionStrings:Redis\" \"...\"");
-
-var jwtSigningKey = builder.Configuration["Jwt:SigningKey"]
-    ?? throw new InvalidOperationException(
-        "Jwt:SigningKey is not configured. Run: dotnet user-secrets set \"Jwt:SigningKey\" \"...\"");
+// appsettings.json carries these keys with empty values so the shape is discoverable, which
+// means a missing secret arrives as "" rather than null. Blank has to fail the same way, or
+// the app boots and dies later on a confusing connection error instead of saying what is
+// actually wrong.
+static string Required(string? value, string key) =>
+    string.IsNullOrWhiteSpace(value)
+        ? throw new InvalidOperationException(
+            $"{key} is not configured. Run: dotnet user-secrets set \"{key}\" \"...\" " +
+            "--project src/Sethika.Api")
+        : value;
 
 builder.Services.AddSethikaPersistence(sqlConnectionString);
 builder.Services.AddSethikaPermissions(redisConnectionString);
