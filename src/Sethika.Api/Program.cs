@@ -1,10 +1,10 @@
-using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Sethika.Api.Security;
 using Sethika.Application.Abstractions;
 using Sethika.Infrastructure;
+using Sethika.Infrastructure.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,7 +44,7 @@ builder.Services
             ValidateAudience = true,
             ValidAudience = SethikaJwt.Audience,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSigningKey)),
+            IssuerSigningKey = SethikaJwt.CreateSigningKey(jwtSigningKey),
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30),
         };

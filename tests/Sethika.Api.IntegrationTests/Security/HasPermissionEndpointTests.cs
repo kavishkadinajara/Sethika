@@ -7,7 +7,7 @@ using System.Text;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.IdentityModel.Tokens;
 using Sethika.Api.IntegrationTests.Persistence;
-using Sethika.Api.Security;
+using Sethika.Infrastructure.Security;
 
 namespace Sethika.Api.IntegrationTests.Security;
 
