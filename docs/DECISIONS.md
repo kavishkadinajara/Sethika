@@ -124,4 +124,4 @@ tables above once the code exists and the choice has held.
 
 | Plan | Branch | State |
 |------|--------|-------|
-| `docs/plans/01-AUTH.md` — authentication, MFA step-up, i18n foundation, design system | `2-authentication-and-i18n-foundation` | Planned; 5 open questions in its §3 |
+| `docs/plans/01-AUTH.md` — authentication, MFA step-up, i18n foundation, design system | `2-authentication-and-i18n-foundation` | In progress — its status line is kept current |

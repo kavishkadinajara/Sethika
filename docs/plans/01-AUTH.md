@@ -3,9 +3,10 @@
 Branch: `2-authentication-and-i18n-foundation` (cut from `1-permission-engine-frontend-authorization-setup`,
 because every slice below depends on `IPermissionService` and `[HasPermission]`, which live only on that branch).
 
-Status: **in progress.** Slice 5.1 is past half: tokens are done, the signup and sign-in handlers,
-DI wiring and endpoints are not. 5.2–5.8 are untouched apart from one 5.8 test.
-**127 tests passing**, `dotnet format` clean, build clean with warnings as errors.
+Status: **in progress, and blocked.** In slice 5.1 tokens and DI wiring are done; the signup and
+sign-in handlers and the endpoints are not, and both handlers wait on **Q6** (§3) — signup also on
+Q4 and on the Donor role. 5.2–5.8 are untouched apart from one 5.8 test.
+**135 tests passing**, `dotnet format` clean, build clean with warnings as errors.
 Last updated 2026-09-27. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
 
@@ -20,9 +21,10 @@ Delivered so far, with the commit that added it:
 | `1dc4aec` | `OtpService` + `OtpCacheKey` + `OtpOptions`, and `RedisFixture` for the tests — 14 tests. |
 | `f6f4c4a` | `SmsSenderBase`, `ConsoleSmsSender`, `NotifyLkSmsSender`, `SmsOptions` — 8 tests. |
 | `6201b6d` | `ITokenService`, `TokenSubject`, `IssuedTokens`; `JwtTokenService` + `JwtOptions`. `SethikaJwt` and `SethikaClaimTypes` moved from `Api/Security` to `Infrastructure/Security`, and `SethikaJwt.CreateSigningKey` is now used by `Program.cs` too. `Microsoft.IdentityModel.JsonWebTokens` referenced from Infrastructure — 22 tests, 6 of them through the real host. |
+| `df18505` | `AddSethikaAccess`, called from `Program.cs`: every service above registered, options bound, the SMS sender chosen by `Sms:Provider` and the host refusing to start with the console sender or code logging outside Development. Lockout 5 → 15 min; hasher at 210 000 iterations (see A1) — 8 tests, all booting the real host. |
 
-Nothing is wired into DI yet: `Program.cs` and `DependencyInjection.cs` are untouched, so none of the
-above is reachable at runtime. That happens with the endpoints at the end of 5.1.
+All of the above is registered in DI and resolvable from the running host (`df18505`), but no
+endpoint calls any of it yet — that happens with the endpoints at the end of 5.1.
 
 ---
 
@@ -109,9 +111,15 @@ the table is referenced by masked columns, RLS-adjacent FKs and temporal role ta
 
 **Decision:** reference `Microsoft.Extensions.Identity.Core` (small; not the EF Core Identity package)
 and use exactly three things from it — `IPasswordHasher<User>` / `PasswordHasher<User>`
-(PBKDF2-HMAC-SHA512, 210 000 iterations, versioned hash format), `PasswordOptions` and `LockoutOptions`
+(PBKDF2-HMAC-SHA512, versioned hash format), `PasswordOptions` and `LockoutOptions`
 for policy values. `SignInManager` is not used: it is cookie-oriented and we issue JWTs.
 `UserManager`'s token providers are not used: OTP is in Redis and refresh tokens are ours.
+
+**Iteration count — corrected 2026-09-27.** This section used to say Identity's hasher runs 210 000
+iterations. It does not: Identity 10's default is **100 000**, which a test reading the count back out
+of a real hash showed. 210 000 — OWASP's current figure for PBKDF2-HMAC-SHA512 — is set explicitly
+through `PasswordHasherOptions` in `AddSethikaAccess` (`df18505`) and pinned by
+`HashesPasswordsWithPbkdf2HmacSha512At210000Iterations`. Write the report from this paragraph.
 
 Viva answer: *"Identity's password hashing and policy primitives over the project's own schema; the
 full Identity stores were not adopted because the database schema is owned by the SQL project."*
@@ -124,7 +132,7 @@ put the institution, so implementing it would mean either throwing or guessing a
 therefore assigned through EF Core with the institution explicit.
 
 **Password hashing and the lockout policy values are identical either way** — same PBKDF2-HMAC-SHA512,
-same 210 000 iterations, same versioned hash format — so this choice costs nothing in password
+same configurable iteration count, same versioned hash format — so this choice costs nothing in password
 security. What it does cost is three things `UserManager` would otherwise do for free. Each is
 now ours to do, so each gets one home in the code and one test:
 
@@ -298,14 +306,15 @@ week it is needed, not during it.
 
 ## 3. Open questions
 
-Q1 is decided (see A14). Q2–Q5 still block the first slice.
+Q1 and Q2 are decided and Q3 is done. **Q6 and Q4 block the rest of 5.1**; Q5 blocks 5.5.
 
 | # | Question | Blocks | Default if you say nothing |
 |---|---|---|---|
 | ~~Q1~~ | ~~SMS provider~~ — **decided 2026-09-27: console sender for development, real provider behind the same interface before deployment. See A14.** | — | — |
 | ~~Q2~~ | ~~A1 — Identity primitives instead of full Identity?~~ — **confirmed 2026-09-27. See A1, including the three responsibilities this transfers to us.** | — | — |
-| Q3 | **A8** — add `libphonenumber-csharp`? | §5.1 | Add it. |
-| Q4 | **Legal text.** `core.LegalDocuments` is empty, and signup must record consent against a real version plus SHA-256. Do you have Terms / Privacy text, or should a clearly-marked `0.1-draft` be seeded? | signup consent, §5.5 | Seed `0.1-draft` in en/si/ta, marked as draft, with a TODO. Consent rows point at the draft version, which is honest and replaceable. |
+| ~~Q3~~ | ~~**A8** — add `libphonenumber-csharp`?~~ — **done: installed in `1ca0b65`.** | — | — |
+| Q4 | **Legal text.** `core.LegalDocuments` is empty, and signup must record consent against a real version plus SHA-256 (`auth.UserConsents.LegalDocumentId` is a NOT NULL FK, so there is no consent row without a document row). Do you have Terms / Privacy text, or should a clearly-marked `0.1-draft` be seeded? | `SignUpDonor` in 5.1, §5.5 | Seed `0.1-draft` in en/si/ta, marked as draft, with a TODO. Consent rows point at the draft version, which is honest and replaceable. |
+| Q6 | **Where command handlers get EF Core.** 5.1 puts `SignUpDonor` and `SignIn` in `Sethika.Application` and says EF Core, but Application does not reference EF Core and `SethikaDbContext` is in Infrastructure. These are the codebase's first command handlers, so the answer becomes the pattern for Onboarding and Booking too — which is why it is a question and not a guess. | `SignUpDonor`, `SignIn`, every later command | **(a)** an `ISethikaDbContext` in Application exposing the `DbSet`s, `SaveChangesAsync` and a transaction, with Application referencing `Microsoft.EntityFrameworkCore` (the core package, no SQL Server provider). Least code, and the DbContext already is a unit of work; the cost is that Application knows it runs on EF. **(b)** repository and unit-of-work interfaces in Application with EF behind them — persistence-ignorant, but an interface per aggregate and a method per query shape. Recommend (a). |
 | Q5 | **First platform admin.** No platform owner exists, and CLAUDE.md forbids business data in post-deployment. | §5.5 | A `dotnet run --project src/Sethika.Api -- bootstrap` command, idempotent, reading phone and password from User Secrets. Keeps the credential out of source control and out of the dacpac. |
 
 ---
@@ -347,8 +356,8 @@ One commit per slice, Conventional Commits (CI blocks the PR title otherwise).
       `RandomNumberGenerator`; compare with `CryptographicOperations.FixedTimeEquals`.
 - [x] `Sethika.Infrastructure/Notifications/ConsoleSmsSender.cs` and `NotifyLkSmsSender.cs` (per Q1),
       selected by configuration. Every send also writes `notify.Notifications`, so the audit trail and
-      the SMS cost column are populated from day one. **The configuration switch itself is not built
-      yet** — that is part of the DI wiring, which is still to do.
+      the SMS cost column are populated from day one. The configuration switch landed with the
+      DI wiring (`df18505`).
 - [x] `Sethika.Infrastructure/Security/PhoneNumberNormalizer.cs` — E.164, default region `LK` (A8).
 - [x] `Sethika.Infrastructure/Security/SethikaPasswordPolicy.cs` — Identity's `PasswordOptions`, plus a
       128-character cap and a ban on the password containing the user's own contact details.
@@ -359,16 +368,20 @@ One commit per slice, Conventional Commits (CI blocks the PR title otherwise).
       transactions. `sethika:inst` is omitted, not 0, when the session acts for no institution.
 - [ ] `Sethika.Application/Access/SignUpDonor` — one transaction: `Users` + `DonorProfiles` + the donor
       role in `UserRoles` + `UserConsents` + `core.OutboxMessages`. EF Core, per the commands-use-EF rule.
-- [ ] `Sethika.Application/Access/SignIn` — verify the hash, apply the lockout policy
+      **Blocked** on Q6 and Q4, and on the donor role itself: no `Scope = 'Donor'` row exists until
+      5.5's `07_RbacCatalogue.sql`, so that one role has to be seeded before signup can be tested.
+      Note for 5.5: `CK_Roles_ScopeInstitution` requires `IsTemplate = 0` for `Scope = 'Donor'`, so
+      `Donor` is a global role, not one of the template roles listed there.
+- [ ] `Sethika.Application/Access/SignIn` — **blocked on Q6.** Verify the hash, apply the lockout policy
       (5 failures → 15 min), write `auth.LoginHistory` on **both** outcomes.
-- [ ] DI wiring in `Sethika.Infrastructure/DependencyInjection.cs` — bind `OtpOptions`,
+- [x] DI wiring in `Sethika.Infrastructure/DependencyInjection.cs` (`AddSethikaAccess`) — bind `OtpOptions`,
       `SmsOptions` and `JwtOptions`, register `IOtpService`, `IPasswordPolicy`,
       `IPhoneNumberNormalizer`, `IPasswordHasher<User>`, `ITokenService` (singleton — it holds the
       signing credentials) and `TimeProvider.System`, and select the SMS sender from `Sms:Provider`.
-      `Program.cs` still reads `Jwt:SigningKey` itself for bearer validation; both sides already go
-      through `SethikaJwt.CreateSigningKey`, so either may bind `JwtOptions` without drifting. Per A14 the host must
-      **refuse to start** with the console sender outside Development, and `NotifyLkSmsSender` needs
-      an `HttpClient` registered through `IHttpClientFactory` rather than constructed per call.
+      Per A14 the host **refuses to start** with the console sender outside Development (and with
+      `Otp:LogCodesForDevelopment` on), and `NotifyLkSmsSender` gets its `HttpClient` from
+      `IHttpClientFactory`. `Program.cs` still reads `Jwt:SigningKey` itself for bearer validation;
+      both sides go through `SethikaJwt.CreateSigningKey`, and a host round-trip test guards the pair.
 - [ ] Endpoints: `POST /api/auth/otp/request`, `/api/auth/otp/verify`, `/api/auth/signup`,
       `/api/auth/login`. `[AllowAnonymous]`, and each one rate-limited.
 
