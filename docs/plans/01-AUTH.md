@@ -3,7 +3,24 @@
 Branch: `2-authentication-and-i18n-foundation` (cut from `1-permission-engine-frontend-authorization-setup`,
 because every slice below depends on `IPermissionService` and `[HasPermission]`, which live only on that branch).
 
-Status: **planned, not started.** No code from this plan has been written yet.
+Status: **in progress.** Slice 5.1 is about half done; 5.2–5.8 are untouched.
+**105 tests passing**, `dotnet format` clean, build clean with warnings as errors.
+Last updated 2026-09-27. Update this line and the 5.1 boxes whenever either changes — a fresh
+session trusts them and will rebuild anything they claim is missing.
+
+Delivered so far, with the commit that added it:
+
+| Commit | What landed |
+|---|---|
+| `1ca0b65` | Application abstractions: `ISmsSender`, `IOtpService`, `IPasswordPolicy`, `IPhoneNumberNormalizer`, `OtpPurpose`, `OtpSendResult`, `OtpVerifyResult`, `PasswordValidationResult`. Plus the two packages from A1 and A8. |
+| `a06f829` | A1 confirmed, and the three responsibilities it transfers from `UserManager` written down (see A1). |
+| `2a68f4f` | `PhoneNumberNormalizer` — 6 tests. |
+| `03ad08c` | `SethikaPasswordPolicy` — 17 tests. |
+| `1dc4aec` | `OtpService` + `OtpCacheKey` + `OtpOptions`, and `RedisFixture` for the tests — 14 tests. |
+| `f6f4c4a` | `SmsSenderBase`, `ConsoleSmsSender`, `NotifyLkSmsSender`, `SmsOptions` — 8 tests. |
+
+Nothing is wired into DI yet: `Program.cs` and `DependencyInjection.cs` are untouched, so none of the
+above is reachable at runtime. That happens with the endpoints at the end of 5.1.
 
 ---
 
@@ -319,14 +336,18 @@ One commit per slice, Conventional Commits (CI blocks the PR title otherwise).
 
 ### 5.1 — Signup, OTP, password login, lockout
 
-- [ ] `Sethika.Application/Access/` — `ISmsSender`, `IOtpService`, `ITokenService`, `IPasswordPolicy`,
-      `IPhoneNumberNormalizer`, and the command/result records. Interfaces only; no implementation here.
-- [ ] `Sethika.Infrastructure/Security/OtpService.cs` — Redis HASH per A4; the code is 6 digits from
+- [x] `Sethika.Application/` — `ISmsSender`, `IOtpService`, `IPasswordPolicy`,
+      `IPhoneNumberNormalizer`, and the result types. Interfaces only; no implementation here.
+      `ITokenService` is **not** written yet — it lands with `JwtTokenService` below.
+- [x] `Sethika.Infrastructure/Security/OtpService.cs` — Redis HASH per A4; the code is 6 digits from
       `RandomNumberGenerator`; compare with `CryptographicOperations.FixedTimeEquals`.
-- [ ] `Sethika.Infrastructure/Notifications/ConsoleSmsSender.cs` and `NotifyLkSmsSender.cs` (per Q1),
+- [x] `Sethika.Infrastructure/Notifications/ConsoleSmsSender.cs` and `NotifyLkSmsSender.cs` (per Q1),
       selected by configuration. Every send also writes `notify.Notifications`, so the audit trail and
-      the SMS cost column are populated from day one.
-- [ ] `Sethika.Infrastructure/Security/PhoneNumberNormalizer.cs` — E.164, default region `LK` (A8).
+      the SMS cost column are populated from day one. **The configuration switch itself is not built
+      yet** — that is part of the DI wiring, which is still to do.
+- [x] `Sethika.Infrastructure/Security/PhoneNumberNormalizer.cs` — E.164, default region `LK` (A8).
+- [x] `Sethika.Infrastructure/Security/SethikaPasswordPolicy.cs` — Identity's `PasswordOptions`, plus a
+      128-character cap and a ban on the password containing the user's own contact details.
 - [ ] `Sethika.Infrastructure/Security/JwtTokenService.cs` — access token carrying
       `sub` / `jti` / `sethika:uid` / `sethika:inst` / `sethika:platform`, 15 min, plus the refresh
       token (32 random bytes, base64url; only its SHA-256 hex is stored).
@@ -334,6 +355,11 @@ One commit per slice, Conventional Commits (CI blocks the PR title otherwise).
       role in `UserRoles` + `UserConsents` + `core.OutboxMessages`. EF Core, per the commands-use-EF rule.
 - [ ] `Sethika.Application/Access/SignIn` — verify the hash, apply the lockout policy
       (5 failures → 15 min), write `auth.LoginHistory` on **both** outcomes.
+- [ ] DI wiring in `Sethika.Infrastructure/DependencyInjection.cs` — bind `OtpOptions` and
+      `SmsOptions`, register `IOtpService`, `IPasswordPolicy`, `IPhoneNumberNormalizer`,
+      `IPasswordHasher<User>`, and select the SMS sender from `Sms:Provider`. Per A14 the host must
+      **refuse to start** with the console sender outside Development, and `NotifyLkSmsSender` needs
+      an `HttpClient` registered through `IHttpClientFactory` rather than constructed per call.
 - [ ] Endpoints: `POST /api/auth/otp/request`, `/api/auth/otp/verify`, `/api/auth/signup`,
       `/api/auth/login`. `[AllowAnonymous]`, and each one rate-limited.
 
