@@ -3,10 +3,11 @@
 Branch: `2-authentication-and-i18n-foundation` (cut from `1-permission-engine-frontend-authorization-setup`,
 because every slice below depends on `IPermissionService` and `[HasPermission]`, which live only on that branch).
 
-Status: **in progress.** In slice 5.1 every handler is done — tokens, DI wiring, sign-in, donor
-signup — and **only the four endpoints remain**. Role levels (A15) are in the schema with the DONOR
-level and role; their ceilings are 5.5. 5.2–5.9 are otherwise untouched; five 5.8 tests are done.
-**176 tests passing**, `dotnet format` clean, build clean with warnings as errors.
+Status: **in progress. Slice 5.1 is done** — signup, OTP, login and lockout work end to end over
+HTTP. **5.4 is done** except applying its limit to the refresh endpoint, which does not exist until
+5.2. Role levels (A15) are in the schema with the DONOR level and role; their ceilings are 5.5.
+Next: **5.2** (refresh rotation). 5.3, 5.5–5.7 and 5.9 are otherwise untouched; seven 5.8 tests are done.
+**199 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
 Last updated 2026-09-27. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
 
@@ -26,9 +27,11 @@ Delivered so far, with the commit that added it:
 | `bc069dd` | `auth.RoleLevels`, `auth.Roles.RoleLevelId` with composite `FK_Roles_Level`; seeds `07_RoleLevels`, `08_SystemRoles` (DONOR), `09_LegalDocuments` (0.1-draft, en/si/ta). Published to `Sethika`; `Sethika_Test` recreated from the dacpac — 6 tests. |
 | `d12394d` | Verification tickets (A17): `VerifyAsync` issues one, `RedeemTicketAsync` spends it once via a Lua compare-and-delete — 5 tests. |
 | `03bfca5` | `SignUpDonorHandler`: five tables in one save, ticket spent only after the form checks, duplicates reported only after it, consent by content hash; `DonorProfile`, `UserConsent`, `LegalDocument`, `OutboxMessage` entities — 10 tests. |
+| `c59db76` | `IRateLimiter` + `RedisRateLimiter` (fixed window, fails open), `RateLimitKey` (hashed subjects), `RedisWindowCounter` (INCR and expiry in one Lua step). Fixes OtpService's send counter, which could outlive its window and block a phone for good — 8 tests. |
+| `94b1c29` | The four auth endpoints and `GET /api/legal/current`, rate-limited per client and per identity (`AuthRateLimits`); A2 cookies; `{ "code" }` errors; `UseForwardedHeaders` (A18); `LoginName` shared by sign-in and its limit — 14 tests over HTTP. |
 
-All of the above is registered in DI and resolvable from the running host, but no endpoint calls
-any of it yet — that is the last box of 5.1.
+All of the above is reachable over HTTP from `94b1c29`. The refresh cookie is issued but nothing
+reads it yet — that is 5.2.
 
 ---
 
@@ -270,8 +273,12 @@ Redis use and the course requires Redis be used for real. `INCR` + `EXPIRE` fixe
 lines; the boundary-burst weakness is acceptable here and the upgrade path (sorted-set sliding window
 log) is one method. Note the weakness in the report instead of hiding it.
 
-Keys: `rl:otp:send:{e164}`, `rl:otp:verify:{e164}`, `rl:login:{normalizedLogin}`, `rl:login:ip:{ip}`,
-`rl:refresh:ip:{ip}`.
+Keys as built (`c59db76`): `rl:{rule}:{first 128 bits of SHA-256 of the subject}`, one rule per
+line of `AuthRateLimits` — `login-name`, `login-client`, `otp-request-client`, `otp-verify-phone`,
+`otp-verify-client`, `signup-client`; `refresh-client` arrives with 5.2. The subject is hashed so a
+typed login cannot make a key of any size, and phone numbers and emails are not readable in
+`KEYS rl:*`. The counter and its expiry are set in one Lua step: INCR-then-EXPIRE leaves a counter
+that never expires if the process dies between them.
 
 ### A13 — Data Protection keys must be persisted before production
 
@@ -394,6 +401,24 @@ would do, but needs Redis 6.2 and the local build is 3.2).
 Issuing it inside `VerifyAsync`, rather than from a separate call, means the only way to hold a
 ticket is to have verified a code. The same mechanism serves the password-reset flow later.
 
+
+### A18 — The client address is believed only from a trusted proxy *(decided 2026-09-27)*
+
+Per-client rate limits and the sign-in history need the client's address. Behind the Next.js rewrite
+(A3) and Azure's front end, the connection comes from a proxy and the client is in
+`X-Forwarded-For` — which any client can also send. `UseForwardedHeaders` therefore believes it only
+when the connection comes from a known proxy: loopback by default, which covers local development,
+and otherwise the addresses in `ForwardedHeaders:KnownProxies`.
+
+**Deployment prerequisite**, alongside A13 and A14: configure the production proxy addresses. Left
+empty, every client appears to be the proxy, the per-client limits become one budget shared by all
+users, and a busy hour locks everyone out of OTP. The per-identity limits and the account lockout do
+not depend on this.
+
+Per-client limits are loose on purpose (20–100 per window): Sri Lankan mobile networks put many
+subscribers behind one address, so a tight per-address limit would lock out a whole temple's donors
+at once. Per-identity limits are the real control. Write both halves in the report.
+
 ---
 
 ## 3. Open questions
@@ -476,11 +501,12 @@ One commit per slice, Conventional Commits (CI blocks the PR title otherwise).
       `Otp:LogCodesForDevelopment` on), and `NotifyLkSmsSender` gets its `HttpClient` from
       `IHttpClientFactory`. `Program.cs` still reads `Jwt:SigningKey` itself for bearer validation;
       both sides go through `SethikaJwt.CreateSigningKey`, and a host round-trip test guards the pair.
-- [ ] Endpoints: `POST /api/auth/otp/request`, `/api/auth/otp/verify`, `/api/auth/signup`,
-      `/api/auth/login`. `[AllowAnonymous]`, and each one rate-limited. Carry from the handlers:
-      `LockedOut` must answer exactly like `InvalidCredentials` (body and status); `/otp/verify`
-      returns the ticket; `/signup` then signs the donor in; login and signup set the refresh cookie
-      per A2; the legal documents the signup screen shows come with their `ContentSha256`.
+- [x] Endpoints (`94b1c29`): `POST /api/auth/otp/request`, `/api/auth/otp/verify`, `/api/auth/signup`,
+      `/api/auth/login`, plus `GET /api/legal/current`. Anonymous and rate-limited. `LockedOut`
+      answers exactly like `InvalidCredentials`; `/otp/request` accepts only the signup purpose;
+      `/signup` signs the donor in through `SignInHandler`; login and signup set the A2 cookies and
+      `Cache-Control: no-store`. Errors are `{ "code": ... }` for the client to translate — a
+      convention every later endpoint should keep.
 
 **User enumeration:** login must answer identically for "no such user" and "wrong password", *including
 timing* — so when the user is not found, still verify the supplied password against a fixed dummy hash
@@ -516,10 +542,12 @@ oracle, and it is exactly the kind of thing an examiner asks about.
 
 ### 5.4 — Rate limiting
 
-- [ ] `IRateLimiter` in Application, `RedisRateLimiter` in Infrastructure (A12).
-- [ ] An endpoint filter that applies it, keyed per route; `429` with `Retry-After`.
-- [ ] Applied to OTP request/verify, login, refresh and signup.
-- [ ] Redis down means **fail open with a logged warning**, not closed. A cache outage must not lock
+- [x] `IRateLimiter` in Application, `RedisRateLimiter` in Infrastructure (A12) — `c59db76`.
+- [x] An endpoint filter that applies it, keyed per route; `429` with `Retry-After` — `94b1c29`
+      (`RateLimitPerClient`, `RateLimitBy<TBody>`).
+- [ ] Applied to OTP request/verify, login, refresh and signup — **all but refresh**, which is 5.2's
+      endpoint; give it `refresh-client` when it is built.
+- [x] Redis down means **fail open with a logged warning**, not closed. A cache outage must not lock
       everyone out — the same principle already applied to the permission cache.
 
 ### 5.5 — RBAC catalogue seed and bootstrap admin
@@ -574,11 +602,11 @@ and `94…` collapsing to one value; step-up expiry.
 
 Integration (`Sethika.Api.IntegrationTests`), against real SQL Server and Redis:
 
-- [ ] signup → OTP → login → authenticated call, end to end
+- [x] signup → OTP → login → authenticated call, end to end (`AuthEndpointsTests`, HTTP only)
 - [x] wrong password five times means locked; the correct password during lockout is still refused
       (`SignInHandlerTests`, including five wrong guesses in parallel)
-- [ ] unknown user and wrong password are indistinguishable in body, status **and** timing —
-      result and timing are proven at the handler (`58fa000`); body and status wait for the endpoint
+- [x] unknown user and wrong password are indistinguishable in body, status **and** timing —
+      timing at the handler (`58fa000`), status and body over HTTP, with a locked account too (`94b1c29`)
 - [ ] refresh rotates, and the old token stops working
 - [ ] **replaying a rotated refresh token revokes the whole family** — the security test that matters most
 - [x] a token signed with a different key gives 401; an expired one gives 401
