@@ -3,11 +3,11 @@
 Branch: `2-authentication-and-i18n-foundation` (cut from `1-permission-engine-frontend-authorization-setup`,
 because every slice below depends on `IPermissionService` and `[HasPermission]`, which live only on that branch).
 
-Status: **in progress. Slice 5.1 is done** — signup, OTP, login and lockout work end to end over
-HTTP. **5.4 is done** except applying its limit to the refresh endpoint, which does not exist until
-5.2. Role levels (A15) are in the schema with the DONOR level and role; their ceilings are 5.5.
-Next: **5.2** (refresh rotation). 5.3, 5.5–5.7 and 5.9 are otherwise untouched; seven 5.8 tests are done.
-**199 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
+Status: **in progress. Slices 5.1, 5.2 and 5.4 are done** — signup, OTP, login, lockout, refresh
+rotation with reuse detection, institution switching, logout and rate limiting all work over HTTP.
+Role levels (A15) are in the schema with the DONOR level and role; their ceilings are 5.5.
+Next: **5.3** (MFA step-up), then 5.5. 5.6, 5.7 and 5.9 are untouched; eleven 5.8 tests are done.
+**213 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
 Last updated 2026-09-27. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
 
@@ -29,9 +29,9 @@ Delivered so far, with the commit that added it:
 | `03bfca5` | `SignUpDonorHandler`: five tables in one save, ticket spent only after the form checks, duplicates reported only after it, consent by content hash; `DonorProfile`, `UserConsent`, `LegalDocument`, `OutboxMessage` entities — 10 tests. |
 | `c59db76` | `IRateLimiter` + `RedisRateLimiter` (fixed window, fails open), `RateLimitKey` (hashed subjects), `RedisWindowCounter` (INCR and expiry in one Lua step). Fixes OtpService's send counter, which could outlive its window and block a phone for good — 8 tests. |
 | `94b1c29` | The four auth endpoints and `GET /api/legal/current`, rate-limited per client and per identity (`AuthRateLimits`); A2 cookies; `{ "code" }` errors; `UseForwardedHeaders` (A18); `LoginName` shared by sign-in and its limit — 14 tests over HTTP. |
+| `f4fabd8` | `SessionHandler`: rotation claimed by a conditional UPDATE, reuse detection with a 10-second grace (A19) whose refusal is `409` and leaves the cookies alone, stamp check, institution re-validated on every refresh; `SecurityStamps.RotateAsync`; `auth.RefreshTokens.SecurityStamp` (new column); session endpoints under `/api/auth/session` with CSRF (A2 amended) — 14 tests over HTTP. |
 
-All of the above is reachable over HTTP from `94b1c29`. The refresh cookie is issued but nothing
-reads it yet — that is 5.2.
+All of the above is reachable over HTTP.
 
 ---
 
@@ -72,8 +72,9 @@ re-derived in C#, and secrets live only in User Secrets.
 | `org.InstitutionMembers`, `org.StaffInvitations` | membership, invites | 0 |
 
 The refresh-token schema was already designed for rotation-with-breach-detection: `FamilyId` +
-`ReplacedByTokenId` + `RevokedReason` is exactly the shape needed, so §5.2 is implementing a design
-that is already in the tables, not inventing one.
+`ReplacedByTokenId` + `RevokedReason` is exactly the shape needed. **One thing was missing:** 5.2 says
+refresh must "check `SecurityStamp` still matches", but the row did not record the stamp, so there
+was nothing to compare. `auth.RefreshTokens.SecurityStamp` was added for it.
 
 ### Backend code
 
@@ -157,15 +158,19 @@ why they are written down here instead of being left to memory. §5.8 carries a 
 | Token | Lifetime | Stored | Why |
 |---|---|---|---|
 | Access (JWT) | 15 min | **JS memory only** — never `localStorage` | XSS can read it, but only for 15 min and cannot mint a new one |
-| Refresh | 14 days, rotating | **httpOnly cookie**, `Path=/api/auth/refresh`, `SameSite=Lax`, `Secure` in prod | JS cannot read it at all |
+| Refresh | 14 days, rotating | **httpOnly cookie**, `Path=/api/auth/session`, `SameSite=Lax`, `Secure` in prod | JS cannot read it at all |
 
-Consequence: on page reload the access token is gone, so the app calls `/api/auth/refresh` once at
-boot (silent refresh) before rendering anything that depends on identity.
+Consequence: on page reload the access token is gone, so the app calls `/api/auth/session/refresh`
+once at boot (silent refresh) before rendering anything that depends on identity.
 
-The refresh endpoint is the only cookie-authenticated, state-changing endpoint, so it is the only one
-that needs CSRF protection → **double-submit token**: a non-httpOnly `sethika-csrf` cookie whose value
-must be echoed in an `X-CSRF-Token` header. Every other endpoint is Bearer-authenticated and therefore
-not reachable by CSRF at all.
+**Amended 2026-09-27:** the cookie path was `/api/auth/refresh`, but a cookie scoped there is never
+sent to logout, which then has no session to end. The cookie is scoped to `/api/auth/session`, and the
+four endpoints that need it live under it: `refresh`, `switch-institution`, `logout`, `logout-all`.
+
+Those four are the cookie-authenticated, state-changing endpoints, so they are the ones that need CSRF
+protection → **double-submit token**: a non-httpOnly `sethika-csrf` cookie whose value must be echoed
+in an `X-CSRF-Token` header, compared in constant time. Every other endpoint is Bearer-authenticated
+and therefore not reachable by CSRF at all.
 
 `SecurityStamp` is *not* checked per request — that would put a DB read in front of every call and
 defeat a stateless JWT. It is checked on refresh. The honest consequence: revoking a user leaves at
@@ -275,7 +280,7 @@ log) is one method. Note the weakness in the report instead of hiding it.
 
 Keys as built (`c59db76`): `rl:{rule}:{first 128 bits of SHA-256 of the subject}`, one rule per
 line of `AuthRateLimits` — `login-name`, `login-client`, `otp-request-client`, `otp-verify-phone`,
-`otp-verify-client`, `signup-client`; `refresh-client` arrives with 5.2. The subject is hashed so a
+`otp-verify-client`, `signup-client`, and `refresh-client` (5.2). The subject is hashed so a
 typed login cannot make a key of any size, and phone numbers and emails are not readable in
 `KEYS rl:*`. The counter and its expiry are set in one Lua step: INCR-then-EXPIRE leaves a counter
 that never expires if the process dies between them.
@@ -419,6 +424,29 @@ Per-client limits are loose on purpose (20–100 per window): Sri Lankan mobile 
 subscribers behind one address, so a tight per-address limit would lock out a whole temple's donors
 at once. Per-identity limits are the real control. Write both halves in the report.
 
+
+### A19 — A spent refresh token presented within 10 seconds is a race, not a theft *(decided 2026-09-27)*
+
+Reuse detection revokes the whole family when a rotated token comes back. But two tabs refreshing at
+the same moment both send the old cookie, and the later one would then sign the user out of every
+device for nothing more than having two tabs open.
+
+So a rotated token presented within **10 seconds** of its rotation is refused - no tokens - but the
+family survives; presented any later, the family is revoked. The cost, for the report: a copy
+replayed inside those 10 seconds is not detected. It still gets nothing, and any later replay is
+caught. The web client's single-flight refresh (5.7) makes the race rare in one tab; this covers two.
+
+The refusal is **`409 session_superseded`, and it leaves the cookies alone.** The first build answered
+it like every dead session, `401` plus clearing the cookies - but the two tabs share one cookie jar,
+and a clearing response that lands after the winner's would delete the successor, signing the user
+out anyway. The mutation run found it: with the claim's `RevokedAt IS NULL` removed, the parallel
+test still passed, because ten requests on their own rarely overlap. The test now holds an update
+lock on the token's row until all ten are waiting at the claim, and the race is deterministic.
+
+Rotation itself is claimed by a conditional `UPDATE … WHERE Id = @id AND RevokedAt IS NULL` rather
+than `UPDLOCK, ROWLOCK` as 5.2 first said. The guarantee is the same - of any number of requests with
+one token, exactly one finds it unrevoked - and it keeps the SQL Server hint out of Application (A16).
+
 ---
 
 ## 3. Open questions
@@ -515,21 +543,22 @@ oracle, and it is exactly the kind of thing an examiner asks about.
 
 ### 5.2 — Refresh rotation with breach detection
 
-- [ ] `POST /api/auth/refresh` — read the httpOnly cookie, hash it, look the row up, and inside one
-      transaction: check it is neither expired nor revoked, check `SecurityStamp` still matches, insert
-      the successor row, set `ReplacedByTokenId` + `RevokedAt` + `RevokedReason = 'Rotated'` on the old
-      row, return a new access token and set the new cookie.
-- [ ] **Reuse detection:** a presented token that hashes to an already-revoked row means the token was
-      stolen and replayed. Revoke the entire `FamilyId` (`RevokedReason = 'ReuseDetected'`) and force
-      re-login. This is what `FamilyId` is in the schema for.
-- [ ] `POST /api/auth/logout` — revoke this family, clear the cookie.
-- [ ] `POST /api/auth/logout-all` — revoke every family for the user, rotate `SecurityStamp`.
-- [ ] `POST /api/auth/switch-institution` — re-validate the requested `InstitutionId` against
-      `auth.UserRoles` (A7); **never** trust the body. Rotate the refresh token with the new
-      `ActiveInstitutionId` and issue a matching access token. A user who can name an institution id
-      must not thereby gain it.
-- [ ] Concurrency: the rotation transaction takes the row with `UPDLOCK, ROWLOCK`, so two parallel
-      refreshes cannot both succeed. Prove it with a parallel-load test.
+- [x] `POST /api/auth/session/refresh` (`f4fabd8`) — hash the cookie, find the row, refuse it if expired,
+      revoked, its account inactive or its `SecurityStamp` stale; claim it with a conditional UPDATE,
+      insert the successor in the same family, link `ReplacedByTokenId`, return a new access token and
+      set new cookies. The institution is re-read from `auth.UserRoles` every time, so a revoked role
+      drops out of the next token.
+- [x] **Reuse detection:** a rotated token presented again revokes the entire family
+      (`RevokedReason = 'ReuseDetected'`), except within the 10-second grace of A19, which is
+      `409 session_superseded` with the cookies untouched.
+- [x] `POST /api/auth/session/logout` — revoke this family, clear both cookies.
+- [x] `POST /api/auth/session/logout-all` — `SecurityStamps.RotateAsync`: new stamp and every live
+      refresh token revoked, in one transaction. Needs a live token, so a revoked copy cannot be used
+      to sign the real user out everywhere.
+- [x] `POST /api/auth/session/switch-institution` — the slug is checked against `auth.UserRoles`
+      (A7); an institution the user does not hold is `403`, rotates nothing and issues nothing.
+- [x] Concurrency: ten parallel refreshes with one token — exactly one succeeds, exactly one successor
+      is written, the other nine get `409` and no cookies. By conditional UPDATE, not `UPDLOCK` (A19).
 
 ### 5.3 — MFA step-up
 
@@ -545,8 +574,8 @@ oracle, and it is exactly the kind of thing an examiner asks about.
 - [x] `IRateLimiter` in Application, `RedisRateLimiter` in Infrastructure (A12) — `c59db76`.
 - [x] An endpoint filter that applies it, keyed per route; `429` with `Retry-After` — `94b1c29`
       (`RateLimitPerClient`, `RateLimitBy<TBody>`).
-- [ ] Applied to OTP request/verify, login, refresh and signup — **all but refresh**, which is 5.2's
-      endpoint; give it `refresh-client` when it is built.
+- [x] Applied to OTP request/verify, login, refresh and signup — refresh and switch-institution use
+      `refresh-client` (`f4fabd8`).
 - [x] Redis down means **fail open with a logged warning**, not closed. A cache outage must not lock
       everyone out — the same principle already applied to the permission cache.
 
@@ -590,7 +619,8 @@ oracle, and it is exactly the kind of thing an examiner asks about.
       `/select-institution`.
 - [ ] `lib/auth/` — access token in memory (A2), silent refresh at boot, one fetch wrapper that
       refreshes once on `401` and retries, queueing concurrent calls so a page with five requests does
-      not fire five refreshes.
+      not fire five refreshes. A refresh answered `409 session_superseded` means another tab rotated
+      first: retry the refresh once with the cookie the browser now holds (A19); `401` means sign in.
 - [ ] `next.config.ts` rewrites per A3.
 - [ ] Faith-neutral imagery only. No religious symbol on a shared screen.
 
@@ -607,22 +637,25 @@ Integration (`Sethika.Api.IntegrationTests`), against real SQL Server and Redis:
       (`SignInHandlerTests`, including five wrong guesses in parallel)
 - [x] unknown user and wrong password are indistinguishable in body, status **and** timing —
       timing at the handler (`58fa000`), status and body over HTTP, with a locked account too (`94b1c29`)
-- [ ] refresh rotates, and the old token stops working
-- [ ] **replaying a rotated refresh token revokes the whole family** — the security test that matters most
+- [x] refresh rotates, and the old token stops working (`SessionEndpointsTests`)
+- [x] **replaying a rotated refresh token revokes the whole family** — the security test that matters most
 - [x] a token signed with a different key gives 401; an expired one gives 401
       (`JwtTokenServiceEndpointTests`, with a 14-minute-old token accepted as the control)
 - [ ] `sethika:platform` cannot be forged via header, query or body (extends the existing test)
-- [ ] `switch-institution` to an institution the user holds no role in gives 403, and no token is issued
+- [x] `switch-institution` to an institution the user holds no role in gives 403, and no token is issued
 - [ ] a `RequiresMfa` permission gives 403 before step-up, 200 after, and 403 again once the TTL expires
 - [ ] OTP: a wrong code five times burns it; a fourth send within the hour gives 429
-- [ ] two parallel refreshes with the same token — exactly one succeeds
+- [x] two parallel refreshes with the same token — exactly one succeeds
 - [x] signup writes exactly one outbox row, and rolls back all five tables when any part fails
       (`SignUpDonorHandlerTests`)
 
 The three responsibilities A1 transfers from `UserManager` to us, one test each — these guard
 omissions, so each must be mutation-tested by removing the call and watching the test fail:
 
-- [ ] changing a password rotates `SecurityStamp`, and every refresh token issued before it is refused
+- [ ] changing a password rotates `SecurityStamp`, and every refresh token issued before it is refused —
+      **the mechanism is done and tested** (`SecurityStamps.RotateAsync` via logout-all; a stamp changed
+      underneath a live token is refused on refresh). No password-change endpoint exists yet; when it
+      does, it calls `RotateAsync` and this box is ticked by its own test.
 - [x] a successful sign-in resets `AccessFailedCount`, so four failures then a success then four more
       failures does not lock the account
 - [x] signing up as `Test@x.com` and then `test@x.com` is rejected as a duplicate, not accepted as a
