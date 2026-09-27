@@ -1,34 +1,75 @@
-/*  Two tenants, each with one booking, so a query as tenant A can be checked for
-    tenant B's row. Runs on a connection stamped IsPlatform = 1, because the RLS BLOCK
-    predicates would otherwise refuse the cross-tenant inserts.
+/*  Fixture for the persistence and permission tests.
 
-    Deterministic and re-runnable: fixed GUIDs, and everything is cleared first. Safe
-    only against the dedicated Sethika_Test database.                                  */
+    Two tenants, each with one booking, so a query as tenant A can be checked for tenant B's
+    row. Plus a minimal RBAC catalogue - one module, one screen, two permissions, one
+    institution role - because auth.Modules/Screens/Permissions ship empty: CLAUDE.md has
+    them growing with each screen that is actually built, so the catalogue is fixture data
+    here and deliberately NOT in Scripts/PostDeployment.sql.
+
+    Runs on a connection stamped IsPlatform = 1, because the RLS BLOCK predicates would
+    otherwise refuse the cross-tenant inserts.
+
+    Deterministic and re-runnable: fixed GUIDs, and everything is cleared first. Safe only
+    against the dedicated Sethika_Test database.                                          */
+
+ALTER TABLE auth.Roles                    SET (SYSTEM_VERSIONING = OFF);
+ALTER TABLE auth.UserRoles                SET (SYSTEM_VERSIONING = OFF);
+ALTER TABLE auth.RolePermissions          SET (SYSTEM_VERSIONING = OFF);
+ALTER TABLE auth.UserPermissionOverrides  SET (SYSTEM_VERSIONING = OFF);
+ALTER TABLE org.InstitutionModules        SET (SYSTEM_VERSIONING = OFF);
+GO
 
 DECLARE @alphaUser  UNIQUEIDENTIFIER = '11111111-1111-1111-1111-111111111111';
 DECLARE @betaUser   UNIQUEIDENTIFIER = '22222222-2222-2222-2222-222222222222';
 DECLARE @typeId     SMALLINT = (SELECT Id FROM org.InstitutionTypes WHERE Code = 'TEMPLE');
 DECLARE @districtId SMALLINT = (SELECT Id FROM core.Districts       WHERE Code = 'CMB');
 
+/*  System versioning is suspended for the reset.
+
+    SysStartTime is stamped from the transaction's begin time, so deleting a row that was
+    inserted moments earlier can fail with "transaction time was earlier than period start
+    time" when two reseeds land in the same clock tick. xunit builds a fresh test class per
+    test method, so the fixture reseeds once per test and hits exactly that. Suspending
+    versioning removes the timing dependency instead of hoping the clock cooperates, and
+    lets the history tables be cleared too - otherwise fixture churn accumulates there
+    forever.                                                                              */
+
+/*  Reset, child-before-parent. Every FK direction matters here: get the order wrong and a
+    DELETE fails, later INSERTs collide on duplicate keys, and the real cause is six errors
+    upstream of where it surfaces.                                                        */
+DELETE FROM auth.UserRoles;
+DELETE FROM auth.UserRolesHistory;
+DELETE FROM auth.RolePermissions;
+DELETE FROM auth.RolePermissionsHistory;
+DELETE FROM auth.UserPermissionOverrides;
+DELETE FROM auth.UserPermissionOverridesHistory;
+DELETE FROM auth.Roles;
+DELETE FROM auth.RolesHistory;
+DELETE FROM org.InstitutionModules;
+DELETE FROM org.InstitutionModulesHistory;
 DELETE FROM booking.Bookings;
 DELETE FROM booking.SlotInstances;
 DELETE FROM booking.MealSlots;
+DELETE FROM auth.Permissions;
+DELETE FROM auth.Screens;
+DELETE FROM auth.Modules;
 DELETE FROM org.Institutions;
 DELETE FROM org.RegistrationRequests;
 DELETE FROM auth.Users WHERE Id IN (@alphaUser, @betaUser);
+
 
 INSERT auth.Users (Id, UserType, FullName, PhoneNumber, PreferredLanguage, Status, SecurityStamp)
 VALUES (@alphaUser, 'InstitutionStaff', N'Alpha Steward', '0771000001', 'en', 'Active', 'stamp-alpha'),
        (@betaUser,  'InstitutionStaff', N'Beta Steward',  '0772000002', 'en', 'Active', 'stamp-beta');
 
+/*  Left at 'Draft' deliberately. Approving a request requires CreatedInstitutionId, which
+    requires the institution, which requires the request - and 'Submitted' would additionally
+    demand a signed declaration document. None of that changes what RLS or the permission
+    view do, so the fixture stops at the status that satisfies every CHECK on its own.     */
 INSERT org.RegistrationRequests
     (RequestNo, ApplicantUserId, InstitutionTypeId, ProposedName, OfficialRegistrationNo,
      RegisteringAuthority, RegistrationDate, AddressLine1, City, DistrictId, Latitude, Longitude,
      OfficePhone, ApplicantFullName, ApplicantNic, ApplicantDesignation, ApplicantPhone, Status)
-/*  Left at 'Draft' deliberately. Approving a request requires CreatedInstitutionId,
-    which requires the institution, which requires the request - and 'Submitted' would
-    additionally demand a signed declaration document. None of that changes what RLS
-    does, so the fixture stops at the status that satisfies every CHECK on its own.   */
 VALUES ('REQ-ALPHA', @alphaUser, @typeId, N'Alpha Temple', 'REG-ALPHA', N'Authority', '2024-01-01',
         N'1 Alpha Road', N'Colombo', @districtId, 6.927100, 79.861200,
         '0111000001', N'Alpha Steward', '901234567V', N'Trustee', '0771000001', 'Draft'),
@@ -69,3 +110,51 @@ SELECT CASE WHEN si.InstitutionId = @alphaId THEN 'BK-ALPHA' ELSE 'BK-BETA' END,
        10,
        CASE WHEN si.InstitutionId = @alphaId THEN @alphaUser ELSE @betaUser END
 FROM booking.SlotInstances si;
+
+/* ---------------------------- RBAC catalogue ---------------------------- */
+
+DECLARE @portalId TINYINT = (SELECT Id FROM auth.Portals WHERE Code = 'INSTITUTION');
+
+INSERT auth.Modules (PortalId, Code, Name) VALUES (@portalId, 'BOOKINGS', N'Bookings');
+DECLARE @moduleId SMALLINT = CAST(SCOPE_IDENTITY() AS SMALLINT);
+
+INSERT auth.Screens (ModuleId, Code, Name, Route)
+VALUES (@moduleId, 'BOOKINGS.CALENDAR', N'Booking calendar', '/bookings/calendar');
+DECLARE @screenId SMALLINT = CAST(SCOPE_IDENTITY() AS SMALLINT);
+
+/*  APPROVE is marked RequiresMfa so the step-up path has something real to read. Holding a
+    permission and being allowed to exercise it right now are different questions.        */
+INSERT auth.Permissions (Code, ScreenId, ActionId, Scope, Name, RequiresMfa)
+SELECT 'BOOKINGS.CALENDAR.VIEW', @screenId, a.Id, 'Institution', N'View booking calendar', 0
+FROM auth.PermissionActions a WHERE a.Code = 'VIEW'
+UNION ALL
+SELECT 'BOOKINGS.CALENDAR.APPROVE', @screenId, a.Id, 'Institution', N'Approve bookings', 1
+FROM auth.PermissionActions a WHERE a.Code = 'APPROVE';
+
+INSERT auth.Roles (InstitutionId, Scope, Code, Name, IsTemplate)
+VALUES (@alphaId, 'Institution', 'ALPHA_STEWARD', N'Alpha Steward', 0);
+DECLARE @roleId INT = CAST(SCOPE_IDENTITY() AS INT);
+
+INSERT auth.RolePermissions (RoleId, PermissionId)
+SELECT @roleId, p.Id FROM auth.Permissions p
+WHERE p.Code IN ('BOOKINGS.CALENDAR.VIEW', 'BOOKINGS.CALENDAR.APPROVE');
+
+INSERT auth.UserRoles (UserId, RoleId, InstitutionId, IsActive)
+VALUES (@alphaUser, @roleId, @alphaId, 1);
+
+/*  The module must be enabled for the institution or the view yields nothing: effective
+    permissions are role grants INTERSECTED with the institution's enabled modules.       */
+INSERT org.InstitutionModules (InstitutionId, ModuleId, IsEnabled, Source, ChangedBy)
+VALUES (@alphaId, @moduleId, 1, 'Manual', @alphaUser);
+GO
+
+ALTER TABLE auth.Roles SET
+    (SYSTEM_VERSIONING = ON (HISTORY_TABLE = auth.RolesHistory, DATA_CONSISTENCY_CHECK = ON));
+ALTER TABLE auth.UserRoles SET
+    (SYSTEM_VERSIONING = ON (HISTORY_TABLE = auth.UserRolesHistory, DATA_CONSISTENCY_CHECK = ON));
+ALTER TABLE auth.RolePermissions SET
+    (SYSTEM_VERSIONING = ON (HISTORY_TABLE = auth.RolePermissionsHistory, DATA_CONSISTENCY_CHECK = ON));
+ALTER TABLE auth.UserPermissionOverrides SET
+    (SYSTEM_VERSIONING = ON (HISTORY_TABLE = auth.UserPermissionOverridesHistory, DATA_CONSISTENCY_CHECK = ON));
+ALTER TABLE org.InstitutionModules SET
+    (SYSTEM_VERSIONING = ON (HISTORY_TABLE = org.InstitutionModulesHistory, DATA_CONSISTENCY_CHECK = ON));

@@ -1,0 +1,256 @@
+name: CI
+
+# Runs on every PR into main, and on main itself so the default branch is always known-good.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A new push to the same PR cancels the previous run - no point paying for a stale one.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  NODE_VERSION: "22"
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+
+jobs:
+  # ---------------------------------------------------------------- backend
+  backend:
+    name: Backend (build, format, test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    # Ephemeral throwaway credential for containers that are never reachable outside the job
+    # network. Deliberately not a repository secret, because it is not one - and defined once
+    # here so the three places that need it cannot drift apart.
+    env:
+      SA_PASSWORD: "Sethika_CI_Pwd123!"
+
+    services:
+      # The integration tests exercise Row-Level Security, session context, temporal tables
+      # and dynamic data masking. None of that has an in-memory equivalent, so a real SQL
+      # Server is required rather than optional.
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "Sethika_CI_Pwd123!"
+          MSSQL_PID: Developer
+        ports:
+          - 1433:1433
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.sqlproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore Sethika.sln
+
+      # Warnings are errors in Directory.Build.props, so this is also the analyzer gate.
+      - name: Build
+        run: dotnet build Sethika.sln --no-restore -c Release -v minimal
+
+      - name: Check formatting
+        run: dotnet format Sethika.sln --verify-no-changes --verbosity minimal
+
+      - name: Install SqlPackage
+        run: |
+          dotnet tool install -g microsoft.sqlpackage
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      # An open port is not the same as "ready to accept logins" - SQL Server finishes
+      # recovery after it starts listening - so wait on an actual query. sqlcmd is not on the
+      # runner, so it is run inside the service container, addressed by the id GitHub exposes.
+      - name: Wait for SQL Server
+        run: |
+          container='${{ job.services.sqlserver.id }}'
+
+          # The tools path moved between image versions; take whichever exists.
+          sqlcmd_path=""
+          for candidate in /opt/mssql-tools18/bin/sqlcmd /opt/mssql-tools/bin/sqlcmd; do
+            if docker exec "$container" test -x "$candidate" 2>/dev/null; then
+              sqlcmd_path="$candidate"
+              break
+            fi
+          done
+
+          if [ -z "$sqlcmd_path" ]; then
+            echo "::error::No sqlcmd found inside the SQL Server container."
+            exit 1
+          fi
+
+          for i in $(seq 1 90); do
+            if docker exec "$container" "$sqlcmd_path" \
+                 -S localhost -U sa -P "$SA_PASSWORD" -C -No -Q "SELECT 1" >/dev/null 2>&1; then
+              echo "SQL Server accepted a query after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "::error::SQL Server did not become ready within 90s"
+          docker logs "$container" | tail -40
+          exit 1
+
+      # src/Sethika.Database is the schema source of truth; the test database is published
+      # from the dacpac, exactly as a developer or a release would do it.
+      - name: Publish schema to Sethika_Test
+        run: |
+          dotnet build src/Sethika.Database/Sethika.Database.sqlproj -c Release -v minimal
+          SqlPackage /Action:Publish \
+            /SourceFile:src/Sethika.Database/bin/Release/Sethika.Database.dacpac \
+            /TargetServerName:"localhost,1433" \
+            /TargetDatabaseName:Sethika_Test \
+            /TargetUser:sa \
+            /TargetPassword:"Sethika_CI_Pwd123!" \
+            /TargetTrustServerCertificate:True
+
+      # Windows integrated auth does not exist here, hence the SETHIKA_TEST_* overrides the
+      # fixture reads.
+      - name: Test
+        run: dotnet test Sethika.sln --no-build -c Release --nologo --logger "trx;LogFileName=tests.trx" --results-directory TestResults
+        env:
+          SETHIKA_TEST_SQL: "Server=localhost,1433;Database=Sethika_Test;User Id=sa;Password=Sethika_CI_Pwd123!;Encrypt=True;TrustServerCertificate=True"
+          SETHIKA_TEST_REDIS: "localhost:6379"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: TestResults/
+          retention-days: 14
+
+  # --------------------------------------------------------------- frontend
+  frontend:
+    name: Frontend (lint, typecheck, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npx eslint .
+
+      # next build runs tsc for us and generates the route types that a bare tsc --noEmit
+      # cannot see, so this is the typecheck as well as the build.
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:5182
+
+  # ------------------------------------------------------------- pr hygiene
+  pr-hygiene:
+    name: PR hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Implemented inline rather than with a marketplace action: one less third party with
+      # write access to the pipeline, and the rule is three lines of regex.
+      - name: Title must be a conventional commit
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._-]+\))?!?: .{1,}$'
+          if ! printf '%s' "$TITLE" | grep -Eq "$pattern"; then
+            echo "::error::PR title does not follow Conventional Commits."
+            echo "Got:      $TITLE"
+            echo "Expected: <type>(<optional scope>): <description>"
+            echo "Types:    feat fix docs style refactor perf test build ci chore revert"
+            echo "Example:  feat(access): cache effective permissions in Redis"
+            exit 1
+          fi
+          echo "Title OK: $TITLE"
+
+      - name: Description must be filled in
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if [ -z "${BODY//[[:space:]]/}" ]; then
+            echo "::error::PR description is empty. Fill in the template."
+            exit 1
+          fi
+
+          missing=0
+          for heading in "## What" "## Why" "## How to verify"; do
+            if ! printf '%s' "$BODY" | grep -qF "$heading"; then
+              echo "::error::PR description is missing the '$heading' section."
+              missing=1
+            fi
+          done
+
+          # An unchecked box is fine; a template left entirely untouched is not.
+          if printf '%s' "$BODY" | grep -qF "<!-- REPLACE ME -->"; then
+            echo "::error::PR description still contains template placeholders."
+            missing=1
+          fi
+
+          exit $missing
+
+      - name: No secrets or local config committed
+        run: |
+          # The API keeps connection strings in User Secrets; anything that looks like one in
+          # a tracked file is a mistake worth blocking on.
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '(secrets\.json|\.env$|\.env\.local)' ; then
+            echo "::error::A secrets or local env file is in this PR."
+            exit 1
+          fi
+
+          if git diff origin/${{ github.base_ref }}...HEAD -- '*.json' '*.cs' '*.ts' '*.tsx' \
+             | grep -nEi '^\+.*(Password=|Pwd=|AccountKey=|ApiKey"?\s*[:=]\s*"[^"]{8,})' \
+             | grep -v 'Sethika_CI_Pwd123' ; then
+            echo "::error::Possible hard-coded credential added. Use User Secrets."
+            exit 1
+          fi
+          echo "No obvious secrets in this PR."

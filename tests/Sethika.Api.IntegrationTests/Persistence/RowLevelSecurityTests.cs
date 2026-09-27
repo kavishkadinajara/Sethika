@@ -11,10 +11,8 @@ namespace Sethika.Api.IntegrationTests.Persistence;
 /// Every query below is a plain "give me all bookings" with no WHERE on InstitutionId -
 /// if a test sees another tenant's row, Row-Level Security has failed.
 /// </summary>
-[Collection(nameof(RowLevelSecurityTests))]
-[CollectionDefinition(nameof(RowLevelSecurityTests), DisableParallelization = true)]
+[Collection(SethikaDatabaseCollection.Name)]
 public sealed class RowLevelSecurityTests(SethikaTestDatabase database)
-    : IClassFixture<SethikaTestDatabase>
 {
     private const string AllBookings = "SELECT BookingNo FROM booking.Bookings ORDER BY BookingNo";
 

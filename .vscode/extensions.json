@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "ms-dotnettools.csdevkit",
+    "ms-dotnettools.csharp",
+    "ms-mssql.mssql",
+    "ms-mssql.sql-database-projects-vscode",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "github.vscode-github-actions",
+    "editorconfig.editorconfig"
+  ]
+}
