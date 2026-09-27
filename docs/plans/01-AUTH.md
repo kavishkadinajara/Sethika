@@ -3,8 +3,9 @@
 Branch: `2-authentication-and-i18n-foundation` (cut from `1-permission-engine-frontend-authorization-setup`,
 because every slice below depends on `IPermissionService` and `[HasPermission]`, which live only on that branch).
 
-Status: **in progress.** Slice 5.1 is about half done; 5.2–5.8 are untouched.
-**105 tests passing**, `dotnet format` clean, build clean with warnings as errors.
+Status: **in progress.** Slice 5.1 is past half: tokens are done, the signup and sign-in handlers,
+DI wiring and endpoints are not. 5.2–5.8 are untouched apart from one 5.8 test.
+**127 tests passing**, `dotnet format` clean, build clean with warnings as errors.
 Last updated 2026-09-27. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
 
@@ -18,6 +19,7 @@ Delivered so far, with the commit that added it:
 | `03ad08c` | `SethikaPasswordPolicy` — 17 tests. |
 | `1dc4aec` | `OtpService` + `OtpCacheKey` + `OtpOptions`, and `RedisFixture` for the tests — 14 tests. |
 | `f6f4c4a` | `SmsSenderBase`, `ConsoleSmsSender`, `NotifyLkSmsSender`, `SmsOptions` — 8 tests. |
+| `6201b6d` | `ITokenService`, `TokenSubject`, `IssuedTokens`; `JwtTokenService` + `JwtOptions`. `SethikaJwt` and `SethikaClaimTypes` moved from `Api/Security` to `Infrastructure/Security`, and `SethikaJwt.CreateSigningKey` is now used by `Program.cs` too. `Microsoft.IdentityModel.JsonWebTokens` referenced from Infrastructure — 22 tests, 6 of them through the real host. |
 
 Nothing is wired into DI yet: `Program.cs` and `DependencyInjection.cs` are untouched, so none of the
 above is reachable at runtime. That happens with the endpoints at the end of 5.1.
@@ -30,7 +32,7 @@ above is reachable at runtime. That happens with the endpoints at the end of 5.1
 git checkout 2-authentication-and-i18n-foundation
 cat docs/plans/01-AUTH.md          # this file
 cat CLAUDE.md docs/DECISIONS.md    # the rules this plan must obey
-dotnet build Sethika.sln && dotnet test Sethika.sln   # 50 tests must pass before you add anything
+dotnet build Sethika.sln && dotnet test Sethika.sln   # the count in the status line must pass before you add anything
 ```
 
 Then read §1 (what already exists — do not rebuild it), §2 (decisions and why), §3 (open questions that
@@ -71,7 +73,9 @@ that is already in the tables, not inventing one.
 - `PermissionService` (Dapper → view, Redis cache, versions in the key), `PermissionCacheKey`,
   `PermissionSet` (`Allows`, `RequiresMfa`).
 - `HasPermissionAttribute` / `PermissionPolicyProvider` / `PermissionAuthorizationHandler` /
-  `PermissionRequirement` / `HttpCurrentUserContext` / `SethikaClaimTypes` / `SethikaJwt`.
+  `PermissionRequirement` / `HttpCurrentUserContext` in `Api/Security`. `SethikaClaimTypes` and
+  `SethikaJwt` were here too and now live in `Infrastructure/Security`, beside the token service
+  that writes them (`6201b6d`).
 - `Program.cs` — JWT bearer validation is **already configured and working**. What is missing is
   anything that *issues* a token.
 - Packages: `Dapper`, `Microsoft.EntityFrameworkCore.SqlServer`, `StackExchange.Redis`,
@@ -338,7 +342,7 @@ One commit per slice, Conventional Commits (CI blocks the PR title otherwise).
 
 - [x] `Sethika.Application/` — `ISmsSender`, `IOtpService`, `IPasswordPolicy`,
       `IPhoneNumberNormalizer`, and the result types. Interfaces only; no implementation here.
-      `ITokenService` is **not** written yet — it lands with `JwtTokenService` below.
+      `ITokenService` landed with `JwtTokenService` below.
 - [x] `Sethika.Infrastructure/Security/OtpService.cs` — Redis HASH per A4; the code is 6 digits from
       `RandomNumberGenerator`; compare with `CryptographicOperations.FixedTimeEquals`.
 - [x] `Sethika.Infrastructure/Notifications/ConsoleSmsSender.cs` and `NotifyLkSmsSender.cs` (per Q1),
@@ -348,16 +352,21 @@ One commit per slice, Conventional Commits (CI blocks the PR title otherwise).
 - [x] `Sethika.Infrastructure/Security/PhoneNumberNormalizer.cs` — E.164, default region `LK` (A8).
 - [x] `Sethika.Infrastructure/Security/SethikaPasswordPolicy.cs` — Identity's `PasswordOptions`, plus a
       128-character cap and a ban on the password containing the user's own contact details.
-- [ ] `Sethika.Infrastructure/Security/JwtTokenService.cs` — access token carrying
+- [x] `Sethika.Infrastructure/Security/JwtTokenService.cs` — access token carrying
       `sub` / `jti` / `sethika:uid` / `sethika:inst` / `sethika:platform`, 15 min, plus the refresh
-      token (32 random bytes, base64url; only its SHA-256 hex is stored).
+      token (32 random bytes, base64url; only its SHA-256 hex is stored). Minting only: storing the
+      hash, rotation and reuse detection belong to the flows in 5.1 and 5.2, inside their own
+      transactions. `sethika:inst` is omitted, not 0, when the session acts for no institution.
 - [ ] `Sethika.Application/Access/SignUpDonor` — one transaction: `Users` + `DonorProfiles` + the donor
       role in `UserRoles` + `UserConsents` + `core.OutboxMessages`. EF Core, per the commands-use-EF rule.
 - [ ] `Sethika.Application/Access/SignIn` — verify the hash, apply the lockout policy
       (5 failures → 15 min), write `auth.LoginHistory` on **both** outcomes.
-- [ ] DI wiring in `Sethika.Infrastructure/DependencyInjection.cs` — bind `OtpOptions` and
-      `SmsOptions`, register `IOtpService`, `IPasswordPolicy`, `IPhoneNumberNormalizer`,
-      `IPasswordHasher<User>`, and select the SMS sender from `Sms:Provider`. Per A14 the host must
+- [ ] DI wiring in `Sethika.Infrastructure/DependencyInjection.cs` — bind `OtpOptions`,
+      `SmsOptions` and `JwtOptions`, register `IOtpService`, `IPasswordPolicy`,
+      `IPhoneNumberNormalizer`, `IPasswordHasher<User>`, `ITokenService` (singleton — it holds the
+      signing credentials) and `TimeProvider.System`, and select the SMS sender from `Sms:Provider`.
+      `Program.cs` still reads `Jwt:SigningKey` itself for bearer validation; both sides already go
+      through `SethikaJwt.CreateSigningKey`, so either may bind `JwtOptions` without drifting. Per A14 the host must
       **refuse to start** with the console sender outside Development, and `NotifyLkSmsSender` needs
       an `HttpClient` registered through `IHttpClientFactory` rather than constructed per call.
 - [ ] Endpoints: `POST /api/auth/otp/request`, `/api/auth/otp/verify`, `/api/auth/signup`,
@@ -454,7 +463,8 @@ Integration (`Sethika.Api.IntegrationTests`), against real SQL Server and Redis:
 - [ ] unknown user and wrong password are indistinguishable in body, status **and** timing
 - [ ] refresh rotates, and the old token stops working
 - [ ] **replaying a rotated refresh token revokes the whole family** — the security test that matters most
-- [ ] a token signed with a different key gives 401; an expired one gives 401
+- [x] a token signed with a different key gives 401; an expired one gives 401
+      (`JwtTokenServiceEndpointTests`, with a 14-minute-old token accepted as the control)
 - [ ] `sethika:platform` cannot be forged via header, query or body (extends the existing test)
 - [ ] `switch-institution` to an institution the user holds no role in gives 403, and no token is issued
 - [ ] a `RequiresMfa` permission gives 403 before step-up, 200 after, and 403 again once the TTL expires
