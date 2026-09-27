@@ -163,8 +163,9 @@ public sealed class SignInHandlerTests(SethikaTestDatabase database) : IAsyncLif
             DECLARE @roleId INT = (SELECT Id FROM auth.Roles WHERE InstitutionId = @institutionId AND Code = 'SIGNIN_TEST');
             IF @roleId IS NULL
             BEGIN
-                INSERT auth.Roles (InstitutionId, Scope, Code, Name, IsTemplate)
-                VALUES (@institutionId, 'Institution', 'SIGNIN_TEST', N'Sign-in test', 0);
+                INSERT auth.Roles (InstitutionId, Scope, RoleLevelId, Code, Name, IsTemplate)
+                VALUES (@institutionId, 'Institution', (SELECT Id FROM auth.RoleLevels WHERE Code = 'STAFF'),
+                        'SIGNIN_TEST', N'Sign-in test', 0);
                 SET @roleId = CAST(SCOPE_IDENTITY() AS INT);
             END;
 

@@ -6,6 +6,9 @@
 :r .\Seed\04_ProvincesDistricts.sql
 :r .\Seed\05_InstitutionTypes.sql
 :r .\Seed\06_Plans.sql
+:r .\Seed\07_RoleLevels.sql
+:r .\Seed\08_SystemRoles.sql
+:r .\Seed\09_LegalDocuments.sql
 /* TODO (confirm with real institutions before seeding):
    - org.DocumentTypes + org.InstitutionTypeRequiredDocuments
    - core.MemorialRules (per religion)

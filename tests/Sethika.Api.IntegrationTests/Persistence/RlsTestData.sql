@@ -49,7 +49,7 @@ DELETE FROM auth.RolePermissions;
 DELETE FROM auth.RolePermissionsHistory;
 DELETE FROM auth.UserPermissionOverrides;
 DELETE FROM auth.UserPermissionOverridesHistory;
-DELETE FROM auth.Roles;
+DELETE FROM auth.Roles WHERE IsSystem = 0;   -- system roles (DONOR) are reference data from the dacpac
 DELETE FROM auth.RolesHistory;
 DELETE FROM org.InstitutionModules;
 DELETE FROM org.InstitutionModulesHistory;
@@ -137,8 +137,9 @@ UNION ALL
 SELECT 'BOOKINGS.CALENDAR.APPROVE', @screenId, a.Id, 'Institution', N'Approve bookings', 1
 FROM auth.PermissionActions a WHERE a.Code = 'APPROVE';
 
-INSERT auth.Roles (InstitutionId, Scope, Code, Name, IsTemplate)
-VALUES (@alphaId, 'Institution', 'ALPHA_STEWARD', N'Alpha Steward', 0);
+INSERT auth.Roles (InstitutionId, Scope, RoleLevelId, Code, Name, IsTemplate)
+VALUES (@alphaId, 'Institution', (SELECT Id FROM auth.RoleLevels WHERE Code = 'STAFF'),
+        'ALPHA_STEWARD', N'Alpha Steward', 0);
 DECLARE @roleId INT = CAST(SCOPE_IDENTITY() AS INT);
 
 INSERT auth.RolePermissions (RoleId, PermissionId)

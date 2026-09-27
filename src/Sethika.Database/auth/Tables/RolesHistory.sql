@@ -3,6 +3,7 @@ CREATE TABLE auth.RolesHistory (
     [Id] INT NOT NULL,
     [InstitutionId] INT NULL,
     [Scope] VARCHAR(20) NOT NULL,
+    [RoleLevelId] TINYINT NOT NULL,
     [Code] VARCHAR(50) NOT NULL,
     [Name] NVARCHAR(100) NOT NULL,
     [Description] NVARCHAR(300) NULL,
