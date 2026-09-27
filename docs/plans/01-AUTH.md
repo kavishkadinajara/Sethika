@@ -76,7 +76,7 @@ Integration tests share one `SethikaTestDatabase` collection fixture with parall
 
 ## 2. Decisions, with the reasoning
 
-### A1 — ASP.NET Core Identity: take the primitives, not the stores *(needs your nod, CLAUDE.md ground rules)*
+### A1 — ASP.NET Core Identity: take the primitives, not the stores *(confirmed 2026-09-27)*
 
 CLAUDE.md's stack line says "ASP.NET Core Identity + JWT". Full Identity means `UserManager<T>` over
 `IdentityDbContext`, or about eight hand-written store interfaces (`IUserStore`, `IUserPasswordStore`,
@@ -94,6 +94,27 @@ for policy values. `SignInManager` is not used: it is cookie-oriented and we iss
 
 Viva answer: *"Identity's password hashing and policy primitives over the project's own schema; the
 full Identity stores were not adopted because the database schema is owned by the SQL project."*
+
+`IUserRoleStore` is the specific interface that does not fit. Identity addresses a role by name
+(`AddToRoleAsync(user, "Manager")`), while `auth.UserRoles` carries
+`FK_UserRoles_RoleTenant (RoleId, InstitutionId) → auth.Roles(Id, InstitutionId)` — the composite FK
+that stops one institution's role being assigned inside another. Identity's signature has nowhere to
+put the institution, so implementing it would mean either throwing or guessing a tenant. Roles are
+therefore assigned through EF Core with the institution explicit.
+
+**Password hashing and the lockout policy values are identical either way** — same PBKDF2-HMAC-SHA512,
+same 210 000 iterations, same versioned hash format — so this choice costs nothing in password
+security. What it does cost is three things `UserManager` would otherwise do for free. Each is
+now ours to do, so each gets one home in the code and one test:
+
+| Identity would do it | Ours | If it is forgotten |
+|---|---|---|
+| Rotate `SecurityStamp` on password change, MFA change or role change | `IUserSecurityService.RotateStampAsync`, called from every such path | Old refresh tokens keep working after a password change, so "log out everywhere" silently does nothing — the one control a user reaches for after a compromise |
+| Reset `AccessFailedCount` to 0 after a successful sign-in | The sign-in handler, in the same transaction as the `LastLoginAt` write | Failures accumulate across sessions until a legitimate user with the correct password is locked out |
+| Maintain `NormalizedEmail` on every write | A single `Normalize` helper used by signup, email change and lookup | `UX_Users_NormalizedEmail` stops catching duplicates, so `Test@x.com` and `test@x.com` become two accounts |
+
+These are not hypothetical: all three are ordinary omissions in hand-rolled auth, which is exactly
+why they are written down here instead of being left to memory. §5.8 carries a test for each.
 
 ### A2 — Both tokens, and where they live
 
@@ -261,7 +282,7 @@ Q1 is decided (see A14). Q2–Q5 still block the first slice.
 | # | Question | Blocks | Default if you say nothing |
 |---|---|---|---|
 | ~~Q1~~ | ~~SMS provider~~ — **decided 2026-09-27: console sender for development, real provider behind the same interface before deployment. See A14.** | — | — |
-| Q2 | **A1** — Identity primitives instead of full Identity? | §5.1 | Proceed as described in A1. |
+| ~~Q2~~ | ~~A1 — Identity primitives instead of full Identity?~~ — **confirmed 2026-09-27. See A1, including the three responsibilities this transfers to us.** | — | — |
 | Q3 | **A8** — add `libphonenumber-csharp`? | §5.1 | Add it. |
 | Q4 | **Legal text.** `core.LegalDocuments` is empty, and signup must record consent against a real version plus SHA-256. Do you have Terms / Privacy text, or should a clearly-marked `0.1-draft` be seeded? | signup consent, §5.5 | Seed `0.1-draft` in en/si/ta, marked as draft, with a TODO. Consent rows point at the draft version, which is honest and replaceable. |
 | Q5 | **First platform admin.** No platform owner exists, and CLAUDE.md forbids business data in post-deployment. | §5.5 | A `dotnet run --project src/Sethika.Api -- bootstrap` command, idempotent, reading phone and password from User Secrets. Keeps the credential out of source control and out of the dacpac. |
@@ -414,6 +435,15 @@ Integration (`Sethika.Api.IntegrationTests`), against real SQL Server and Redis:
 - [ ] OTP: a wrong code five times burns it; a fourth send within the hour gives 429
 - [ ] two parallel refreshes with the same token — exactly one succeeds
 - [ ] signup writes exactly one outbox row, and rolls back all five tables when any part fails
+
+The three responsibilities A1 transfers from `UserManager` to us, one test each — these guard
+omissions, so each must be mutation-tested by removing the call and watching the test fail:
+
+- [ ] changing a password rotates `SecurityStamp`, and every refresh token issued before it is refused
+- [ ] a successful sign-in resets `AccessFailedCount`, so four failures then a success then four more
+      failures does not lock the account
+- [ ] signing up as `Test@x.com` and then `test@x.com` is rejected as a duplicate, not accepted as a
+      second account
 
 Every one of these must be mutation-tested: break the behaviour on purpose and confirm the test goes
 red. Two vacuous-test incidents on this project were caught that way; assume nothing.
