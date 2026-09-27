@@ -3,9 +3,10 @@
 Branch: `2-authentication-and-i18n-foundation` (cut from `1-permission-engine-frontend-authorization-setup`,
 because every slice below depends on `IPermissionService` and `[HasPermission]`, which live only on that branch).
 
-Status: **in progress, and blocked.** In slice 5.1 tokens and DI wiring are done; the signup and
-sign-in handlers and the endpoints are not, and both handlers wait on **Q6** (§3) — signup also on
-Q4 and on the Donor role. 5.2–5.8 are untouched apart from one 5.8 test.
+Status: **in progress.** In slice 5.1 tokens and DI wiring are done; the sign-in and signup handlers
+and the endpoints are not. Q4 and Q6 were answered on 2026-09-27 (A16, and Q4's row), and role levels
+were added as a requirement (A15, §5.5, new §5.9). Signup waits on the levels schema and the Donor
+role, which are pulled forward from 5.5. 5.2–5.9 are untouched apart from one 5.8 test.
 **135 tests passing**, `dotnet format` clean, build clean with warnings as errors.
 Last updated 2026-09-27. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
@@ -302,19 +303,92 @@ register the sender ID, and set `Sms:Provider` + the credentials. Sri Lankan gat
 registered alphanumeric sender ID, and approval takes days — so start that paperwork before the
 week it is needed, not during it.
 
+
+### A15 — Role levels: a rank and a permission ceiling, defined by the platform *(decided 2026-09-27)*
+
+Requirement, from the user: institutions create their own roles freely; every role has a level; and
+what can be done at each level is defined per level.
+
+Every role belongs to a **level**. A level has a **rank** (1 is the most senior) and a **ceiling** —
+the set of permissions any role at that level may hold. A custom role is created at a level and can
+only be given permissions inside that level's ceiling. Levels and their ceilings are defined by the
+platform, not by each institution.
+
+| Level (seed) | Scope | Rank |
+|---|---|---|
+| `OWNER` | Institution | 1 |
+| `MANAGER` | Institution | 2 |
+| `STAFF` | Institution | 3 |
+| `PLATFORM_ADMIN` | Platform | 1 |
+| `PLATFORM_STAFF` | Platform | 2 |
+| `DONOR` | Donor | 1 |
+
+Schema, all in the SQL project:
+
+- `auth.RoleLevels` — `Id`, `Scope`, `Rank`, `Code`, `Name`, `IsActive`; unique `(Scope, Rank)` and
+  `(Scope, Code)`, plus `UNIQUE (Id, Scope)` so roles can point at it by composite FK. Reference data,
+  seeded by MERGE.
+- `auth.RoleLevelPermissions (RoleLevelId, PermissionId)` — the ceiling. **Temporal**, like
+  `RolePermissions` (D7): narrowing a ceiling changes what users can do, so "who could do X on date Y"
+  needs its history too.
+- `auth.Roles.RoleLevelId NOT NULL` with `FK (RoleLevelId, Scope) → auth.RoleLevels(Id, Scope)`, so a
+  role's level is always in the role's own scope — the same composite-FK pattern as the tenant FKs.
+- The ceiling carries both scopes, with composite FKs to `RoleLevels(Id, Scope)` and
+  `Permissions(Id, Scope)` and a named CHECK, so "an institution level never contains a
+  `Platform`-scope permission" (CLAUDE.md) is a constraint rather than a convention.
+
+**The ceiling is enforced in `auth.vw_EffectivePermissions`**, not only when a role is saved: a role
+grant counts only if the permission is inside that role's level's ceiling. A `RolePermissions` row
+outside the ceiling — from a buggy screen, a hand-run script, or a ceiling narrowed later — is simply
+not effective. It is the same principle as the module intersection already in the view: the view
+decides access, so nothing upstream can talk past it.
+
+Grant overrides (`UserPermissionOverrides`, `Effect = 'Grant'`) belong to no role, so no level
+applies to them; they are bounded when they are granted, by the rule below. Deny still wins over all.
+
+**Anti-escalation by rank**, enforced by the role API (§5.9) inside its transaction:
+
+- an actor may create, edit, assign or revoke a role only when the role's rank is **strictly more
+  junior** than the actor's own most senior rank in that institution;
+- every permission added must be inside the level's ceiling **and** held by the actor — a user can
+  only grant what they hold (CLAUDE.md);
+- rank-1 institution roles (`OWNER`) are assigned only by platform staff, which is what onboarding
+  approval does. So an Owner cannot mint a second Owner, and no one can promote themselves.
+
+Why platform-defined and not per institution type: the type already decides which modules an
+institution has, and the view already drops the permissions of disabled modules. One set of
+institution levels, intersected with each institution's enabled modules, gives per-type behaviour
+without a second per-type table.
+
+### A16 — Command handlers reach EF Core through `ISethikaDbContext` *(decided 2026-09-27, Q6)*
+
+`Sethika.Application` defines `ISethikaDbContext` — the `DbSet`s that commands write, `Database` for
+transactions, and `SaveChangesAsync` — and references `Microsoft.EntityFrameworkCore`, the core
+package only, with no SQL Server provider. `SethikaDbContext` in Infrastructure implements it, so the
+RLS session-context interceptor applies to every handler without the handler knowing it exists.
+
+Handlers are plain classes in their module folder (`Application/Access/SignIn/SignInHandler.cs`),
+registered in DI, one public `HandleAsync`. No mediator library: nothing here needs pipeline
+behaviours yet, and MediatR is no longer free for commercial use.
+
+The cost, said plainly for the report: Application knows it runs on EF Core. It does not know it
+runs on SQL Server — `UPDLOCK`, RLS and the conditional booking `UPDATE` stay in Infrastructure or the
+database. Repositories were the alternative; they would add an interface per aggregate and a method
+per query shape to hide a DbContext that is already a unit of work.
+
 ---
 
 ## 3. Open questions
 
-Q1 and Q2 are decided and Q3 is done. **Q6 and Q4 block the rest of 5.1**; Q5 blocks 5.5.
+Q1, Q2, Q4 and Q6 are decided and Q3 is done. Only Q5 is open, and it blocks 5.5's bootstrap command.
 
 | # | Question | Blocks | Default if you say nothing |
 |---|---|---|---|
 | ~~Q1~~ | ~~SMS provider~~ — **decided 2026-09-27: console sender for development, real provider behind the same interface before deployment. See A14.** | — | — |
 | ~~Q2~~ | ~~A1 — Identity primitives instead of full Identity?~~ — **confirmed 2026-09-27. See A1, including the three responsibilities this transfers to us.** | — | — |
 | ~~Q3~~ | ~~**A8** — add `libphonenumber-csharp`?~~ — **done: installed in `1ca0b65`.** | — | — |
-| Q4 | **Legal text.** `core.LegalDocuments` is empty, and signup must record consent against a real version plus SHA-256 (`auth.UserConsents.LegalDocumentId` is a NOT NULL FK, so there is no consent row without a document row). Do you have Terms / Privacy text, or should a clearly-marked `0.1-draft` be seeded? | `SignUpDonor` in 5.1, §5.5 | Seed `0.1-draft` in en/si/ta, marked as draft, with a TODO. Consent rows point at the draft version, which is honest and replaceable. |
-| Q6 | **Where command handlers get EF Core.** 5.1 puts `SignUpDonor` and `SignIn` in `Sethika.Application` and says EF Core, but Application does not reference EF Core and `SethikaDbContext` is in Infrastructure. These are the codebase's first command handlers, so the answer becomes the pattern for Onboarding and Booking too — which is why it is a question and not a guess. | `SignUpDonor`, `SignIn`, every later command | **(a)** an `ISethikaDbContext` in Application exposing the `DbSet`s, `SaveChangesAsync` and a transaction, with Application referencing `Microsoft.EntityFrameworkCore` (the core package, no SQL Server provider). Least code, and the DbContext already is a unit of work; the cost is that Application knows it runs on EF. **(b)** repository and unit-of-work interfaces in Application with EF behind them — persistence-ignorant, but an interface per aggregate and a method per query shape. Recommend (a). |
+| ~~Q4~~ | ~~**Legal text.**~~ — **decided 2026-09-27: seed a clearly-marked `0.1-draft` of Terms and Privacy in en/si/ta.** `auth.UserConsents.LegalDocumentId` is a NOT NULL FK, so signup cannot record consent without a document row. Every draft row's title says DRAFT; replacing it is a new `Version` with `IsCurrent = 1`, and existing consents keep pointing at the draft they accepted. | — | — |
+| ~~Q6~~ | ~~**Where command handlers get EF Core.**~~ — **decided 2026-09-27: `ISethikaDbContext` in Application. See A16.** | — | — |
 | Q5 | **First platform admin.** No platform owner exists, and CLAUDE.md forbids business data in post-deployment. | §5.5 | A `dotnet run --project src/Sethika.Api -- bootstrap` command, idempotent, reading phone and password from User Secrets. Keeps the credential out of source control and out of the dacpac. |
 
 ---
@@ -330,12 +404,13 @@ pieces. Realistic solo effort:
 | §5.2 refresh rotation + breach detection + logout | ~1 day |
 | §5.3 MFA step-up | ~0.5 day |
 | §5.4 rate limiting | ~0.5 day |
-| §5.5 RBAC catalogue seed + bootstrap admin | ~1 day |
+| §5.5 RBAC catalogue seed + role levels + bootstrap admin | ~1.5 days |
 | §5.6 i18n foundation | ~1 day |
 | §5.7 design system + auth screens | ~2 days |
 | §5.8 tests | woven through, plus ~1 day of its own |
+| §5.9 custom roles API with rank anti-escalation (added 2026-09-27) | ~1.5 days |
 
-That is **8–9 days, not 5.** Two options: run it as a 9-day slice and compress week 2, or ship
+That is **10–11 days, not 5.** Two options: run it as a 9-day slice and compress week 2, or ship
 §5.1–§5.5 first (backend auth, provable by integration tests) and do §5.6–§5.7 alongside week 2's
 screens. Prefer the second — the backend is what the report's security chapter is built on, and
 untested auth is the one thing that cannot be caught up later.
@@ -368,11 +443,11 @@ One commit per slice, Conventional Commits (CI blocks the PR title otherwise).
       transactions. `sethika:inst` is omitted, not 0, when the session acts for no institution.
 - [ ] `Sethika.Application/Access/SignUpDonor` — one transaction: `Users` + `DonorProfiles` + the donor
       role in `UserRoles` + `UserConsents` + `core.OutboxMessages`. EF Core, per the commands-use-EF rule.
-      **Blocked** on Q6 and Q4, and on the donor role itself: no `Scope = 'Donor'` row exists until
-      5.5's `07_RbacCatalogue.sql`, so that one role has to be seeded before signup can be tested.
-      Note for 5.5: `CK_Roles_ScopeInstitution` requires `IsTemplate = 0` for `Scope = 'Donor'`, so
-      `Donor` is a global role, not one of the template roles listed there.
-- [ ] `Sethika.Application/Access/SignIn` — **blocked on Q6.** Verify the hash, apply the lockout policy
+      Needs the `DONOR` level and the global `Donor` role, so the role-levels schema (A15) and those two
+      seed rows are pulled forward from 5.5 and done before this box; and the `0.1-draft` legal
+      documents (Q4). `CK_Roles_ScopeInstitution` requires `IsTemplate = 0` for `Scope = 'Donor'`, so
+      `Donor` is a global role, not a template.
+- [ ] `Sethika.Application/Access/SignIn` — verify the hash, apply the lockout policy
       (5 failures → 15 min), write `auth.LoginHistory` on **both** outcomes.
 - [x] DI wiring in `Sethika.Infrastructure/DependencyInjection.cs` (`AddSethikaAccess`) — bind `OtpOptions`,
       `SmsOptions` and `JwtOptions`, register `IOtpService`, `IPasswordPolicy`,
@@ -430,8 +505,13 @@ oracle, and it is exactly the kind of thing an examiner asks about.
 - [ ] `Scripts/Seed/07_RbacCatalogue.sql` — idempotent MERGEs for `auth.Modules`, `Screens`,
       `ScreenElements`, `Permissions`, covering only the screens that exist after this plan
       (Access/Auth, Institutions, a Bookings placeholder), plus `PermissionDependencies`
-      (EDIT requires VIEW) and the template roles (`Owner`, `Manager`, `Staff`, `Donor`).
-      This is reference data, so post-deployment is the correct home for it.
+      (EDIT requires VIEW), the template roles (`Owner`, `Manager`, `Staff`) at their levels, and
+      each level's ceiling in `RoleLevelPermissions`. `Donor` is a global role, not a template (see
+      5.1). This is reference data, so post-deployment is the correct home for it.
+- [ ] Role levels per A15: `auth.RoleLevels`, `auth.RoleLevelPermissions` (+ history table),
+      `auth.Roles.RoleLevelId`, the scope CHECK, and the ceiling in `auth.vw_EffectivePermissions`.
+      The table, the column and the `DONOR` level are pulled forward into 5.1 for signup; the
+      ceiling in the view lands here, once there are permissions to put in ceilings.
 - [ ] `Scripts/Seed/08_LegalDocuments.sql` per Q4.
 - [ ] The `bootstrap` command per Q5.
 - [ ] After every seed change, re-run `SqlPackage /Action:Script` and confirm the output contains
@@ -497,6 +577,27 @@ omissions, so each must be mutation-tested by removing the call and watching the
 Every one of these must be mutation-tested: break the behaviour on purpose and confirm the test goes
 red. Two vacuous-test incidents on this project were caught that way; assume nothing.
 
+
+### 5.9 — Custom roles API with rank anti-escalation *(added 2026-09-27)*
+
+Backend only; the role-management screens come with week 2's screens.
+
+- [ ] `GET /api/institution/role-levels` — the levels below the caller's rank, each with its ceiling
+      intersected with the caller's own effective permissions: exactly what the caller may grant.
+- [ ] `POST /api/institution/roles` — create a role at a level with a set of permissions.
+      `PUT /api/institution/roles/{code}/permissions`, `POST` / `DELETE` assignments.
+      Each carries `[HasPermission]` (`ACCESS.ROLES.CREATE` / `EDIT` / `ASSIGN`), and `ASSIGN` and
+      `EDIT` are `RequiresMfa`.
+- [ ] The three A15 rules checked inside the transaction, against rows read in it — rank strictly
+      more junior, permission inside the ceiling, permission held by the actor — each refusal a `403`
+      with a reason code, never a silent drop of the offending permission.
+- [ ] Every change bumps `Institutions.PermissionsVersion` (role edits) or `Users.PermissionsVersion`
+      (assignments) in the same transaction, and writes an outbox `RolePermissionsChanged` row.
+- [ ] Tests, against real SQL: a Manager cannot create a Manager or Owner role; cannot grant a
+      permission outside the level's ceiling, nor one they do not hold; cannot assign themselves
+      anything; a `RolePermissions` row inserted outside the ceiling by hand is not in
+      `vw_EffectivePermissions`; narrowing a ceiling removes the permission from users at once.
+
 ---
 
 ## 6. Definition of done
@@ -515,6 +616,7 @@ red. Two vacuous-test incidents on this project were caught that way; assume not
 ## 7. What this plan deliberately does not do
 
 Password reset by email (phone reset only for now), TOTP enrollment, recovery codes, staff-invitation
-acceptance, impersonation (`auth.ImpersonationSessions` exists but is Phase-optional), role-management
-screens and the anti-escalation check that belongs with them, and enforcing
-`auth.PermissionDependencies` at grant time. All have tables already; none block week 2.
+acceptance, impersonation (`auth.ImpersonationSessions` exists but is Phase-optional), the
+role-management **screens** (the API and its anti-escalation are §5.9), a screen for the platform to
+edit levels and ceilings (seeded only, for now), and enforcing `auth.PermissionDependencies` at grant
+time. All have tables already; none block week 2.
