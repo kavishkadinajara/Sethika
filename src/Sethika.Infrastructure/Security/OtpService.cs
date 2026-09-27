@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Access;
+using Sethika.Infrastructure.Caching;
 using StackExchange.Redis;
 
 namespace Sethika.Infrastructure.Security;
@@ -93,17 +94,14 @@ public sealed partial class OtpService : IOtpService
 
             // Increment before sending. Counting after would let a burst of concurrent requests all
             // observe the pre-send count and every one of them send, which is precisely the case
-            // the cap exists to stop.
-            var sends = await db.StringIncrementAsync(sendCountKey).ConfigureAwait(false);
-            if (sends == 1)
-            {
-                await db.KeyExpireAsync(sendCountKey, _options.SendWindow).ConfigureAwait(false);
-            }
+            // the cap exists to stop. The counter and its expiry are set in one step: see
+            // RedisWindowCounter for the phone that could otherwise never receive a code again.
+            var (sends, windowRemaining) = await RedisWindowCounter
+                .IncrementAsync(db, sendCountKey, _options.SendWindow).ConfigureAwait(false);
 
             if (sends > _options.MaxSendsPerWindow)
             {
-                var windowTtl = await db.KeyTimeToLiveAsync(sendCountKey).ConfigureAwait(false);
-                return OtpSendResult.RateLimited(windowTtl ?? _options.SendWindow);
+                return OtpSendResult.RateLimited(windowRemaining);
             }
 
             var code = GenerateCode(_options.CodeLength);

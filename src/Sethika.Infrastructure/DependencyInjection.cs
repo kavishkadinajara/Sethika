@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Sethika.Application.Abstractions;
 using Sethika.Domain.Access;
+using Sethika.Infrastructure.Caching;
 using Sethika.Infrastructure.Notifications;
 using Sethika.Infrastructure.Persistence;
 using Sethika.Infrastructure.Queries;
@@ -52,7 +53,7 @@ public static class DependencyInjection
     }
 
     /// <summary>
-    /// Registers Redis and the permission service.
+    /// Registers Redis, the permission service and the rate limiter.
     /// </summary>
     /// <remarks>
     /// The multiplexer is a singleton because it is designed to be: it multiplexes every
@@ -79,6 +80,9 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IPermissionService, PermissionService>();
+
+        // Same Redis, same singleton multiplexer. Stateless, so one instance serves every request.
+        services.AddSingleton<IRateLimiter, RedisRateLimiter>();
 
         return services;
     }

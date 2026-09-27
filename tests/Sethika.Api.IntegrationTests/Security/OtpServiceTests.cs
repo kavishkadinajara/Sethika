@@ -365,4 +365,21 @@ public sealed class OtpServiceTests
 
         Assert.DoesNotContain(verify.Ticket!, verify.ToString(), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task ASendCounterLeftWithoutAnExpiryIsGivenOne()
+    {
+        // INCR and EXPIRE as two commands leave a window: a process that dies between them leaves a
+        // counter that never expires, and that phone can never be sent a code again. Simulate the
+        // crash by leaving a counter with no TTL, then send - the counter must come out expiring.
+        var phone = NewPhoneNumber();
+        var counter = OtpCacheKey.ForSendCount(phone, OtpPurpose.Signup);
+        await _redis.GetDatabase().StringSetAsync(counter, 1);
+
+        Assert.True((await CreateService().SendAsync(phone, OtpPurpose.Signup, "en")).WasSent);
+
+        var ttl = await _redis.GetDatabase().KeyTimeToLiveAsync(counter);
+        Assert.NotNull(ttl);
+        Assert.InRange(ttl.Value, TimeSpan.FromMinutes(59), TimeSpan.FromHours(1));
+    }
 }
