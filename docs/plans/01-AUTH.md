@@ -3,11 +3,10 @@
 Branch: `2-authentication-and-i18n-foundation` (cut from `1-permission-engine-frontend-authorization-setup`,
 because every slice below depends on `IPermissionService` and `[HasPermission]`, which live only on that branch).
 
-Status: **in progress.** In slice 5.1 tokens and DI wiring are done; the sign-in and signup handlers
-and the endpoints are not. Q4 and Q6 were answered on 2026-09-27 (A16, and Q4's row), and role levels
-were added as a requirement (A15, §5.5, new §5.9). Signup waits on the levels schema and the Donor
-role, which are pulled forward from 5.5. 5.2–5.9 are untouched apart from one 5.8 test.
-**135 tests passing**, `dotnet format` clean, build clean with warnings as errors.
+Status: **in progress.** In slice 5.1 every handler is done — tokens, DI wiring, sign-in, donor
+signup — and **only the four endpoints remain**. Role levels (A15) are in the schema with the DONOR
+level and role; their ceilings are 5.5. 5.2–5.9 are otherwise untouched; five 5.8 tests are done.
+**176 tests passing**, `dotnet format` clean, build clean with warnings as errors.
 Last updated 2026-09-27. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
 
@@ -23,9 +22,13 @@ Delivered so far, with the commit that added it:
 | `f6f4c4a` | `SmsSenderBase`, `ConsoleSmsSender`, `NotifyLkSmsSender`, `SmsOptions` — 8 tests. |
 | `6201b6d` | `ITokenService`, `TokenSubject`, `IssuedTokens`; `JwtTokenService` + `JwtOptions`. `SethikaJwt` and `SethikaClaimTypes` moved from `Api/Security` to `Infrastructure/Security`, and `SethikaJwt.CreateSigningKey` is now used by `Program.cs` too. `Microsoft.IdentityModel.JsonWebTokens` referenced from Infrastructure — 22 tests, 6 of them through the real host. |
 | `df18505` | `AddSethikaAccess`, called from `Program.cs`: every service above registered, options bound, the SMS sender chosen by `Sms:Provider` and the host refusing to start with the console sender or code logging outside Development. Lockout 5 → 15 min; hasher at 210 000 iterations (see A1) — 8 tests, all booting the real host. |
+| `58fa000` | `ISethikaDbContext` (A16) and `AddSethikaApplication`; `SignInHandler` with `DummyPasswordHash`, atomic lockout counting, one transaction per outcome, rehash on sign-in, institution list from `UserRoles` (A7); `LoginAttempt` and `RefreshToken` entities — 20 tests. |
+| `bc069dd` | `auth.RoleLevels`, `auth.Roles.RoleLevelId` with composite `FK_Roles_Level`; seeds `07_RoleLevels`, `08_SystemRoles` (DONOR), `09_LegalDocuments` (0.1-draft, en/si/ta). Published to `Sethika`; `Sethika_Test` recreated from the dacpac — 6 tests. |
+| `d12394d` | Verification tickets (A17): `VerifyAsync` issues one, `RedeemTicketAsync` spends it once via a Lua compare-and-delete — 5 tests. |
+| `03bfca5` | `SignUpDonorHandler`: five tables in one save, ticket spent only after the form checks, duplicates reported only after it, consent by content hash; `DonorProfile`, `UserConsent`, `LegalDocument`, `OutboxMessage` entities — 10 tests. |
 
-All of the above is registered in DI and resolvable from the running host (`df18505`), but no
-endpoint calls any of it yet — that happens with the endpoints at the end of 5.1.
+All of the above is registered in DI and resolvable from the running host, but no endpoint calls
+any of it yet — that is the last box of 5.1.
 
 ---
 
@@ -141,7 +144,7 @@ now ours to do, so each gets one home in the code and one test:
 |---|---|---|
 | Rotate `SecurityStamp` on password change, MFA change or role change | `IUserSecurityService.RotateStampAsync`, called from every such path | Old refresh tokens keep working after a password change, so "log out everywhere" silently does nothing — the one control a user reaches for after a compromise |
 | Reset `AccessFailedCount` to 0 after a successful sign-in | The sign-in handler, in the same transaction as the `LastLoginAt` write | Failures accumulate across sessions until a legitimate user with the correct password is locked out |
-| Maintain `NormalizedEmail` on every write | A single `Normalize` helper used by signup, email change and lookup | `UX_Users_NormalizedEmail` stops catching duplicates, so `Test@x.com` and `test@x.com` become two accounts |
+| Maintain `NormalizedEmail` on every write | `NormalizedEmail.From`, used by signup and sign-in, later by email change | The stored value stops being canonical. **Corrected 2026-09-27:** duplicates are *not* the consequence on this database — the column's collation is `SQL_Latin1_General_CP1_CI_AS`, so `UX_Users_NormalizedEmail` and the lookup treat `Test@x.com` and `test@x.com` as one address with or without the normaliser. A mutation test showed it (`03bfca5`). The normaliser matters for anything comparing outside SQL Server, or if the column is ever given a case-sensitive collation. |
 
 These are not hypothetical: all three are ordinary omissions in hand-rolled auth, which is exactly
 why they are written down here instead of being left to memory. §5.8 carries a test for each.
@@ -376,6 +379,21 @@ runs on SQL Server — `UPDLOCK`, RLS and the conditional booking `UPDATE` stay 
 database. Repositories were the alternative; they would add an interface per aggregate and a method
 per query shape to hide a DbContext that is already a unit of work.
 
+
+### A17 — A phone verification reaches signup as a single-use ticket *(decided 2026-09-27)*
+
+The plan listed `/otp/verify` and `/signup` as separate endpoints but not how the second knows the
+first succeeded — the code is consumed by the verification, so it cannot simply be sent again.
+
+`IOtpService.VerifyAsync` now issues a **ticket** on success: 32 random bytes, base64url, of which
+only the SHA-256 is stored, under `otp:ticket:{purpose}:{e164}`, for 15 minutes. `RedeemTicketAsync`
+spends it exactly once, bound to the same number and purpose, with a Lua compare-and-delete —
+atomic on the server, where GET-then-DEL from C# would let parallel requests both succeed (GETDEL
+would do, but needs Redis 6.2 and the local build is 3.2).
+
+Issuing it inside `VerifyAsync`, rather than from a separate call, means the only way to hold a
+ticket is to have verified a code. The same mechanism serves the password-reset flow later.
+
 ---
 
 ## 3. Open questions
@@ -441,14 +459,15 @@ One commit per slice, Conventional Commits (CI blocks the PR title otherwise).
       token (32 random bytes, base64url; only its SHA-256 hex is stored). Minting only: storing the
       hash, rotation and reuse detection belong to the flows in 5.1 and 5.2, inside their own
       transactions. `sethika:inst` is omitted, not 0, when the session acts for no institution.
-- [ ] `Sethika.Application/Access/SignUpDonor` — one transaction: `Users` + `DonorProfiles` + the donor
-      role in `UserRoles` + `UserConsents` + `core.OutboxMessages`. EF Core, per the commands-use-EF rule.
-      Needs the `DONOR` level and the global `Donor` role, so the role-levels schema (A15) and those two
-      seed rows are pulled forward from 5.5 and done before this box; and the `0.1-draft` legal
-      documents (Q4). `CK_Roles_ScopeInstitution` requires `IsTemplate = 0` for `Scope = 'Donor'`, so
-      `Donor` is a global role, not a template.
-- [ ] `Sethika.Application/Access/SignIn` — verify the hash, apply the lockout policy
-      (5 failures → 15 min), write `auth.LoginHistory` on **both** outcomes.
+- [x] `Sethika.Application/Access/SignUp/SignUpDonorHandler` (`03bfca5`) — one save: `Users` +
+      `DonorProfiles` + the DONOR role in `UserRoles` + `UserConsents` + `core.OutboxMessages`. Redeems
+      the A17 ticket only after every form check, and reports "already registered" only after that.
+      Consent is by the `ContentSha256` of the text the client showed. Does **not** issue tokens: the
+      signup endpoint calls `SignInHandler` next, so the new session gets a normal history row.
+- [x] `Sethika.Application/Access/SignIn/SignInHandler` (`58fa000`) — verify the hash, apply the
+      lockout policy (5 failures → 15 min, counted by one atomic UPDATE), write `auth.LoginHistory`
+      on **both** outcomes, store the refresh token's hash. With one institution the token acts for
+      it; with several, for none.
 - [x] DI wiring in `Sethika.Infrastructure/DependencyInjection.cs` (`AddSethikaAccess`) — bind `OtpOptions`,
       `SmsOptions` and `JwtOptions`, register `IOtpService`, `IPasswordPolicy`,
       `IPhoneNumberNormalizer`, `IPasswordHasher<User>`, `ITokenService` (singleton — it holds the
@@ -458,7 +477,10 @@ One commit per slice, Conventional Commits (CI blocks the PR title otherwise).
       `IHttpClientFactory`. `Program.cs` still reads `Jwt:SigningKey` itself for bearer validation;
       both sides go through `SethikaJwt.CreateSigningKey`, and a host round-trip test guards the pair.
 - [ ] Endpoints: `POST /api/auth/otp/request`, `/api/auth/otp/verify`, `/api/auth/signup`,
-      `/api/auth/login`. `[AllowAnonymous]`, and each one rate-limited.
+      `/api/auth/login`. `[AllowAnonymous]`, and each one rate-limited. Carry from the handlers:
+      `LockedOut` must answer exactly like `InvalidCredentials` (body and status); `/otp/verify`
+      returns the ticket; `/signup` then signs the donor in; login and signup set the refresh cookie
+      per A2; the legal documents the signup screen shows come with their `ContentSha256`.
 
 **User enumeration:** login must answer identically for "no such user" and "wrong password", *including
 timing* — so when the user is not found, still verify the supplied password against a fixed dummy hash
@@ -502,7 +524,7 @@ oracle, and it is exactly the kind of thing an examiner asks about.
 
 ### 5.5 — RBAC catalogue seed and bootstrap admin
 
-- [ ] `Scripts/Seed/07_RbacCatalogue.sql` — idempotent MERGEs for `auth.Modules`, `Screens`,
+- [ ] `Scripts/Seed/10_RbacCatalogue.sql` (07–09 are taken, see `bc069dd`) — idempotent MERGEs for `auth.Modules`, `Screens`,
       `ScreenElements`, `Permissions`, covering only the screens that exist after this plan
       (Access/Auth, Institutions, a Bookings placeholder), plus `PermissionDependencies`
       (EDIT requires VIEW), the template roles (`Owner`, `Manager`, `Staff`) at their levels, and
@@ -510,9 +532,10 @@ oracle, and it is exactly the kind of thing an examiner asks about.
       5.1). This is reference data, so post-deployment is the correct home for it.
 - [ ] Role levels per A15: `auth.RoleLevels`, `auth.RoleLevelPermissions` (+ history table),
       `auth.Roles.RoleLevelId`, the scope CHECK, and the ceiling in `auth.vw_EffectivePermissions`.
-      The table, the column and the `DONOR` level are pulled forward into 5.1 for signup; the
-      ceiling in the view lands here, once there are permissions to put in ceilings.
-- [ ] `Scripts/Seed/08_LegalDocuments.sql` per Q4.
+      **Done in `bc069dd`:** `auth.RoleLevels`, `Roles.RoleLevelId`, `FK_Roles_Level` and all six
+      levels. **Left here:** `RoleLevelPermissions` and its history table, the scope CHECK on it, and
+      the ceiling in the view.
+- [x] `Scripts/Seed/09_LegalDocuments.sql` per Q4 (`bc069dd`).
 - [ ] The `bootstrap` command per Q5.
 - [ ] After every seed change, re-run `SqlPackage /Action:Script` and confirm the output contains
       **only** the seed MERGEs and no schema statements (DECISIONS.md D10). Any `IN`, `BETWEEN` or
@@ -552,8 +575,10 @@ and `94…` collapsing to one value; step-up expiry.
 Integration (`Sethika.Api.IntegrationTests`), against real SQL Server and Redis:
 
 - [ ] signup → OTP → login → authenticated call, end to end
-- [ ] wrong password five times means locked; the correct password during lockout is still refused
-- [ ] unknown user and wrong password are indistinguishable in body, status **and** timing
+- [x] wrong password five times means locked; the correct password during lockout is still refused
+      (`SignInHandlerTests`, including five wrong guesses in parallel)
+- [ ] unknown user and wrong password are indistinguishable in body, status **and** timing —
+      result and timing are proven at the handler (`58fa000`); body and status wait for the endpoint
 - [ ] refresh rotates, and the old token stops working
 - [ ] **replaying a rotated refresh token revokes the whole family** — the security test that matters most
 - [x] a token signed with a different key gives 401; an expired one gives 401
@@ -563,16 +588,18 @@ Integration (`Sethika.Api.IntegrationTests`), against real SQL Server and Redis:
 - [ ] a `RequiresMfa` permission gives 403 before step-up, 200 after, and 403 again once the TTL expires
 - [ ] OTP: a wrong code five times burns it; a fourth send within the hour gives 429
 - [ ] two parallel refreshes with the same token — exactly one succeeds
-- [ ] signup writes exactly one outbox row, and rolls back all five tables when any part fails
+- [x] signup writes exactly one outbox row, and rolls back all five tables when any part fails
+      (`SignUpDonorHandlerTests`)
 
 The three responsibilities A1 transfers from `UserManager` to us, one test each — these guard
 omissions, so each must be mutation-tested by removing the call and watching the test fail:
 
 - [ ] changing a password rotates `SecurityStamp`, and every refresh token issued before it is refused
-- [ ] a successful sign-in resets `AccessFailedCount`, so four failures then a success then four more
+- [x] a successful sign-in resets `AccessFailedCount`, so four failures then a success then four more
       failures does not lock the account
-- [ ] signing up as `Test@x.com` and then `test@x.com` is rejected as a duplicate, not accepted as a
-      second account
+- [x] signing up as `Test@x.com` and then `test@x.com` is rejected as a duplicate, not accepted as a
+      second account — and the mutation test showed the collation, not the normaliser, is what
+      rejects it here (see A1)
 
 Every one of these must be mutation-tested: break the behaviour on purpose and confirm the test goes
 red. Two vacuous-test incidents on this project were caught that way; assume nothing.
