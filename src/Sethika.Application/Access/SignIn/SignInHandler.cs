@@ -37,12 +37,6 @@ public sealed class SignInHandler(
     private const string ActiveStatus = "Active";
     private const string PlatformStaffUserType = "PlatformStaff";
 
-    /// <summary>
-    /// Stored as the login name when the input was neither an email nor a phone number. The usual
-    /// cause is a password typed into the login box, which must not end up in the history table.
-    /// </summary>
-    private const string UnrecognisedLoginName = "(unrecognised)";
-
     private static class FailureReasons
     {
         public const string UnknownLogin = "UnknownLogin";
@@ -127,20 +121,18 @@ public sealed class SignInHandler(
         string? login,
         CancellationToken cancellationToken)
     {
-        var trimmed = login?.Trim() ?? string.Empty;
+        // The same normalisation the sign-in rate limit keys by, so the two cannot disagree.
+        var normalized = LoginName.Normalize(login, phoneNumbers);
+        var value = normalized.Value;
 
-        if (trimmed.Contains('@', StringComparison.Ordinal))
+        var account = normalized.Kind switch
         {
-            var email = NormalizedEmail.From(trimmed);
-            return (email, await FindAsync(u => u.NormalizedEmail == email, cancellationToken).ConfigureAwait(false));
-        }
+            LoginKind.Email => await FindAsync(u => u.NormalizedEmail == value, cancellationToken).ConfigureAwait(false),
+            LoginKind.Phone => await FindAsync(u => u.PhoneNumber == value, cancellationToken).ConfigureAwait(false),
+            _ => null,
+        };
 
-        if (phoneNumbers.TryNormalize(trimmed, out var phoneNumber))
-        {
-            return (phoneNumber, await FindAsync(u => u.PhoneNumber == phoneNumber, cancellationToken).ConfigureAwait(false));
-        }
-
-        return (UnrecognisedLoginName, null);
+        return (value, account);
     }
 
     private Task<Account?> FindAsync(Expression<Func<User, bool>> match, CancellationToken cancellationToken) =>
@@ -196,7 +188,8 @@ public sealed class SignInHandler(
         // One institution is the common case - an owner with one temple - and a chooser screen with
         // one option is a pointless click. With several, the token acts for none until the user
         // picks one through switch-institution, which re-checks it.
-        int? activeInstitutionId = institutions.Count == 1 ? institutions[0].Id : null;
+        var activeInstitution = institutions.Count == 1 ? institutions[0] : null;
+        var activeInstitutionId = activeInstitution?.Id;
 
         var issued = tokens.Issue(new TokenSubject(
             account.Id,
@@ -244,7 +237,7 @@ public sealed class SignInHandler(
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        return SignInResult.Success(issued, institutions);
+        return SignInResult.Success(issued, institutions, activeInstitution);
     }
 
     /// <summary>

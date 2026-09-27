@@ -1,6 +1,9 @@
+using System.Net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
+using Sethika.Api.Endpoints;
 using Sethika.Api.Security;
 using Sethika.Application;
 using Sethika.Application.Abstractions;
@@ -61,12 +64,32 @@ builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProv
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 builder.Services.AddAuthorization();
 
+// The client address feeds the per-client rate limits and the sign-in history. Behind the Next.js
+// rewrite (plan A3) and Azure's front end, the connection comes from a proxy and the client is in
+// X-Forwarded-For - but anyone can send that header, so it is believed only from a proxy listed
+// here. Loopback is trusted by default, which covers local development. In production the proxy
+// addresses must be configured, or every client appears to be the proxy and shares one budget.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+
+    foreach (var proxy in builder.Configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [])
+    {
+        options.KnownProxies.Add(IPAddress.Parse(proxy));
+    }
+});
+
 var app = builder.Build();
 
+app.UseForwardedHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+app.MapAuthEndpoints();
+app.MapLegalEndpoints();
 
 // Returns the caller's own effective permission codes. The Next.js app reads this once per
 // session to decide what to render; it is a convenience for the UI, not a security boundary -

@@ -34,22 +34,27 @@ public sealed record SignInInstitution(int Id, string Slug, string Name);
 /// <summary>The outcome of a sign-in.</summary>
 /// <param name="Failure"><see cref="SignInFailure.None"/> when signed in.</param>
 /// <param name="Tokens">The issued pair, when signed in.</param>
-/// <param name="Institutions">
-/// Every institution the user may act for. When there is exactly one, the token already acts for it;
-/// otherwise the token acts for none until the user chooses.
+/// <param name="Institutions">Every institution the user may act for.</param>
+/// <param name="ActiveInstitution">
+/// The one the token acts for: the only institution when there is exactly one, otherwise none until
+/// the user chooses.
 /// </param>
 public sealed record SignInResult(
     SignInFailure Failure,
     IssuedTokens? Tokens,
-    IReadOnlyList<SignInInstitution> Institutions)
+    IReadOnlyList<SignInInstitution> Institutions,
+    SignInInstitution? ActiveInstitution)
 {
     /// <summary>True when tokens were issued.</summary>
     public bool Succeeded => Failure == SignInFailure.None;
 
     /// <summary>Signed in.</summary>
-    public static SignInResult Success(IssuedTokens tokens, IReadOnlyList<SignInInstitution> institutions) =>
-        new(SignInFailure.None, tokens, institutions);
+    public static SignInResult Success(
+        IssuedTokens tokens,
+        IReadOnlyList<SignInInstitution> institutions,
+        SignInInstitution? activeInstitution) =>
+        new(SignInFailure.None, tokens, institutions, activeInstitution);
 
     /// <summary>Refused, for <paramref name="failure"/>.</summary>
-    public static SignInResult Failed(SignInFailure failure) => new(failure, null, []);
+    public static SignInResult Failed(SignInFailure failure) => new(failure, null, [], null);
 }

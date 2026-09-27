@@ -39,8 +39,6 @@ public sealed class SignUpDonorHandler(
     private const int EmailMaxLength = 256;
     private const string DonorRoleCode = "DONOR";
 
-    private static readonly string[] SupportedLanguages = ["en", "si", "ta"];
-
     /// <summary>The documents a donor must accept. Each in any one language.</summary>
     private static readonly string[] RequiredDocuments = ["TERMS", "PRIVACY"];
 
@@ -68,7 +66,7 @@ public sealed class SignUpDonorHandler(
             return SignUpDonorResult.Failed(SignUpFailure.InvalidEmail);
         }
 
-        var language = ResolveLanguage(command.PreferredLanguage);
+        var language = SupportedLanguages.Resolve(command.PreferredLanguage);
         if (language is null)
         {
             return SignUpDonorResult.Failed(SignUpFailure.InvalidLanguage);
@@ -238,11 +236,6 @@ public sealed class SignUpDonorHandler(
         email.Length <= EmailMaxLength
         && MailAddress.TryCreate(email, out var parsed)
         && string.Equals(parsed.Address, email, StringComparison.Ordinal);
-
-    private static string? ResolveLanguage(string? requested) =>
-        string.IsNullOrWhiteSpace(requested)
-            ? "en"
-            : SupportedLanguages.FirstOrDefault(l => string.Equals(l, requested.Trim(), StringComparison.OrdinalIgnoreCase));
 
     private static string? Truncate(string? value, int maxLength) =>
         value is null || value.Length <= maxLength ? value : value[..maxLength];
