@@ -1,0 +1,55 @@
+namespace Sethika.Application.Access.SignIn;
+
+/// <summary>Why a sign-in was refused.</summary>
+/// <remarks>
+/// The endpoint must answer <see cref="InvalidCredentials"/> and <see cref="LockedOut"/> identically.
+/// Only an existing account can be locked, so a distinct lockout answer tells anyone who fails five
+/// times that the phone number or email has an account. They are separate here so the history row
+/// records what actually happened.
+/// </remarks>
+public enum SignInFailure
+{
+    /// <summary>Signed in.</summary>
+    None = 0,
+
+    /// <summary>No such account, or the wrong password. Deliberately one answer.</summary>
+    InvalidCredentials = 1,
+
+    /// <summary>Too many recent failures; refused whatever the password.</summary>
+    LockedOut = 2,
+
+    /// <summary>
+    /// The password was right but the account is suspended, deactivated or not yet verified. Only
+    /// reachable with the correct password, so saying so reveals nothing to a stranger.
+    /// </summary>
+    NotAllowed = 3,
+}
+
+/// <summary>An institution the signed-in user may act for.</summary>
+/// <param name="Id">Internal id, for the token only. Never sent to the client.</param>
+/// <param name="Slug">What the client uses to choose it.</param>
+/// <param name="Name">For the chooser screen.</param>
+public sealed record SignInInstitution(int Id, string Slug, string Name);
+
+/// <summary>The outcome of a sign-in.</summary>
+/// <param name="Failure"><see cref="SignInFailure.None"/> when signed in.</param>
+/// <param name="Tokens">The issued pair, when signed in.</param>
+/// <param name="Institutions">
+/// Every institution the user may act for. When there is exactly one, the token already acts for it;
+/// otherwise the token acts for none until the user chooses.
+/// </param>
+public sealed record SignInResult(
+    SignInFailure Failure,
+    IssuedTokens? Tokens,
+    IReadOnlyList<SignInInstitution> Institutions)
+{
+    /// <summary>True when tokens were issued.</summary>
+    public bool Succeeded => Failure == SignInFailure.None;
+
+    /// <summary>Signed in.</summary>
+    public static SignInResult Success(IssuedTokens tokens, IReadOnlyList<SignInInstitution> institutions) =>
+        new(SignInFailure.None, tokens, institutions);
+
+    /// <summary>Refused, for <paramref name="failure"/>.</summary>
+    public static SignInResult Failed(SignInFailure failure) => new(failure, null, []);
+}

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sethika.Application.Abstractions;
 using Sethika.Domain.Access;
 using Sethika.Domain.Institutions;
 
@@ -14,12 +15,15 @@ namespace Sethika.Infrastructure.Persistence;
 /// that already exist, so nothing here should ever call EnsureCreated or Migrate.
 /// When a table changes, its IEntityTypeConfiguration changes with it.
 /// </remarks>
-public class SethikaDbContext(DbContextOptions<SethikaDbContext> options) : DbContext(options)
+public class SethikaDbContext(DbContextOptions<SethikaDbContext> options)
+    : DbContext(options), ISethikaDbContext
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<Institution> Institutions => Set<Institution>();
+    public DbSet<LoginAttempt> LoginAttempts => Set<LoginAttempt>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

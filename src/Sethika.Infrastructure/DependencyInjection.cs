@@ -38,6 +38,11 @@ public static class DependencyInjection
             options.UseSqlServer(connectionString)
                    .AddInterceptors(serviceProvider.GetRequiredService<SessionContextConnectionInterceptor>()));
 
+        // The same scoped instance under its Application-facing name, so a handler and anything
+        // else in the request share one context, one connection and one transaction.
+        services.AddScoped<ISethikaDbContext>(serviceProvider =>
+            serviceProvider.GetRequiredService<SethikaDbContext>());
+
         services.AddScoped<IDbConnectionFactory>(serviceProvider =>
             new SqlConnectionFactory(
                 connectionString,

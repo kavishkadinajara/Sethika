@@ -36,7 +36,13 @@ DECLARE @districtId SMALLINT = (SELECT Id FROM core.Districts       WHERE Code =
 
 /*  Reset, child-before-parent. Every FK direction matters here: get the order wrong and a
     DELETE fails, later INSERTs collide on duplicate keys, and the real cause is six errors
-    upstream of where it surfaces.                                                        */
+    upstream of where it surfaces.
+
+    Sign-in history and refresh tokens go first: sign-in tests write both against the
+    fixture's users and institutions, and a test that dies before its own cleanup would
+    otherwise leave rows that block every later reset.                                    */
+DELETE FROM auth.RefreshTokens;
+DELETE FROM auth.LoginHistory;
 DELETE FROM auth.UserRoles;
 DELETE FROM auth.UserRolesHistory;
 DELETE FROM auth.RolePermissions;
