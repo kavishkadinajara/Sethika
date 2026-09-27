@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sethika.Application.Abstractions;
 using Sethika.Domain.Access;
+using Sethika.Domain.Core;
 using Sethika.Domain.Institutions;
 
 namespace Sethika.Infrastructure.Persistence;
@@ -24,6 +25,10 @@ public class SethikaDbContext(DbContextOptions<SethikaDbContext> options)
     public DbSet<Institution> Institutions => Set<Institution>();
     public DbSet<LoginAttempt> LoginAttempts => Set<LoginAttempt>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<DonorProfile> DonorProfiles => Set<DonorProfile>();
+    public DbSet<UserConsent> UserConsents => Set<UserConsent>();
+    public DbSet<LegalDocument> LegalDocuments => Set<LegalDocument>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

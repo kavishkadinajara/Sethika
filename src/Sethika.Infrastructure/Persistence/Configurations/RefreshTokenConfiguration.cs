@@ -22,5 +22,9 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
         builder.Property(t => t.CreatedAt).HasColumnType("datetime2(3)");
         builder.Property(t => t.ExpiresAt).HasColumnType("datetime2(3)");
         builder.Property(t => t.RevokedAt).HasColumnType("datetime2(3)");
+
+        // Declared so EF orders the insert after its user's within one SaveChanges; the database
+        // enforces the FK either way.
+        builder.HasOne<User>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Restrict);
     }
 }

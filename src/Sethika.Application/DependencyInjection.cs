@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Sethika.Application.Access.SignIn;
+using Sethika.Application.Access.SignUp;
 
 namespace Sethika.Application;
 
@@ -16,6 +17,7 @@ public static class DependencyInjection
         services.AddSingleton<DummyPasswordHash>();
 
         services.AddScoped<SignInHandler>();
+        services.AddScoped<SignUpDonorHandler>();
 
         return services;
     }
