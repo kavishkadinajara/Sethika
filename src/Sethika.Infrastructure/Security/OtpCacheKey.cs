@@ -21,6 +21,10 @@ public static class OtpCacheKey
     public static string ForCode(string phoneNumber, OtpPurpose purpose) =>
         $"otp:{Slug(purpose)}:{phoneNumber}";
 
+    /// <summary>The hash of the ticket proving a verification, until the next step spends it.</summary>
+    public static string ForTicket(string phoneNumber, OtpPurpose purpose) =>
+        $"otp:ticket:{Slug(purpose)}:{phoneNumber}";
+
     /// <summary>The counter bounding how many codes a number may request per window.</summary>
     public static string ForSendCount(string phoneNumber, OtpPurpose purpose) =>
         $"otp:sends:{Slug(purpose)}:{phoneNumber}";

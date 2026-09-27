@@ -41,6 +41,14 @@ public sealed class OtpOptions
     /// </remarks>
     public TimeSpan ResendCooldown { get; set; } = TimeSpan.FromSeconds(60);
 
+    /// <summary>How long a verification ticket may wait to be redeemed.</summary>
+    /// <remarks>
+    /// Fifteen minutes is the time to fill in a signup form after the code arrives - name, email,
+    /// password, reading the terms - without asking for a second SMS. The ticket is single-use, so
+    /// its lifetime bounds only how long a stolen one is worth anything.
+    /// </remarks>
+    public TimeSpan TicketLifetime { get; set; } = TimeSpan.FromMinutes(15);
+
     /// <summary>Codes one number may request per <see cref="SendWindow"/>.</summary>
     public int MaxSendsPerWindow { get; set; } = 3;
 

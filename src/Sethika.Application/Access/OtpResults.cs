@@ -70,13 +70,18 @@ public enum OtpVerifyOutcome
 /// Attempts left before the code is destroyed, when the outcome is
 /// <see cref="OtpVerifyOutcome.Incorrect"/>.
 /// </param>
-public readonly record struct OtpVerifyResult(OtpVerifyOutcome Outcome, int AttemptsRemaining)
+/// <param name="Ticket">
+/// When verified: a single-use proof of the verification, for the step that follows it - signup
+/// or a password reset - to redeem through <c>IOtpService.RedeemTicketAsync</c>. A bearer secret
+/// for its short life, so it is left out of <see cref="object.ToString"/>.
+/// </param>
+public readonly record struct OtpVerifyResult(OtpVerifyOutcome Outcome, int AttemptsRemaining, string? Ticket = null)
 {
     /// <summary>True only when the code matched and was consumed.</summary>
     public bool IsVerified => Outcome == OtpVerifyOutcome.Verified;
 
-    /// <summary>The code matched and has been consumed.</summary>
-    public static OtpVerifyResult Verified() => new(OtpVerifyOutcome.Verified, 0);
+    /// <summary>The code matched and has been consumed; <paramref name="ticket"/> proves it.</summary>
+    public static OtpVerifyResult Verified(string ticket) => new(OtpVerifyOutcome.Verified, 0, ticket);
 
     /// <summary>The code did not match; <paramref name="attemptsRemaining"/> attempts are left.</summary>
     public static OtpVerifyResult Incorrect(int attemptsRemaining) =>
@@ -90,4 +95,29 @@ public readonly record struct OtpVerifyResult(OtpVerifyOutcome Outcome, int Atte
 
     /// <summary>The backing store is unreachable, so the code could not be checked.</summary>
     public static OtpVerifyResult Unavailable() => new(OtpVerifyOutcome.Unavailable, 0);
+
+    private bool PrintMembers(System.Text.StringBuilder builder)
+    {
+        builder.Append("Outcome = ").Append(Outcome)
+               .Append(", AttemptsRemaining = ").Append(AttemptsRemaining)
+               .Append(", Ticket = ").Append(Ticket is null ? "null" : "(redacted)");
+
+        return true;
+    }
+}
+
+/// <summary>The outcome of redeeming a verification ticket.</summary>
+public enum OtpTicketOutcome
+{
+    /// <summary>The ticket was valid for this number and purpose, and is now spent.</summary>
+    Redeemed = 0,
+
+    /// <summary>
+    /// Unknown, expired, already spent, or issued for another number or purpose. One answer for all
+    /// of them, for the same reason a missing code and an expired one are one answer.
+    /// </summary>
+    Invalid = 1,
+
+    /// <summary>The store backing tickets is unreachable.</summary>
+    Unavailable = 2,
 }

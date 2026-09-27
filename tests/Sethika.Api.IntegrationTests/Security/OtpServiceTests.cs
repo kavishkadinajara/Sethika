@@ -281,4 +281,88 @@ public sealed class OtpServiceTests
 
         Assert.Contains(expectedFragment, _sent[^1].Message, StringComparison.Ordinal);
     }
+
+    /// <summary>Sends and verifies a code, returning the ticket the verification issued.</summary>
+    private async Task<(string Phone, string Ticket)> VerifiedTicketAsync(OtpService service, OtpPurpose purpose)
+    {
+        var phone = NewPhoneNumber();
+        await service.SendAsync(phone, purpose, "en");
+
+        var verify = await service.VerifyAsync(phone, purpose, LastCode());
+
+        Assert.True(verify.IsVerified);
+        Assert.False(string.IsNullOrEmpty(verify.Ticket));
+
+        return (phone, verify.Ticket!);
+    }
+
+    [Fact]
+    public async Task AVerificationTicketRedeemsExactlyOnce()
+    {
+        // Single use is what stops one verified phone from being spent on two signups, and stops a
+        // ticket lifted from a request log from being replayed within its lifetime.
+        var service = CreateService();
+        var (phone, ticket) = await VerifiedTicketAsync(service, OtpPurpose.Signup);
+
+        Assert.Equal(OtpTicketOutcome.Redeemed, await service.RedeemTicketAsync(phone, OtpPurpose.Signup, ticket));
+        Assert.Equal(OtpTicketOutcome.Invalid, await service.RedeemTicketAsync(phone, OtpPurpose.Signup, ticket));
+    }
+
+    [Fact]
+    public async Task ConcurrentRedemptionsOfOneTicketSucceedOnlyOnce()
+    {
+        // The reason redemption is a server-side script: GET then DEL from here would let parallel
+        // requests all read the ticket before any of them deleted it.
+        var service = CreateService();
+        var (phone, ticket) = await VerifiedTicketAsync(service, OtpPurpose.Signup);
+
+        var outcomes = await Task.WhenAll(Enumerable.Range(0, 8)
+            .Select(_ => service.RedeemTicketAsync(phone, OtpPurpose.Signup, ticket)));
+
+        Assert.Single(outcomes, o => o == OtpTicketOutcome.Redeemed);
+    }
+
+    [Fact]
+    public async Task ATicketIsBoundToItsPhoneAndPurpose()
+    {
+        var service = CreateService();
+        var (phone, ticket) = await VerifiedTicketAsync(service, OtpPurpose.Signup);
+
+        Assert.Equal(OtpTicketOutcome.Invalid, await service.RedeemTicketAsync(NewPhoneNumber(), OtpPurpose.Signup, ticket));
+        Assert.Equal(OtpTicketOutcome.Invalid, await service.RedeemTicketAsync(phone, OtpPurpose.Reset, ticket));
+        Assert.Equal(OtpTicketOutcome.Invalid, await service.RedeemTicketAsync(phone, OtpPurpose.Signup, ticket + "x"));
+
+        // None of the refusals spent it.
+        Assert.Equal(OtpTicketOutcome.Redeemed, await service.RedeemTicketAsync(phone, OtpPurpose.Signup, ticket));
+    }
+
+    [Fact]
+    public async Task NeverStoresTheTicketItself_AndLetsItExpire()
+    {
+        var service = CreateService();
+        var (phone, ticket) = await VerifiedTicketAsync(service, OtpPurpose.Signup);
+
+        var key = OtpCacheKey.ForTicket(phone, OtpPurpose.Signup);
+        var stored = (string)(await _redis.GetDatabase().StringGetAsync(key))!;
+        var ttl = await _redis.GetDatabase().KeyTimeToLiveAsync(key);
+
+        Assert.NotEqual(ticket, stored);
+        Assert.Equal(
+            Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(ticket))),
+            stored);
+        Assert.NotNull(ttl);
+        Assert.InRange(ttl.Value, TimeSpan.FromMinutes(14), TimeSpan.FromMinutes(15));
+    }
+
+    [Fact]
+    public async Task TheVerifyResultNeverPrintsTheTicket()
+    {
+        var service = CreateService();
+        var phone = NewPhoneNumber();
+        await service.SendAsync(phone, OtpPurpose.Signup, "en");
+
+        var verify = await service.VerifyAsync(phone, OtpPurpose.Signup, LastCode());
+
+        Assert.DoesNotContain(verify.Ticket!, verify.ToString(), StringComparison.Ordinal);
+    }
 }

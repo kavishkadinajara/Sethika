@@ -1,3 +1,4 @@
+using System.Buffers.Text;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -32,6 +33,19 @@ public sealed partial class OtpService : IOtpService
 {
     private const string CodeHashField = "h";
     private const string AttemptsField = "att";
+
+    /// <summary>
+    /// Deletes the ticket only if the presented hash matches, in one step.
+    /// </summary>
+    /// <remarks>
+    /// GET then DEL from C# would let two requests with the same ticket both read it before either
+    /// deleted it, and both be told it was valid. A script runs atomically on the server. It is a
+    /// script rather than GETDEL because the local Redis is 3.2 and GETDEL arrived in 6.2. The
+    /// comparison is of hashes of a 256-bit random value, so its timing tells an attacker nothing
+    /// they could steer.
+    /// </remarks>
+    private const string RedeemTicketScript =
+        "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0";
 
     private readonly IConnectionMultiplexer _redis;
     private readonly ISmsSender _sms;
@@ -180,12 +194,50 @@ public sealed partial class OtpService : IOtpService
             // Consume on success, so a code cannot be replayed within its remaining lifetime.
             await db.KeyDeleteAsync(codeKey).ConfigureAwait(false);
 
-            return OtpVerifyResult.Verified();
+            // The ticket carries the verification to the next request. Only its hash is stored, for
+            // the same reason only the code's hash is, and a later verification replaces it.
+            var ticket = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(32));
+
+            await db.StringSetAsync(
+                OtpCacheKey.ForTicket(phoneNumber, purpose),
+                Hash(ticket),
+                _options.TicketLifetime).ConfigureAwait(false);
+
+            return OtpVerifyResult.Verified(ticket);
         }
         catch (Exception ex) when (ex is RedisException or TimeoutException)
         {
             LogStoreUnavailable(_logger, nameof(VerifyAsync), ex);
             return OtpVerifyResult.Unavailable();
+        }
+    }
+
+    public async Task<OtpTicketOutcome> RedeemTicketAsync(
+        string phoneNumber,
+        OtpPurpose purpose,
+        string ticket,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(phoneNumber);
+
+        if (string.IsNullOrWhiteSpace(ticket))
+        {
+            return OtpTicketOutcome.Invalid;
+        }
+
+        try
+        {
+            var deleted = await _redis.GetDatabase().ScriptEvaluateAsync(
+                RedeemTicketScript,
+                [OtpCacheKey.ForTicket(phoneNumber, purpose)],
+                [Hash(ticket)]).ConfigureAwait(false);
+
+            return (long)deleted == 1 ? OtpTicketOutcome.Redeemed : OtpTicketOutcome.Invalid;
+        }
+        catch (Exception ex) when (ex is RedisException or TimeoutException)
+        {
+            LogStoreUnavailable(_logger, nameof(RedeemTicketAsync), ex);
+            return OtpTicketOutcome.Unavailable;
         }
     }
 
@@ -203,7 +255,7 @@ public sealed partial class OtpService : IOtpService
         return value.ToString(CultureInfo.InvariantCulture).PadLeft(length, '0');
     }
 
-    /// <summary>Hex SHA-256 of the code, which is all that is ever stored.</summary>
+    /// <summary>Hex SHA-256 of a code or ticket, which is all that is ever stored.</summary>
     private static string Hash(string code) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(code)));
 

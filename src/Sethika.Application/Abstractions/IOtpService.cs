@@ -33,7 +33,8 @@ public interface IOtpService
 
     /// <summary>
     /// Checks <paramref name="code"/> against the outstanding code for this number and purpose,
-    /// consuming it on success so it cannot be presented twice.
+    /// consuming it on success so it cannot be presented twice, and issuing a ticket that proves the
+    /// verification to the step that follows.
     /// </summary>
     /// <param name="phoneNumber">The number the code was sent to, in E.164 form.</param>
     /// <param name="purpose">The flow the code was issued for.</param>
@@ -43,5 +44,19 @@ public interface IOtpService
         string phoneNumber,
         OtpPurpose purpose,
         string code,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Spends the ticket <see cref="VerifyAsync"/> issued for this number and purpose. It succeeds
+    /// once; every later attempt, and any attempt for another number or purpose, is refused.
+    /// </summary>
+    /// <param name="phoneNumber">The number that was verified, in E.164 form.</param>
+    /// <param name="purpose">The flow the code was verified for.</param>
+    /// <param name="ticket">The ticket as the client presented it.</param>
+    /// <param name="cancellationToken">Cancels the operation.</param>
+    Task<OtpTicketOutcome> RedeemTicketAsync(
+        string phoneNumber,
+        OtpPurpose purpose,
+        string ticket,
         CancellationToken cancellationToken = default);
 }
