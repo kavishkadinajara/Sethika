@@ -269,7 +269,7 @@ public sealed class AuthEndpointsTests(SethikaTestDatabase database) : IAsyncLif
 
         // Script can never read the refresh token; it is sent only to the one path that uses it.
         Assert.True(refresh.HttpOnly);
-        Assert.Equal("/api/auth/refresh", refresh.Path.ToString());
+        Assert.Equal("/api/auth/session", refresh.Path.ToString());
         Assert.Equal(Microsoft.Net.Http.Headers.SameSiteMode.Lax, refresh.SameSite);
 
         // Script must read the CSRF token, to echo it in a header on refresh.

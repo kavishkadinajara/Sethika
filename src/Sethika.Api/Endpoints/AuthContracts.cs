@@ -42,6 +42,9 @@ public sealed record LoginBody(string? Login, string? Password)
     }
 }
 
+/// <summary>Chooses the institution the session acts for, by slug.</summary>
+public sealed record SwitchInstitutionBody(string? Institution);
+
 /// <summary>An institution the user may act for, by slug - internal ids are never sent (CLAUDE.md).</summary>
 public sealed record InstitutionChoice(string Slug, string Name);
 

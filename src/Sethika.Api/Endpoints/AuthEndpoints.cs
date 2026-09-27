@@ -180,28 +180,13 @@ internal static class AuthEndpoints
         };
     }
 
-    /// <summary>Sets the session cookies and returns the access token.</summary>
     private static IResult StartSession(
         HttpContext httpContext,
         SignInResult session,
         IHostEnvironment environment,
-        int statusCode)
-    {
-        var tokens = session.Tokens!;
-
-        AuthCookies.Append(httpContext, tokens.Refresh, secure: !environment.IsDevelopment());
-
-        // The body carries a bearer token, so nothing between here and the browser may keep a copy.
-        httpContext.Response.Headers.CacheControl = "no-store";
-
-        return Results.Json(
-            new SessionResponse(
-                tokens.Access.Token,
-                tokens.Access.ExpiresAt,
-                [.. session.Institutions.Select(i => new InstitutionChoice(i.Slug, i.Name))],
-                session.ActiveInstitution?.Slug),
-            statusCode: statusCode);
-    }
+        int statusCode) =>
+        SessionResponses.Start(
+            httpContext, session.Tokens!, session.Institutions, session.ActiveInstitution, environment, statusCode);
 
     private static IResult SignUpError(SignUpDonorResult result) => result.Failure switch
     {

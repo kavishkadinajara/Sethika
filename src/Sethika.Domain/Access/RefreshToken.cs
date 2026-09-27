@@ -29,4 +29,7 @@ public class RefreshToken
     public DateTime? RevokedAt { get; set; }
     public string? RevokedReason { get; set; }
     public long? ReplacedByTokenId { get; set; }
+
+    /// <summary>The user's SecurityStamp at issue. A refresh is refused once it no longer matches.</summary>
+    public string SecurityStamp { get; set; } = null!;
 }

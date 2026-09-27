@@ -25,12 +25,6 @@ public enum SignInFailure
     NotAllowed = 3,
 }
 
-/// <summary>An institution the signed-in user may act for.</summary>
-/// <param name="Id">Internal id, for the token only. Never sent to the client.</param>
-/// <param name="Slug">What the client uses to choose it.</param>
-/// <param name="Name">For the chooser screen.</param>
-public sealed record SignInInstitution(int Id, string Slug, string Name);
-
 /// <summary>The outcome of a sign-in.</summary>
 /// <param name="Failure"><see cref="SignInFailure.None"/> when signed in.</param>
 /// <param name="Tokens">The issued pair, when signed in.</param>
@@ -42,8 +36,8 @@ public sealed record SignInInstitution(int Id, string Slug, string Name);
 public sealed record SignInResult(
     SignInFailure Failure,
     IssuedTokens? Tokens,
-    IReadOnlyList<SignInInstitution> Institutions,
-    SignInInstitution? ActiveInstitution)
+    IReadOnlyList<InstitutionAccess> Institutions,
+    InstitutionAccess? ActiveInstitution)
 {
     /// <summary>True when tokens were issued.</summary>
     public bool Succeeded => Failure == SignInFailure.None;
@@ -51,8 +45,8 @@ public sealed record SignInResult(
     /// <summary>Signed in.</summary>
     public static SignInResult Success(
         IssuedTokens tokens,
-        IReadOnlyList<SignInInstitution> institutions,
-        SignInInstitution? activeInstitution) =>
+        IReadOnlyList<InstitutionAccess> institutions,
+        InstitutionAccess? activeInstitution) =>
         new(SignInFailure.None, tokens, institutions, activeInstitution);
 
     /// <summary>Refused, for <paramref name="failure"/>.</summary>

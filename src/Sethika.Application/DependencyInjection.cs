@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Sethika.Application.Access.Session;
 using Sethika.Application.Access.SignIn;
 using Sethika.Application.Access.SignUp;
 
@@ -18,6 +19,7 @@ public static class DependencyInjection
 
         services.AddScoped<SignInHandler>();
         services.AddScoped<SignUpDonorHandler>();
+        services.AddScoped<SessionHandler>();
 
         return services;
     }

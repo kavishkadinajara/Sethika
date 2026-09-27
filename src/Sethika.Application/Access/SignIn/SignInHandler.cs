@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Sethika.Application.Abstractions;
+using Sethika.Application.Access.Session;
 using Sethika.Domain.Access;
 
 namespace Sethika.Application.Access.SignIn;
@@ -51,7 +52,8 @@ public sealed class SignInHandler(
         string? PasswordHash,
         DateTimeOffset? LockoutEnd,
         string Status,
-        string UserType);
+        string UserType,
+        string SecurityStamp);
 
     /// <summary>Attempts the sign-in and records the attempt, whatever the outcome.</summary>
     public async Task<SignInResult> HandleAsync(
@@ -140,7 +142,7 @@ public sealed class SignInHandler(
           .AsNoTracking()
           .Where(match)
           .Where(u => !u.IsDeleted)
-          .Select(u => new Account(u.Id, u.PasswordHash, u.LockoutEnd, u.Status, u.UserType))
+          .Select(u => new Account(u.Id, u.PasswordHash, u.LockoutEnd, u.Status, u.UserType, u.SecurityStamp))
           .SingleOrDefaultAsync(cancellationToken);
 
     /// <summary>Counts one failure, locking the account when it reaches the limit.</summary>
@@ -183,7 +185,7 @@ public sealed class SignInHandler(
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
-        var institutions = await LoadInstitutionsAsync(account.Id, now, cancellationToken).ConfigureAwait(false);
+        var institutions = await UserInstitutions.LoadAsync(db, account.Id, now, cancellationToken).ConfigureAwait(false);
 
         // One institution is the common case - an owner with one temple - and a chooser screen with
         // one option is a pointless click. With several, the token acts for none until the user
@@ -219,18 +221,16 @@ public sealed class SignInHandler(
                 cancellationToken)
             .ConfigureAwait(false);
 
-        db.RefreshTokens.Add(new RefreshToken
-        {
-            UserId = account.Id,
-            TokenHash = issued.Refresh.TokenHash,
-            FamilyId = Guid.NewGuid(),
-            JwtId = issued.Access.JwtId,
-            ActiveInstitutionId = activeInstitutionId,
-            DeviceInfo = Truncate(command.UserAgent, 200),
-            CreatedByIp = Truncate(command.IpAddress, 45),
-            CreatedAt = now.UtcDateTime,
-            ExpiresAt = issued.Refresh.ExpiresAt.UtcDateTime,
-        });
+        // A new family: every refresh from here on rotates within it, and a replayed member ends it.
+        db.RefreshTokens.Add(RefreshTokenRows.New(
+            issued,
+            account.Id,
+            familyId: Guid.NewGuid(),
+            activeInstitutionId,
+            account.SecurityStamp,
+            command.IpAddress,
+            command.UserAgent,
+            now));
 
         db.LoginAttempts.Add(Attempt(account.Id, loginName, failureReason: null, command, now));
 
@@ -238,42 +238,6 @@ public sealed class SignInHandler(
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         return SignInResult.Success(issued, institutions, activeInstitution);
-    }
-
-    /// <summary>
-    /// The institutions the user may act for, from <c>auth.UserRoles</c> - plan A7.
-    /// </summary>
-    /// <remarks>
-    /// Not from <c>org.InstitutionMembers</c>: that table sits behind an RLS filter predicate, and at
-    /// sign-in the session has no institution yet, so it would return nothing.
-    /// </remarks>
-    private async Task<List<SignInInstitution>> LoadInstitutionsAsync(
-        Guid userId,
-        DateTimeOffset now,
-        CancellationToken cancellationToken)
-    {
-        var at = now.UtcDateTime;
-
-        var rows = await db.UserRoles
-            .AsNoTracking()
-            .Where(ur => ur.UserId == userId
-                         && ur.IsActive
-                         && ur.Role.IsActive
-                         && ur.InstitutionId != null
-                         && (ur.ValidFrom == null || ur.ValidFrom <= at)
-                         && (ur.ValidTo == null || ur.ValidTo > at))
-            .Join(
-                db.Institutions.Where(i => !i.IsDeleted && (i.Status == "Active" || i.Status == "Onboarding")),
-                ur => ur.InstitutionId,
-                i => (int?)i.Id,
-                (ur, i) => new { i.Id, i.Slug, i.Name })
-            .Distinct()
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        return [.. rows
-            .OrderBy(r => r.Name, StringComparer.Ordinal)
-            .Select(r => new SignInInstitution(r.Id, r.Slug, r.Name))];
     }
 
     private async Task RecordAsync(LoginAttempt attempt, CancellationToken cancellationToken)

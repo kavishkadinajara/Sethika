@@ -18,6 +18,7 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
         builder.Property(t => t.DeviceInfo).HasColumnType("nvarchar(200)");
         builder.Property(t => t.CreatedByIp).HasColumnType("varchar(45)");
         builder.Property(t => t.RevokedReason).HasColumnType("nvarchar(100)");
+        builder.Property(t => t.SecurityStamp).HasColumnType("nvarchar(100)").IsRequired();
 
         builder.Property(t => t.CreatedAt).HasColumnType("datetime2(3)");
         builder.Property(t => t.ExpiresAt).HasColumnType("datetime2(3)");
