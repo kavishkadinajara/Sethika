@@ -42,6 +42,16 @@ public sealed record LoginBody(string? Login, string? Password)
     }
 }
 
+/// <summary>A step-up code. The phone it was sent to is the account's, so it is not in the body.</summary>
+public sealed record StepUpVerifyBody(string? Code)
+{
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append("Code = ").Append(Code is null ? "null" : "(redacted)");
+        return true;
+    }
+}
+
 /// <summary>Chooses the institution the session acts for, by slug.</summary>
 public sealed record SwitchInstitutionBody(string? Institution);
 

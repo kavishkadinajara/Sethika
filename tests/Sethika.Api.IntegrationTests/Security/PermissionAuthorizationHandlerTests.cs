@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Sethika.Api.Security;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Access;
@@ -15,7 +16,7 @@ public class PermissionAuthorizationHandlerTests
 
     private static async Task<bool> EvaluateAsync(ICurrentUserContext user, PermissionSet granted)
     {
-        var handler = new PermissionAuthorizationHandler(user, new StubPermissionService(granted));
+        var handler = new PermissionAuthorizationHandler(user, new StubPermissionService(granted), new StubStepUpGrants());
         var requirement = new PermissionRequirement(Code);
 
         var context = new AuthorizationHandlerContext(
@@ -61,7 +62,7 @@ public class PermissionAuthorizationHandlerTests
     public async Task Fails_for_an_anonymous_caller_without_querying()
     {
         var service = new StubPermissionService(new PermissionSet([Code], []));
-        var handler = new PermissionAuthorizationHandler(new StubUser(), service);
+        var handler = new PermissionAuthorizationHandler(new StubUser(), service, new StubStepUpGrants());
         var requirement = new PermissionRequirement(Code);
 
         var context = new AuthorizationHandlerContext(
@@ -82,11 +83,138 @@ public class PermissionAuthorizationHandlerTests
             PermissionSet.Empty));
     }
 
+    // ------------------------------------------------------------------ step-up (plan A5)
+
+    private static async Task<(bool Succeeded, bool StepUpAsked)> EvaluateWithStepUpAsync(
+        StubUser user,
+        PermissionSet granted,
+        StubStepUpGrants grants)
+    {
+        var handler = new PermissionAuthorizationHandler(user, new StubPermissionService(granted), grants);
+        var httpContext = new DefaultHttpContext();
+
+        var context = new AuthorizationHandlerContext(
+            [new PermissionRequirement(Code)], new ClaimsPrincipal(new ClaimsIdentity()), httpContext);
+
+        await handler.HandleAsync(context);
+
+        return (context.HasSucceeded, StepUpAuthorizationResultHandler.IsStepUpRequired(httpContext));
+    }
+
+    [Fact]
+    public async Task A_RequiresMfa_permission_is_refused_without_a_step_up_and_asks_for_one()
+    {
+        var user = new StubUser { UserId = Guid.NewGuid(), InstitutionId = 7, TokenId = "jti-1" };
+
+        var (succeeded, asked) = await EvaluateWithStepUpAsync(
+            user, new PermissionSet([Code], [Code]), new StubStepUpGrants());
+
+        Assert.False(succeeded);
+        Assert.True(asked);
+    }
+
+    [Fact]
+    public async Task A_RequiresMfa_permission_is_allowed_with_a_grant_for_this_token()
+    {
+        var user = new StubUser { UserId = Guid.NewGuid(), InstitutionId = 7, TokenId = "jti-1" };
+
+        var (succeeded, asked) = await EvaluateWithStepUpAsync(
+            user, new PermissionSet([Code], [Code]), new StubStepUpGrants((user.UserId.Value, "jti-1")));
+
+        Assert.True(succeeded);
+        Assert.False(asked);
+    }
+
+    /// <summary>A refreshed token has a new jti, and must not inherit the old one's grant.</summary>
+    [Fact]
+    public async Task A_grant_for_another_token_does_not_count()
+    {
+        var user = new StubUser { UserId = Guid.NewGuid(), InstitutionId = 7, TokenId = "jti-2" };
+
+        var (succeeded, _) = await EvaluateWithStepUpAsync(
+            user, new PermissionSet([Code], [Code]), new StubStepUpGrants((user.UserId.Value, "jti-1")));
+
+        Assert.False(succeeded);
+    }
+
+    [Fact]
+    public async Task A_grant_for_another_user_does_not_count()
+    {
+        var user = new StubUser { UserId = Guid.NewGuid(), InstitutionId = 7, TokenId = "jti-1" };
+
+        var (succeeded, _) = await EvaluateWithStepUpAsync(
+            user, new PermissionSet([Code], [Code]), new StubStepUpGrants((Guid.NewGuid(), "jti-1")));
+
+        Assert.False(succeeded);
+    }
+
+    [Fact]
+    public async Task A_token_without_a_jti_cannot_have_stepped_up()
+    {
+        var user = new StubUser { UserId = Guid.NewGuid(), InstitutionId = 7 };
+        var grants = new StubStepUpGrants(grantEverything: true);
+
+        var (succeeded, asked) = await EvaluateWithStepUpAsync(user, new PermissionSet([Code], [Code]), grants);
+
+        Assert.False(succeeded);
+        Assert.True(asked);
+    }
+
+    /// <summary>Ordinary permissions do not touch the step-up store - one Redis call fewer per request.</summary>
+    [Fact]
+    public async Task A_permission_without_RequiresMfa_needs_no_step_up()
+    {
+        var user = new StubUser { UserId = Guid.NewGuid(), InstitutionId = 7, TokenId = "jti-1" };
+        var grants = new StubStepUpGrants();
+
+        var (succeeded, asked) = await EvaluateWithStepUpAsync(user, new PermissionSet([Code], []), grants);
+
+        Assert.True(succeeded);
+        Assert.False(asked);
+        Assert.Equal(0, grants.CallCount);
+    }
+
+    /// <summary>Step-up cannot lift a refusal for a permission not held, so the client is not told to try.</summary>
+    [Fact]
+    public async Task A_permission_not_held_is_refused_without_asking_for_step_up()
+    {
+        var user = new StubUser { UserId = Guid.NewGuid(), InstitutionId = 7, TokenId = "jti-1" };
+
+        var (succeeded, asked) = await EvaluateWithStepUpAsync(
+            user, new PermissionSet(["BOOKINGS.CALENDAR.VIEW"], [Code]), new StubStepUpGrants(grantEverything: true));
+
+        Assert.False(succeeded);
+        Assert.False(asked);
+    }
+
+    private sealed class StubStepUpGrants(params (Guid UserId, string TokenId)[] granted) : IStepUpGrants
+    {
+        private readonly bool _grantEverything;
+
+        public StubStepUpGrants(bool grantEverything)
+            : this()
+        {
+            _grantEverything = grantEverything;
+        }
+
+        public int CallCount { get; private set; }
+
+        public Task<bool> GrantAsync(Guid userId, string tokenId, TimeSpan lifetime, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("The handler only reads grants.");
+
+        public Task<bool> IsGrantedAsync(Guid userId, string tokenId, CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            return Task.FromResult(_grantEverything || granted.Contains((userId, tokenId)));
+        }
+    }
+
     private sealed class StubUser : ICurrentUserContext
     {
         public Guid? UserId { get; init; }
         public int? InstitutionId { get; init; }
         public bool IsPlatform { get; init; }
+        public string? TokenId { get; init; }
     }
 
     private sealed class StubPermissionService(PermissionSet granted) : IPermissionService

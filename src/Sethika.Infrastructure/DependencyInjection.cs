@@ -86,6 +86,9 @@ public static class DependencyInjection
         // Same Redis, same singleton multiplexer. Stateless, so one instance serves every request.
         services.AddSingleton<IRateLimiter, RedisRateLimiter>();
 
+        // Read by the permission handler on every RequiresMfa check, so it lives with it here.
+        services.AddSingleton<IStepUpGrants, RedisStepUpGrants>();
+
         return services;
     }
 

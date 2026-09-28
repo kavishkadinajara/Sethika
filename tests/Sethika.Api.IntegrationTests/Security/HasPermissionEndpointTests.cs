@@ -145,11 +145,26 @@ public sealed class HasPermissionEndpointTests(SethikaTestDatabase database)
     {
         var client = ClientFor(SethikaTestDatabase.AlphaUserId, database.AlphaInstitutionId);
 
-        // Alpha holds both VIEW and APPROVE
+        // Alpha holds both VIEW and APPROVE. APPROVE is RequiresMfa, so holding it is not enough:
+        // without a step-up it is refused, and the body says why. The step-up itself is
+        // StepUpEndpointsTests.
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/bookings/calendar")).StatusCode);
-        Assert.Equal(
-            HttpStatusCode.OK,
-            (await client.PostAsync("/api/bookings/BK-ALPHA/approve", content: null)).StatusCode);
+
+        var approve = await client.PostAsync("/api/bookings/BK-ALPHA/approve", content: null);
+        Assert.Equal(HttpStatusCode.Forbidden, approve.StatusCode);
+        Assert.Contains("\"stepup_required\"", await approve.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    /// <summary>A plain refusal stays plain: only a missing step-up earns the step-up body.</summary>
+    [Fact]
+    public async Task A_permission_not_held_is_not_told_to_step_up()
+    {
+        var client = ClientFor(SethikaTestDatabase.BetaUserId, database.BetaInstitutionId);
+
+        var approve = await client.PostAsync("/api/bookings/BK-ALPHA/approve", content: null);
+
+        Assert.Equal(HttpStatusCode.Forbidden, approve.StatusCode);
+        Assert.DoesNotContain("stepup_required", await approve.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     [Fact]

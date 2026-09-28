@@ -3,8 +3,8 @@ using Sethika.Application.Abstractions;
 namespace Sethika.Api.RateLimiting;
 
 /// <summary>
-/// The limits on the anonymous auth endpoints (plan 5.4). One place, so the numbers can be read and
-/// argued with together.
+/// The limits on the anonymous auth endpoints (plan 5.4), and on step-up (5.3), which shares the two
+/// OTP client budgets. One place, so the numbers can be read and argued with together.
 /// </summary>
 /// <remarks>
 /// Two kinds of subject, doing different jobs:

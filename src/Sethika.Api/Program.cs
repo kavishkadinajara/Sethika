@@ -62,6 +62,7 @@ builder.Services
 // Policies are built per permission code on demand rather than registered one by one.
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, StepUpAuthorizationResultHandler>();
 builder.Services.AddAuthorization();
 
 // The client address feeds the per-client rate limits and the sign-in history. Behind the Next.js
@@ -90,6 +91,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapAuthEndpoints();
 app.MapSessionEndpoints();
+app.MapStepUpEndpoints();
 app.MapLegalEndpoints();
 
 // Returns the caller's own effective permission codes. The Next.js app reads this once per

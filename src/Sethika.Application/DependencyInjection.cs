@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Sethika.Application.Access.Session;
 using Sethika.Application.Access.SignIn;
 using Sethika.Application.Access.SignUp;
+using Sethika.Application.Access.StepUp;
 
 namespace Sethika.Application;
 
@@ -20,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<SignInHandler>();
         services.AddScoped<SignUpDonorHandler>();
         services.AddScoped<SessionHandler>();
+        services.AddScoped<StepUpHandler>();
 
         return services;
     }

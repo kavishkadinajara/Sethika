@@ -341,5 +341,6 @@ public sealed class PermissionEngineTests(SethikaTestDatabase database)
         public Guid? UserId { get; init; }
         public int? InstitutionId { get; init; }
         public bool IsPlatform { get; init; }
+        public string? TokenId { get; init; }
     }
 }
