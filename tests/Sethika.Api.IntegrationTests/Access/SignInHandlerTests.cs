@@ -438,30 +438,37 @@ public sealed class SignInHandlerTests(SethikaTestDatabase database) : IAsyncLif
     {
         // Equal answers are only half of hiding which accounts exist; the other half is equal time.
         // Skipping the hash for an unknown login, or for a locked account, makes that answer arrive
-        // a PBKDF2-verification sooner - a gap of the order of 100 ms, far above the noise here. The
-        // bound is loose on purpose: it is there to catch a skipped hash, not to measure jitter.
+        // a PBKDF2-verification sooner - a gap of the order of 100 ms. The bound is loose on purpose:
+        // it is there to catch a skipped hash, not to measure jitter.
+        //
+        // Each path is timed by its fastest of five attempts, not a median of three. Noise - a GC,
+        // a busy database while the rest of the suite runs - only ever adds time, so the minimum is
+        // the path's real cost; a median of three once let one slow sample fail the test mid-suite.
+        // A skipped hash lowers the minimum just as it lowered the median.
         var wrongUser = await CreateUserAsync();
         var lockedUser = await CreateUserAsync();
         await SetLockoutEndAsync(lockedUser.Id, TimeSpan.FromMinutes(10));
 
         await SignInAsync(wrongUser.Phone, WrongPassword); // warm-up: JIT, pool, dummy hash
 
-        async Task<double> MedianMillisecondsAsync(Func<Task> attempt)
+        async Task<double> FastestMillisecondsAsync(Func<Task> attempt, int attempts)
         {
-            var samples = new List<double>();
-            for (var i = 0; i < 3; i++)
+            var fastest = double.MaxValue;
+            for (var i = 0; i < attempts; i++)
             {
                 var started = Stopwatch.GetTimestamp();
                 await attempt();
-                samples.Add(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+                fastest = Math.Min(fastest, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
             }
 
-            return samples.Order().ElementAt(1);
+            return fastest;
         }
 
-        var wrong = await MedianMillisecondsAsync(() => SignInAsync(wrongUser.Phone, WrongPassword));
-        var unknown = await MedianMillisecondsAsync(() => SignInAsync("+94719999999", Password));
-        var locked = await MedianMillisecondsAsync(() => SignInAsync(lockedUser.Phone, Password));
+        // Three wrong passwords after the warm-up make four failures; a fifth would lock the account
+        // and change the path being timed, so the wrong-password side stops at three.
+        var wrong = await FastestMillisecondsAsync(() => SignInAsync(wrongUser.Phone, WrongPassword), attempts: 3);
+        var unknown = await FastestMillisecondsAsync(() => SignInAsync("+94719999999", Password), attempts: 5);
+        var locked = await FastestMillisecondsAsync(() => SignInAsync(lockedUser.Phone, Password), attempts: 5);
 
         Assert.True(unknown >= wrong * 0.5, $"unknown login {unknown:F0} ms vs wrong password {wrong:F0} ms");
         Assert.True(locked >= wrong * 0.5, $"locked account {locked:F0} ms vs wrong password {wrong:F0} ms");
