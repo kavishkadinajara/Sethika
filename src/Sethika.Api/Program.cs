@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
+using Sethika.Api.Bootstrap;
 using Sethika.Api.Endpoints;
 using Sethika.Api.Security;
 using Sethika.Application;
@@ -82,6 +83,14 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 var app = builder.Build();
+
+// `dotnet run --project src/Sethika.Api -- bootstrap` creates the first platform administrator
+// (plan Q5) and exits instead of serving.
+if (args is [BootstrapCommand.Name, ..])
+{
+    Environment.ExitCode = await BootstrapCommand.RunAsync(app.Services, app.Configuration, Console.Out);
+    return;
+}
 
 app.UseForwardedHeaders();
 app.UseAuthentication();
