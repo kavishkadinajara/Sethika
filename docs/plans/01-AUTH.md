@@ -3,12 +3,12 @@
 Branch: `2-authentication-and-i18n-foundation` (cut from `1-permission-engine-frontend-authorization-setup`,
 because every slice below depends on `IPermissionService` and `[HasPermission]`, which live only on that branch).
 
-Status: **in progress. Slices 5.1–5.4 are done** — signup, OTP, login, lockout, refresh
-rotation with reuse detection, institution switching, logout, MFA step-up and rate limiting all work
-over HTTP. Role levels (A15) are in the schema with the DONOR level and role; their ceilings are 5.5.
-Next: **5.5** (RBAC catalogue and role levels; its bootstrap admin waits on Q5). 5.6, 5.7 and 5.9 are
-untouched; twelve 5.8 tests are done.
-**232 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
+Status: **in progress. Slices 5.1–5.5 are done** — signup, OTP, login, lockout, refresh
+rotation with reuse detection, institution switching, logout, MFA step-up and rate limiting work over
+HTTP; the RBAC catalogue, level ceilings and template roles are seeded; the first platform
+administrator is made by `bootstrap`. Next: **5.9** (custom roles API, backend), then the frontend
+slices 5.6 and 5.7. Twelve 5.8 tests are done, and two of 5.9's.
+**251 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
 Last updated 2026-09-28. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
 
@@ -32,6 +32,8 @@ Delivered so far, with the commit that added it:
 | `94b1c29` | The four auth endpoints and `GET /api/legal/current`, rate-limited per client and per identity (`AuthRateLimits`); A2 cookies; `{ "code" }` errors; `UseForwardedHeaders` (A18); `LoginName` shared by sign-in and its limit — 14 tests over HTTP. |
 | `f4fabd8` | `SessionHandler`: rotation claimed by a conditional UPDATE, reuse detection with a 10-second grace (A19) whose refusal is `409` and leaves the cookies alone, stamp check, institution re-validated on every refresh; `SecurityStamps.RotateAsync`; `auth.RefreshTokens.SecurityStamp` (new column); session endpoints under `/api/auth/session` with CSRF (A2 amended) — 14 tests over HTTP. |
 | `7c79832` | MFA step-up: `StepUpHandler` (code to the account's own confirmed phone, purpose `stepup`), `RedisStepUpGrants` (`stepup:{userId}:{jti}`, 15 min, fails closed), `PermissionAuthorizationHandler` refuses `RequiresMfa` without a grant, `StepUpAuthorizationResultHandler` answers `403 stepup_required`; A20 — 9 tests over HTTP, 7 handler unit tests. |
+| `92b6187` | Level ceilings: `auth.RoleLevelPermissions` (+ history, temporal) with composite FKs and `CK_RoleLevelPermissions_Scope`, the ceiling in `vw_EffectivePermissions`; `10_RbacCatalogue.sql` (3 modules, 4 screens, 9 permissions, 6 dependencies, ceilings, OWNER/MANAGER/STAFF templates), guarded by THROW on any unknown code; the fixture uses the seeded catalogue — 9 tests. |
+| `1739db6` | `bootstrap` (Q5): `BootstrapPlatformAdminHandler` + `BootstrapCommand`, `PLATFORM_ADMIN` system role in `08_SystemRoles.sql` — 10 tests, and the real `dotnet run -- bootstrap` smoke-tested. |
 
 All of the above is reachable over HTTP.
 
@@ -68,7 +70,7 @@ re-derived in C#, and secrets live only in User Secrets.
 | `auth.UserMfaMethods` | `TOTP`/`SMS`/`Email`, `SecretEncrypted VARBINARY(512)` | 0 |
 | `auth.RecoveryCodes` | hashed single-use backup codes | 0 |
 | `auth.UserConsents` → `core.LegalDocuments` | versioned consent with `ContentSha256` | 0 |
-| `auth.Portals/Modules/Screens/ScreenElements/Permissions/PermissionActions/PermissionDependencies` | RBAC catalogue | **0 except Portals(4) and PermissionActions(10)** |
+| `auth.Portals/Modules/Screens/ScreenElements/Permissions/PermissionActions/PermissionDependencies` | RBAC catalogue | **0 except Portals(4) and PermissionActions(10)** — seeded since 5.5 by `10_RbacCatalogue.sql` |
 | `auth.Roles / RolePermissions / UserRoles / UserPermissionOverrides` | assignments, all four temporal | 0 |
 | `auth.vw_EffectivePermissions` | deny-wins + module-enabled intersection, in SQL | — |
 | `org.InstitutionMembers`, `org.StaffInvitations` | membership, invites | 0 |
@@ -476,7 +478,7 @@ them through unverified.
 
 ## 3. Open questions
 
-Q1, Q2, Q4 and Q6 are decided and Q3 is done. Only Q5 is open, and it blocks 5.5's bootstrap command.
+All six are closed. Q5 was taken at its default in 5.5, on the user's go-ahead (2026-09-28).
 
 | # | Question | Blocks | Default if you say nothing |
 |---|---|---|---|
@@ -485,7 +487,7 @@ Q1, Q2, Q4 and Q6 are decided and Q3 is done. Only Q5 is open, and it blocks 5.5
 | ~~Q3~~ | ~~**A8** — add `libphonenumber-csharp`?~~ — **done: installed in `1ca0b65`.** | — | — |
 | ~~Q4~~ | ~~**Legal text.**~~ — **decided 2026-09-27: seed a clearly-marked `0.1-draft` of Terms and Privacy in en/si/ta.** `auth.UserConsents.LegalDocumentId` is a NOT NULL FK, so signup cannot record consent without a document row. Every draft row's title says DRAFT; replacing it is a new `Version` with `IsCurrent = 1`, and existing consents keep pointing at the draft they accepted. | — | — |
 | ~~Q6~~ | ~~**Where command handlers get EF Core.**~~ — **decided 2026-09-27: `ISethikaDbContext` in Application. See A16.** | — | — |
-| Q5 | **First platform admin.** No platform owner exists, and CLAUDE.md forbids business data in post-deployment. | §5.5 | A `dotnet run --project src/Sethika.Api -- bootstrap` command, idempotent, reading phone and password from User Secrets. Keeps the credential out of source control and out of the dacpac. |
+| ~~Q5~~ | ~~**First platform admin.**~~ — **done in `1739db6`, as the default below.** | — | A `dotnet run --project src/Sethika.Api -- bootstrap` command, idempotent, reading phone and password from User Secrets. Keeps the credential out of source control and out of the dacpac. |
 
 ---
 
@@ -612,22 +614,41 @@ oracle, and it is exactly the kind of thing an examiner asks about.
 
 ### 5.5 — RBAC catalogue seed and bootstrap admin
 
-- [ ] `Scripts/Seed/10_RbacCatalogue.sql` (07–09 are taken, see `bc069dd`) — idempotent MERGEs for `auth.Modules`, `Screens`,
-      `ScreenElements`, `Permissions`, covering only the screens that exist after this plan
-      (Access/Auth, Institutions, a Bookings placeholder), plus `PermissionDependencies`
-      (EDIT requires VIEW), the template roles (`Owner`, `Manager`, `Staff`) at their levels, and
-      each level's ceiling in `RoleLevelPermissions`. `Donor` is a global role, not a template (see
-      5.1). This is reference data, so post-deployment is the correct home for it.
-- [ ] Role levels per A15: `auth.RoleLevels`, `auth.RoleLevelPermissions` (+ history table),
-      `auth.Roles.RoleLevelId`, the scope CHECK, and the ceiling in `auth.vw_EffectivePermissions`.
-      **Done in `bc069dd`:** `auth.RoleLevels`, `Roles.RoleLevelId`, `FK_Roles_Level` and all six
-      levels. **Left here:** `RoleLevelPermissions` and its history table, the scope CHECK on it, and
-      the ceiling in the view.
+- [x] `Scripts/Seed/10_RbacCatalogue.sql` (`92b6187`) — INSTITUTION portal only, because only its
+      screens exist: modules `INSTITUTION`, `BOOKINGS` (placeholder), `ACCESS`; screens
+      `INSTITUTION.PROFILE`, `BOOKINGS.CALENDAR`, `ACCESS.ROLES`, `ACCESS.MEMBERS`; nine permissions,
+      `<screen>.<action>`, with `ACCESS.ROLES.EDIT`, `ACCESS.MEMBERS.EDIT` and
+      `BOOKINGS.CALENDAR.APPROVE` `RequiresMfa`; six dependencies (every action needs its screen's
+      VIEW, assigning roles needs `ACCESS.ROLES.VIEW`). Matched on Code, never Id; an unknown code
+      THROWs and stops the deploy instead of a JOIN dropping it. Dependencies, ceilings and template
+      grants are synced exactly, deletions included; modules, screens and permissions are never
+      deleted.
+- [x] Ceilings: OWNER and MANAGER may hold every institution permission (rank, not the ceiling,
+      stops a manager managing managers); STAFF the four VIEWs and `BOOKINGS.CALENDAR.APPROVE`.
+      Platform and donor levels are empty until their screens exist. Templates `OWNER` (all nine),
+      `MANAGER` (all but `INSTITUTION.PROFILE.EDIT`), `STAFF` (the profile and calendar VIEWs), as
+      `IsSystem = 1` so the fixture reset keeps them; the seed THROWs if a template grant falls
+      outside its ceiling, which the view would otherwise drop without a word. **These are a
+      first cut for the user to review** — product choices, not facts.
+- [x] Role levels per A15 (`92b6187`): `auth.RoleLevelPermissions` + history, temporal, with composite
+      FKs to `RoleLevels(Id, Scope)` and `Permissions(Id, Scope)` (new `UQ_Permissions_IdScope`), and
+      the ceiling as a JOIN in `auth.vw_EffectivePermissions`. **Stricter than A15 said:**
+      `CK_RoleLevelPermissions_Scope` is `PermissionScope = 'Self' OR PermissionScope = LevelScope`,
+      so a platform level cannot hold institution permissions either, not only the reverse.
 - [x] `Scripts/Seed/09_LegalDocuments.sql` per Q4 (`bc069dd`).
-- [ ] The `bootstrap` command per Q5.
-- [ ] After every seed change, re-run `SqlPackage /Action:Script` and confirm the output contains
-      **only** the seed MERGEs and no schema statements (DECISIONS.md D10). Any `IN`, `BETWEEN` or
-      unnamed CHECK added here breaks convergence.
+- [x] The `bootstrap` command per Q5 (`1739db6`): `Bootstrap:PhoneNumber`, `Password`, `FullName`
+      from configuration, never arguments (shell history). Creates a `PlatformStaff` account with
+      `PhoneConfirmed` (step-up needs it) and `MfaRequired`, holding the new `PLATFORM_ADMIN` system
+      role. Idempotent - a rerun changes nothing, not even the password. Makes only the first
+      administrator: refuses while another active one exists, but a suspended or deleted one does
+      not block it, which is the recovery path. Never converts a donor or institution account.
+- [x] D10 re-checked after publishing to both databases: `SqlPackage /Action:Script` against
+      `Sethika` gives zero schema statements, only the 17 seed MERGEs.
+
+**The test fixture changed with this slice.** `RlsTestData.sql` used to create its own BOOKINGS
+catalogue and delete every permission on each reseed; it now uses the seeded one, deletes only
+non-system roles' grants, and two permission-engine tests delete only the fixture role's grants.
+Anything that touches reference data in a test runs in a rolled-back transaction.
 
 ### 5.6 — i18n foundation
 
@@ -708,8 +729,10 @@ Backend only; the role-management screens come with week 2's screens.
       intersected with the caller's own effective permissions: exactly what the caller may grant.
 - [ ] `POST /api/institution/roles` — create a role at a level with a set of permissions.
       `PUT /api/institution/roles/{code}/permissions`, `POST` / `DELETE` assignments.
-      Each carries `[HasPermission]` (`ACCESS.ROLES.CREATE` / `EDIT` / `ASSIGN`), and `ASSIGN` and
-      `EDIT` are `RequiresMfa`.
+      Each carries `[HasPermission]` (`ACCESS.ROLES.CREATE` / `ACCESS.ROLES.EDIT` for roles,
+      `ACCESS.MEMBERS.EDIT` for assignments), and both EDITs are `RequiresMfa`. **Amended in 5.5:**
+      the plan said `ASSIGN`, which is not one of the ten actions; assignment is an EDIT on the
+      members screen.
 - [ ] The three A15 rules checked inside the transaction, against rows read in it — rank strictly
       more junior, permission inside the ceiling, permission held by the actor — each refusal a `403`
       with a reason code, never a silent drop of the offending permission.
@@ -719,6 +742,7 @@ Backend only; the role-management screens come with week 2's screens.
       permission outside the level's ceiling, nor one they do not hold; cannot assign themselves
       anything; a `RolePermissions` row inserted outside the ceiling by hand is not in
       `vw_EffectivePermissions`; narrowing a ceiling removes the permission from users at once.
+      **The last two are done** (`RbacCatalogueTests`, `92b6187`); the API tests remain.
 
 ---
 
