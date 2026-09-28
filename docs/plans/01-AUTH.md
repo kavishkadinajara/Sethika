@@ -3,12 +3,13 @@
 Branch: `2-authentication-and-i18n-foundation` (cut from `1-permission-engine-frontend-authorization-setup`,
 because every slice below depends on `IPermissionService` and `[HasPermission]`, which live only on that branch).
 
-Status: **in progress. Slices 5.1, 5.2 and 5.4 are done** — signup, OTP, login, lockout, refresh
-rotation with reuse detection, institution switching, logout and rate limiting all work over HTTP.
-Role levels (A15) are in the schema with the DONOR level and role; their ceilings are 5.5.
-Next: **5.3** (MFA step-up), then 5.5. 5.6, 5.7 and 5.9 are untouched; eleven 5.8 tests are done.
-**213 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
-Last updated 2026-09-27. Update this line and the 5.1 boxes whenever either changes — a fresh
+Status: **in progress. Slices 5.1–5.4 are done** — signup, OTP, login, lockout, refresh
+rotation with reuse detection, institution switching, logout, MFA step-up and rate limiting all work
+over HTTP. Role levels (A15) are in the schema with the DONOR level and role; their ceilings are 5.5.
+Next: **5.5** (RBAC catalogue and role levels; its bootstrap admin waits on Q5). 5.6, 5.7 and 5.9 are
+untouched; twelve 5.8 tests are done.
+**232 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
+Last updated 2026-09-28. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
 
 Delivered so far, with the commit that added it:
@@ -30,6 +31,7 @@ Delivered so far, with the commit that added it:
 | `c59db76` | `IRateLimiter` + `RedisRateLimiter` (fixed window, fails open), `RateLimitKey` (hashed subjects), `RedisWindowCounter` (INCR and expiry in one Lua step). Fixes OtpService's send counter, which could outlive its window and block a phone for good — 8 tests. |
 | `94b1c29` | The four auth endpoints and `GET /api/legal/current`, rate-limited per client and per identity (`AuthRateLimits`); A2 cookies; `{ "code" }` errors; `UseForwardedHeaders` (A18); `LoginName` shared by sign-in and its limit — 14 tests over HTTP. |
 | `f4fabd8` | `SessionHandler`: rotation claimed by a conditional UPDATE, reuse detection with a 10-second grace (A19) whose refusal is `409` and leaves the cookies alone, stamp check, institution re-validated on every refresh; `SecurityStamps.RotateAsync`; `auth.RefreshTokens.SecurityStamp` (new column); session endpoints under `/api/auth/session` with CSRF (A2 amended) — 14 tests over HTTP. |
+| `7c79832` | MFA step-up: `StepUpHandler` (code to the account's own confirmed phone, purpose `stepup`), `RedisStepUpGrants` (`stepup:{userId}:{jti}`, 15 min, fails closed), `PermissionAuthorizationHandler` refuses `RequiresMfa` without a grant, `StepUpAuthorizationResultHandler` answers `403 stepup_required`; A20 — 9 tests over HTTP, 7 handler unit tests. |
 
 All of the above is reachable over HTTP.
 
@@ -280,7 +282,8 @@ log) is one method. Note the weakness in the report instead of hiding it.
 
 Keys as built (`c59db76`): `rl:{rule}:{first 128 bits of SHA-256 of the subject}`, one rule per
 line of `AuthRateLimits` — `login-name`, `login-client`, `otp-request-client`, `otp-verify-phone`,
-`otp-verify-client`, `signup-client`, and `refresh-client` (5.2). The subject is hashed so a
+`otp-verify-client`, `signup-client`, and `refresh-client` (5.2); step-up (5.3) shares the two
+OTP client budgets. The subject is hashed so a
 typed login cannot make a key of any size, and phone numbers and emails are not readable in
 `KEYS rl:*`. The counter and its expiry are set in one Lua step: INCR-then-EXPIRE leaves a counter
 that never expires if the process dies between them.
@@ -447,6 +450,28 @@ Rotation itself is claimed by a conditional `UPDATE … WHERE Id = @id AND Revok
 than `UPDLOCK, ROWLOCK` as 5.2 first said. The guarantee is the same - of any number of requests with
 one token, exactly one finds it unrevoked - and it keeps the SQL Server hint out of Application (A16).
 
+
+### A20 — A step-up lasts until its access token is refreshed: fifteen minutes at most *(decided 2026-09-28)*
+
+5.3's last box asked that step-up be "once per session, not once per action". The second half holds:
+one step-up covers every `RequiresMfa` action while it lasts. The first half cannot, beside A5. The
+grant is bound to the access token's `jti` so that a refreshed token does not inherit it, and access
+tokens live fifteen minutes - so a step-up lasts until the next refresh, less than fifteen minutes if
+it was taken late in the token's life. A5's reason wins: whoever refreshes a stolen refresh token must
+not come out holding a stepped-up token. The cost, for the report, is one more SMS for every fifteen
+minutes of sensitive work. The client softens it (5.7): with under five minutes left on its access
+token, it refreshes before asking for a code, so the step-up buys nearly its full window.
+
+`MfaRequired` is not read in 5.3. The rule sits on the permission - CLAUDE.md: `RequiresMfa`
+permissions need step-up, whoever holds them - and platform staff and owners are covered because they
+hold those permissions. The column becomes "must enrol an MFA method" when TOTP (A6) arrives.
+
+Two edges, both tested: a suspended account's access token still works until it expires (A2), but
+it cannot step up, so nothing sensitive is reachable with it; and a grant is looked up only for a
+`RequiresMfa` permission, so ordinary requests cost no extra Redis call. The grant store fails
+closed, the reverse of the rate limiter: an outage refuses sensitive actions rather than letting
+them through unverified.
+
 ---
 
 ## 3. Open questions
@@ -562,12 +587,18 @@ oracle, and it is exactly the kind of thing an examiner asks about.
 
 ### 5.3 — MFA step-up
 
-- [ ] `POST /api/auth/stepup/request` and `/verify` — reuse §5.1's OTP with `purpose = stepup`.
-- [ ] On success, `SET stepup:{userId}:{jti}` with a 15-min TTL, and `MfaUsed = 1` in `auth.LoginHistory`.
-- [ ] Extend `PermissionAuthorizationHandler`: `RequiresMfa(code)` and no step-up key means fail.
-      Keep the existing shape — return without `Succeed`, do not call `Fail()`.
-- [ ] `MfaRequired = 1` users (platform staff, institution owners) step up once per session before
-      anything sensitive, not once per action.
+- [x] `POST /api/auth/stepup/request` and `/verify` (`7c79832`) — Bearer-authenticated, not
+      permission-gated (a permission to step up would be circular). The code goes to the account's
+      own confirmed phone with `purpose = stepup`, never to a number in the request; no confirmed
+      phone is `409 no_verified_phone`, an inactive account `403 account_not_active`.
+- [x] On success, `SET stepup:{userId}:{jti}` with a 15-min TTL, and a `LoginHistory` row with
+      `Succeeded = 1, MfaUsed = 1`, written before the grant so no grant exists without its row. A
+      grant that fails to store is `503`, not `204`.
+- [x] `PermissionAuthorizationHandler`: `RequiresMfa(code)` and no grant for this token means refuse.
+      No `Fail()`: the refusal is marked, and `StepUpAuthorizationResultHandler` answers it with
+      `403 stepup_required`. A permission not held is a plain `403` - step-up could not lift it.
+- [x] Once per grant, not once per action — **amended by A20**: the grant ends with its access token,
+      so "session" is at most fifteen minutes. `MfaRequired` is not read yet (A20).
 
 ### 5.4 — Rate limiting
 
@@ -621,6 +652,8 @@ oracle, and it is exactly the kind of thing an examiner asks about.
       refreshes once on `401` and retries, queueing concurrent calls so a page with five requests does
       not fire five refreshes. A refresh answered `409 session_superseded` means another tab rotated
       first: retry the refresh once with the cookie the browser now holds (A19); `401` means sign in.
+      A `403 stepup_required` opens the step-up dialog, then retries the request; with under five
+      minutes left on the access token, refresh before asking for the code (A20).
 - [ ] `next.config.ts` rewrites per A3.
 - [ ] Faith-neutral imagery only. No religious symbol on a shared screen.
 
@@ -643,7 +676,8 @@ Integration (`Sethika.Api.IntegrationTests`), against real SQL Server and Redis:
       (`JwtTokenServiceEndpointTests`, with a 14-minute-old token accepted as the control)
 - [ ] `sethika:platform` cannot be forged via header, query or body (extends the existing test)
 - [x] `switch-institution` to an institution the user holds no role in gives 403, and no token is issued
-- [ ] a `RequiresMfa` permission gives 403 before step-up, 200 after, and 403 again once the TTL expires
+- [x] a `RequiresMfa` permission gives 403 before step-up, 200 after, and 403 again once the TTL expires
+      (`StepUpEndpointsTests`, with the TTL itself asserted at fifteen minutes)
 - [ ] OTP: a wrong code five times burns it; a fourth send within the hour gives 429
 - [x] two parallel refreshes with the same token — exactly one succeeds
 - [x] signup writes exactly one outbox row, and rolls back all five tables when any part fails
