@@ -1,6 +1,6 @@
 /* Every role sits at a level (plan A15). Rank orders seniority - 1 is the most senior - and a role
    may only be managed by someone of strictly more senior rank. The ceiling, the permissions any role
-   at a level may hold, arrives with the RBAC catalogue as auth.RoleLevelPermissions.
+   at a level may hold, is auth.RoleLevelPermissions.
    Platform-defined reference data: seeded by MERGE, never created by institutions. */
 CREATE TABLE auth.RoleLevels (
     Id       TINYINT       NOT NULL PRIMARY KEY,

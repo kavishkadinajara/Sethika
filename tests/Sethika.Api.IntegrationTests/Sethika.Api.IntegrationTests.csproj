@@ -24,6 +24,8 @@
   <ItemGroup>
     <!-- Seed for the Row-Level Security tests; read back out of the assembly at run time. -->
     <EmbeddedResource Include="Persistence\RlsTestData.sql" />
+    <!-- The shipped catalogue seed itself, so its idempotency and its guards are tested on the real script. -->
+    <EmbeddedResource Include="..\..\src\Sethika.Database\Scripts\Seed\10_RbacCatalogue.sql" Link="Persistence\10_RbacCatalogue.sql" />
   </ItemGroup>
 
 </Project>

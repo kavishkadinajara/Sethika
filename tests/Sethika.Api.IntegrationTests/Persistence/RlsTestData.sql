@@ -1,10 +1,9 @@
 /*  Fixture for the persistence and permission tests.
 
     Two tenants, each with one booking, so a query as tenant A can be checked for tenant B's
-    row. Plus a minimal RBAC catalogue - one module, one screen, two permissions, one
-    institution role - because auth.Modules/Screens/Permissions ship empty: CLAUDE.md has
-    them growing with each screen that is actually built, so the catalogue is fixture data
-    here and deliberately NOT in Scripts/PostDeployment.sql.
+    row. Plus one institution role over the seeded BOOKINGS permissions. The RBAC catalogue,
+    the ceilings and the template roles are reference data from the dacpac
+    (Scripts/Seed/10_RbacCatalogue.sql), so the fixture uses them and never deletes them.
 
     Runs on a connection stamped IsPlatform = 1, because the RLS BLOCK predicates would
     otherwise refuse the cross-tenant inserts.
@@ -45,7 +44,9 @@ DELETE FROM auth.RefreshTokens;
 DELETE FROM auth.LoginHistory;
 DELETE FROM auth.UserRoles;
 DELETE FROM auth.UserRolesHistory;
-DELETE FROM auth.RolePermissions;
+DELETE rp FROM auth.RolePermissions rp
+JOIN auth.Roles r ON r.Id = rp.RoleId
+WHERE r.IsSystem = 0;                        -- template grants are reference data from the dacpac
 DELETE FROM auth.RolePermissionsHistory;
 DELETE FROM auth.UserPermissionOverrides;
 DELETE FROM auth.UserPermissionOverridesHistory;
@@ -56,9 +57,6 @@ DELETE FROM org.InstitutionModulesHistory;
 DELETE FROM booking.Bookings;
 DELETE FROM booking.SlotInstances;
 DELETE FROM booking.MealSlots;
-DELETE FROM auth.Permissions;
-DELETE FROM auth.Screens;
-DELETE FROM auth.Modules;
 DELETE FROM org.Institutions;
 DELETE FROM org.RegistrationRequests;
 DELETE FROM auth.Users WHERE Id IN (@alphaUser, @betaUser);
@@ -117,25 +115,12 @@ SELECT CASE WHEN si.InstitutionId = @alphaId THEN 'BK-ALPHA' ELSE 'BK-BETA' END,
        CASE WHEN si.InstitutionId = @alphaId THEN @alphaUser ELSE @betaUser END
 FROM booking.SlotInstances si;
 
-/* ---------------------------- RBAC catalogue ---------------------------- */
+/* ---------------------------- RBAC ---------------------------- */
 
-DECLARE @portalId TINYINT = (SELECT Id FROM auth.Portals WHERE Code = 'INSTITUTION');
-
-INSERT auth.Modules (PortalId, Code, Name) VALUES (@portalId, 'BOOKINGS', N'Bookings');
-DECLARE @moduleId SMALLINT = CAST(SCOPE_IDENTITY() AS SMALLINT);
-
-INSERT auth.Screens (ModuleId, Code, Name, Route)
-VALUES (@moduleId, 'BOOKINGS.CALENDAR', N'Booking calendar', '/bookings/calendar');
-DECLARE @screenId SMALLINT = CAST(SCOPE_IDENTITY() AS SMALLINT);
-
-/*  APPROVE is marked RequiresMfa so the step-up path has something real to read. Holding a
-    permission and being allowed to exercise it right now are different questions.        */
-INSERT auth.Permissions (Code, ScreenId, ActionId, Scope, Name, RequiresMfa)
-SELECT 'BOOKINGS.CALENDAR.VIEW', @screenId, a.Id, 'Institution', N'View booking calendar', 0
-FROM auth.PermissionActions a WHERE a.Code = 'VIEW'
-UNION ALL
-SELECT 'BOOKINGS.CALENDAR.APPROVE', @screenId, a.Id, 'Institution', N'Approve bookings', 1
-FROM auth.PermissionActions a WHERE a.Code = 'APPROVE';
+/*  The seeded BOOKINGS permissions: VIEW, and APPROVE, which the catalogue marks RequiresMfa so
+    the step-up path has something real to read. The steward sits at STAFF, whose ceiling holds
+    both - a role outside its level's ceiling would grant nothing (plan A15).               */
+DECLARE @moduleId SMALLINT = (SELECT Id FROM auth.Modules WHERE Code = 'BOOKINGS');
 
 INSERT auth.Roles (InstitutionId, Scope, RoleLevelId, Code, Name, IsTemplate)
 VALUES (@alphaId, 'Institution', (SELECT Id FROM auth.RoleLevels WHERE Code = 'STAFF'),
