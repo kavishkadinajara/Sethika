@@ -8,8 +8,9 @@ lockout, refresh rotation with reuse detection, institution switching, logout, M
 limiting, the RBAC catalogue with level ceilings, the `bootstrap` command, and custom roles with rank
 anti-escalation, all over HTTP. **5.6's web half is done** (next-intl routing via `proxy.ts`,
 `messages/{en,si,ta}.json`, fonts, brand theme; `730bd06`); its two backend boxes (`PUT
-/api/me/language`, OTP templates per language) are still open. Next: **5.7** from its second box
-(primitives, auth screens, `lib/auth/`, rewrites). Three 5.8 boxes stay open: the platform-claim forgery test, the OTP burn-and-429 test
+/api/me/language`, OTP templates per language) are still open. **5.7's primitives are done**
+(`components/ui`, `/design` review page; `4309393`). Next: **5.7** from its third box (auth screens,
+`lib/auth/`, rewrites). Three 5.8 boxes stay open: the platform-claim forgery test, the OTP burn-and-429 test
 over HTTP, and password change (no endpoint yet).
 **267 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
 Last updated 2026-10-01. Update this line and the 5.1 boxes whenever either changes — a fresh
@@ -39,6 +40,7 @@ Delivered so far, with the commit that added it:
 | `1739db6` | `bootstrap` (Q5): `BootstrapPlatformAdminHandler` + `BootstrapCommand`, `PLATFORM_ADMIN` system role in `08_SystemRoles.sql` — 10 tests, and the real `dotnet run -- bootstrap` smoke-tested. |
 | `2a3208a` | Custom roles (5.9): `RoleManagementHandler` (create, set permissions, assign, revoke - rank, ceiling and holding checked in the transaction against the view), `RoleLevelQueries` (Dapper), `/api/institution/role-levels` and `/roles…` endpoints; read-only EF mappings for the catalogue, ceilings and the view — 16 tests over HTTP. |
 | `730bd06` | Web i18n and design tokens (5.6 web half, 5.7 first box): `next-intl` 4.14 with `proxy.ts`, routes under `app/[locale]/`, `messages/{en,si,ta}.json` typed against `en.json`, `docs/translations-to-review.md`, `lib/fonts.ts` (Outfit, Fraunces italic, Noto Sans Sinhala/Tamil), the brand tokens as the Tailwind 4 theme, a placeholder `/login`. `npm run lint` and `npm run build` clean. |
+| `4309393` | UI primitives (5.7, second box): `components/ui` — `Button`, `Input`, `Field`, `Label`, `Card`, `Sheet`, `Toast` (+ `useToast`, `Toaster` in the root layout), `Spinner`, `OtpInput`, `LanguageSwitcher` — on Radix via shadcn/ui conventions (`components.json`, `lib/utils.ts`), semantic colour tokens with measured contrast in `globals.css`, and a noindex `/[locale]/design` page showing every state. Packages: `radix-ui`, `class-variance-authority`, `clsx`, `tailwind-merge`. Checked in Chromium at 320px in en/si/ta: no horizontal overflow, no clipped text, every control ≥ 44px. |
 
 All of the above is reachable over HTTP.
 
@@ -105,8 +107,8 @@ was nothing to compare. `auth.RefreshTokens.SecurityStamp` was added for it.
 `web/` is a bare Next.js 16 + React 19 + Tailwind 4 app plus the permission plumbing
 (`lib/permissions/*`, `components/permissions/*`). Since `730bd06`: next-intl routing (`proxy.ts`,
 `i18n/`, `app/[locale]/`), `messages/{en,si,ta}.json`, fonts in `lib/fonts.ts`, and the brand tokens in
-`app/globals.css` as the Tailwind theme. **No auth pages yet (`/login` is a placeholder), no component
-library.**
+`app/globals.css` as the Tailwind theme. Since `4309393`: the primitives in `components/ui` and the
+`/design` review page. **No auth pages yet (`/login` is a placeholder).**
 
 ### Tests
 
@@ -681,9 +683,11 @@ Anything that touches reference data in a test runs in a rolled-back transaction
 
 - [x] `next/font` for Outfit, Fraunces and Noto Sans Sinhala/Tamil; the brand tokens already in
       `globals.css` become the Tailwind theme.
-- [ ] Primitives on shadcn/ui, restyled to the Sethika palette — not default shadcn, which is the whole
+- [x] Primitives on shadcn/ui, restyled to the Sethika palette — not default shadcn, which is the whole
       point of "unique UI": `Button`, `Input`, `Field`, `Label`, `Card`, `Sheet`, `Toast`, `Spinner`,
-      `OtpInput`, `LanguageSwitcher`.
+      `OtpInput`, `LanguageSwitcher`. All in `components/ui`; review them at `/design`, `/si/design`,
+      `/ta/design`. Toast is Radix Toast and `OtpInput` is hand-written, so `sonner` and `input-otp`
+      are not dependencies.
 - [ ] Screens: `/signup` (phone → OTP → details → consent), `/login`, `/login/otp`, `/stepup`,
       `/select-institution`.
 - [ ] `lib/auth/` — access token in memory (A2), silent refresh at boot, one fetch wrapper that
