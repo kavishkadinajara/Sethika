@@ -3,6 +3,7 @@ import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { SessionBoot } from "@/components/auth/SessionBoot";
+import { StepUpHost } from "@/components/auth/StepUpHost";
 import { PermissionProvider } from "@/components/permissions/PermissionProvider";
 import { themeColors } from "@/components/theme/theme";
 import { ThemeScript } from "@/components/theme/theme-script";
@@ -57,6 +58,7 @@ export default async function LocaleLayout({ children, params }: LayoutProps<"/[
         <NextIntlClientProvider messages={pickMessages(messages, sharedClientNamespaces)}>
           <Toaster>
             <SessionBoot />
+            <StepUpHost />
             <PermissionProvider>{children}</PermissionProvider>
           </Toaster>
         </NextIntlClientProvider>

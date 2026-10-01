@@ -295,6 +295,23 @@ describe("403 stepup_required (A20)", () => {
   });
 });
 
+describe("starting from login or signup", () => {
+  it("adopts the session body and skips the boot refresh", async () => {
+    const h = harness();
+    h.serve(() => json(500, {}));
+
+    await h.client.establish(sessionBody("token-from-login", h.clock.now));
+    await h.client.start();
+
+    expect(h.client.getState()).toMatchObject({
+      status: "authenticated",
+      accessToken: "token-from-login",
+      activeInstitution: "kandy-elders-home",
+    });
+    expect(h.calls).toEqual([]);
+  });
+});
+
 describe("logout and switching institution", () => {
   it("logout posts with the CSRF header and ends the local session", async () => {
     const h = harness();

@@ -293,8 +293,19 @@ export function createSessionClient(options: SessionClientOptions) {
     return { ok: false, reason: "unavailable" };
   }
 
+  /**
+   * Takes over a session that login or signup just started: their 200/201 body is the same
+   * SessionResponse a refresh returns, and the refresh cookie came with it. Marks the boot as
+   * done, so a later start() does not spend a refresh on a session it already holds.
+   */
+  async function establish(response: Response): Promise<void> {
+    started = true;
+    await adopt(response);
+  }
+
   return {
     start,
+    establish,
     fetch: apiFetch,
     refresh,
     logout,

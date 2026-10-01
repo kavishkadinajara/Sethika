@@ -35,6 +35,14 @@ Questions for the reviewers:
 8. **Theme names** (`ThemeSwitcher.*`): "Auto" means "follow the phone's light/dark setting".
    Sinhala `ස්වයංක්‍රීය` and Tamil `தானியங்கி` say "automatic"; check that a reader understands
    it as "same as my phone". `தீம்` and `තේමාව` for "Theme" are loanword choices; confirm.
+9. **Auth screens** (`Login.*`, `Signup.*`, `StepUp.*`, `SelectInstitution.*`, `Session.*`,
+   `Errors.*`, `Password.*`): these are the first words most donors read. Check especially that
+   - the password rules say "English letter" (`ඉංග්‍රීසි අකුරක්`, `ஆங்கில எழுத்து`) on purpose: the API
+     counts only letters with upper and lower case, so Sinhala or Tamil letters do not satisfy
+     "uppercase" or "lowercase";
+   - "sign in" / "sign out" (`පුරනය වන්න` / `ඉවත් වන්න`, `உள்நுழைக` / `வெளியேறு`) match what
+     donors see in other Sri Lankan apps;
+   - the plural forms in `Errors.otp_incorrect` read naturally for 1 and for 2-4 attempts left.
 
 | Key | English (source) | Sinhala (draft) | Tamil (draft) | Reviewer | Status |
 |---|---|---|---|---|---|
@@ -58,11 +66,22 @@ Questions for the reviewers:
 | `PermissionDebug.signedOutNote` | The web app does not issue an access token yet (the sign-in screens arrive with slice 5.7), so it renders signed out and every gate is closed. | වෙබ් යෙදුම තවම ප්‍රවේශ ටෝකනයක් නිකුත් නොකරයි (පුරනය වීමේ තිර 5.7 කොටස සමඟ පැමිණේ). එබැවින් එය පුරනය නොවූ ලෙස දිස්වන අතර සියලු දොරටු වසා ඇත. | இணையப் பயன்பாடு இன்னும் அணுகல் டோக்கனை வழங்கவில்லை (உள்நுழைவுத் திரைகள் 5.7 பகுதியுடன் வரும்). எனவே அது வெளியேறிய நிலையில் காட்டப்படுகிறது, அனைத்து வாயில்களும் மூடப்பட்டுள்ளன. | | |
 | `Login.title` | Sign in | පුරනය වන්න | உள்நுழைக | | |
 | `Login.comingSoon` | Signing in will be available soon. | පුරනය වීම ඉක්මනින් ලබා ගත හැකි වේ. | உள்நுழைவு விரைவில் கிடைக்கும். | | |
+| `Login.subtitle` | Welcome back. | නැවත සාදරයෙන් පිළිගනිමු. | மீண்டும் வருக. | | |
+| `Login.loginLabel` | Phone number or email | දුරකථන අංකය හෝ විද්‍යුත් තැපෑල | தொலைபேசி எண் அல்லது மின்னஞ்சல் | | |
+| `Login.loginHelp` | The mobile number or email you signed up with. | ඔබ ලියාපදිංචි වූ ජංගම අංකය හෝ විද්‍යුත් තැපෑල. | நீங்கள் பதிவுசெய்த கைபேசி எண் அல்லது மின்னஞ்சல். | | |
+| `Login.loginRequired` | Enter your phone number or email. | ඔබගේ දුරකථන අංකය හෝ විද්‍යුත් තැපෑල ඇතුළත් කරන්න. | உங்கள் தொலைபேசி எண் அல்லது மின்னஞ்சலை உள்ளிடுங்கள். | | |
+| `Login.passwordLabel` | Password | මුරපදය | கடவுச்சொல் | | |
+| `Login.passwordRequired` | Enter your password. | ඔබගේ මුරපදය ඇතුළත් කරන්න. | உங்கள் கடவுச்சொல்லை உள்ளிடுங்கள். | | |
+| `Login.submit` | Sign in | පුරනය වන්න | உள்நுழைக | | |
+| `Login.noAccount` | New to Sethika? | Sethika වෙත අලුත්ද? | Sethika-வுக்குப் புதியவரா? | | |
+| `Login.createAccount` | Create an account | ගිණුමක් සාදන්න | கணக்கை உருவாக்குங்கள் | | |
 | `NotFound.title` | Page not found | පිටුව හමු නොවීය | பக்கம் கிடைக்கவில்லை | | |
 | `NotFound.home` | Go to the home page | මුල් පිටුවට යන්න | முகப்புப் பக்கத்திற்குச் செல்லவும் | | |
 | `Common.close` | Close | වසන්න | மூடு | | |
 | `Common.loading` | Loading | පූරණය වෙමින් | ஏற்றப்படுகிறது | | |
 | `Common.required` | required | අනිවාර්යයි | கட்டாயம் | | |
+| `Common.showPassword` | Show password | මුරපදය පෙන්වන්න | கடவுச்சொல்லைக் காட்டு | | |
+| `Common.hidePassword` | Hide password | මුරපදය සඟවන්න | கடவுச்சொல்லை மறை | | |
 | `Toast.region` | Notifications ({hotkey}) | දැනුම්දීම් ({hotkey}) | அறிவிப்புகள் ({hotkey}) | | |
 | `Toast.item` | Notification | දැනුම්දීම | அறிவிப்பு | | |
 | `LanguageSwitcher.label` | Language | භාෂාව | மொழி | | |
@@ -135,3 +154,107 @@ Questions for the reviewers:
 | `Design.sample.errorTitle` | Could not send the code | කේතය යැවිය නොහැකි විය | குறியீட்டை அனுப்ப முடியவில்லை | | |
 | `Design.sample.errorBody` | Check the number and try again in a minute. | අංකය පරීක්ෂා කර විනාඩියකින් නැවත උත්සාහ කරන්න. | எண்ணைச் சரிபார்த்து ஒரு நிமிடத்தில் மீண்டும் முயலுங்கள். | | |
 | `Design.sample.onEstate` | On Estate Green | Estate Green මත | Estate Green மீது | | |
+| `AuthShell.home` | Sethika home | Sethika මුල් පිටුව | Sethika முகப்பு | | |
+| `Errors.network` | Can't reach Sethika right now. Check your connection and try again. | දැන් Sethika වෙත සම්බන්ධ විය නොහැක. ඔබගේ සම්බන්ධතාව පරීක්ෂා කර නැවත උත්සාහ කරන්න. | இப்போது Sethika-வை அணுக முடியவில்லை. உங்கள் இணைப்பைச் சரிபார்த்து மீண்டும் முயலுங்கள். | | |
+| `Errors.unexpected` | Something went wrong. Please try again. | යමක් වැරදුණා. කරුණාකර නැවත උත්සාහ කරන්න. | ஏதோ தவறு நடந்தது. மீண்டும் முயலுங்கள். | | |
+| `Errors.tooManyRequests` | Too many tries. Please wait {time} and try again. | උත්සාහයන් වැඩියි. කරුණාකර {time} ක් රැඳී සිට නැවත උත්සාහ කරන්න. | அதிகமான முயற்சிகள். {time} காத்திருந்து மீண்டும் முயலுங்கள். | | |
+| `Errors.tooManyRequestsNoTime` | Too many tries. Please wait a minute and try again. | උත්සාහයන් වැඩියි. කරුණාකර විනාඩියක් රැඳී සිට නැවත උත්සාහ කරන්න. | அதிகமான முயற்சிகள். ஒரு நிமிடம் காத்திருந்து மீண்டும் முயலுங்கள். | | |
+| `Errors.invalid_phone_number` | Enter a Sri Lankan mobile number, for example 077 123 4567. | ශ්‍රී ලංකා ජංගම දුරකථන අංකයක් ඇතුළත් කරන්න, උදාහරණයක් ලෙස 077 123 4567. | இலங்கைக் கைபேசி எண்ணை உள்ளிடுங்கள், எடுத்துக்காட்டாக 077 123 4567. | | |
+| `Errors.invalid_full_name` | Enter your name (up to 150 characters). | ඔබගේ නම ඇතුළත් කරන්න (අකුරු 150 දක්වා). | உங்கள் பெயரை உள்ளிடுங்கள் (150 எழுத்துகள் வரை). | | |
+| `Errors.invalid_email` | Enter a valid email address, or leave it empty. | වලංගු විද්‍යුත් තැපැල් ලිපිනයක් ඇතුළත් කරන්න, නැතහොත් හිස්ව තබන්න. | சரியான மின்னஞ்சல் முகவரியை உள்ளிடுங்கள், அல்லது காலியாக விடுங்கள். | | |
+| `Errors.password_rejected` | Please choose a stronger password. | කරුණාකර වඩා ශක්තිමත් මුරපදයක් තෝරන්න. | இன்னும் வலுவான கடவுச்சொல்லைத் தேர்ந்தெடுங்கள். | | |
+| `Errors.consent_missing` | Please accept both documents to continue. | ඉදිරියට යාමට ලේඛන දෙකම පිළිගන්න. | தொடர இரண்டு ஆவணங்களையும் ஏற்றுக்கொள்ளுங்கள். | | |
+| `Errors.phone_not_verified` | Your phone verification has expired. Please verify your number again. | ඔබගේ දුරකථන තහවුරු කිරීම කල් ඉකුත් වී ඇත. කරුණාකර ඔබගේ අංකය නැවත තහවුරු කරන්න. | உங்கள் தொலைபேசி உறுதிப்படுத்தல் காலாவதியாகிவிட்டது. உங்கள் எண்ணை மீண்டும் உறுதிப்படுத்துங்கள். | | |
+| `Errors.already_registered` | An account already uses this phone number or email. | මෙම දුරකථන අංකය හෝ විද්‍යුත් තැපෑල දැනටමත් ගිණුමක භාවිත වේ. | இந்தத் தொலைபேசி எண் அல்லது மின்னஞ்சல் ஏற்கனவே ஒரு கணக்கில் பயன்படுத்தப்படுகிறது. | | |
+| `Errors.verification_unavailable` | We can't send or check codes right now. Please try again shortly. | දැනට කේත යැවීමට හෝ පරීක්ෂා කිරීමට නොහැක. කරුණාකර මඳ වේලාවකින් නැවත උත්සාහ කරන්න. | இப்போது குறியீடுகளை அனுப்பவோ சரிபார்க்கவோ முடியவில்லை. சிறிது நேரத்தில் மீண்டும் முயலுங்கள். | | |
+| `Errors.invalid_credentials` | That phone number, email or password is not right. | එම දුරකථන අංකය, විද්‍යුත් තැපෑල හෝ මුරපදය නිවැරදි නැත. | அந்தத் தொலைபேசி எண், மின்னஞ்சல் அல்லது கடவுச்சொல் சரியானது அல்ல. | | |
+| `Errors.account_not_active` | This account is not active. Please contact Sethika support. | මෙම ගිණුම සක්‍රිය නැත. කරුණාකර Sethika සහාය අමතන්න. | இந்தக் கணக்கு செயலில் இல்லை. Sethika உதவிக் குழுவைத் தொடர்புகொள்ளுங்கள். | | |
+| `Errors.otp_incorrect` | That code is not right. {count, plural, one {# try left} other {# tries left}}. | එම කේතය නිවැරදි නැත. {count, plural, one {තවත් එක් උත්සාහයක් ඉතිරියි} other {තවත් උත්සාහයන් #ක් ඉතිරියි}}. | அந்தக் குறியீடு சரியானது அல்ல. {count, plural, one {இன்னும் ஒரு முயற்சி உள்ளது} other {இன்னும் # முயற்சிகள் உள்ளன}}. | | |
+| `Errors.otp_not_found` | This code has expired. Send a new one. | මෙම කේතය කල් ඉකුත් වී ඇත. අලුත් කේතයක් යවන්න. | இந்தக் குறியீடு காலாவதியாகிவிட்டது. புதிய குறியீட்டை அனுப்புங்கள். | | |
+| `Errors.otp_attempts_exhausted` | Too many wrong codes. Send a new one. | වැරදි කේත වැඩියි. අලුත් කේතයක් යවන්න. | அதிகமான தவறான குறியீடுகள். புதிய குறியீட்டை அனுப்புங்கள். | | |
+| `Errors.no_verified_phone` | Your account has no confirmed phone number, so we can't send a code. | ඔබගේ ගිණුමේ තහවුරු කළ දුරකථන අංකයක් නැති නිසා අපට කේතයක් යැවිය නොහැක. | உங்கள் கணக்கில் உறுதிப்படுத்தப்பட்ட தொலைபேசி எண் இல்லாததால் குறியீட்டை அனுப்ப முடியாது. | | |
+| `Errors.institution_not_available` | You can no longer act for this institution. | ඔබට තවදුරටත් මෙම ආයතනය වෙනුවෙන් ක්‍රියා කළ නොහැක. | இனி இந்த நிறுவனத்தின் சார்பில் நீங்கள் செயல்பட முடியாது. | | |
+| `Errors.session_expired` | Your session has ended. Please sign in again. | ඔබගේ සැසිය අවසන් වී ඇත. කරුණාකර නැවත පුරනය වන්න. | உங்கள் அமர்வு முடிந்துவிட்டது. மீண்டும் உள்நுழையுங்கள். | | |
+| `Password.title` | Your password needs: | ඔබගේ මුරපදයට අවශ්‍ය වන්නේ: | உங்கள் கடவுச்சொல்லில் இருக்க வேண்டியவை: | | |
+| `Password.met` | Done: | සම්පූර්ණයි: | நிறைவேறியது: | | |
+| `Password.notMet` | Not yet: | තවම නැත: | இன்னும் இல்லை: | | |
+| `Password.TooShort` | At least 6 characters | අවම වශයෙන් අක්ෂර 6ක් | குறைந்தது 6 எழுத்துகள் | | |
+| `Password.TooLong` | No more than 128 characters | අක්ෂර 128කට නොවැඩි | 128 எழுத்துகளுக்கு மேல் இல்லாமல் | | |
+| `Password.MissingUppercase` | An uppercase letter (A–Z) | ලොකු ඉංග්‍රීසි අකුරක් (A–Z) | ஓர் ஆங்கிலப் பெரிய எழுத்து (A–Z) | | |
+| `Password.MissingLowercase` | A lowercase letter (a–z) | කුඩා ඉංග්‍රීසි අකුරක් (a–z) | ஓர் ஆங்கிலச் சிறிய எழுத்து (a–z) | | |
+| `Password.MissingDigit` | A number (0–9) | ඉලක්කමක් (0–9) | ஓர் எண் (0–9) | | |
+| `Password.MissingNonAlphanumeric` | A symbol, such as ! or # | ! හෝ # වැනි සංකේතයක් | ! அல்லது # போன்ற ஒரு குறியீடு | | |
+| `Password.ContainsPersonalData` | Not your name, phone number or email | ඔබගේ නම, දුරකථන අංකය හෝ විද්‍යුත් තැපෑල නොවිය යුතුය | உங்கள் பெயர், தொலைபேசி எண் அல்லது மின்னஞ்சல் இருக்கக்கூடாது | | |
+| `Password.RecentlyUsed` | Not a password you used recently | ඔබ මෑතකදී භාවිත කළ මුරපදයක් නොවිය යුතුය | சமீபத்தில் பயன்படுத்திய கடவுச்சொல்லாக இருக்கக்கூடாது | | |
+| `Signup.title` | Create your account | ගිණුමක් සාදන්න | கணக்கை உருவாக்குங்கள் | | |
+| `Signup.step` | Step {current} of {total} | පියවර {current} / {total} | படி {current} / {total} | | |
+| `Signup.phoneTitle` | Your mobile number | ඔබගේ ජංගම අංකය | உங்கள் கைபேசி எண் | | |
+| `Signup.phoneHelp` | We'll text you a 6-digit code to confirm it's yours. | එය ඔබගේ බව තහවුරු කිරීමට අපි ඉලක්කම් 6ක කේතයක් කෙටි පණිවිඩයකින් එවන්නෙමු. | இது உங்களுடையது என உறுதிப்படுத்த 6 இலக்கக் குறியீட்டைக் குறுஞ்செய்தியில் அனுப்புவோம். | | |
+| `Signup.phoneLabel` | Mobile number | ජංගම දුරකථන අංකය | கைபேசி எண் | | |
+| `Signup.phonePlaceholder` | 07X XXX XXXX | 07X XXX XXXX | 07X XXX XXXX | | |
+| `Signup.phoneRequired` | Enter your mobile number. | ඔබගේ ජංගම දුරකථන අංකය ඇතුළත් කරන්න. | உங்கள் கைபேசி எண்ணை உள்ளிடுங்கள். | | |
+| `Signup.sendCode` | Send code | කේතය යවන්න | குறியீட்டை அனுப்பு | | |
+| `Signup.haveAccount` | Already have an account? | දැනටමත් ගිණුමක් තිබේද? | ஏற்கனவே கணக்கு உள்ளதா? | | |
+| `Signup.signIn` | Sign in | පුරනය වන්න | உள்நுழைக | | |
+| `Signup.codeTitle` | Enter the code | කේතය ඇතුළත් කරන්න | குறியீட்டை உள்ளிடுங்கள் | | |
+| `Signup.codeSentTo` | We sent a code to {phone}. | අපි {phone} වෙත කේතයක් එවූවෙමු. | {phone} எண்ணுக்குக் குறியீட்டை அனுப்பினோம். | | |
+| `Signup.codeLabel` | 6-digit code | ඉලක්කම් 6ක කේතය | 6 இலக்கக் குறியீடு | | |
+| `Signup.codeRequired` | Enter all 6 digits of the code. | කේතයේ ඉලක්කම් 6ම ඇතුළත් කරන්න. | குறியீட்டின் 6 இலக்கங்களையும் உள்ளிடுங்கள். | | |
+| `Signup.verify` | Verify | තහවුරු කරන්න | உறுதிப்படுத்து | | |
+| `Signup.changeNumber` | Change number | අංකය වෙනස් කරන්න | எண்ணை மாற்று | | |
+| `Signup.resend` | Send a new code | අලුත් කේතයක් යවන්න | புதிய குறியீட்டை அனுப்பு | | |
+| `Signup.resendIn` | New code in {time} | {time} කින් අලුත් කේතයක් | {time} இல் புதிய குறியீடு | | |
+| `Signup.detailsTitle` | About you | ඔබ ගැන | உங்களைப் பற்றி | | |
+| `Signup.detailsHelp` | Your number is confirmed. Now your name and a password. | ඔබගේ අංකය තහවුරු විය. දැන් ඔබගේ නම සහ මුරපදයක්. | உங்கள் எண் உறுதிப்படுத்தப்பட்டது. இப்போது உங்கள் பெயரும் ஒரு கடவுச்சொல்லும். | | |
+| `Signup.fullNameLabel` | Full name | සම්පූර්ණ නම | முழுப் பெயர் | | |
+| `Signup.nameRequired` | Enter your name. | ඔබගේ නම ඇතුළත් කරන්න. | உங்கள் பெயரை உள்ளிடுங்கள். | | |
+| `Signup.emailLabel` | Email | විද්‍යුත් තැපෑල | மின்னஞ்சல் | | |
+| `Signup.emailHelp` | Optional. You can sign in with it too. | අනිවාර්ය නැත. එයින්ද පුරනය විය හැක. | விருப்பத்திற்குரியது. அதைக் கொண்டும் உள்நுழையலாம். | | |
+| `Signup.passwordLabel` | Password | මුරපදය | கடவுச்சொல் | | |
+| `Signup.passwordRequired` | Choose a password. | මුරපදයක් තෝරන්න. | ஒரு கடவுச்சொல்லைத் தேர்ந்தெடுங்கள். | | |
+| `Signup.continue` | Continue | ඉදිරියට | தொடர்க | | |
+| `Signup.differentNumber` | Use a different number | වෙනත් අංකයක් භාවිත කරන්න | வேறு எண்ணைப் பயன்படுத்து | | |
+| `Signup.consentTitle` | Before you join | එකතු වීමට පෙර | இணைவதற்கு முன் | | |
+| `Signup.consentHelp` | Please read and accept these. | කරුණාකර මේවා කියවා පිළිගන්න. | இவற்றைப் படித்து ஏற்றுக்கொள்ளுங்கள். | | |
+| `Signup.documentsUnavailable` | We couldn't load the documents. | ලේඛන පූරණය කළ නොහැකි විය. | ஆவணங்களை ஏற்ற முடியவில்லை. | | |
+| `Signup.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயல்க | | |
+| `Signup.readDocument` | Read the {title} | {title} කියවන්න | {title} படிக்க | | |
+| `Signup.version` | Version {version} | අනුවාදය {version} | பதிப்பு {version} | | |
+| `Signup.accept` | I have read and accept the {title} | මම {title} කියවා පිළිගනිමි | {title} படித்து ஏற்றுக்கொள்கிறேன் | | |
+| `Signup.acceptAll` | Please accept every document to continue. | ඉදිරියට යාමට සෑම ලේඛනයක්ම පිළිගන්න. | தொடர ஒவ்வொரு ஆவணத்தையும் ஏற்றுக்கொள்ளுங்கள். | | |
+| `Signup.createAccount` | Create account | ගිණුම සාදන්න | கணக்கை உருவாக்கு | | |
+| `Signup.back` | Back | ආපසු | பின்செல் | | |
+| `Signup.signInInstead` | Sign in instead | ඒ වෙනුවට පුරනය වන්න | அதற்குப் பதிலாக உள்நுழைக | | |
+| `Signup.createdTitle` | Your account is ready | ඔබගේ ගිණුම සූදානම් | உங்கள் கணக்கு தயார் | | |
+| `Signup.createdSignIn` | Please sign in with your new account. | කරුණාකර ඔබගේ නව ගිණුමෙන් පුරනය වන්න. | உங்கள் புதிய கணக்கில் உள்நுழையுங்கள். | | |
+| `StepUp.title` | Confirm it's you | මෙය ඔබ බව තහවුරු කරන්න | இது நீங்கள்தான் என உறுதிப்படுத்துங்கள் | | |
+| `StepUp.description` | This action needs an extra check. We'll text a 6-digit code to the phone number on your account. | මෙම ක්‍රියාවට අමතර පරීක්ෂාවක් අවශ්‍යයි. ඔබගේ ගිණුමේ දුරකථන අංකයට අපි ඉලක්කම් 6ක කේතයක් යවන්නෙමු. | இந்தச் செயலுக்குக் கூடுதல் சரிபார்ப்பு தேவை. உங்கள் கணக்கின் தொலைபேசி எண்ணுக்கு 6 இலக்கக் குறியீட்டை அனுப்புவோம். | | |
+| `StepUp.signInFirst` | Please sign in first. | මුලින්ම පුරනය වන්න. | முதலில் உள்நுழையுங்கள். | | |
+| `StepUp.signIn` | Sign in | පුරනය වන්න | உள்நுழைக | | |
+| `StepUp.sending` | Sending a code… | කේතයක් යවමින්… | குறியீடு அனுப்பப்படுகிறது… | | |
+| `StepUp.sent` | Code sent. It can take a minute to arrive. | කේතය යවන ලදී. එය පැමිණීමට විනාඩියක් පමණ ගත විය හැක. | குறியீடு அனுப்பப்பட்டது. அது வர ஒரு நிமிடம் ஆகலாம். | | |
+| `StepUp.codeLabel` | 6-digit code | ඉලක්කම් 6ක කේතය | 6 இலக்கக் குறியீடு | | |
+| `StepUp.codeRequired` | Enter all 6 digits of the code. | කේතයේ ඉලක්කම් 6ම ඇතුළත් කරන්න. | குறியீட்டின் 6 இலக்கங்களையும் உள்ளிடுங்கள். | | |
+| `StepUp.confirm` | Confirm | තහවුරු කරන්න | உறுதிப்படுத்து | | |
+| `StepUp.resend` | Send a new code | අලුත් කේතයක් යවන්න | புதிய குறியீட்டை அனுப்பு | | |
+| `StepUp.resendIn` | New code in {time} | {time} කින් අලුත් කේතයක් | {time} இல் புதிய குறியீடு | | |
+| `StepUp.cancel` | Cancel | අවලංගු කරන්න | ரத்துசெய் | | |
+| `SelectInstitution.title` | Choose where you're working | ඔබ ක්‍රියා කරන ස්ථානය තෝරන්න | நீங்கள் செயல்படும் இடத்தைத் தேர்ந்தெடுங்கள் | | |
+| `SelectInstitution.description` | You belong to more than one place. Pick the one to act for now; you can switch later. | ඔබ ස්ථාන කිහිපයක සාමාජිකයෙකි. දැන් ක්‍රියා කිරීමට එකක් තෝරන්න; පසුව මාරු කළ හැක. | நீங்கள் ஒன்றுக்கு மேற்பட்ட இடங்களில் உறுப்பினர். இப்போது செயல்பட ஒன்றைத் தேர்ந்தெடுங்கள்; பின்னர் மாற்றலாம். | | |
+| `SelectInstitution.none` | You aren't a member of any institution. You can still sponsor meals as a donor. | ඔබ කිසිදු ආයතනයක සාමාජිකයෙකු නොවේ. පරිත්‍යාගශීලියෙකු ලෙස ඔබට තවමත් ආහාර වේලවලට අනුග්‍රහය දැක්විය හැක. | நீங்கள் எந்த நிறுவனத்திலும் உறுப்பினர் அல்ல. நன்கொடையாளராக உணவுக்கு அனுசரணை வழங்கலாம். | | |
+| `SelectInstitution.signInFirst` | Sign in to choose an institution. | ආයතනයක් තෝරා ගැනීමට මුලින්ම පුරනය වන්න. | நிறுவனத்தைத் தேர்ந்தெடுக்க முதலில் உள்நுழையுங்கள். | | |
+| `SelectInstitution.signIn` | Sign in | පුරනය වන්න | உள்நுழைக | | |
+| `SelectInstitution.current` | Current | වත්මන් | தற்போதையது | | |
+| `SelectInstitution.goHome` | Go to the home page | මුල් පිටුවට යන්න | முகப்புக்குச் செல் | | |
+| `Session.title` | Your session | ඔබගේ සැසිය | உங்கள் அமர்வு | | |
+| `Session.signedOut` | You're not signed in. | ඔබ පුරනය වී නැත. | நீங்கள் உள்நுழையவில்லை. | | |
+| `Session.unavailable` | Can't reach Sethika right now. Please try again later. | දැන් Sethika වෙත සම්බන්ධ විය නොහැක. කරුණාකර පසුව නැවත උත්සාහ කරන්න. | இப்போது Sethika-வை அணுக முடியவில்லை. பின்னர் மீண்டும் முயலுங்கள். | | |
+| `Session.signIn` | Sign in | පුරනය වන්න | உள்நுழைக | | |
+| `Session.signUp` | Create an account | ගිණුමක් සාදන්න | கணக்கை உருவாக்குங்கள் | | |
+| `Session.signedIn` | You're signed in. | ඔබ පුරනය වී ඇත. | நீங்கள் உள்நுழைந்துள்ளீர்கள். | | |
+| `Session.actingFor` | Acting for {name} | {name} වෙනුවෙන් ක්‍රියා කරයි | {name} சார்பில் செயல்படுகிறீர்கள் | | |
+| `Session.switchInstitution` | Switch institution | ආයතනය මාරු කරන්න | நிறுவனத்தை மாற்று | | |
+| `Session.signOut` | Sign out | ඉවත් වන්න | வெளியேறு | | |
+| `Session.signOutEverywhere` | Sign out on all devices | සියලු උපාංගවලින් ඉවත් වන්න | எல்லாச் சாதனங்களிலிருந்தும் வெளியேறு | | |
+| `Session.approved` | Booking approved (demonstration). | වෙන්කිරීම අනුමත විය (නිදර්ශනය). | முன்பதிவு அங்கீகரிக்கப்பட்டது (மாதிரி). | | |
+| `Session.approveFailed` | Could not approve the booking. | වෙන්කිරීම අනුමත කළ නොහැකි විය. | முன்பதிவை அங்கீகரிக்க முடியவில்லை. | | |

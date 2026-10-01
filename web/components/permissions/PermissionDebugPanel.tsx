@@ -33,11 +33,11 @@ export function PermissionDebugPanel() {
 
       <ul className="mt-3 space-y-1">
         {probes.map((code) => (
-          <li key={code} className="flex items-center gap-2">
+          <li key={code} className="flex flex-wrap items-center gap-x-2">
             <span className={can(code) ? "text-brand" : "text-muted/70"}>
               {can(code) ? t("granted") : t("denied")}
             </span>
-            <code className="text-muted">{code}</code>
+            <code className="min-w-0 break-all text-muted">{code}</code>
           </li>
         ))}
       </ul>
