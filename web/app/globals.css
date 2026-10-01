@@ -3,17 +3,42 @@
 /*  Sethika brand theme (branding/ and CLAUDE.md). Faith-neutral by design: no single
     religion's symbolism or colour in shared UI.
 
-    Utilities: bg-estate, text-gold, text-ink, bg-ivory, ... and font-sans / font-tagline.
+    Brand: bg-estate, text-gold, text-ink, bg-ivory. Semantic tokens below are what the
+    primitives in components/ui use. Contrast, measured against Rice Ivory unless noted:
+      ink 13.9:1 · estate 8.4:1 · muted 6.1:1 · danger 6.0:1 · line 3.1:1 (input border)
+      ink on gold 6.9:1 · ivory on estate 8.4:1
+    Gold on ivory is only 2.0:1, so it is never a focus ring or text colour on ivory.
     The font variables come from lib/fonts.ts (next/font), set on <html>.               */
 @theme {
-  /* Estate Green - primary: headings, primary actions, links. */
+  /* Estate Green - primary: headings, primary actions, links, focus rings. */
   --color-estate: #16513d;
-  /* Offering Gold - accent: highlights, secondary actions. */
+  --color-estate-strong: #0f3d2e;
+  /* Offering Gold - accent: highlights, secondary actions (with ink text). */
   --color-gold: #e0a33e;
+  --color-gold-strong: #c98a2a;
   /* Deep Ink - body text. */
   --color-ink: #0e2a21;
   /* Rice Ivory - page background. */
   --color-ivory: #f7f4ec;
+
+  /* Raised surfaces (cards, inputs, sheets) sit a shade lighter than the page. */
+  --color-surface: #fffdf8;
+  /* Quiet fills: disabled inputs, segmented-control tracks. */
+  --color-subtle: #efe9da;
+  /* Decorative borders (cards, dividers). Not used where a boundary must be seen. */
+  --color-hairline: #e2dbc9;
+  /* Interactive boundaries (input borders): 3:1 against ivory and surface. */
+  --color-line: #74877d;
+  /* Secondary text. */
+  --color-muted: #4a6157;
+  --color-danger: #b42318;
+  --color-danger-strong: #8f1c13;
+  --color-danger-soft: #fbeae7;
+  --color-success: #1d6b4f;
+  --color-success-soft: #e5f1ea;
+
+  --shadow-card: 0 1px 0 rgb(14 42 33 / 0.04), 0 10px 30px -14px rgb(14 42 33 / 0.22);
+  --shadow-sheet: 0 -12px 40px -16px rgb(14 42 33 / 0.35);
 
   /* Latin resolves to Outfit; Sinhala and Tamil fall through to Noto (A10). */
   --font-sans:
@@ -23,10 +48,67 @@
   --font-tagline:
     var(--font-fraunces), var(--font-noto-sinhala), var(--font-noto-tamil), ui-serif, Georgia,
     serif;
+
+  --animate-overlay-in: overlay-in 200ms ease-out;
+  --animate-overlay-out: overlay-out 160ms ease-in;
+  --animate-sheet-in-bottom: sheet-in-bottom 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-sheet-out-bottom: sheet-out-bottom 200ms ease-in;
+  --animate-sheet-in-right: sheet-in-right 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-sheet-out-right: sheet-out-right 200ms ease-in;
+  --animate-sheet-in-left: sheet-in-left 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-sheet-out-left: sheet-out-left 200ms ease-in;
+  --animate-toast-in: toast-in 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-toast-out: toast-out 160ms ease-in;
+  --animate-toast-swipe-out: toast-swipe-out 160ms ease-out;
+  --animate-caret: caret 1s steps(2, start) infinite;
+
+  @keyframes overlay-in {
+    from { opacity: 0; }
+  }
+  @keyframes overlay-out {
+    to { opacity: 0; }
+  }
+  @keyframes sheet-in-bottom {
+    from { transform: translateY(100%); }
+  }
+  @keyframes sheet-out-bottom {
+    to { transform: translateY(100%); }
+  }
+  @keyframes sheet-in-right {
+    from { transform: translateX(100%); }
+  }
+  @keyframes sheet-out-right {
+    to { transform: translateX(100%); }
+  }
+  @keyframes sheet-in-left {
+    from { transform: translateX(-100%); }
+  }
+  @keyframes sheet-out-left {
+    to { transform: translateX(-100%); }
+  }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(1rem) scale(0.98); }
+  }
+  @keyframes toast-out {
+    to { opacity: 0; }
+  }
+  @keyframes toast-swipe-out {
+    from { transform: translateX(var(--radix-toast-swipe-end-x)); }
+    to { transform: translateX(calc(100% + 1rem)); }
+  }
+  @keyframes caret {
+    to { visibility: hidden; }
+  }
 }
 
 body {
   background-color: var(--color-ivory);
   color: var(--color-ink);
   font-family: var(--font-sans);
+}
+
+/* Sinhala and Tamil stack vowel signs above and below the base line; give them room. */
+:lang(si) body,
+:lang(ta) body {
+  line-height: 1.65;
 }
