@@ -3,13 +3,14 @@
 Branch: `2-authentication-and-i18n-foundation` (cut from `1-permission-engine-frontend-authorization-setup`,
 because every slice below depends on `IPermissionService` and `[HasPermission]`, which live only on that branch).
 
-Status: **in progress. Slices 5.1–5.5 are done** — signup, OTP, login, lockout, refresh
-rotation with reuse detection, institution switching, logout, MFA step-up and rate limiting work over
-HTTP; the RBAC catalogue, level ceilings and template roles are seeded; the first platform
-administrator is made by `bootstrap`. Next: **5.9** (custom roles API, backend), then the frontend
-slices 5.6 and 5.7. Twelve 5.8 tests are done, and two of 5.9's.
-**251 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
-Last updated 2026-09-28. Update this line and the 5.1 boxes whenever either changes — a fresh
+Status: **in progress. The backend slices are done: 5.1–5.5 and 5.9** — signup, OTP, login,
+lockout, refresh rotation with reuse detection, institution switching, logout, MFA step-up, rate
+limiting, the RBAC catalogue with level ceilings, the `bootstrap` command, and custom roles with rank
+anti-escalation, all over HTTP. Next: the frontend, **5.6** (i18n) then **5.7** (design system and
+auth screens). Three 5.8 boxes stay open: the platform-claim forgery test, the OTP burn-and-429 test
+over HTTP, and password change (no endpoint yet).
+**267 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
+Last updated 2026-10-01. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
 
 Delivered so far, with the commit that added it:
@@ -34,6 +35,7 @@ Delivered so far, with the commit that added it:
 | `7c79832` | MFA step-up: `StepUpHandler` (code to the account's own confirmed phone, purpose `stepup`), `RedisStepUpGrants` (`stepup:{userId}:{jti}`, 15 min, fails closed), `PermissionAuthorizationHandler` refuses `RequiresMfa` without a grant, `StepUpAuthorizationResultHandler` answers `403 stepup_required`; A20 — 9 tests over HTTP, 7 handler unit tests. |
 | `92b6187` | Level ceilings: `auth.RoleLevelPermissions` (+ history, temporal) with composite FKs and `CK_RoleLevelPermissions_Scope`, the ceiling in `vw_EffectivePermissions`; `10_RbacCatalogue.sql` (3 modules, 4 screens, 9 permissions, 6 dependencies, ceilings, OWNER/MANAGER/STAFF templates), guarded by THROW on any unknown code; the fixture uses the seeded catalogue — 9 tests. |
 | `1739db6` | `bootstrap` (Q5): `BootstrapPlatformAdminHandler` + `BootstrapCommand`, `PLATFORM_ADMIN` system role in `08_SystemRoles.sql` — 10 tests, and the real `dotnet run -- bootstrap` smoke-tested. |
+| `2a3208a` | Custom roles (5.9): `RoleManagementHandler` (create, set permissions, assign, revoke - rank, ceiling and holding checked in the transaction against the view), `RoleLevelQueries` (Dapper), `/api/institution/role-levels` and `/roles…` endpoints; read-only EF mappings for the catalogue, ceilings and the view — 16 tests over HTTP. |
 
 All of the above is reachable over HTTP.
 
@@ -725,24 +727,33 @@ red. Two vacuous-test incidents on this project were caught that way; assume not
 
 Backend only; the role-management screens come with week 2's screens.
 
-- [ ] `GET /api/institution/role-levels` — the levels below the caller's rank, each with its ceiling
-      intersected with the caller's own effective permissions: exactly what the caller may grant.
-- [ ] `POST /api/institution/roles` — create a role at a level with a set of permissions.
-      `PUT /api/institution/roles/{code}/permissions`, `POST` / `DELETE` assignments.
-      Each carries `[HasPermission]` (`ACCESS.ROLES.CREATE` / `ACCESS.ROLES.EDIT` for roles,
-      `ACCESS.MEMBERS.EDIT` for assignments), and both EDITs are `RequiresMfa`. **Amended in 5.5:**
-      the plan said `ASSIGN`, which is not one of the ten actions; assignment is an EDIT on the
-      members screen.
-- [ ] The three A15 rules checked inside the transaction, against rows read in it — rank strictly
-      more junior, permission inside the ceiling, permission held by the actor — each refusal a `403`
-      with a reason code, never a silent drop of the offending permission.
-- [ ] Every change bumps `Institutions.PermissionsVersion` (role edits) or `Users.PermissionsVersion`
-      (assignments) in the same transaction, and writes an outbox `RolePermissionsChanged` row.
-- [ ] Tests, against real SQL: a Manager cannot create a Manager or Owner role; cannot grant a
-      permission outside the level's ceiling, nor one they do not hold; cannot assign themselves
-      anything; a `RolePermissions` row inserted outside the ceiling by hand is not in
-      `vw_EffectivePermissions`; narrowing a ceiling removes the permission from users at once.
-      **The last two are done** (`RbacCatalogueTests`, `92b6187`); the API tests remain.
+- [x] `GET /api/institution/role-levels` (`2a3208a`) — the levels strictly below the caller's rank, each
+      with its ceiling intersected with the caller's own effective permissions. A Dapper read; the
+      commands check again in their transactions, so a stale editor cannot grant more than it showed.
+- [x] `POST /api/institution/roles`, `PUT /api/institution/roles/{code}/permissions`,
+      `POST /api/institution/roles/{code}/members` and `DELETE …/members/{user}`, under
+      `ACCESS.ROLES.CREATE`, `ACCESS.ROLES.EDIT` and `ACCESS.MEMBERS.EDIT` - both EDITs `RequiresMfa`.
+      Every one acts for the institution in the token, never one in the request. Roles are named by
+      code; a member by their user id, the `sub` their own token already carries (`auth.Users` has no
+      other public identifier).
+- [x] The three A15 rules checked inside the transaction against rows read in it - the actor's
+      roles, the ceiling, `auth.vw_EffectivePermissions` - never the permission cache. Each refusal is
+      a `403` naming the offending permissions (`rank_not_junior`, `outside_ceiling`, `not_held`,
+      `own_roles`); nothing is dropped from a request. When a role's permissions are replaced, only
+      the ones being **added** must be in the ceiling and held: taking one away is within anyone who
+      may manage the role. Read committed, not serializable: the window between check and write is a
+      few statements, and the cost of closing it is a lock hint Application does not take (A16).
+- [x] Setting a role's permissions bumps `Institutions.PermissionsVersion`; assigning or revoking bumps
+      the member's `Users.PermissionsVersion`; each writes a `RolePermissionsChanged` outbox row (ids
+      only) in the same transaction. Creating a role bumps nothing - nobody holds it yet.
+- [x] Assignment only to someone who already holds a role in the institution, and never to oneself.
+      Bringing a new person in is an invitation they accept (`org.StaffInvitations`, a later plan),
+      not something done to their account. Revoking deactivates the row; the temporal history keeps it.
+- [x] Tests, against real SQL (`InstitutionRoleEndpointsTests`): a Manager cannot create a Manager or
+      Owner role; cannot grant a permission outside the level's ceiling, nor one they do not hold;
+      cannot assign themselves anything; cannot reach another institution's role; a member's
+      permissions change at once on edit, assignment and revocation; editing and assigning need a
+      step-up. `RbacCatalogueTests` (`92b6187`) covers the ceiling-in-the-view cases.
 
 ---
 
