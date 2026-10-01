@@ -29,6 +29,11 @@ public class SethikaDbContext(DbContextOptions<SethikaDbContext> options)
     public DbSet<UserConsent> UserConsents => Set<UserConsent>();
     public DbSet<LegalDocument> LegalDocuments => Set<LegalDocument>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<RoleLevel> RoleLevels => Set<RoleLevel>();
+    public DbSet<RoleLevelPermission> RoleLevelPermissions => Set<RoleLevelPermission>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<EffectivePermission> EffectivePermissions => Set<EffectivePermission>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

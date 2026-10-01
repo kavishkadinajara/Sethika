@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Sethika.Application.Access.Bootstrap;
+using Sethika.Application.Access.Roles;
 using Sethika.Application.Access.Session;
 using Sethika.Application.Access.SignIn;
 using Sethika.Application.Access.SignUp;
@@ -24,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<SessionHandler>();
         services.AddScoped<StepUpHandler>();
         services.AddScoped<BootstrapPlatformAdminHandler>();
+        services.AddScoped<RoleManagementHandler>();
 
         return services;
     }

@@ -31,6 +31,16 @@ public interface ISethikaDbContext
     DbSet<LegalDocument> LegalDocuments { get; }
     DbSet<OutboxMessage> OutboxMessages { get; }
 
+    // The RBAC catalogue, level ceilings and role grants, for checks that must read inside the
+    // command's transaction rather than trust the permission cache.
+    DbSet<Permission> Permissions { get; }
+    DbSet<RoleLevel> RoleLevels { get; }
+    DbSet<RoleLevelPermission> RoleLevelPermissions { get; }
+    DbSet<RolePermission> RolePermissions { get; }
+
+    /// <summary><c>auth.vw_EffectivePermissions</c>, read-only.</summary>
+    DbSet<EffectivePermission> EffectivePermissions { get; }
+
     /// <summary>For transactions that span a set-based update and tracked inserts.</summary>
     DatabaseFacade Database { get; }
 

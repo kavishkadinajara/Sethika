@@ -50,6 +50,7 @@ public static class DependencyInjection
                 serviceProvider.GetRequiredService<ICurrentUserContext>()));
 
         services.AddScoped<ILegalDocumentQueries, LegalDocumentQueries>();
+        services.AddScoped<IRoleLevelQueries, RoleLevelQueries>();
 
         return services;
     }

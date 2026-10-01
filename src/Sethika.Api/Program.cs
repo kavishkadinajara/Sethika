@@ -101,6 +101,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapAuthEndpoints();
 app.MapSessionEndpoints();
 app.MapStepUpEndpoints();
+app.MapInstitutionRoleEndpoints();
 app.MapLegalEndpoints();
 
 // Returns the caller's own effective permission codes. The Next.js app reads this once per
