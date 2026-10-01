@@ -37,8 +37,8 @@ export function LanguageSwitcher({ className }: { className?: string }) {
                   // pulls a 100 KB+ Noto file onto a page that does not otherwise need it.
                   locale !== current && locale !== routing.defaultLocale && "font-system",
                   active
-                    ? "bg-estate text-ivory shadow-[0_1px_2px_rgb(14_42_33/0.3)]"
-                    : "text-ink hover:bg-surface hover:text-estate",
+                    ? "bg-primary text-on-primary shadow-[0_1px_2px_rgb(14_42_33/0.3)]"
+                    : "text-fg hover:bg-surface hover:text-brand",
                 )}
               >
                 {t(`names.${locale}`)}

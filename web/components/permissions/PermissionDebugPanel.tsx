@@ -17,33 +17,33 @@ export function PermissionDebugPanel() {
   ];
 
   return (
-    <section className="mt-12 rounded border border-ink/10 bg-white p-4 text-sm">
-      <h2 className="font-medium text-estate">{t("heading")}</h2>
+    <section className="mt-12 rounded border border-hairline bg-surface p-4 text-sm">
+      <h2 className="font-medium text-brand">{t("heading")}</h2>
 
       <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-        <dt className="text-ink/60">{t("signedIn")}</dt>
+        <dt className="text-muted">{t("signedIn")}</dt>
         <dd>{isAuthenticated ? t("yes") : t("no")}</dd>
 
-        <dt className="text-ink/60">{t("platformStaff")}</dt>
+        <dt className="text-muted">{t("platformStaff")}</dt>
         <dd>{isPlatform ? t("yes") : t("no")}</dd>
 
-        <dt className="text-ink/60">{t("institution")}</dt>
+        <dt className="text-muted">{t("institution")}</dt>
         <dd>{institutionId ?? t("none")}</dd>
       </dl>
 
       <ul className="mt-3 space-y-1">
         {probes.map((code) => (
           <li key={code} className="flex items-center gap-2">
-            <span className={can(code) ? "text-estate" : "text-ink/40"}>
+            <span className={can(code) ? "text-brand" : "text-muted/70"}>
               {can(code) ? t("granted") : t("denied")}
             </span>
-            <code className="text-ink/70">{code}</code>
+            <code className="text-muted">{code}</code>
           </li>
         ))}
       </ul>
 
       {!isAuthenticated && (
-        <p className="mt-3 text-ink/60">{t("signedOutNote")}</p>
+        <p className="mt-3 text-muted">{t("signedOutNote")}</p>
       )}
     </section>
   );

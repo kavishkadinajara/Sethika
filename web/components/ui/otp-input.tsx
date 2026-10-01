@@ -65,9 +65,9 @@ export function OtpInput({
               className={cn(
                 // Each cell is a small cup (docs/DESIGN.md); the active one wears the focus glow.
                 "relative flex h-14 items-center justify-center rounded-cup border-[1.5px] bg-surface shadow-well",
-                "text-2xl font-semibold tabular-nums text-ink transition-[border-color,box-shadow] duration-150",
-                char ? "border-estate/70" : "border-line",
-                active && "border-estate outline-2 outline-offset-2 outline-estate ring-6 ring-gold/40",
+                "text-2xl font-semibold tabular-nums text-fg transition-[border-color,box-shadow] duration-150",
+                char ? "border-brand/70" : "border-line",
+                active && "border-brand outline-2 outline-offset-2 outline-brand ring-6 ring-accent/40",
                 invalid && "border-danger bg-danger-soft/40",
                 invalid && active && "outline-danger",
                 disabled && "border-hairline bg-subtle text-muted shadow-none",
@@ -75,7 +75,7 @@ export function OtpInput({
             >
               {char}
               {active && !char && (
-                <span className="h-6 w-0.5 animate-caret rounded-full bg-estate motion-reduce:animate-none" />
+                <span className="h-6 w-0.5 animate-caret rounded-full bg-brand motion-reduce:animate-none" />
               )}
             </div>
           );

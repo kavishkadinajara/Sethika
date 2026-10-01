@@ -39,14 +39,14 @@ export function SheetContent({ side = "bottom", className, children, ...props }:
     <SheetPrimitive.Portal>
       <SheetPrimitive.Overlay
         className={cn(
-          "fixed inset-0 z-50 bg-ink/45 backdrop-blur-[2px]",
+          "fixed inset-0 z-50 bg-scrim backdrop-blur-[2px]",
           "data-[state=open]:animate-overlay-in data-[state=closed]:animate-overlay-out",
           "motion-reduce:animate-none",
         )}
       />
       <SheetPrimitive.Content
         className={cn(
-          "fixed z-50 flex flex-col overflow-y-auto overscroll-contain bg-surface text-ink shadow-sheet",
+          "fixed z-50 flex flex-col overflow-y-auto overscroll-contain bg-surface text-fg shadow-sheet",
           "focus-visible:outline-none motion-reduce:animate-none",
           sides[side],
           className,
@@ -60,7 +60,7 @@ export function SheetContent({ side = "bottom", className, children, ...props }:
         <SheetPrimitive.Close
           className={cn(
             buttonVariants({ variant: "ghost", size: "icon" }),
-            "absolute right-3 top-3 text-muted hover:text-ink",
+            "absolute right-3 top-3 text-muted hover:text-fg",
           )}
         >
           <CloseIcon />
@@ -92,7 +92,7 @@ export function SheetFooter({ className, ...props }: ComponentProps<"div">) {
 export function SheetTitle({ className, ...props }: ComponentProps<typeof SheetPrimitive.Title>) {
   return (
     <SheetPrimitive.Title
-      className={cn("text-xl font-semibold leading-snug text-estate", className)}
+      className={cn("text-xl font-semibold leading-snug text-brand", className)}
       {...props}
     />
   );

@@ -32,6 +32,9 @@ Questions for the reviewers:
    (English / සිංහල / தமிழ்), which is the usual convention. Confirm.
 7. **Short labels on controls** (`Common.close`, `Common.required`, `Common.loading`, `Toast.*`) are
    read aloud by screen readers. Check they sound natural spoken, not only written.
+8. **Theme names** (`ThemeSwitcher.*`): "Auto" means "follow the phone's light/dark setting".
+   Sinhala `ස්වයංක්‍රීය` and Tamil `தானியங்கி` say "automatic"; check that a reader understands
+   it as "same as my phone". `தீம்` and `තේමාව` for "Theme" are loanword choices; confirm.
 
 | Key | English (source) | Sinhala (draft) | Tamil (draft) | Reviewer | Status |
 |---|---|---|---|---|---|
@@ -66,6 +69,10 @@ Questions for the reviewers:
 | `LanguageSwitcher.names.en` | English | English | English | | |
 | `LanguageSwitcher.names.si` | සිංහල | සිංහල | සිංහල | | |
 | `LanguageSwitcher.names.ta` | தமிழ் | தமிழ் | தமிழ் | | |
+| `ThemeSwitcher.label` | Theme | තේමාව | தீம் | | |
+| `ThemeSwitcher.system` | Auto | ස්වයංක්‍රීය | தானியங்கி | | |
+| `ThemeSwitcher.light` | Light | ආලෝකමත් | வெளிர் | | |
+| `ThemeSwitcher.dark` | Dark | අඳුරු | இருண்ட | | |
 | `Design.title` | Design system | නිර්මාණ පද්ධතිය | வடிவமைப்பு அமைப்பு | | |
 | `Design.intro` | Every primitive in every state, for review. This page is hidden from search engines. | සමාලෝචනය සඳහා, සෑම මූලික සංරචකයක්ම සෑම තත්ත්වයකින්ම. මෙම පිටුව සෙවුම් යන්ත්‍ර වලින් සඟවා ඇත. | மதிப்பாய்வுக்காக, ஒவ்வொரு அடிப்படைக் கூறும் ஒவ்வொரு நிலையிலும். இந்தப் பக்கம் தேடுபொறிகளிலிருந்து மறைக்கப்பட்டுள்ளது. | | |
 | `Design.hint` | Hover with a mouse and move through the page with Tab to see hover and focus states. | මූසිකය ඉහළින් රඳවා, Tab යතුරෙන් පිටුව හරහා ගමන් කර hover සහ focus තත්ත්වයන් බලන්න. | hover மற்றும் focus நிலைகளைக் காண, சுட்டியை மேலே வைத்து Tab விசையால் பக்கத்தில் நகருங்கள். | | |
@@ -78,6 +85,7 @@ Questions for the reviewers:
 | `Design.sections.spinners` | Spinners | පූරණ දර්ශක | ஏற்றக் குறிகாட்டிகள் | | |
 | `Design.sections.otp` | One-time code | එක් වරක් භාවිත කේතය | ஒருமுறைக் குறியீடு | | |
 | `Design.sections.language` | Language switcher | භාෂා මාරුව | மொழி மாற்றி | | |
+| `Design.sections.theme` | Theme switcher | තේමා මාරුව | தீம் மாற்றி | | |
 | `Design.states.default` | Default | සාමාන්‍ය | இயல்புநிலை | | |
 | `Design.states.disabled` | Disabled | අක්‍රිය | முடக்கப்பட்டது | | |
 | `Design.states.loading` | Loading | පූරණය වෙමින් | ஏற்றப்படுகிறது | | |

@@ -6,8 +6,8 @@ export default function NotFound() {
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-24">
-      <h1 className="text-2xl font-semibold text-estate">{t("title")}</h1>
-      <Link href="/" className="mt-4 inline-block text-sm text-estate underline">
+      <h1 className="text-2xl font-semibold text-brand">{t("title")}</h1>
+      <Link href="/" className="mt-4 inline-block text-sm text-brand underline">
         {t("home")}
       </Link>
     </main>

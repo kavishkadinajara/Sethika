@@ -14,4 +14,10 @@ export function pickMessages<K extends keyof Messages>(messages: Messages, names
 }
 
 /** Namespaces the shared client components (components/ui, permissions) use on every page. */
-export const sharedClientNamespaces = ["Common", "Toast", "LanguageSwitcher", "PermissionDebug"] as const;
+export const sharedClientNamespaces = [
+  "Common",
+  "Toast",
+  "LanguageSwitcher",
+  "ThemeSwitcher",
+  "PermissionDebug",
+] as const;

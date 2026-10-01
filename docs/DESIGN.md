@@ -7,10 +7,28 @@ and every state can be seen at `/design`, `/si/design` and `/ta/design`.
 
 ## The base: warm and calm
 
-- **Rice Ivory** canvas, **Deep Ink** text, **Estate Green** for actions, **Offering Gold** sparingly.
+- Light: **Rice Ivory** canvas, **Deep Ink** text, **Estate Green** for actions, **Offering Gold**
+  sparingly. Dark: the same roles on a Deep Ink canvas (see below).
 - No grey anywhere: neutrals (`muted`, `line`, `hairline`, `subtle`) are tinted toward the green.
 - No gradients, no glass, no stock photos, no decorative illustrations in the UI chrome.
 - Faith-neutral: no religion's symbols, colours or vocabulary in shared UI (CLAUDE.md).
+
+## Light and dark
+
+Sethika follows the device's light or dark setting by default. The `ThemeSwitcher`
+(`components/ui/theme-switcher.tsx`) offers Auto / Light / Dark; the choice is a
+`sethika_theme` cookie, applied before the first paint by an inline script in `<head>`
+(`components/theme/`), so a saved theme never flashes the other one.
+
+- **Components use semantic colours only**: `canvas`, `surface`, `subtle`, `hairline`, `line`,
+  `fg`, `muted`, `brand`, `primary`, `on-primary`, `accent`, `on-accent`, `danger`, `success`.
+  Each has a light and a dark value in `globals.css`, with measured contrast in its header.
+- The brand colours (`estate`, `gold`, `ink`, `ivory`) are fixed and are for places where the
+  brand itself is the point, such as a panel that is Estate Green in both themes.
+- Dark is built on **Deep Ink** as the canvas; the greens lighten (the primary becomes a soft
+  mint with dark text) so they still read on it. Gold stays gold.
+- Avoid `dark:`. If a token cannot express a difference, `dark:` works and honours the switcher
+  (it is redefined in `globals.css`), but add a token first.
 
 ## The four signatures
 

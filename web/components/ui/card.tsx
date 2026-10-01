@@ -11,9 +11,9 @@ export function Card({ className, accent = false, ...props }: CardProps) {
     <div
       className={cn(
         // A bowl (docs/DESIGN.md): gentle top corners, deeper bottom ones, warm green-tinted lift.
-        "relative flex min-w-0 flex-col rounded-bowl border border-hairline bg-surface text-ink shadow-lift",
+        "relative flex min-w-0 flex-col rounded-bowl border border-hairline bg-surface text-fg shadow-lift",
         accent &&
-          "before:absolute before:-top-px before:left-5 before:h-[3px] before:w-12 before:rounded-b-full before:bg-gold sm:before:left-6",
+          "before:absolute before:-top-px before:left-5 before:h-[3px] before:w-12 before:rounded-b-full before:bg-accent sm:before:left-6",
         className,
       )}
       {...props}
@@ -31,7 +31,7 @@ type CardTitleProps = ComponentProps<"h2"> & { as?: "h2" | "h3" | "h4" };
 export function CardTitle({ className, as: Heading = "h3", ...props }: CardTitleProps) {
   return (
     <Heading
-      className={cn("text-xl font-semibold leading-snug text-estate", className)}
+      className={cn("text-xl font-semibold leading-snug text-brand", className)}
       {...props}
     />
   );

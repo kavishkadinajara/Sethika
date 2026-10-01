@@ -12,4 +12,4 @@ export function cn(...inputs: ClassValue[]) {
  * Every focusable primitive uses this one ring.
  */
 export const focusRing =
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-estate focus-visible:ring-6 focus-visible:ring-gold/40";
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand focus-visible:ring-6 focus-visible:ring-accent/40";

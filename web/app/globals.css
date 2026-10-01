@@ -1,42 +1,76 @@
 @import "tailwindcss";
 
-/*  Sethika brand theme (branding/ and CLAUDE.md). Faith-neutral by design: no single
+/*  Sethika theme (branding/, CLAUDE.md, docs/DESIGN.md). Faith-neutral by design: no single
     religion's symbolism or colour in shared UI.
 
-    Brand: bg-estate, text-gold, text-ink, bg-ivory. Semantic tokens below are what the
-    primitives in components/ui use. Contrast, measured against Rice Ivory unless noted:
-      ink 13.9:1 · estate 8.4:1 · muted 6.1:1 · danger 6.0:1 · line 3.1:1 (input border)
-      ink on gold 6.9:1 · ivory on estate 8.4:1
-    Gold on ivory is only 2.0:1, so it is never a focus ring or text colour on ivory.
-    The font variables come from lib/fonts.ts (next/font), set on <html>.
-    The design language these tokens serve is written down in docs/DESIGN.md.            */
+    Two layers:
+    - Brand colours (estate, gold, ink, ivory) are fixed. Use them only where the brand itself
+      is the point, e.g. a panel that is Estate Green in both themes.
+    - Semantic colours (canvas, surface, fg, muted, brand, primary, accent, ...) are what the
+      UI uses. Their light values are below; their dark values are at the end of this file.
+
+    Theme choice: no data-theme on <html> follows the operating system; data-theme="light" or
+    "dark" (set from the `theme` cookie before first paint, see components/theme) overrides it.
+
+    Contrast, measured (light / dark):
+      fg on canvas 13.9 / 13.2 · muted 6.1 / 7.8 · brand 8.4 / 8.4 · danger 6.0 / 7.5
+      on-primary 8.4 / 8.6 · on-accent 6.9 / 7.7 · line (input border) 3.1 / 4.5
+    Gold on ivory is only 2.0:1, so accent is never text or a boundary on the light canvas.
+    The font variables come from lib/fonts.ts (next/font), set on <html>.                 */
+/*  Tailwind's own `dark:` follows the OS only and would ignore the theme switcher; this one
+    honours both. Prefer semantic tokens; use `dark:` only when a token cannot say it.  */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
+
 @theme {
-  /* Estate Green - primary: headings, primary actions, links, focus rings. */
+  /* Brand, fixed in both themes. */
   --color-estate: #16513d;
-  --color-estate-strong: #0f3d2e;
-  /* Offering Gold - accent: highlights, secondary actions (with ink text). */
   --color-gold: #e0a33e;
-  --color-gold-strong: #c98a2a;
-  /* Deep Ink - body text. */
   --color-ink: #0e2a21;
-  /* Rice Ivory - page background. */
   --color-ivory: #f7f4ec;
 
-  /* Raised surfaces (cards, inputs, sheets) sit a shade lighter than the page. */
+  /* Semantic, light values. */
+  /* Page background (Rice Ivory). */
+  --color-canvas: #f7f4ec;
+  /* Raised surfaces: cards, inputs, sheets. */
   --color-surface: #fffdf8;
   /* Quiet fills: disabled inputs, segmented-control tracks. */
   --color-subtle: #efe9da;
-  /* Decorative borders (cards, dividers). Not used where a boundary must be seen. */
+  /* Decorative borders. Never where a boundary must be seen. */
   --color-hairline: #e2dbc9;
-  /* Interactive boundaries (input borders): 3:1 against ivory and surface. */
+  /* Interactive boundaries (input borders): 3:1 or more. */
   --color-line: #74877d;
+  /* Body text (Deep Ink). */
+  --color-fg: #0e2a21;
   /* Secondary text. */
   --color-muted: #4a6157;
+  /* Brand green as text, outline and focus ring: headings, links. */
+  --color-brand: #16513d;
+  /* Filled primary actions. */
+  --color-primary: #16513d;
+  --color-primary-strong: #0f3d2e;
+  /* Text on primary. */
+  --color-on-primary: #f7f4ec;
+  /* Offering Gold fills. Never text, never a boundary on canvas. */
+  --color-accent: #e0a33e;
+  --color-accent-strong: #c98a2a;
+  --color-on-accent: #0e2a21;
   --color-danger: #b42318;
   --color-danger-strong: #8f1c13;
   --color-danger-soft: #fbeae7;
+  --color-on-danger: #ffffff;
   --color-success: #1d6b4f;
   --color-success-soft: #e5f1ea;
+  /* Behind sheets and dialogs. */
+  --color-scrim: rgb(14 42 33 / 0.45);
 
   /*  Signature 1 - the bowl (docs/DESIGN.md). Things that hold or receive are shaped like
       the bowl in the mark: gentle top corners, deeper bottom corners. Buttons stay pills. */
@@ -121,9 +155,76 @@
 }
 
 body {
-  background-color: var(--color-ivory);
-  color: var(--color-ink);
+  background-color: var(--color-canvas);
+  color: var(--color-fg);
   font-family: var(--font-sans);
+}
+
+/*  Dark theme: the canvas is Deep Ink and the greens lighten so they still read on it.
+    The two blocks below are the same list; generated together, change them together. */
+:root {
+  color-scheme: light dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --color-canvas: #0e2a21;
+  --color-surface: #15382d;
+  --color-subtle: #1c4237;
+  --color-hairline: #2a5345;
+  --color-line: #6e9384;
+  --color-fg: #f2eee3;
+  --color-muted: #a9beb4;
+  --color-brand: #82d0ac;
+  --color-primary: #79cba5;
+  --color-primary-strong: #99d9bb;
+  --color-on-primary: #0b231c;
+  --color-accent: #e6ae4f;
+  --color-accent-strong: #f0c273;
+  --color-on-accent: #0e2a21;
+  --color-danger: #ff9a8c;
+  --color-danger-strong: #ffb7ad;
+  --color-danger-soft: #3d1f1a;
+  --color-on-danger: #2a0c08;
+  --color-success: #86d6ae;
+  --color-success-soft: #183f32;
+  --color-scrim: rgb(0 0 0 / 0.6);
+  --shadow-lift: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 0 0 / 0.3),
+  0 14px 30px -18px rgb(0 0 0 / 0.7);
+  --shadow-well: inset 0 1.5px 2.5px rgb(0 0 0 / 0.3);
+  --shadow-sheet: 0 -12px 40px -16px rgb(0 0 0 / 0.7);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-canvas: #0e2a21;
+    --color-surface: #15382d;
+    --color-subtle: #1c4237;
+    --color-hairline: #2a5345;
+    --color-line: #6e9384;
+    --color-fg: #f2eee3;
+    --color-muted: #a9beb4;
+    --color-brand: #82d0ac;
+    --color-primary: #79cba5;
+    --color-primary-strong: #99d9bb;
+    --color-on-primary: #0b231c;
+    --color-accent: #e6ae4f;
+    --color-accent-strong: #f0c273;
+    --color-on-accent: #0e2a21;
+    --color-danger: #ff9a8c;
+    --color-danger-strong: #ffb7ad;
+    --color-danger-soft: #3d1f1a;
+    --color-on-danger: #2a0c08;
+    --color-success: #86d6ae;
+    --color-success-soft: #183f32;
+    --color-scrim: rgb(0 0 0 / 0.6);
+    --shadow-lift: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 0 0 / 0.3),
+    0 14px 30px -18px rgb(0 0 0 / 0.7);
+    --shadow-well: inset 0 1.5px 2.5px rgb(0 0 0 / 0.3);
+    --shadow-sheet: 0 -12px 40px -16px rgb(0 0 0 / 0.7);
+    color-scheme: dark;
+  }
 }
 
 ::selection {

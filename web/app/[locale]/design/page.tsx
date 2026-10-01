@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { OtpInput } from "@/components/ui/otp-input";
 import { Spinner } from "@/components/ui/spinner";
+import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import { pickMessages, sharedClientNamespaces } from "@/i18n/pick";
 import { routing } from "@/i18n/routing";
 
@@ -45,10 +46,13 @@ export default function DesignPage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="grid gap-1">
               {/* Signature 4 - two voices: Fraunces italic for the human line, Outfit for the work. */}
-              <p className="font-tagline text-lg text-estate">{brand("name")}</p>
-              <h1 className="text-3xl font-semibold leading-tight text-estate">{t("title")}</h1>
+              <p className="font-tagline text-lg text-brand">{brand("name")}</p>
+              <h1 className="text-3xl font-semibold leading-tight text-brand">{t("title")}</h1>
             </div>
-            <LanguageSwitcher />
+            <div className="flex flex-wrap gap-2">
+              <LanguageSwitcher />
+              <ThemeSwitcher />
+            </div>
           </div>
           <p className="text-muted">{t("intro")}</p>
           <p className="text-sm text-muted">{t("hint")}</p>
@@ -199,13 +203,13 @@ export default function DesignPage() {
 
           <Section title={t("sections.spinners")}>
             <Row label={t("states.default")}>
-              <span className="text-estate">
+              <span className="text-brand">
                 <Spinner size="sm" />
               </span>
-              <span className="text-estate">
+              <span className="text-brand">
                 <Spinner />
               </span>
-              <span className="text-estate">
+              <span className="text-brand">
                 <Spinner size="lg" />
               </span>
             </Row>
@@ -218,6 +222,10 @@ export default function DesignPage() {
           <Section title={t("sections.language")}>
             <LanguageSwitcher />
           </Section>
+
+          <Section title={t("sections.theme")}>
+            <ThemeSwitcher />
+          </Section>
         </div>
       </main>
     </NextIntlClientProvider>
@@ -227,7 +235,7 @@ export default function DesignPage() {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="grid gap-5">
-      <h2 className="border-b border-hairline pb-2 text-xl font-semibold text-estate">{title}</h2>
+      <h2 className="border-b border-hairline pb-2 text-xl font-semibold text-brand">{title}</h2>
       {children}
     </section>
   );

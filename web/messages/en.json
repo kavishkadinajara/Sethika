@@ -50,6 +50,12 @@
       "ta": "தமிழ்"
     }
   },
+  "ThemeSwitcher": {
+    "label": "Theme",
+    "system": "Auto",
+    "light": "Light",
+    "dark": "Dark"
+  },
   "Design": {
     "title": "Design system",
     "intro": "Every primitive in every state, for review. This page is hidden from search engines.",
@@ -63,7 +69,8 @@
       "toasts": "Toasts",
       "spinners": "Spinners",
       "otp": "One-time code",
-      "language": "Language switcher"
+      "language": "Language switcher",
+      "theme": "Theme switcher"
     },
     "states": {
       "default": "Default",

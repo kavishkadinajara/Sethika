@@ -22,12 +22,12 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "bg-estate text-ivory shadow-[inset_0_1px_0_rgb(255_255_255/0.14),0_1px_2px_rgb(14_42_33/0.3)] hover:bg-estate-strong",
+          "bg-primary text-on-primary shadow-[inset_0_1px_0_rgb(255_255_255/0.14),0_1px_2px_rgb(14_42_33/0.3)] hover:bg-primary-strong",
         accent:
-          "bg-gold text-ink shadow-[inset_0_1px_0_rgb(255_255_255/0.3),0_1px_2px_rgb(14_42_33/0.2)] hover:bg-gold-strong",
-        outline: "border-[1.5px] border-estate bg-transparent text-estate hover:bg-estate/8",
-        ghost: "bg-transparent text-estate hover:bg-estate/8",
-        danger: "bg-danger text-white hover:bg-danger-strong",
+          "bg-accent text-on-accent shadow-[inset_0_1px_0_rgb(255_255_255/0.3),0_1px_2px_rgb(14_42_33/0.2)] hover:bg-accent-strong",
+        outline: "border-[1.5px] border-brand bg-transparent text-brand hover:bg-brand/10",
+        ghost: "bg-transparent text-brand hover:bg-brand/10",
+        danger: "bg-danger text-on-danger hover:bg-danger-strong",
       },
       size: {
         md: "",

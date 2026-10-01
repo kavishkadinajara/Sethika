@@ -40,7 +40,7 @@ export default function ToastRegion({
 }
 
 const tones: Record<ToastVariant, { rim: string; icon: ReactNode }> = {
-  default: { rim: "after:bg-estate", icon: <InfoCircleIcon className="text-estate" /> },
+  default: { rim: "after:bg-brand", icon: <InfoCircleIcon className="text-brand" /> },
   success: { rim: "after:bg-success", icon: <CheckCircleIcon className="text-success" /> },
   error: { rim: "after:bg-danger", icon: <AlertCircleIcon className="text-danger" /> },
 };
@@ -60,7 +60,7 @@ function ToastItem({ entry, onDismiss }: { entry: ToastEntry; onDismiss: () => v
       duration={entry.duration ?? (variant === "error" ? 8000 : undefined)}
       className={cn(
         "relative flex w-full items-start gap-3 rounded-bowl border border-hairline bg-surface",
-        "py-3.5 pr-14 pl-4 text-ink shadow-lift",
+        "py-3.5 pr-14 pl-4 text-fg shadow-lift",
         // The rim: a short coloured line along the top, like the logo bowl's.
         "after:absolute after:-top-px after:left-5 after:h-[3px] after:w-10 after:rounded-b-full",
         tone.rim,
@@ -83,7 +83,7 @@ function ToastItem({ entry, onDismiss }: { entry: ToastEntry; onDismiss: () => v
       <ToastPrimitive.Close
         className={cn(
           "absolute top-1.5 right-1.5 inline-flex size-11 items-center justify-center rounded-full text-muted",
-          "hover:bg-estate/8 hover:text-ink",
+          "hover:bg-brand/10 hover:text-fg",
           focusRing,
         )}
       >
