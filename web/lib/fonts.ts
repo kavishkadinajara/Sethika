@@ -14,10 +14,13 @@ export const outfit = Outfit({
   subsets: ["latin"],
 });
 
+// One static weight, not the variable font: the tagline voice is only ever regular italic,
+// and this halves the file every page preloads.
 export const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
   style: "italic",
+  weight: "400",
 });
 
 export const notoSinhala = Noto_Sans_Sinhala({

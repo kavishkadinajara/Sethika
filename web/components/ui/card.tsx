@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
 type CardProps = ComponentProps<"div"> & {
-  /** A thin Offering Gold rule along the top edge, for the card that matters most on a screen. */
+  /** The gold rim mark along the top edge, for the one card that matters most on a screen. */
   accent?: boolean;
 };
 
@@ -10,8 +10,10 @@ export function Card({ className, accent = false, ...props }: CardProps) {
   return (
     <div
       className={cn(
-        "relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-hairline bg-surface text-ink shadow-card",
-        accent && "before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gold",
+        // A bowl (docs/DESIGN.md): gentle top corners, deeper bottom ones, warm green-tinted lift.
+        "relative flex min-w-0 flex-col rounded-bowl border border-hairline bg-surface text-ink shadow-lift",
+        accent &&
+          "before:absolute before:-top-px before:left-5 before:h-[3px] before:w-12 before:rounded-b-full before:bg-gold sm:before:left-6",
         className,
       )}
       {...props}

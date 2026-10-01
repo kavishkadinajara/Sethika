@@ -50,7 +50,12 @@ export function OtpInput({
 
   return (
     <div className={cn("relative w-full max-w-sm", className)}>
-      <div aria-hidden className="grid gap-1.5 sm:gap-2" style={{ gridTemplateColumns: `repeat(${length}, minmax(0, 1fr))` }}>
+      <div
+        aria-hidden
+        // A wrong code shakes the row once; the class is re-applied, and so re-played, on each new error.
+        className={cn("grid gap-1.5 sm:gap-2", invalid && "animate-shake motion-reduce:animate-none")}
+        style={{ gridTemplateColumns: `repeat(${length}, minmax(0, 1fr))` }}
+      >
         {Array.from({ length }, (_, index) => {
           const char = value[index];
           const active = focused && index === activeIndex;
@@ -58,21 +63,20 @@ export function OtpInput({
             <div
               key={index}
               className={cn(
-                "relative flex h-14 items-center justify-center rounded-xl border-[1.5px] bg-surface",
-                "text-2xl font-semibold tabular-nums text-ink transition-colors",
+                // Each cell is a small cup (docs/DESIGN.md); the active one wears the focus glow.
+                "relative flex h-14 items-center justify-center rounded-cup border-[1.5px] bg-surface shadow-well",
+                "text-2xl font-semibold tabular-nums text-ink transition-[border-color,box-shadow] duration-150",
                 char ? "border-estate/70" : "border-line",
-                active && "border-estate outline-2 outline-offset-2 outline-estate",
+                active && "border-estate outline-2 outline-offset-2 outline-estate ring-6 ring-gold/40",
                 invalid && "border-danger bg-danger-soft/40",
                 invalid && active && "outline-danger",
-                disabled && "border-hairline bg-subtle text-muted",
+                disabled && "border-hairline bg-subtle text-muted shadow-none",
               )}
             >
               {char}
               {active && !char && (
                 <span className="h-6 w-0.5 animate-caret rounded-full bg-estate motion-reduce:animate-none" />
               )}
-              {/* Offering Gold underline marks the box being typed into. */}
-              {active && <span className="absolute inset-x-3 bottom-1.5 h-0.5 rounded-full bg-gold" />}
             </div>
           );
         })}

@@ -5,3 +5,11 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+/**
+ * Signature 2 - the offering glow (docs/DESIGN.md): an Estate Green outline, which carries
+ * the contrast (8.4:1 on ivory), inside a soft Offering Gold halo, which carries the brand.
+ * Every focusable primitive uses this one ring.
+ */
+export const focusRing =
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-estate focus-visible:ring-6 focus-visible:ring-gold/40";
