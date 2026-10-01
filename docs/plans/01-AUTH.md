@@ -9,7 +9,8 @@ limiting, the RBAC catalogue with level ceilings, the `bootstrap` command, and c
 anti-escalation, all over HTTP. **5.6's web half is done** (next-intl routing via `proxy.ts`,
 `messages/{en,si,ta}.json`, fonts, brand theme; `730bd06`); its two backend boxes (`PUT
 /api/me/language`, OTP templates per language) are still open. **5.7's primitives are done**
-(`components/ui`, `/design` review page; `4309393`). Next: **5.7** from its third box (auth screens,
+(`components/ui`, `/design` review page; `4309393`), and the design language and performance
+budget every screen follows are in `docs/DESIGN.md` (`3fcb41c`). Next: **5.7** from its third box (auth screens,
 `lib/auth/`, rewrites). Three 5.8 boxes stay open: the platform-claim forgery test, the OTP burn-and-429 test
 over HTTP, and password change (no endpoint yet).
 **267 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
@@ -41,6 +42,7 @@ Delivered so far, with the commit that added it:
 | `2a3208a` | Custom roles (5.9): `RoleManagementHandler` (create, set permissions, assign, revoke - rank, ceiling and holding checked in the transaction against the view), `RoleLevelQueries` (Dapper), `/api/institution/role-levels` and `/roles…` endpoints; read-only EF mappings for the catalogue, ceilings and the view — 16 tests over HTTP. |
 | `730bd06` | Web i18n and design tokens (5.6 web half, 5.7 first box): `next-intl` 4.14 with `proxy.ts`, routes under `app/[locale]/`, `messages/{en,si,ta}.json` typed against `en.json`, `docs/translations-to-review.md`, `lib/fonts.ts` (Outfit, Fraunces italic, Noto Sans Sinhala/Tamil), the brand tokens as the Tailwind 4 theme, a placeholder `/login`. `npm run lint` and `npm run build` clean. |
 | `4309393` | UI primitives (5.7, second box): `components/ui` — `Button`, `Input`, `Field`, `Label`, `Card`, `Sheet`, `Toast` (+ `useToast`, `Toaster` in the root layout), `Spinner`, `OtpInput`, `LanguageSwitcher` — on Radix via shadcn/ui conventions (`components.json`, `lib/utils.ts`), semantic colour tokens with measured contrast in `globals.css`, and a noindex `/[locale]/design` page showing every state. Packages: `radix-ui`, `class-variance-authority`, `clsx`, `tailwind-merge`. Checked in Chromium at 320px in en/si/ta: no horizontal overflow, no clipped text, every control ≥ 44px. |
+| `3fcb41c` | Design language and load budget (refines 5.7's primitives): `docs/DESIGN.md` (bowl shapes, one focus glow, green-tinted depth, two type voices; usability rules; performance budget). English pages no longer fetch Noto fonts, Fraunces is one static weight, Radix Toast loads at idle, client providers ship only the namespaces they need (`i18n/pick.ts`). |
 
 All of the above is reachable over HTTP.
 
