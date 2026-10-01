@@ -10,8 +10,10 @@ anti-escalation, all over HTTP. **5.6's web half is done** (next-intl routing vi
 `messages/{en,si,ta}.json`, fonts, brand theme; `730bd06`); its two backend boxes (`PUT
 /api/me/language`, OTP templates per language) are still open. **5.7's primitives are done**
 (`components/ui`, `/design` review page; `4309393`), and the design language and performance
-budget every screen follows are in `docs/DESIGN.md` (`3fcb41c`). Next: **5.7** from its third box (auth screens,
-`lib/auth/`, rewrites). Three 5.8 boxes stay open: the platform-claim forgery test, the OTP burn-and-429 test
+budget every screen follows are in `docs/DESIGN.md` (`3fcb41c`). **5.7's `lib/auth/` and rewrite
+boxes are done** (`58914a6`: session client, fetch wrapper, `/api` rewrite, permissions loaded in the
+browser; 16 Vitest tests in `web/`), but checked only against its contracts in unit tests: the live
+walk-through with the API is still owed (see the 5.7 boxes). Next: **5.7**'s screens box. Three 5.8 boxes stay open: the platform-claim forgery test, the OTP burn-and-429 test
 over HTTP, and password change (no endpoint yet).
 **267 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
 Last updated 2026-10-01. Update this line and the 5.1 boxes whenever either changes — a fresh
@@ -44,6 +46,7 @@ Delivered so far, with the commit that added it:
 | `4309393` | UI primitives (5.7, second box): `components/ui` — `Button`, `Input`, `Field`, `Label`, `Card`, `Sheet`, `Toast` (+ `useToast`, `Toaster` in the root layout), `Spinner`, `OtpInput`, `LanguageSwitcher` — on Radix via shadcn/ui conventions (`components.json`, `lib/utils.ts`), semantic colour tokens with measured contrast in `globals.css`, and a noindex `/[locale]/design` page showing every state. Packages: `radix-ui`, `class-variance-authority`, `clsx`, `tailwind-merge`. Checked in Chromium at 320px in en/si/ta: no horizontal overflow, no clipped text, every control ≥ 44px. |
 | `3fcb41c` | Design language and load budget (refines 5.7's primitives): `docs/DESIGN.md` (bowl shapes, one focus glow, green-tinted depth, two type voices; usability rules; performance budget). English pages no longer fetch Noto fonts, Fraunces is one static weight, Radix Toast loads at idle, client providers ship only the namespaces they need (`i18n/pick.ts`). |
 | `a2959d5` | Light and dark themes: follows the device by default, `ThemeSwitcher` (Auto / Light / Dark) saved in the `sethika_theme` cookie, applied before first paint by an inline `<head>` script and kept across locale changes by `ThemeSync`; components moved to semantic colour tokens with measured contrast in both themes. |
+| `58914a6` | Browser session (5.7 `lib/auth/` and rewrites): `lib/auth/session-client.ts` (token in memory, silent refresh with CSRF, one fetch wrapper with single-flight refresh, A19 superseded retry, A20 step-up hook, logout / logout-all / switch-institution), `next.config.ts` rewrite to `API_BASE_URL`, permissions loaded client-side (`lib/permissions/server.ts` removed), root layout no longer dynamic so every locale's pages are prerendered. Vitest 4.1 in `web/` - 16 tests, each guarded rule mutation-checked. |
 
 All of the above is reachable over HTTP.
 
@@ -111,7 +114,9 @@ was nothing to compare. `auth.RefreshTokens.SecurityStamp` was added for it.
 (`lib/permissions/*`, `components/permissions/*`). Since `730bd06`: next-intl routing (`proxy.ts`,
 `i18n/`, `app/[locale]/`), `messages/{en,si,ta}.json`, fonts in `lib/fonts.ts`, and the brand tokens in
 `app/globals.css` as the Tailwind theme. Since `4309393`: the primitives in `components/ui` and the
-`/design` review page. **No auth pages yet (`/login` is a placeholder).**
+`/design` review page. Since `58914a6`: `lib/auth/` (the browser session and the API fetch wrapper),
+the `/api` rewrite, permissions loaded in the browser, and Vitest (`npm test`). **No auth pages yet
+(`/login` is a placeholder).**
 
 ### Tests
 
@@ -199,6 +204,20 @@ ever sees one origin, so the refresh cookie is same-site (`SameSite=Lax` works, 
 `Secure`-over-http problem in dev) and there is no CORS configuration to get wrong.
 
 This must be decided now: doing it later means changing every fetch call and re-testing the cookie.
+
+**Amended 2026-10-01:** the variable is **`API_BASE_URL`, not `NEXT_PUBLIC_API_BASE_URL`.** A rewrite is
+resolved by the Next.js server, never the browser, so the browser does not need the API's address, and a
+`NEXT_PUBLIC_` name would be inlined into the client bundle for no reason. It defaults to the API's
+`http` launch profile, `http://localhost:5182`. Measured, not assumed: **the value is read when
+`next build` runs** and baked into the route manifest - building without it and starting with it still
+proxied to the default. Set it in the build environment.
+
+Found while checking the rewrite, for A18: `next start` forwards a client's own `X-Forwarded-For`
+unchanged and does not add the client's address. The API trusts loopback, so through a self-hosted
+`next start` on the same machine any client can choose its per-client rate-limit identity, and without
+the header every client shares the proxy's. On Vercel the platform sets the header; that, and the
+production `ForwardedHeaders:KnownProxies`, must be checked on the real deployment. The per-identity
+limits and the lockout do not depend on it (A18).
 
 ### A4 — OTP lives in Redis, never in SQL
 
@@ -693,13 +712,20 @@ Anything that touches reference data in a test runs in a rolled-back transaction
       are not dependencies.
 - [ ] Screens: `/signup` (phone → OTP → details → consent), `/login`, `/login/otp`, `/stepup`,
       `/select-institution`.
-- [ ] `lib/auth/` — access token in memory (A2), silent refresh at boot, one fetch wrapper that
+- [x] `lib/auth/` — access token in memory (A2), silent refresh at boot, one fetch wrapper that
       refreshes once on `401` and retries, queueing concurrent calls so a page with five requests does
       not fire five refreshes. A refresh answered `409 session_superseded` means another tab rotated
       first: retry the refresh once with the cookie the browser now holds (A19); `401` means sign in.
       A `403 stepup_required` opens the step-up dialog, then retries the request; with under five
       minutes left on the access token, refresh before asking for the code (A20).
-- [ ] `next.config.ts` rewrites per A3.
+      Done in `58914a6` and unit-tested against the API's contracts (16 tests, each rule mutation-checked).
+      The step-up dialog itself comes with the screens; `session.setStepUpHandler` is its hook.
+      **Still owed, needs the API with SQL Server and Redis running:** a real silent refresh after a
+      reload (cookie path `/api/auth/session` and `Set-Cookie` through the rewrite), two tabs
+      refreshing at once ending in one session (A19), a `RequiresMfa` call answered `stepup_required`
+      and retried, logout clearing both cookies, and `/api/me/permissions` loading after sign-in.
+- [x] `next.config.ts` rewrites per A3 (`API_BASE_URL`, amended in A3). Forwarding of cookies, the
+      CSRF and Authorization headers and `Set-Cookie` checked with an echo server, not the API.
 - [ ] Faith-neutral imagery only. No religious symbol on a shared screen.
 
 ### 5.8 — Tests
