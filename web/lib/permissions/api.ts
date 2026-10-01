@@ -1,24 +1,20 @@
+import { apiFetch } from "@/lib/auth";
 import type { EffectivePermissions } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://localhost:7001";
-
-export async function fetchEffectivePermissions(
-  accessToken?: string,
-): Promise<EffectivePermissions | null> {
-  const response = await fetch(`${API_BASE}/api/me/permissions`, {
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-    cache: "no-store",
-    credentials: "include",
-  });
+/**
+ * GET /api/me/permissions through the session's fetch wrapper (Bearer token, refresh on 401).
+ * Null when signed out. The answer only decides what the UI shows; every endpoint still
+ * checks its own [HasPermission].
+ */
+export async function fetchEffectivePermissions(): Promise<EffectivePermissions | null> {
+  const response = await apiFetch("/api/me/permissions", { cache: "no-store" });
 
   if (response.status === 401) {
     return null;
   }
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to load permissions: ${response.status} ${response.statusText}`,
-    );
+    throw new Error(`Failed to load permissions: ${response.status} ${response.statusText}`);
   }
 
   return (await response.json()) as EffectivePermissions;

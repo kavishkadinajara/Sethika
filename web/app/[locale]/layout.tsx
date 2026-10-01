@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { SessionBoot } from "@/components/auth/SessionBoot";
 import { PermissionProvider } from "@/components/permissions/PermissionProvider";
 import { themeColors } from "@/components/theme/theme";
 import { ThemeScript } from "@/components/theme/theme-script";
@@ -10,7 +11,6 @@ import { Toaster } from "@/components/ui/toast";
 import { pickMessages, sharedClientNamespaces } from "@/i18n/pick";
 import { routing } from "@/i18n/routing";
 import { fontVariables } from "@/lib/fonts";
-import { loadEffectivePermissions } from "@/lib/permissions/server";
 import "../globals.css";
 
 export async function generateMetadata({ params }: LayoutProps<"/[locale]">): Promise<Metadata> {
@@ -32,14 +32,17 @@ export const viewport: Viewport = {
   ],
 };
 
-export const dynamic = "force-dynamic";
+// Nothing here depends on the request: the session and permissions load in the browser
+// (lib/auth), so every locale's pages can be prerendered.
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
+}
 
 export default async function LocaleLayout({ children, params }: LayoutProps<"/[locale]">) {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
 
   setRequestLocale(locale);
-  const effective = await loadEffectivePermissions();
   const messages = await getMessages();
 
   return (
@@ -53,7 +56,8 @@ export default async function LocaleLayout({ children, params }: LayoutProps<"/[
         {/* Only what client components need; a page that needs more wraps itself in its own provider. */}
         <NextIntlClientProvider messages={pickMessages(messages, sharedClientNamespaces)}>
           <Toaster>
-            <PermissionProvider effective={effective}>{children}</PermissionProvider>
+            <SessionBoot />
+            <PermissionProvider>{children}</PermissionProvider>
           </Toaster>
         </NextIntlClientProvider>
       </body>

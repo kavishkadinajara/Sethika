@@ -16,6 +16,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import { pickMessages, sharedClientNamespaces } from "@/i18n/pick";
 import { routing } from "@/i18n/routing";
+import { usePageLocale } from "@/i18n/static-locale";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/design">): Promise<Metadata> {
   const { locale } = await params;
@@ -33,7 +34,8 @@ export async function generateMetadata({ params }: PageProps<"/[locale]/design">
 const variants = ["primary", "accent", "outline", "ghost", "danger"] as const;
 
 /** Every primitive in every state, for design review in en, si and ta. */
-export default function DesignPage() {
+export default function DesignPage({ params }: PageProps<"/[locale]/design">) {
+  usePageLocale(params);
   const t = useTranslations("Design");
   const brand = useTranslations("Brand");
   const messages = useMessages();

@@ -96,6 +96,6 @@ How the budget is kept:
 - **No images in UI chrome.** Content images (institutions, gratitude wall) come later
   through `next/image`, sized and lazy.
 
-Known cost outside this budget: the root layout fetches effective permissions on every
-request (`lib/permissions/server.ts`), which delays the first byte by the API's response
-time. That module is due for rework and is left alone here.
+- **Pages are prerendered.** Nothing in the root layout depends on the request: the session
+  and the permissions load in the browser (`lib/auth`, `PermissionProvider`), so every locale's
+  pages are static HTML and the first byte never waits for the API.

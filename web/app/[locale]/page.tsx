@@ -1,9 +1,11 @@
 import { useTranslations } from "next-intl";
 import { Can } from "@/components/permissions/Can";
 import { PermissionDebugPanel } from "@/components/permissions/PermissionDebugPanel";
+import { usePageLocale } from "@/i18n/static-locale";
 
 
-export default function Home() {
+export default function Home({ params }: PageProps<"/[locale]">) {
+  usePageLocale(params);
   const t = useTranslations();
 
   return (

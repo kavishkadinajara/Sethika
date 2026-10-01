@@ -1,9 +1,11 @@
 import { useTranslations } from "next-intl";
+import { usePageLocale } from "@/i18n/static-locale";
 
 /** Placeholder until the sign-in form lands with slice 5.7; it already exercises A10/A11. */
 // No `italic` class on the tagline: the Fraunces face is already italic, and the class would
 // make the browser slant Noto Sinhala/Tamil artificially.
-export default function LoginPage() {
+export default function LoginPage({ params }: PageProps<"/[locale]/login">) {
+  usePageLocale(params);
   const t = useTranslations();
 
   return (
