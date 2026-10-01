@@ -1,0 +1,36 @@
+{
+  "Metadata": {
+    "title": "Sethika"
+  },
+  "Brand": {
+    "name": "Sethika",
+    "tagline": "Sponsor a meal at a temple, kovil, mosque, church or care home in Sri Lanka."
+  },
+  "Home": {
+    "intro": "Permission engine wiring. Controls appear only for codes the signed-in user actually holds.",
+    "calendarHeading": "Booking calendar",
+    "calendarDenied": "You do not have access to the booking calendar.",
+    "calendarPlaceholder": "Calendar would render here.",
+    "approveBooking": "Approve booking"
+  },
+  "PermissionDebug": {
+    "heading": "Resolved context",
+    "signedIn": "Signed in",
+    "platformStaff": "Platform staff",
+    "institution": "Institution",
+    "yes": "yes",
+    "no": "no",
+    "none": "none",
+    "granted": "granted",
+    "denied": "denied",
+    "signedOutNote": "The web app does not issue an access token yet (the sign-in screens arrive with slice 5.7), so it renders signed out and every gate is closed."
+  },
+  "Login": {
+    "title": "Sign in",
+    "comingSoon": "Signing in will be available soon."
+  },
+  "NotFound": {
+    "title": "Page not found",
+    "home": "Go to the home page"
+  }
+}

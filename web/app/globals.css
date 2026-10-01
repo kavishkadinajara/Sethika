@@ -1,16 +1,32 @@
 @import "tailwindcss";
 
-/*  Sethika brand palette (branding/ and CLAUDE.md). Faith-neutral by design: no single
-    religion's symbolism or colour in shared UI.                                       */
+/*  Sethika brand theme (branding/ and CLAUDE.md). Faith-neutral by design: no single
+    religion's symbolism or colour in shared UI.
+
+    Utilities: bg-estate, text-gold, text-ink, bg-ivory, ... and font-sans / font-tagline.
+    The font variables come from lib/fonts.ts (next/font), set on <html>.               */
 @theme {
+  /* Estate Green - primary: headings, primary actions, links. */
   --color-estate: #16513d;
+  /* Offering Gold - accent: highlights, secondary actions. */
   --color-gold: #e0a33e;
+  /* Deep Ink - body text. */
   --color-ink: #0e2a21;
+  /* Rice Ivory - page background. */
   --color-ivory: #f7f4ec;
 
-  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  /* Latin resolves to Outfit; Sinhala and Tamil fall through to Noto (A10). */
+  --font-sans:
+    var(--font-outfit), var(--font-noto-sinhala), var(--font-noto-tamil), ui-sans-serif,
+    system-ui, sans-serif;
+  /* Tagline: Fraunces Italic for Latin, the same Noto fallbacks for Sinhala and Tamil. */
+  --font-tagline:
+    var(--font-fraunces), var(--font-noto-sinhala), var(--font-noto-tamil), ui-serif, Georgia,
+    serif;
 }
 
 body {
+  background-color: var(--color-ivory);
+  color: var(--color-ink);
   font-family: var(--font-sans);
 }
