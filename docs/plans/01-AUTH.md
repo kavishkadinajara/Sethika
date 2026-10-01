@@ -6,8 +6,10 @@ because every slice below depends on `IPermissionService` and `[HasPermission]`,
 Status: **in progress. The backend slices are done: 5.1–5.5 and 5.9** — signup, OTP, login,
 lockout, refresh rotation with reuse detection, institution switching, logout, MFA step-up, rate
 limiting, the RBAC catalogue with level ceilings, the `bootstrap` command, and custom roles with rank
-anti-escalation, all over HTTP. Next: the frontend, **5.6** (i18n) then **5.7** (design system and
-auth screens). Three 5.8 boxes stay open: the platform-claim forgery test, the OTP burn-and-429 test
+anti-escalation, all over HTTP. **5.6's web half is done** (next-intl routing via `proxy.ts`,
+`messages/{en,si,ta}.json`, fonts, brand theme; `730bd06`); its two backend boxes (`PUT
+/api/me/language`, OTP templates per language) are still open. Next: **5.7** from its second box
+(primitives, auth screens, `lib/auth/`, rewrites). Three 5.8 boxes stay open: the platform-claim forgery test, the OTP burn-and-429 test
 over HTTP, and password change (no endpoint yet).
 **267 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
 Last updated 2026-10-01. Update this line and the 5.1 boxes whenever either changes — a fresh
@@ -36,6 +38,7 @@ Delivered so far, with the commit that added it:
 | `92b6187` | Level ceilings: `auth.RoleLevelPermissions` (+ history, temporal) with composite FKs and `CK_RoleLevelPermissions_Scope`, the ceiling in `vw_EffectivePermissions`; `10_RbacCatalogue.sql` (3 modules, 4 screens, 9 permissions, 6 dependencies, ceilings, OWNER/MANAGER/STAFF templates), guarded by THROW on any unknown code; the fixture uses the seeded catalogue — 9 tests. |
 | `1739db6` | `bootstrap` (Q5): `BootstrapPlatformAdminHandler` + `BootstrapCommand`, `PLATFORM_ADMIN` system role in `08_SystemRoles.sql` — 10 tests, and the real `dotnet run -- bootstrap` smoke-tested. |
 | `2a3208a` | Custom roles (5.9): `RoleManagementHandler` (create, set permissions, assign, revoke - rank, ceiling and holding checked in the transaction against the view), `RoleLevelQueries` (Dapper), `/api/institution/role-levels` and `/roles…` endpoints; read-only EF mappings for the catalogue, ceilings and the view — 16 tests over HTTP. |
+| `730bd06` | Web i18n and design tokens (5.6 web half, 5.7 first box): `next-intl` 4.14 with `proxy.ts`, routes under `app/[locale]/`, `messages/{en,si,ta}.json` typed against `en.json`, `docs/translations-to-review.md`, `lib/fonts.ts` (Outfit, Fraunces italic, Noto Sans Sinhala/Tamil), the brand tokens as the Tailwind 4 theme, a placeholder `/login`. `npm run lint` and `npm run build` clean. |
 
 All of the above is reachable over HTTP.
 
@@ -100,8 +103,10 @@ was nothing to compare. `auth.RefreshTokens.SecurityStamp` was added for it.
 ### Frontend
 
 `web/` is a bare Next.js 16 + React 19 + Tailwind 4 app plus the permission plumbing
-(`lib/permissions/*`, `components/permissions/*`) and brand tokens in `app/globals.css`.
-**No auth pages, no i18n, no component library, no fonts wired.**
+(`lib/permissions/*`, `components/permissions/*`). Since `730bd06`: next-intl routing (`proxy.ts`,
+`i18n/`, `app/[locale]/`), `messages/{en,si,ta}.json`, fonts in `lib/fonts.ts`, and the brand tokens in
+`app/globals.css` as the Tailwind theme. **No auth pages yet (`/login` is a placeholder), no component
+library.**
 
 ### Tests
 
@@ -276,6 +281,12 @@ after the screens exist means touching every route and every link.
 
 Locale resolution order: signed-in user's `auth.Users.PreferredLanguage` → `NEXT_LOCALE` cookie →
 `Accept-Language` → `en`.
+
+*Amended 2026-10-01:* Next.js 16 renamed `middleware.ts` to `proxy.ts`, so next-intl's handler is the
+default export of `web/proxy.ts` (next-intl 4.14 supports Next 16). The proxy implements the last three
+steps; `PreferredLanguage` joins in front once the web app can read it from the API (5.7, `lib/auth/`).
+`/en/...` redirects to the unprefixed path and sets the cookie to `en`, which is how a visitor switches
+back to English.
 
 ### A12 — Rate limiting is Redis, not the in-process limiter
 
@@ -654,17 +665,21 @@ Anything that touches reference data in a test runs in a rolled-back transaction
 
 ### 5.6 — i18n foundation
 
-- [ ] `next-intl`, `middleware.ts`, `messages/{en,si,ta}.json`, `localePrefix: 'as-needed'` (A11).
+- [x] `next-intl`, `proxy.ts` (Next.js 16's name for `middleware.ts`), `messages/{en,si,ta}.json`,
+      `localePrefix: 'as-needed'` (A11). Sinhala and Tamil are drafts until a native speaker signs off
+      `docs/translations-to-review.md`.
 - [ ] `PUT /api/me/language` writing `auth.Users.PreferredLanguage`.
 - [ ] `notify.Templates` seeded per language for the OTP SMS — a Sinhala-preferring user must receive
       the Sinhala OTP message, which is why `Templates` has a `Language` column.
-- [ ] Fonts per A10. Verify the login screen in en, si and ta.
-- [ ] Rule from here on: **no hard-coded user-facing string in any component.** Cheap now, expensive in
+- [x] Fonts per A10. Verified on the placeholder `/login` in en, si and ta with Chromium's
+      `CSS.getPlatformFontsForNode`: Latin renders in Outfit (Fraunces for the tagline), Sinhala in
+      Noto Sans Sinhala, Tamil in Noto Sans Tamil. Check again on the real form in 5.7.
+- [x] Rule from here on: **no hard-coded user-facing string in any component.** Cheap now, expensive in
       week 3.
 
 ### 5.7 — Design system and auth screens
 
-- [ ] `next/font` for Outfit, Fraunces and Noto Sans Sinhala/Tamil; the brand tokens already in
+- [x] `next/font` for Outfit, Fraunces and Noto Sans Sinhala/Tamil; the brand tokens already in
       `globals.css` become the Tailwind theme.
 - [ ] Primitives on shadcn/ui, restyled to the Sethika palette — not default shadcn, which is the whole
       point of "unique UI": `Button`, `Input`, `Field`, `Label`, `Card`, `Sheet`, `Toast`, `Spinner`,
