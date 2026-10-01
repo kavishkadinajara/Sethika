@@ -13,7 +13,10 @@ anti-escalation, all over HTTP. **5.6's web half is done** (next-intl routing vi
 budget every screen follows are in `docs/DESIGN.md` (`3fcb41c`). **5.7's `lib/auth/` and rewrite
 boxes are done** (`58914a6`: session client, fetch wrapper, `/api` rewrite, permissions loaded in the
 browser; 16 Vitest tests in `web/`), but checked only against its contracts in unit tests: the live
-walk-through with the API is still owed (see the 5.7 boxes). Next: **5.7**'s screens box. Three 5.8 boxes stay open: the platform-claim forgery test, the OTP burn-and-429 test
+walk-through with the API is still owed (see the 5.7 boxes). **5.7's screens are done** (`4c82ac0`:
+`/signup`, `/login`, `/stepup` and its dialog, `/select-institution`; 32 Vitest tests), except
+`/login/otp`, which waits for a backend OTP-login endpoint. Every 5.7 screen still owes one live
+walk-through against the API (listed under the screens box). Three 5.8 boxes stay open: the platform-claim forgery test, the OTP burn-and-429 test
 over HTTP, and password change (no endpoint yet).
 **267 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
 Last updated 2026-10-01. Update this line and the 5.1 boxes whenever either changes — a fresh
@@ -47,6 +50,7 @@ Delivered so far, with the commit that added it:
 | `3fcb41c` | Design language and load budget (refines 5.7's primitives): `docs/DESIGN.md` (bowl shapes, one focus glow, green-tinted depth, two type voices; usability rules; performance budget). English pages no longer fetch Noto fonts, Fraunces is one static weight, Radix Toast loads at idle, client providers ship only the namespaces they need (`i18n/pick.ts`). |
 | `a2959d5` | Light and dark themes: follows the device by default, `ThemeSwitcher` (Auto / Light / Dark) saved in the `sethika_theme` cookie, applied before first paint by an inline `<head>` script and kept across locale changes by `ThemeSync`; components moved to semantic colour tokens with measured contrast in both themes. |
 | `58914a6` | Browser session (5.7 `lib/auth/` and rewrites): `lib/auth/session-client.ts` (token in memory, silent refresh with CSRF, one fetch wrapper with single-flight refresh, A19 superseded retry, A20 step-up hook, logout / logout-all / switch-institution), `next.config.ts` rewrite to `API_BASE_URL`, permissions loaded client-side (`lib/permissions/server.ts` removed), root layout no longer dynamic so every locale's pages are prerendered. Vitest 4.1 in `web/` - 16 tests, each guarded rule mutation-checked. |
+| `4c82ac0` | Auth screens (5.7): `/signup` (phone → code → details → consent, every API error code mapped to a translated message where it can be fixed), `/login`, the step-up dialog wired to `lib/auth`'s hook plus `/stepup`, `/select-institution`; a session panel and a real `RequiresMfa` demo call on the home page. Prerendered per locale; checked at 320 px in en/si/ta against mocked responses shaped per the contracts. |
 
 All of the above is reachable over HTTP.
 
@@ -710,8 +714,26 @@ Anything that touches reference data in a test runs in a rolled-back transaction
       `OtpInput`, `LanguageSwitcher`. All in `components/ui`; review them at `/design`, `/si/design`,
       `/ta/design`. Toast is Radix Toast and `OtpInput` is hand-written, so `sonner` and `input-otp`
       are not dependencies.
-- [ ] Screens: `/signup` (phone → OTP → details → consent), `/login`, `/login/otp`, `/stepup`,
-      `/select-institution`.
+- [x] Screens: `/signup` (phone → OTP → details → consent), `/login`, `/stepup`,
+      `/select-institution` — `4c82ac0`. **`/login/otp` is not built:** the API has no OTP sign-in
+      (`/api/auth/otp/request` accepts only `signup`, see `AuthEndpoints.cs`), and a screen for it
+      would be a fake. It needs a backend slice first: an OTP-login purpose, its rate limits, and
+      a sign-in that does not reveal whether a number is registered.
+      Checked so far without the API: lint, build, 32 unit tests, and a browser pass at 320 px in
+      en/si/ta against mocked responses shaped per the C# contracts (no overflow, no clipped text,
+      44 px targets, focus moves to each step heading, request bodies match `SignUpBody`,
+      `OtpRequestBody` and `SwitchInstitutionBody`).
+      **Still owed, needs the API with SQL Server and Redis running:**
+      1. Signup end to end: the SMS (console sender) arrives in the page's language, a wrong code
+         shows the attempts left, the ticket carries to signup, both legal documents load and
+         their hashes are accepted, and the new donor lands signed in.
+      2. Reload on any page and stay signed in (silent refresh through the rewrite, A2/A3).
+      3. The same flows in `/si/...` and `/ta/...`: Sinhala and Tamil text in Noto, the SMS in
+         that language.
+      4. A step-up: as a user holding `BOOKINGS.CALENDAR.APPROVE`, press "Approve booking" on the
+         home page, enter the code from the console, and see the call succeed after the dialog.
+      5. Sign out, sign out everywhere (another browser loses its session at its next refresh),
+         and switching institution as a member of two.
 - [x] `lib/auth/` — access token in memory (A2), silent refresh at boot, one fetch wrapper that
       refreshes once on `401` and retries, queueing concurrent calls so a page with five requests does
       not fire five refreshes. A refresh answered `409 session_superseded` means another tab rotated
@@ -726,7 +748,8 @@ Anything that touches reference data in a test runs in a rolled-back transaction
       and retried, logout clearing both cookies, and `/api/me/permissions` loading after sign-in.
 - [x] `next.config.ts` rewrites per A3 (`API_BASE_URL`, amended in A3). Forwarding of cookies, the
       CSRF and Authorization headers and `Set-Cookie` checked with an echo server, not the API.
-- [ ] Faith-neutral imagery only. No religious symbol on a shared screen.
+- [x] Faith-neutral imagery only. No religious symbol on a shared screen. The auth screens use the
+      brand's bowl mark and nothing else; checked again whenever a screen adds imagery.
 
 ### 5.8 — Tests
 
