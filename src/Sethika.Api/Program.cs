@@ -103,32 +103,7 @@ app.MapSessionEndpoints();
 app.MapStepUpEndpoints();
 app.MapInstitutionRoleEndpoints();
 app.MapLegalEndpoints();
-
-// Returns the caller's own effective permission codes. The Next.js app reads this once per
-// session to decide what to render; it is a convenience for the UI, not a security boundary -
-// each endpoint still carries its own [HasPermission].
-app.MapGet("/api/me/permissions", async (
-        ICurrentUserContext currentUser,
-        IPermissionService permissions,
-        CancellationToken cancellationToken) =>
-    {
-        if (currentUser.UserId is not { } userId)
-        {
-            return Results.Unauthorized();
-        }
-
-        var effective = await permissions
-            .GetEffectivePermissionsAsync(userId, currentUser.InstitutionId, cancellationToken);
-
-        return Results.Ok(new
-        {
-            userId,
-            institutionId = currentUser.InstitutionId,
-            isPlatform = currentUser.IsPlatform,
-            permissions = effective.Codes.OrderBy(c => c, StringComparer.Ordinal),
-        });
-    })
-    .RequireAuthorization();
+app.MapMeEndpoints();
 
 // Demonstrates the guard, and is what the integration tests exercise.
 app.MapGet("/api/bookings/calendar", () => Results.Ok(new { ok = true }))
