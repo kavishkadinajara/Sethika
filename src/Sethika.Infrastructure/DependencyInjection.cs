@@ -165,6 +165,9 @@ public static class DependencyInjection
 
         services.AddScoped<IOtpService, OtpService>();
 
+        // Stateless over the singleton multiplexer, like the step-up grants.
+        services.AddSingleton<IPasswordResetTickets, RedisPasswordResetTickets>();
+
         return services;
     }
 

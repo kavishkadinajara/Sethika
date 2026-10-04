@@ -287,6 +287,108 @@ public sealed class OtpServiceTests
         Assert.Contains(expectedFragment, _sent[^1].Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("si", "මුරපදය")]
+    [InlineData("ta", "கடவுச்சொல்")]
+    [InlineData("en", "password reset")]
+    public async Task AResetCodeSaysWhatItIsFor(string language, string expectedFragment)
+    {
+        // Someone who never asked for a reset should be able to tell from the SMS that somebody did.
+        await CreateService().SendAsync(NewPhoneNumber(), OtpPurpose.Reset, language);
+
+        Assert.Contains(expectedFragment, _sent[^1].Message, StringComparison.Ordinal);
+        Assert.Equal(6, LastCode().Length);
+    }
+
+    // ------------------------------------------------------------------ decoys
+
+    [Fact]
+    public async Task ADecoySendsNothing_ButAGuessIsAnsweredAsForARealCode()
+    {
+        // A reset for a number without an account must look like one with: a code exists, so a guess
+        // is "incorrect" with the same attempts left, not "no code" - which would be the answer.
+        var phone = NewPhoneNumber();
+        var service = CreateService();
+
+        var decoy = await service.SendDecoyAsync(phone, OtpPurpose.Reset);
+
+        Assert.True(decoy.WasSent);
+        Assert.Empty(_sent);
+
+        var guess = await service.VerifyAsync(phone, OtpPurpose.Reset, "000000");
+
+        Assert.Equal(OtpVerifyOutcome.Incorrect, guess.Outcome);
+        Assert.Equal(4, guess.AttemptsRemaining);
+    }
+
+    [Fact]
+    public async Task ADecoyKeepsTheSameCooldownAndSendCapAsARealCode()
+    {
+        // The 429 has to come on the same request for both, or the request that does not get one
+        // tells which number has no account.
+        var real = NewPhoneNumber();
+        var decoy = NewPhoneNumber();
+        var service = CreateService();
+
+        Assert.True((await service.SendAsync(real, OtpPurpose.Reset, "en")).WasSent);
+        Assert.True((await service.SendDecoyAsync(decoy, OtpPurpose.Reset)).WasSent);
+
+        Assert.Equal(OtpSendOutcome.CooldownActive, (await service.SendAsync(real, OtpPurpose.Reset, "en")).Outcome);
+        Assert.Equal(OtpSendOutcome.CooldownActive, (await service.SendDecoyAsync(decoy, OtpPurpose.Reset)).Outcome);
+
+        var uncooled = CreateService(o => o.ResendCooldown = TimeSpan.Zero);
+        var outcomes = new List<(OtpSendOutcome Real, OtpSendOutcome Decoy)>();
+
+        for (var i = 0; i < 3; i++)
+        {
+            outcomes.Add((
+                (await uncooled.SendAsync(real, OtpPurpose.Reset, "en")).Outcome,
+                (await uncooled.SendDecoyAsync(decoy, OtpPurpose.Reset)).Outcome));
+        }
+
+        // A cooldown refusal is not a send, so these are sends two and three, then the cap.
+        Assert.All(outcomes, o => Assert.Equal(o.Real, o.Decoy));
+        Assert.Equal(OtpSendOutcome.RateLimited, outcomes[^1].Real);
+        Assert.All(_sent, m => Assert.Equal(real, m.PhoneNumber));
+    }
+
+    [Fact]
+    public async Task ResetAndSignupCodesCountAgainstTheirOwnCaps()
+    {
+        // Separate keys per purpose: three signup codes must not use up the number's resets.
+        var phone = NewPhoneNumber();
+        var service = CreateService(o => o.ResendCooldown = TimeSpan.Zero);
+
+        for (var i = 0; i < 3; i++)
+        {
+            Assert.True((await service.SendAsync(phone, OtpPurpose.Signup, "en")).WasSent);
+        }
+
+        Assert.Equal(OtpSendOutcome.RateLimited, (await service.SendAsync(phone, OtpPurpose.Signup, "en")).Outcome);
+        Assert.True((await service.SendAsync(phone, OtpPurpose.Reset, "en")).WasSent);
+    }
+
+    [Fact]
+    public async Task ASignupCodeIsNotAResetCode_NorTheReverse()
+    {
+        var phone = NewPhoneNumber();
+        var service = CreateService();
+
+        await service.SendAsync(phone, OtpPurpose.Signup, "en");
+        var signupCode = LastCode();
+        await service.SendAsync(phone, OtpPurpose.Reset, "en");
+        var resetCode = LastCode();
+
+        if (signupCode != resetCode)
+        {
+            Assert.Equal(OtpVerifyOutcome.Incorrect, (await service.VerifyAsync(phone, OtpPurpose.Reset, signupCode)).Outcome);
+            Assert.Equal(OtpVerifyOutcome.Incorrect, (await service.VerifyAsync(phone, OtpPurpose.Signup, resetCode)).Outcome);
+        }
+
+        Assert.True((await service.VerifyAsync(phone, OtpPurpose.Reset, resetCode)).IsVerified);
+        Assert.True((await service.VerifyAsync(phone, OtpPurpose.Signup, signupCode)).IsVerified);
+    }
+
     /// <summary>Sends and verifies a code, returning the ticket the verification issued.</summary>
     private async Task<(string Phone, string Ticket)> VerifiedTicketAsync(OtpService service, OtpPurpose purpose)
     {

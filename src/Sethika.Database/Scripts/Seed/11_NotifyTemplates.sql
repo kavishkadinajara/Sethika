@@ -1,6 +1,8 @@
 ﻿/*  SMS templates for one-time codes (plan 5.6): one per OtpPurpose that sends an SMS today - signup
-    (/api/auth/otp/request) and stepup (/api/auth/stepup/request) - in en, si and ta. login and reset
-    have no endpoint that sends a code yet; their templates arrive with those flows.
+    (/api/auth/otp/request), stepup (/api/auth/stepup/request) and reset (/api/auth/otp/request with
+    purpose reset) - in en, si and ta. A reset code says what it is for, so someone who did not ask
+    to reset their password can tell from the message alone that somebody else did. login has no
+    endpoint that sends a code yet; its templates arrive with that flow.
 
     OtpService reads a body by (Code, Channel, Language), falls back to 'en' with a warning when the
     language has none, and refuses to send at all when 'en' is missing too. {code} is the only
@@ -9,7 +11,8 @@
 
     Every body fits one SMS segment, because each extra segment is paid for: English is GSM-7
     (160 characters a segment), Sinhala and Tamil are UCS-2 (70). Sent with a six-digit code:
-    en 40, si 34, ta 45. Keep any new body under those limits.
+    verification en 40, si 34, ta 45; reset en 42, si 44, ta 56. Keep any new body under
+    those limits.
 
     Matched on (Code, Channel, Language), never on Id: notify.Notifications.TemplateId points at
     these rows, so they are updated in place, and rows another seed owns are never deleted.
@@ -24,7 +27,10 @@ USING (VALUES
  ('OTP_SIGNUP', 'SMS', 'ta', N'உங்கள் Sethika சரிபார்ப்புக் குறியீடு: {code}'),
  ('OTP_STEPUP', 'SMS', 'en', N'Your Sethika verification code is {code}'),
  ('OTP_STEPUP', 'SMS', 'si', N'ඔබගේ Sethika සත්‍යාපන කේතය: {code}'),
- ('OTP_STEPUP', 'SMS', 'ta', N'உங்கள் Sethika சரிபார்ப்புக் குறியீடு: {code}')
+ ('OTP_STEPUP', 'SMS', 'ta', N'உங்கள் Sethika சரிபார்ப்புக் குறியீடு: {code}'),
+ ('OTP_RESET',  'SMS', 'en', N'Your Sethika password reset code is {code}'),
+ ('OTP_RESET',  'SMS', 'si', N'ඔබගේ Sethika මුරපදය යළි සැකසීමේ කේතය: {code}'),
+ ('OTP_RESET',  'SMS', 'ta', N'உங்கள் Sethika கடவுச்சொல் மீட்டமைப்புக் குறியீடு: {code}')
 ) AS s(Code, Channel, Language, Body)
 ON t.Code = s.Code AND t.Channel = s.Channel AND t.Language = s.Language
 -- Compared as binary: under the database's case-insensitive collation a case-only edit would never

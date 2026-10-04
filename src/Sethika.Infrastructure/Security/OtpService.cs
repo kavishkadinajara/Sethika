@@ -96,17 +96,36 @@ public sealed partial class OtpService : IOtpService
         _options = options.Value;
     }
 
-    public async Task<OtpSendResult> SendAsync(
+    public Task<OtpSendResult> SendAsync(
         string phoneNumber,
         OtpPurpose purpose,
         string language,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        IssueAsync(phoneNumber, purpose, language, cancellationToken);
+
+    public Task<OtpSendResult> SendDecoyAsync(
+        string phoneNumber,
+        OtpPurpose purpose,
+        CancellationToken cancellationToken = default) =>
+        IssueAsync(phoneNumber, purpose, language: null, cancellationToken);
+
+    /// <summary>
+    /// The one path both sends take, so a decoy cannot drift from a real send. A null
+    /// <paramref name="language"/> is a decoy: the code is stored but neither logged nor sent.
+    /// </summary>
+    private async Task<OtpSendResult> IssueAsync(
+        string phoneNumber,
+        OtpPurpose purpose,
+        string? language,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(phoneNumber);
 
         // Read before anything is stored or counted, so a missing template neither leaves a code
-        // nobody received nor spends the number's send budget.
-        var template = await FindTemplateAsync(purpose, language, cancellationToken).ConfigureAwait(false);
+        // nobody received nor spends the number's send budget. A decoy reads the English one: the
+        // same round trip and the same Unavailable when it is missing, so neither its timing nor
+        // its answer tells a decoy from a real send.
+        var template = await FindTemplateAsync(purpose, language ?? "en", cancellationToken).ConfigureAwait(false);
         if (template is null)
         {
             return OtpSendResult.Unavailable();
@@ -152,6 +171,11 @@ public sealed partial class OtpService : IOtpService
                 ]).ConfigureAwait(false);
 
             await db.KeyExpireAsync(codeKey, _options.Lifetime).ConfigureAwait(false);
+
+            if (language is null)
+            {
+                return OtpSendResult.Sent();
+            }
 
             if (_options.LogCodesForDevelopment)
             {

@@ -23,6 +23,8 @@ import { AuthHeading } from "./AuthHeading";
 import { FormError } from "./FormError";
 import { PasswordChecklist, PasswordFailures } from "./PasswordGuidance";
 import { textLink } from "./links";
+import { PasswordChecklist, PasswordFailures } from "./PasswordGuidance";
+import { StepProgress } from "./StepProgress";
 import { formatWait, useCountdown } from "./useCountdown";
 import { useApiErrorMessage } from "./useApiErrorMessage";
 
@@ -240,7 +242,7 @@ export function SignupFlow() {
 
   return (
     <div>
-      {stepNumber > 0 && <Progress current={stepNumber} total={numbered.length} label={t("step", { current: stepNumber, total: numbered.length })} />}
+      {stepNumber > 0 && <StepProgress current={stepNumber} total={numbered.length} label={t("step", { current: stepNumber, total: numbered.length })} />}
 
       {step === "phone" && (
         <form key="phone" noValidate onSubmit={sendCode} className="grid gap-5">
@@ -402,19 +404,6 @@ export function SignupFlow() {
           </Button>
         </div>
       )}
-    </div>
-  );
-}
-
-function Progress({ current, total, label }: { current: number; total: number; label: string }) {
-  return (
-    <div className="mb-6 grid gap-2">
-      <p className="text-sm font-medium text-muted">{label}</p>
-      <div aria-hidden className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))` }}>
-        {Array.from({ length: total }, (_, index) => (
-          <span key={index} className={cn("h-1.5 rounded-full", index < current ? "bg-primary" : "bg-subtle")} />
-        ))}
-      </div>
     </div>
   );
 }

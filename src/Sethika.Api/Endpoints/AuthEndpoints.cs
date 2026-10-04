@@ -3,6 +3,7 @@ using Sethika.Api.RateLimiting;
 using Sethika.Api.Security;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Access;
+using Sethika.Application.Access.PasswordReset;
 using Sethika.Application.Access.SignIn;
 using Sethika.Application.Access.SignUp;
 using SignInResult = Sethika.Application.Access.SignIn.SignInResult;
@@ -10,7 +11,8 @@ using SignInResult = Sethika.Application.Access.SignIn.SignInResult;
 namespace Sethika.Api.Endpoints;
 
 /// <summary>
-/// The anonymous half of authentication: one-time codes, donor signup and password sign-in.
+/// The anonymous half of authentication: one-time codes, donor signup, password sign-in and the
+/// forgotten-password reset.
 /// </summary>
 /// <remarks>
 /// These are the endpoints CLAUDE.md's every-endpoint-has-a-permission rule cannot apply to - there
@@ -23,12 +25,24 @@ internal static class AuthEndpoints
     {
         var auth = app.MapGroup("/api/auth").AllowAnonymous();
 
+        // Signup and reset count against their own budgets. Anything that is not a reset counts as
+        // signup, so an unsupported purpose is still counted before it is refused.
         auth.MapPost("/otp/request", RequestOtpAsync)
-            .RateLimitPerClient(AuthRateLimits.OtpRequestPerClient);
+            .RateLimitPerClient<OtpRequestBody>(AuthRateLimits.OtpRequestPerClient, body => !IsResetPurpose(body.Purpose))
+            .RateLimitPerClient<OtpRequestBody>(AuthRateLimits.OtpResetRequestPerClient, body => IsResetPurpose(body.Purpose));
 
         auth.MapPost("/otp/verify", VerifyOtpAsync)
-            .RateLimitPerClient(AuthRateLimits.OtpVerifyPerClient)
-            .RateLimitBy<OtpVerifyBody>(AuthRateLimits.OtpVerifyPerPhone, (body, services) => NormalizedPhone(body.PhoneNumber, services));
+            .RateLimitPerClient<OtpVerifyBody>(AuthRateLimits.OtpVerifyPerClient, body => !IsResetPurpose(body.Purpose))
+            .RateLimitPerClient<OtpVerifyBody>(AuthRateLimits.OtpResetVerifyPerClient, body => IsResetPurpose(body.Purpose))
+            .RateLimitBy<OtpVerifyBody>(AuthRateLimits.OtpVerifyPerPhone, (body, services) =>
+                IsResetPurpose(body.Purpose) ? null : NormalizedPhone(body.PhoneNumber, services))
+            .RateLimitBy<OtpVerifyBody>(AuthRateLimits.OtpResetVerifyPerPhone, (body, services) =>
+                IsResetPurpose(body.Purpose) ? NormalizedPhone(body.PhoneNumber, services) : null);
+
+        // Anonymous like the rest of this group - whoever forgot their password cannot hold a
+        // permission - and gated by the reset ticket instead, which only a verified code yields.
+        auth.MapPost("/password/reset", ResetPasswordAsync)
+            .RateLimitPerClient(AuthRateLimits.PasswordResetPerClient);
 
         auth.MapPost("/signup", SignUpAsync)
             .RateLimitPerClient(AuthRateLimits.SignUpPerClient);
@@ -41,24 +55,26 @@ internal static class AuthEndpoints
         return app;
     }
 
-    /// <summary>Sends a signup code.</summary>
+    /// <summary>Sends a signup or password-reset code.</summary>
     /// <remarks>
-    /// Only the signup purpose is accepted here. Step-up codes go to the number already on an
-    /// authenticated account (slice 5.3); a public endpoint that sent them to any number would be
-    /// both an SMS-bombing tool and a way around that flow.
+    /// Only the signup and reset purposes are accepted here. Step-up codes go to the number already
+    /// on an authenticated account (slice 5.3); a public endpoint that sent them to any number would
+    /// be both an SMS-bombing tool and a way around that flow.
     ///
-    /// A number that already has an account is sent a code like any other. Refusing would tell
-    /// anyone which numbers are registered; this way only the phone's holder can learn it, by
-    /// verifying and then being told at signup.
+    /// A number that already has an account is sent a signup code like any other. Refusing would
+    /// tell anyone which numbers are registered; this way only the phone's holder can learn it, by
+    /// verifying and then being told at signup. A reset answers the same for every number too, but
+    /// only an account that may reset gets the SMS (<see cref="PasswordResetHandler"/>).
     /// </remarks>
     private static async Task<IResult> RequestOtpAsync(
         [FromBody] OtpRequestBody body,
         HttpContext httpContext,
         IPhoneNumberNormalizer phoneNumbers,
         IOtpService otp,
+        PasswordResetHandler reset,
         CancellationToken cancellationToken)
     {
-        if (!IsSignupPurpose(body.Purpose))
+        if (ParsePurpose(body.Purpose) is not { } purpose)
         {
             return ApiErrors.Error(StatusCodes.Status400BadRequest, "unsupported_purpose");
         }
@@ -74,7 +90,10 @@ internal static class AuthEndpoints
             return ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_language");
         }
 
-        var sent = await otp.SendAsync(phoneNumber, OtpPurpose.Signup, language, cancellationToken);
+        // A reset ignores the requested language: the SMS goes in the account's own.
+        var sent = purpose == OtpPurpose.Reset
+            ? await reset.RequestAsync(phoneNumber, cancellationToken)
+            : await otp.SendAsync(phoneNumber, OtpPurpose.Signup, language, cancellationToken);
 
         return sent.Outcome switch
         {
@@ -85,14 +104,19 @@ internal static class AuthEndpoints
         };
     }
 
-    /// <summary>Checks a signup code and returns the ticket that carries it to signup (plan A17).</summary>
+    /// <summary>
+    /// Checks a signup or reset code and returns the ticket that carries it to the next step (plan
+    /// A17). Every answer depends only on the code's state in Redis, which a reset decoy makes the
+    /// same for numbers without an account.
+    /// </summary>
     private static async Task<IResult> VerifyOtpAsync(
         [FromBody] OtpVerifyBody body,
         IPhoneNumberNormalizer phoneNumbers,
         IOtpService otp,
+        PasswordResetHandler reset,
         CancellationToken cancellationToken)
     {
-        if (!IsSignupPurpose(body.Purpose))
+        if (ParsePurpose(body.Purpose) is not { } purpose)
         {
             return ApiErrors.Error(StatusCodes.Status400BadRequest, "unsupported_purpose");
         }
@@ -102,7 +126,9 @@ internal static class AuthEndpoints
             return ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_phone_number");
         }
 
-        var verified = await otp.VerifyAsync(phoneNumber, OtpPurpose.Signup, body.Code ?? string.Empty, cancellationToken);
+        var verified = purpose == OtpPurpose.Reset
+            ? await reset.VerifyAsync(phoneNumber, body.Code, cancellationToken)
+            : await otp.VerifyAsync(phoneNumber, OtpPurpose.Signup, body.Code ?? string.Empty, cancellationToken);
 
         return verified.Outcome switch
         {
@@ -158,6 +184,26 @@ internal static class AuthEndpoints
             : Results.StatusCode(StatusCodes.Status201Created);
     }
 
+    /// <summary>
+    /// Sets a new password with a reset ticket. Answers 204 and starts no session: the user signs in
+    /// with the new password, and every session from before the reset has ended.
+    /// </summary>
+    private static async Task<IResult> ResetPasswordAsync(
+        [FromBody] PasswordResetBody body,
+        PasswordResetHandler reset,
+        CancellationToken cancellationToken)
+    {
+        var result = await reset.ResetAsync(new ResetPasswordCommand(body.Ticket, body.NewPassword), cancellationToken);
+
+        return result.Failure switch
+        {
+            ResetPasswordFailure.None => Results.NoContent(),
+            ResetPasswordFailure.PasswordRejected => ApiErrors.PasswordRejected(result.PasswordFailures),
+            ResetPasswordFailure.InvalidTicket => ApiErrors.Error(StatusCodes.Status400BadRequest, "reset_ticket_invalid"),
+            _ => ApiErrors.Error(StatusCodes.Status503ServiceUnavailable, "verification_unavailable"),
+        };
+    }
+
     private static async Task<IResult> LogInAsync(
         [FromBody] LoginBody body,
         HttpContext httpContext,
@@ -201,8 +247,14 @@ internal static class AuthEndpoints
         _ => ApiErrors.Error(StatusCodes.Status503ServiceUnavailable, "verification_unavailable"),
     };
 
-    private static bool IsSignupPurpose(string? purpose) =>
-        string.IsNullOrWhiteSpace(purpose) || string.Equals(purpose, "signup", StringComparison.OrdinalIgnoreCase);
+    /// <summary>The purposes a client may name here; blank is signup, as before reset existed.</summary>
+    private static OtpPurpose? ParsePurpose(string? purpose) =>
+        string.IsNullOrWhiteSpace(purpose) || string.Equals(purpose, "signup", StringComparison.OrdinalIgnoreCase)
+            ? OtpPurpose.Signup
+            : IsResetPurpose(purpose) ? OtpPurpose.Reset : null;
+
+    private static bool IsResetPurpose(string? purpose) =>
+        string.Equals(purpose, "reset", StringComparison.OrdinalIgnoreCase);
 
     private static string? NormalizedPhone(string? phoneNumber, IServiceProvider services) =>
         services.GetRequiredService<IPhoneNumberNormalizer>().TryNormalize(phoneNumber, out var normalized)

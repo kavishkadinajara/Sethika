@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Sethika.Application.Access.Bootstrap;
 using Sethika.Application.Access.Language;
 using Sethika.Application.Access.PasswordChange;
+using Sethika.Application.Access.PasswordReset;
 using Sethika.Application.Access.Roles;
 using Sethika.Application.Access.Session;
 using Sethika.Application.Access.SignIn;
@@ -29,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<SignUpDonorHandler>();
         services.AddScoped<SessionHandler>();
         services.AddScoped<StepUpHandler>();
+        services.AddScoped<PasswordResetHandler>();
         services.AddScoped<BootstrapPlatformAdminHandler>();
         services.AddScoped<RoleManagementHandler>();
         services.AddScoped<PreferredLanguageHandler>();

@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 
 /*  The password rules as the API applies them today (Identity's defaults: 6 characters, upper,
     lower, digit, symbol). The checklist is guidance while typing; the server decides, and its
-    password_rejected list is what is shown after submit.                                      */
+    password_rejected list is what is shown after submit. Signup and the password reset share
+    both, so the two never describe the rules differently.                                     */
 const liveRules: { rule: PasswordRule; met: (password: string) => boolean }[] = [
   { rule: "TooShort", met: (p) => p.length >= 6 },
   { rule: "MissingUppercase", met: (p) => /\p{Lu}/u.test(p) },

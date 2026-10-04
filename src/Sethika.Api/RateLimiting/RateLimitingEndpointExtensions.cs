@@ -16,6 +16,20 @@ internal static class RateLimitingEndpointExtensions
     public static RouteHandlerBuilder RateLimitPerClient(this RouteHandlerBuilder builder, RateLimitRule rule) =>
         builder.RateLimit(rule, context => ClientAddress.Of(context.HttpContext));
 
+    /// <summary>Limits by the client's address, for the requests whose body <paramref name="appliesTo"/> picks.</summary>
+    /// <remarks>
+    /// For one endpoint serving several flows that each keep their own budget, such as the OTP
+    /// endpoints' signup and reset purposes.
+    /// </remarks>
+    public static RouteHandlerBuilder RateLimitPerClient<TBody>(
+        this RouteHandlerBuilder builder,
+        RateLimitRule rule,
+        Func<TBody, bool> appliesTo) =>
+        builder.RateLimit(rule, context =>
+            context.Arguments.OfType<TBody>().FirstOrDefault() is { } body && appliesTo(body)
+                ? ClientAddress.Of(context.HttpContext)
+                : null);
+
     /// <summary>Limits by a value taken from the request body.</summary>
     /// <param name="builder">The endpoint.</param>
     /// <param name="rule">The limit.</param>

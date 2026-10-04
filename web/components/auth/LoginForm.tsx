@@ -98,6 +98,10 @@ export function LoginForm() {
           />
         </Field>
 
+        <Link href="/forgot-password" className={cn(textLink, focusRing, "justify-self-end")}>
+          {t("forgotPassword")}
+        </Link>
+
         <Button type="submit" size="lg" loading={busy} className="w-full">
           {t("submit")}
         </Button>

@@ -594,11 +594,10 @@ public sealed class AuthEndpointsTests(SethikaTestDatabase database) : IAsyncLif
     [Theory]
     [InlineData("stepup")]
     [InlineData("login")]
-    [InlineData("reset")]
-    public async Task OnlySignupCodesCanBeRequestedAnonymously(string purpose)
+    public async Task OnlySignupAndResetCodesCanBeRequestedAnonymously(string purpose)
     {
         // A step-up code sent to any number on request would be an SMS-bombing tool and a way around
-        // the authenticated step-up flow.
+        // the authenticated step-up flow. Reset is the other anonymous purpose (PasswordResetEndpointsTests).
         var host = Host();
         using var client = Client(host);
         var phone = NewPhone();

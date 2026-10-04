@@ -36,7 +36,8 @@
     "passwordRequired": "Enter your password.",
     "submit": "Sign in",
     "noAccount": "New to Sethika?",
-    "createAccount": "Create an account"
+    "createAccount": "Create an account",
+    "forgotPassword": "Forgot password?"
   },
   "NotFound": {
     "title": "Page not found",
@@ -162,7 +163,8 @@
     "otp_attempts_exhausted": "Too many wrong codes. Send a new one.",
     "no_verified_phone": "Your account has no confirmed phone number, so we can't send a code.",
     "institution_not_available": "You can no longer act for this institution.",
-    "session_expired": "Your session has ended. Please sign in again."
+    "session_expired": "Your session has ended. Please sign in again.",
+    "reset_ticket_invalid": "This password reset has expired or was already used. Please verify your number again."
   },
   "Password": {
     "title": "Your password needs:",
@@ -238,6 +240,37 @@
     "signInInstead": "Sign in instead",
     "createdTitle": "Your account is ready",
     "createdSignIn": "Please sign in with your new account."
+  },
+  "ForgotPassword": {
+    "title": "Reset your password",
+    "step": "Step {current} of {total}",
+    "phoneTitle": "Forgot your password?",
+    "phoneHelp": "Enter the mobile number on your account. We'll text it a 6-digit code to set a new password.",
+    "phoneLabel": "Mobile number",
+    "phonePlaceholder": "07X XXX XXXX",
+    "phoneRequired": "Enter your mobile number.",
+    "sendCode": "Send code",
+    "remembered": "Remembered it?",
+    "signIn": "Sign in",
+    "codeTitle": "Enter the code",
+    "codeSentTo": "If {phone} belongs to a Sethika account, a code is on its way. It can take a minute to arrive.",
+    "codeLabel": "6-digit code",
+    "codeRequired": "Enter all 6 digits of the code.",
+    "verify": "Verify",
+    "changeNumber": "Change number",
+    "resend": "Send a new code",
+    "resendIn": "New code in {time}",
+    "passwordTitle": "Choose a new password",
+    "passwordHelp": "Every device signed in to your account will be signed out. You will sign in again with the new password.",
+    "passwordLabel": "New password",
+    "passwordRequired": "Choose a new password.",
+    "confirmLabel": "Type the new password again",
+    "confirmRequired": "Type the new password again.",
+    "confirmMismatch": "The two passwords don't match.",
+    "submit": "Change password",
+    "startAgain": "Start again",
+    "changedTitle": "Your password was changed",
+    "changedDescription": "Sign in with your new password."
   },
   "StepUp": {
     "title": "Confirm it's you",
