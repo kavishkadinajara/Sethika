@@ -10,6 +10,7 @@
 :r .\Seed\08_SystemRoles.sql
 :r .\Seed\09_LegalDocuments.sql
 :r .\Seed\10_RbacCatalogue.sql
+:r .\Seed\11_NotifyTemplates.sql
 /* TODO (confirm with real institutions before seeding):
    - org.DocumentTypes + org.InstitutionTypeRequiredDocuments
    - core.MemorialRules (per religion)
