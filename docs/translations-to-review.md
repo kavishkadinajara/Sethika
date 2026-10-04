@@ -259,6 +259,37 @@ Questions for the reviewers:
 | `Session.approved` | Booking approved (demonstration). | වෙන්කිරීම අනුමත විය (නිදර්ශනය). | முன்பதிவு அங்கீகரிக்கப்பட்டது (மாதிரி). | | |
 | `Session.approveFailed` | Could not approve the booking. | වෙන්කිරීම අනුමත කළ නොහැකි විය. | முன்பதிவை அங்கீகரிக்க முடியவில்லை. | | |
 
+
+### Sign-in by code (`/login/otp`)
+
+Rows for the sign-in-by-code screen. `LoginOtp.codeSentTo` is worded "if {phone} is on a Sethika
+account" on purpose: the API answers every number the same so that nobody can learn which numbers
+have accounts, and the page must not undo that by saying the code was sent. Please keep that
+conditional meaning in the translation, even if it reads a little indirect. The rows that repeat
+`Signup.*` text reuse its drafts word for word.
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) | Reviewer | Status |
+|---|---|---|---|---|---|
+| `Login.useCode` | Sign in with a code instead | ඒ වෙනුවට කේතයකින් පුරනය වන්න | பதிலாகக் குறியீட்டின் மூலம் உள்நுழைக | | |
+| `LoginOtp.title` | Sign in with a code | කේතයකින් පුරනය වන්න | குறியீட்டின் மூலம் உள்நுழைக | | |
+| `LoginOtp.phoneHelp` | Enter the mobile number on your Sethika account. We'll text it a 6-digit code. | ඔබගේ Sethika ගිණුමේ ජංගම අංකය ඇතුළත් කරන්න. අපි එයට ඉලක්කම් 6ක කේතයක් කෙටි පණිවිඩයකින් යවන්නෙමු. | உங்கள் Sethika கணக்கில் உள்ள கைபேசி எண்ணை உள்ளிடுங்கள். அதற்கு 6 இலக்கக் குறியீட்டைக் குறுஞ்செய்தியாக அனுப்புவோம். | | |
+| `LoginOtp.phoneLabel` | Mobile number | ජංගම දුරකථන අංකය | கைபேசி எண் | | |
+| `LoginOtp.phonePlaceholder` | 07X XXX XXXX | 07X XXX XXXX | 07X XXX XXXX | | |
+| `LoginOtp.phoneRequired` | Enter your mobile number. | ඔබගේ ජංගම දුරකථන අංකය ඇතුළත් කරන්න. | உங்கள் கைபேசி எண்ணை உள்ளிடுங்கள். | | |
+| `LoginOtp.sendCode` | Send code | කේතය යවන්න | குறியீட்டை அனுப்பு | | |
+| `LoginOtp.usePassword` | Sign in with a password instead | ඒ වෙනුවට මුරපදයකින් පුරනය වන්න | பதிலாகக் கடவுச்சொல் மூலம் உள்நுழைக | | |
+| `LoginOtp.noAccount` | New to Sethika? | Sethika වෙත අලුත්ද? | Sethika-வுக்குப் புதியவரா? | | |
+| `LoginOtp.createAccount` | Create an account | ගිණුමක් සාදන්න | கணக்கை உருவாக்குங்கள் | | |
+| `LoginOtp.codeTitle` | Enter the code | කේතය ඇතුළත් කරන්න | குறியீட்டை உள்ளிடுங்கள் | | |
+| `LoginOtp.codeSentTo` | If {phone} is on a Sethika account, a code is on its way. It can take a minute to arrive. | {phone} Sethika ගිණුමක ඇත්නම්, කේතයක් පැමිණෙමින් පවතී. එය පැමිණීමට විනාඩියක් පමණ ගත විය හැක. | {phone} ஒரு Sethika கணக்கில் இருந்தால், குறியீடு வந்துகொண்டிருக்கிறது. அது வர ஒரு நிமிடம் ஆகலாம். | | |
+| `LoginOtp.codeLabel` | 6-digit code | ඉලක්කම් 6ක කේතය | 6 இலக்கக் குறியீடு | | |
+| `LoginOtp.codeRequired` | Enter all 6 digits of the code. | කේතයේ ඉලක්කම් 6ම ඇතුළත් කරන්න. | குறியீட்டின் 6 இலக்கங்களையும் உள்ளிடுங்கள். | | |
+| `LoginOtp.signIn` | Sign in | පුරනය වන්න | உள்நுழைக | | |
+| `LoginOtp.changeNumber` | Change number | අංකය වෙනස් කරන්න | எண்ணை மாற்று | | |
+| `LoginOtp.resend` | Send a new code | අලුත් කේතයක් යවන්න | புதிய குறியீட்டை அனுப்பு | | |
+| `LoginOtp.resendIn` | New code in {time} | {time} කින් අලුත් කේතයක් | {time} இல் புதிய குறியீடு | | |
+| `Errors.otp_invalid` | That code didn't work. Check the number and the code, or send a new code. | එම කේතය වැඩ කළේ නැත. අංකය සහ කේතය පරීක්ෂා කරන්න, නැතහොත් අලුත් කේතයක් යවන්න. | அந்தக் குறியீடு வேலை செய்யவில்லை. எண்ணையும் குறியீட்டையும் சரிபாருங்கள், அல்லது புதிய குறியீட்டை அனுப்புங்கள். | | |
+
 ## SMS texts sent by the API
 
 These live in `OtpService.BuildMessage` (`src/Sethika.Infrastructure/Security/OtpService.cs`), not in

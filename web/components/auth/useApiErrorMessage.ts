@@ -19,6 +19,7 @@ const knownCodes = [
   "account_not_active",
   "otp_not_found",
   "otp_attempts_exhausted",
+  "otp_invalid",
   "no_verified_phone",
   "institution_not_available",
   "session_expired",
