@@ -16,7 +16,8 @@ namespace Sethika.Application.Access.Session;
 /// rotation. Two browser tabs refreshing at the same moment both send the old cookie; revoking the
 /// family for that would sign an ordinary user out of everything. The late one is refused as
 /// <see cref="SessionFailure.Superseded"/> - it gets no tokens - but the family survives. A copy
-/// replayed any later is caught.
+/// replayed any later is caught. Superseded is only said while the winner's session is alive; once
+/// it has ended, the late request is answered as the ended session it is.
 ///
 /// Rotation is claimed by a conditional UPDATE rather than a read and a write: of any number of
 /// requests presenting the same token at once, exactly one finds it still unrevoked. It needs no
@@ -74,10 +75,9 @@ public sealed class SessionHandler(ISethikaDbContext db, ITokenService tokens, T
                 return SessionResult.Failed(SessionFailure.ReuseDetected);
             }
 
-            return SessionResult.Failed(
-                string.Equals(presented.RevokedReason, RevokedReasons.Rotated, StringComparison.Ordinal)
-                    ? SessionFailure.Superseded
-                    : SessionFailure.Invalid);
+            return string.Equals(presented.RevokedReason, RevokedReasons.Rotated, StringComparison.Ordinal)
+                ? await SupersededOrEndedAsync(presented, at, cancellationToken).ConfigureAwait(false)
+                : SessionResult.Failed(SessionFailure.Invalid);
         }
 
         if (presented.ExpiresAt <= at)
@@ -144,9 +144,9 @@ public sealed class SessionHandler(ISethikaDbContext db, ITokenService tokens, T
 
         if (claimed == 0)
         {
-            // Another request presenting the same token rotated it first. (Or revoked it - a logout
-            // at the same instant - in which case the client's retry is refused as Invalid.)
-            return SessionResult.Failed(SessionFailure.Superseded);
+            // Another request presenting the same token rotated it first - or revoked it, a logout
+            // at the same instant, which leaves no live session to have been superseded by.
+            return await SupersededOrEndedAsync(presented, at, cancellationToken).ConfigureAwait(false);
         }
 
         var successor = RefreshTokenRows.New(
@@ -219,6 +219,37 @@ public sealed class SessionHandler(ISethikaDbContext db, ITokenService tokens, T
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         return true;
+    }
+
+    /// <summary>
+    /// Answers a spent token presented within the grace period: <see cref="SessionFailure.Superseded"/>
+    /// while the session that won the race is still alive, <see cref="SessionFailure.Invalid"/> once
+    /// it has ended.
+    /// </summary>
+    /// <remarks>
+    /// Superseded tells the client "your cookies already hold the successor, retry with them" and is
+    /// answered without clearing the cookies. After a logout, a logout everywhere, a stamp change or
+    /// the successor's expiry that is false, and the client must hear what every ended session hears.
+    ///
+    /// "Alive" is the test a refresh applies - not revoked, not expired, stamp unchanged - asked of
+    /// the family rather than of the direct successor alone. A family is one chain and only its newest
+    /// token is unrevoked, so this is the successor's successor when the winning tab has already
+    /// rotated again inside the grace period; asking the direct successor would call that session
+    /// ended and have the late tab clear the cookie the winner now holds.
+    /// </remarks>
+    private async Task<SessionResult> SupersededOrEndedAsync(Presented presented, DateTime at, CancellationToken cancellationToken)
+    {
+        var sessionIsAlive = await db.RefreshTokens
+            .AsNoTracking()
+            .AnyAsync(
+                t => t.FamilyId == presented.FamilyId
+                     && t.RevokedAt == null
+                     && t.ExpiresAt > at
+                     && db.Users.Any(u => u.Id == t.UserId && u.SecurityStamp == t.SecurityStamp),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return SessionResult.Failed(sessionIsAlive ? SessionFailure.Superseded : SessionFailure.Invalid);
     }
 
     private async Task<Presented?> FindAsync(string? refreshToken, CancellationToken cancellationToken)

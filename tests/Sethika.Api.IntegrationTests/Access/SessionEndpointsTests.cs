@@ -252,6 +252,21 @@ public sealed class SessionEndpointsTests(SethikaTestDatabase database) : IAsync
     private static async Task<string?> CodeOf(HttpResponseMessage response) =>
         JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("code").GetString();
 
+    /// <summary>
+    /// The answer for a session that is over: 401 <c>session_expired</c>, both cookies cleared,
+    /// and no token in the body.
+    /// </summary>
+    private static async Task AssertEndedSessionAsync(HttpResponseMessage response)
+    {
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("session_expired", await CodeOf(response));
+        Assert.DoesNotContain("accessToken", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+
+        var cookies = SetCookieHeaderValue.ParseStrictList([.. response.Headers.GetValues("Set-Cookie")]);
+        Assert.All(["sethika-refresh", "sethika-csrf"], name =>
+            Assert.Contains(cookies, c => c.Name == name && c.Expires < DateTimeOffset.UtcNow && c.Value.Length == 0));
+    }
+
     // ------------------------------------------------------------------ rotation
 
     [Fact]
@@ -323,6 +338,88 @@ public sealed class SessionEndpointsTests(SethikaTestDatabase database) : IAsync
     }
 
     [Fact]
+    public async Task AReplayWithinTheGracePeriodAfterLogoutIsAnEndedSession()
+    {
+        // The walk-through that found it: log out, then send the old cookie within ten seconds.
+        // No tab won a race here - the session is over - so the answer is the one every ended
+        // session gets, and the cookies go with it.
+        var first = await LogInAsync(await CreateUserAsync());
+        var second = await RefreshAsync(first);
+
+        using var logout = await PostAsync("logout", second);
+        Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
+
+        using var late = await PostAsync("refresh", first);
+
+        await AssertEndedSessionAsync(late);
+        Assert.Equal(2, (await FamilyAsync((await RowAsync(first.Refresh)).FamilyId)).Count);
+    }
+
+    [Fact]
+    public async Task AReplayWithinTheGracePeriodAfterLogoutEverywhereIsAnEndedSession()
+    {
+        var first = await LogInAsync(await CreateUserAsync());
+        var second = await RefreshAsync(first);
+
+        using var logoutAll = await PostAsync("logout-all", second);
+        Assert.Equal(HttpStatusCode.NoContent, logoutAll.StatusCode);
+
+        using var late = await PostAsync("refresh", first);
+
+        await AssertEndedSessionAsync(late);
+    }
+
+    [Fact]
+    public async Task AReplayWithinTheGracePeriodAfterTheSuccessorExpiredIsAnEndedSession()
+    {
+        // Expiry on its own, with nothing revoked: a liveness check that looked only at RevokedAt
+        // would still call this a race.
+        var first = await LogInAsync(await CreateUserAsync());
+        var second = await RefreshAsync(first);
+
+        await ExecuteAsync(
+            "UPDATE auth.RefreshTokens SET ExpiresAt = DATEADD(MINUTE, -1, SYSUTCDATETIME()) WHERE TokenHash = @hash;",
+            new { hash = Hash(second.Refresh) });
+
+        using var late = await PostAsync("refresh", first);
+
+        await AssertEndedSessionAsync(late);
+    }
+
+    [Fact]
+    public async Task AReplayWithinTheGracePeriodAfterTheStampChangedIsAnEndedSession()
+    {
+        // The stamp alone, with the successor neither revoked nor expired - what a password change
+        // that missed this family's revocation would leave behind.
+        var phone = await CreateUserAsync();
+        var first = await LogInAsync(phone);
+        await RefreshAsync(first);
+
+        await ExecuteAsync("UPDATE auth.Users SET SecurityStamp = 'changed' WHERE PhoneNumber = @phone;", new { phone });
+
+        using var late = await PostAsync("refresh", first);
+
+        await AssertEndedSessionAsync(late);
+    }
+
+    [Fact]
+    public async Task AReplayWithinTheGracePeriodFollowsTheFamilyPastAFurtherRotation()
+    {
+        // Tab one rotates A to B and, still inside A's grace, B to C. Tab two's late A must still be
+        // a race: answering it as an ended session would clear the shared cookie jar, deleting C.
+        var first = await LogInAsync(await CreateUserAsync());
+        var second = await RefreshAsync(first);
+        var third = await RefreshAsync(second);
+
+        using var late = await PostAsync("refresh", first);
+        Assert.Equal(HttpStatusCode.Conflict, late.StatusCode);
+        Assert.Equal("session_superseded", await CodeOf(late));
+        Assert.False(late.Headers.Contains("Set-Cookie"));
+
+        await RefreshAsync(third);
+    }
+
+    [Fact]
     public async Task ParallelRefreshesWithOneTokenLetExactlyOneThrough()
     {
         // Plan 5.8. The conditional UPDATE is the lock: of ten requests at once, one finds the token
@@ -357,6 +454,38 @@ public sealed class SessionEndpointsTests(SethikaTestDatabase database) : IAsync
         {
             response.Dispose();
         }
+    }
+
+    [Fact]
+    public async Task ARefreshThatLosesItsClaimToALogoutIsAnEndedSession()
+    {
+        // The claim's other loser: not a tab that rotated first, but a logout revoking the token
+        // while the refresh was on its way to the claim. Nothing superseded it, so it is not 409.
+        //
+        // Same lock as the parallel test, released once the logout and then the refresh queue
+        // behind it, so the logout is granted the row first and the order is deterministic.
+        var session = await LogInAsync(await CreateUserAsync());
+        var tokenId = (await RowAsync(session.Refresh)).Id;
+
+        await using var holder = new SqlConnection(database.ConnectionString);
+        await holder.OpenAsync();
+        await using var hold = await holder.BeginTransactionAsync();
+        await holder.ExecuteAsync(
+            "SELECT Id FROM auth.RefreshTokens WITH (UPDLOCK, ROWLOCK) WHERE Id = @tokenId;", new { tokenId }, hold);
+
+        var logout = PostAsync("logout", session);
+        await WaitForLockWaitsOnRefreshTokensAsync(expected: 1);
+        var refresh = PostAsync("refresh", session);
+        await WaitForLockWaitsOnRefreshTokensAsync(expected: 2);
+        await hold.RollbackAsync();
+
+        using var loggedOut = await logout;
+        using var late = await refresh;
+
+        Assert.Equal(HttpStatusCode.NoContent, loggedOut.StatusCode);
+        Assert.Equal("Logout", (await RowAsync(session.Refresh)).RevokedReason);
+        await AssertEndedSessionAsync(late);
+        Assert.Single(await FamilyAsync((await RowAsync(session.Refresh)).FamilyId));
     }
 
     // ------------------------------------------------------------------ what ends a session

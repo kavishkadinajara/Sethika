@@ -79,7 +79,9 @@ internal static class SessionEndpoints
 
             case SessionFailure.Superseded:
                 // Another tab won the race. Its response carries the successor cookie; clearing the
-                // cookies here could land after it and delete the very session that survived.
+                // cookies here could land after it and delete the very session that survived. The
+                // handler says Superseded only while that session is alive; a late request after it
+                // ended falls to the default below and clears the cookies like any other.
                 return ApiErrors.Error(StatusCodes.Status409Conflict, "session_superseded");
 
             default:
