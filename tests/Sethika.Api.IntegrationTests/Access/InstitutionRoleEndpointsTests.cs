@@ -176,6 +176,14 @@ public sealed class InstitutionRoleEndpointsTests(SethikaTestDatabase database) 
             new { phone, hash, alpha = database.AlphaInstitutionId, roleCode });
 
         using var client = _host.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+
+        // A client address of its own. Every login here otherwise comes from loopback and spends
+        // one shared login-client budget (100 per 15 minutes), which two full runs inside one
+        // window exhaust - the suite then fails on 429s that have nothing to do with roles.
+        client.DefaultRequestHeaders.Add(
+            "X-Forwarded-For",
+            $"10.{RandomNumberGenerator.GetInt32(256)}.{RandomNumberGenerator.GetInt32(256)}.{RandomNumberGenerator.GetInt32(1, 255)}");
+
         using var response = await client.PostAsJsonAsync("/api/auth/login", new { login = phone, password = Password });
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
