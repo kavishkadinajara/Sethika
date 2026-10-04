@@ -17,10 +17,13 @@ browser; 16 Vitest tests in `web/`), but checked only against its contracts in u
 walk-through with the API is still owed (see the 5.7 boxes). **5.7's screens are done** (`4c82ac0`:
 `/signup`, `/login`, `/stepup` and its dialog, `/select-institution`; 32 Vitest tests), except
 `/login/otp`, which waits for a backend OTP-login endpoint. Every 5.7 screen still owes one live
-walk-through against the API (listed under the screens box). Three 5.8 boxes stay open: the platform-claim forgery test, the OTP burn-and-429 test
-over HTTP, and password change (no endpoint yet).
-**283 tests passing** (two consecutive full runs, SQL Server 2022 and Redis), `dotnet format` clean, build
-clean with warnings as errors; 36 Vitest tests in `web/`.
+walk-through against the API (listed under the screens box). **Password change is done**
+(`c4d3ebb` `POST /api/me/password`, `202e6da` `/account/password`; A21), which closes 5.8's
+A1 stamp box. Two 5.8 boxes stay open: the platform-claim forgery test and the OTP burn-and-429
+test over HTTP.
+**280 .NET tests passing** (1 + 15 + 264, two consecutive full runs against SQL Server 2022
+Developer and Redis 7.0), **45 Vitest tests** in `web/`, `dotnet format` clean, build clean with
+warnings as errors, `npm run lint` and `npm run build` clean.
 Last updated 2026-10-04. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
 
@@ -62,6 +65,11 @@ Delivered so far, with the commit that added it:
 | `0e770a4` | A19 edge (5.2): a spent token presented within the grace window is `409 session_superseded` only while its family still has a live token (not revoked, not expired, stamp unchanged) - otherwise `401 session_expired` with the cookies cleared, as for any ended session. Same rule for a refresh that loses its claim to a concurrent logout. One extra read, no schema change - 6 tests over HTTP, 6 mutations all killed. |
 | `50bf0e9` | Platform-claim forgery (5.8): a donor's token plus `sethika:platform` under eight names, one per request, as header, query and JSON body, on `/api/me/permissions` and `/api/bookings/calendar` - same status, body and database session; the session context and RLS-visible rows are read on the app's own connections by a recording `IDbConnectionFactory`. Wrong key, swapped payload and `alg: none` give 401 with no session opened; the API's own key is the control - 10 tests. |
 | `044976e` | OTP over HTTP (5.8): five wrong codes give `attemptsRemaining` 4, 3, 2, 1 then `otp_attempts_exhausted`, and the right code is then `otp_not_found`; a fresh code after burning works at once; the per-number hourly cap gives 429 with `Retry-After` whichever client asks, while another number is unaffected. Limits read from `OtpOptions`; Redis keys cleaned per test - 3 tests. |
+| `1c245c8` | Sign-in split for reuse, no behaviour change: `PasswordVerifier` (dummy hash, lockout, atomic failure count, history row for every refusal) and `SessionStarter` (token pair, new refresh family, success row, added to the caller's transaction). |
+| `c4d3ebb` | Password change (A21): `ChangePasswordHandler` and `POST /api/me/password` - current password through `PasswordVerifier`, then unchanged, then the policy; one transaction for the hash, `SecurityStamps.RotateAsync` (now returns the stamp), the failure-count reset, a `PasswordChanged` outbox row (user id only) and the calling device's new session; per-user rate limit `password-change-user`; `ApiErrors.PasswordRejected` shared with signup. |
+| `8f7dd40` | 13 tests over HTTP (`PasswordChangeEndpointsTests`), 15 mutations, all killed in the end - two only after the tests were fixed (see the commit). |
+| `202e6da` | `/account/password` (current, new, confirm; field errors from the API's codes; toast; stays signed in), form logic in `lib/auth/password-change.ts`, `PasswordGuidance` shared with signup, `PasswordChange.*` in en/si/ta (drafts listed for review). Walked through in Chromium against the real API, SQL Server and Redis. |
+| `ff8cd9d` | 13 Vitest tests for that form logic and `changePassword`; 11 mutations, all killed. |
 
 All of the above is reachable over HTTP.
 
@@ -182,7 +190,7 @@ now ours to do, so each gets one home in the code and one test:
 
 | Identity would do it | Ours | If it is forgotten |
 |---|---|---|
-| Rotate `SecurityStamp` on password change, MFA change or role change | `IUserSecurityService.RotateStampAsync`, called from every such path | Old refresh tokens keep working after a password change, so "log out everywhere" silently does nothing — the one control a user reaches for after a compromise |
+| Rotate `SecurityStamp` on password change, MFA change or role change | `SecurityStamps.RotateAsync` (planned as `IUserSecurityService.RotateStampAsync`; built as a static helper in `f4fabd8`), called from every such path - today logout-all and password change | Old refresh tokens keep working after a password change, so "log out everywhere" silently does nothing — the one control a user reaches for after a compromise |
 | Reset `AccessFailedCount` to 0 after a successful sign-in | The sign-in handler, in the same transaction as the `LastLoginAt` write | Failures accumulate across sessions until a legitimate user with the correct password is locked out |
 | Maintain `NormalizedEmail` on every write | `NormalizedEmail.From`, used by signup and sign-in, later by email change | The stored value stops being canonical. **Corrected 2026-09-27:** duplicates are *not* the consequence on this database — the column's collation is `SQL_Latin1_General_CP1_CI_AS`, so `UX_Users_NormalizedEmail` and the lookup treat `Test@x.com` and `test@x.com` as one address with or without the normaliser. A mutation test showed it (`03bfca5`). The normaliser matters for anything comparing outside SQL Server, or if the column is ever given a case-sensitive collation. |
 
@@ -538,6 +546,34 @@ it cannot step up, so nothing sensitive is reachable with it; and a grant is loo
 closed, the reverse of the rate limiter: an outage refuses sensitive actions rather than letting
 them through unverified.
 
+### A21 — Password change re-authenticates with the current password, through sign-in's lockout *(decided 2026-10-04)*
+
+`POST /api/me/password` is authenticated-only, like `/api/me/permissions`: it acts on the caller's
+own account, named by the token, and a permission for it could only ever be held by everyone.
+
+- **The current password goes through sign-in's `PasswordVerifier`**, so a wrong one counts toward
+  the same lockout and writes the same history row. Otherwise a stolen access token would be fifteen
+  minutes of unlimited guessing beside a sign-in that allows five. Wrong is `400 password_incorrect`;
+  a locked account answers byte-for-byte the same, as sign-in answers a lock like a wrong password.
+  `400` rather than sign-in's `401`, because a `401` makes the web client refresh and retry.
+- **Order:** current password, then `password_unchanged`, then the policy. The policy compares the
+  new password with the user's phone, email and name, so answering it first would let a token
+  holder probe them. (`password_unchanged` compares the two request fields, so its place is free.)
+- **No step-up** on top of the current password. Step-up belongs to `RequiresMfa` permissions (A20)
+  and this endpoint has none; an SMS requirement would also leave a user who has lost their phone
+  unable to secure the account.
+- **One transaction:** hash, `PasswordChangedAt`, `SecurityStamps.RotateAsync`, failure-count reset,
+  a `PasswordChanged` outbox row (user id only), and the calling device's new session through
+  `SessionStarter`, added after the rotation so it carries the new stamp. The device keeps the
+  institution its token acted for. Every other device keeps its access token until it expires (A2)
+  and loses its session at its next refresh.
+- **Not done:** `auth.PasswordHistory` is still unused, so `RecentlyUsed` is never reported and an
+  older password can be reused (only the current one is refused). A refresh that another tab of the
+  same browser has in flight with the old cookie at the moment of the change can be answered `401`,
+  which clears the cookies; if that answer lands after the change's, this browser loses its new
+  session too and must sign in again. Rare - a tab refreshes on load and every fifteen minutes - and
+  closing it needs a cross-tab lock around the change, which was not attempted.
+
 ---
 
 ## 3. Open questions
@@ -781,6 +817,11 @@ Anything that touches reference data in a test runs in a rolled-back transaction
       and retried, logout clearing both cookies, and `/api/me/permissions` loading after sign-in.
 - [x] `next.config.ts` rewrites per A3 (`API_BASE_URL`, amended in A3). Forwarding of cookies, the
       CSRF and Authorization headers and `Set-Cookie` checked with an echo server, not the API.
+- [x] `/account/password` (`202e6da`, A21): current, new and confirm; each API code on the field that
+      can fix it; a toast on success, and the device stays signed in on the session the API answers
+      with. Walked through in Chromium against the real API, SQL Server and Redis via `next start` and
+      the rewrite, at 320 px in en/si/ta: field errors, success, reload still signed in, a second
+      browser signed out at its next load.
 - [x] Faith-neutral imagery only. No religious symbol on a shared screen. The auth screens use the
       brand's bowl mark and nothing else; checked again whenever a screen adds imagery.
 
@@ -817,10 +858,11 @@ Integration (`Sethika.Api.IntegrationTests`), against real SQL Server and Redis:
 The three responsibilities A1 transfers from `UserManager` to us, one test each — these guard
 omissions, so each must be mutation-tested by removing the call and watching the test fail:
 
-- [ ] changing a password rotates `SecurityStamp`, and every refresh token issued before it is refused —
-      **the mechanism is done and tested** (`SecurityStamps.RotateAsync` via logout-all; a stamp changed
-      underneath a live token is refused on refresh). No password-change endpoint exists yet; when it
-      does, it calls `RotateAsync` and this box is ticked by its own test.
+- [x] changing a password rotates `SecurityStamp`, and every refresh token issued before it is refused —
+      `POST /api/me/password` (`c4d3ebb`) calls `RotateAsync`; `PasswordChangeEndpointsTests` (`8f7dd40`):
+      another device's refresh token gives 401, the cookie in the response refreshes, the old password
+      no longer signs in and the new one does. Mutation: `RotateAsync` removed -> that test and the
+      revocation test go red. Ran green against SQL Server 2022 and Redis 7.0.
 - [x] a successful sign-in resets `AccessFailedCount`, so four failures then a success then four more
       failures does not lock the account
 - [x] signing up as `Test@x.com` and then `test@x.com` is rejected as a duplicate, not accepted as a

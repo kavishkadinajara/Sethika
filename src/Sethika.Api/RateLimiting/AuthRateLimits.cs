@@ -3,8 +3,9 @@ using Sethika.Application.Abstractions;
 namespace Sethika.Api.RateLimiting;
 
 /// <summary>
-/// The limits on the anonymous auth endpoints (plan 5.4), and on step-up (5.3), which shares the two
-/// OTP client budgets. One place, so the numbers can be read and argued with together.
+/// The limits on the anonymous auth endpoints (plan 5.4), on step-up (5.3), which shares the two
+/// OTP client budgets, and on password change. One place, so the numbers can be read and argued
+/// with together.
 /// </summary>
 /// <remarks>
 /// Two kinds of subject, doing different jobs:
@@ -47,6 +48,13 @@ internal static class AuthRateLimits
     /// once per page load, and many users share an address.
     /// </summary>
     public static readonly RateLimitRule RefreshPerClient = new("refresh-client", 300, TimeSpan.FromMinutes(15));
+
+    /// <summary>
+    /// Password changes by one signed-in user. Above the lockout's five, like the per-login limit, so
+    /// wrong current passwords lock the account first; this bounds the PBKDF2 work one access token can
+    /// ask for, since a correct password costs two hashes and the lockout never sees it.
+    /// </summary>
+    public static readonly RateLimitRule PasswordChangePerUser = new("password-change-user", 10, TimeSpan.FromMinutes(15));
 
     /// <summary>Password spraying across many logins from one address.</summary>
     public static readonly RateLimitRule LoginPerClient = new("login-client", 100, TimeSpan.FromMinutes(15));

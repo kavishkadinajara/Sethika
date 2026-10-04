@@ -142,6 +142,29 @@ export async function savePreferredLanguage(language: string): Promise<void> {
   }
 }
 
+// ---- signed in: own account ---------------------------------------------------------------------
+
+/**
+ * Changes the signed-in user's password (POST /api/me/password). On success the API has ended
+ * every other session and answers with a new one for this device - new cookies and the same
+ * body as a sign-in - which replaces the current one here.
+ *
+ * Through apiFetch, not plain fetch: it needs the Bearer token, and its 400s
+ * (password_incorrect, password_unchanged, password_rejected) are not a dead session.
+ */
+export async function changePassword(currentPassword: string, newPassword: string): Promise<Result> {
+  const result = await call(
+    apiFetch("/api/me/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+  );
+  if (!result.ok) return result;
+  await session.establish(result.value);
+  return { ok: true, value: undefined };
+}
+
 // ---- plumbing -----------------------------------------------------------------------------------
 
 function send(path: string, init: RequestInit) {

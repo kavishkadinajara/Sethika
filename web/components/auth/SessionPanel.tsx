@@ -58,6 +58,9 @@ export function SessionPanel() {
                   <Link href="/select-institution">{t("switchInstitution")}</Link>
                 </Button>
               )}
+              <Button asChild variant="outline">
+                <Link href="/account/password">{t("changePassword")}</Link>
+              </Button>
               <Button
                 variant="outline"
                 loading={busy === "logout"}

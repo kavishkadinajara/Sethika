@@ -1,3 +1,5 @@
+using Sethika.Application.Access;
+
 namespace Sethika.Api.Endpoints;
 
 /// <summary>
@@ -26,6 +28,21 @@ internal static class ApiErrors
 
         return Error(StatusCodes.Status429TooManyRequests, "too_many_requests");
     }
+
+    /// <summary>
+    /// <c>400 { "code": "password_rejected", "failures": [...] }</c>, naming every rule the password
+    /// broke for the client to explain in its language.
+    /// </summary>
+    /// <remarks>One body for signup and password change, so the client explains both with one mapping.</remarks>
+    public static IResult PasswordRejected(PasswordFailure failures) =>
+        Results.Json(
+            new { code = "password_rejected", failures = Describe(failures) },
+            statusCode: StatusCodes.Status400BadRequest);
+
+    private static string[] Describe(PasswordFailure failures) =>
+        [.. Enum.GetValues<PasswordFailure>()
+            .Where(f => f != PasswordFailure.None && failures.HasFlag(f))
+            .Select(f => f.ToString())];
 
     private sealed record ErrorBody(string Code);
 }

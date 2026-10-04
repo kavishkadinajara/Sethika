@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { logIn, readFailure, savePreferredLanguage } from "./api";
+import { changePassword, logIn, readFailure, savePreferredLanguage } from "./api";
 import { session } from "./index";
 import { safeNextPath } from "./next-path";
 
@@ -144,5 +144,53 @@ describe("savePreferredLanguage (LanguageSwitcher, PUT /api/me/language)", () =>
     await savePreferredLanguage("si");
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("changePassword", () => {
+  function sessionBody(accessToken: string) {
+    return {
+      accessToken,
+      accessTokenExpiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
+      institutions: [],
+      activeInstitution: null,
+    };
+  }
+
+  async function signedInAs(accessToken: string) {
+    vi.stubGlobal("fetch", vi.fn(async () => json(200, sessionBody(accessToken))));
+    await logIn("0771234567", "Correct-horse-1");
+  }
+
+  it("sends both passwords with the Bearer token, and adopts the session the API answers with", async () => {
+    await signedInAs("token-before-change");
+    const fetchMock = vi.fn<(path: string, init?: RequestInit) => Promise<Response>>(async () =>
+      json(200, sessionBody("token-after-change")),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await changePassword("Old-horse-1", "New-horse-2");
+
+    expect(result.ok).toBe(true);
+    const [path, init] = fetchMock.mock.calls[0];
+    expect(path).toBe("/api/me/password");
+    expect(init?.method).toBe("POST");
+    expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer token-before-change");
+    expect(JSON.parse(String(init?.body))).toEqual({ currentPassword: "Old-horse-1", newPassword: "New-horse-2" });
+    // The old token's session was revoked with every other; this device carries on with the new one.
+    expect(session.getState()).toMatchObject({ status: "authenticated", accessToken: "token-after-change" });
+  });
+
+  it("a 400 password_incorrect is a wrong password: one call, no refresh, the session kept", async () => {
+    await signedInAs("token-kept");
+    vi.stubGlobal("document", { cookie: "sethika-csrf=csrf-1" });
+    const fetchMock = vi.fn(async () => json(400, { code: "password_incorrect" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await changePassword("Wrong-horse-1", "New-horse-2");
+
+    expect(result).toMatchObject({ ok: false, failure: { status: 400, code: "password_incorrect" } });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(session.getState()).toMatchObject({ status: "authenticated", accessToken: "token-kept" });
   });
 });

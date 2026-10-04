@@ -36,13 +36,16 @@ Questions for the reviewers:
    Sinhala `ස්වයංක්‍රීය` and Tamil `தானியங்கி` say "automatic"; check that a reader understands
    it as "same as my phone". `தீம்` and `තේමාව` for "Theme" are loanword choices; confirm.
 9. **Auth screens** (`Login.*`, `Signup.*`, `StepUp.*`, `SelectInstitution.*`, `Session.*`,
-   `Errors.*`, `Password.*`): these are the first words most donors read. Check especially that
+   `Errors.*`, `Password.*`, `PasswordChange.*`): these are the first words most donors read. Check especially that
    - the password rules say "English letter" (`ඉංග්‍රීසි අකුරක්`, `ஆங்கில எழுத்து`) on purpose: the API
      counts only letters with upper and lower case, so Sinhala or Tamil letters do not satisfy
      "uppercase" or "lowercase";
    - "sign in" / "sign out" (`පුරනය වන්න` / `ඉවත් වන්න`, `உள்நுழைக` / `வெளியேறு`) match what
      donors see in other Sri Lankan apps;
-   - the plural forms in `Errors.otp_incorrect` read naturally for 1 and for 2-4 attempts left.
+   - the plural forms in `Errors.otp_incorrect` read naturally for 1 and for 2-4 attempts left;
+   - `PasswordChange.description` and `PasswordChange.changedDescription` say that *other* devices
+     are signed out and this one is not; check that the drafts cannot be read as "you will be
+     signed out".
 
 | Key | English (source) | Sinhala (draft) | Tamil (draft) | Reviewer | Status |
 |---|---|---|---|---|---|
@@ -258,6 +261,24 @@ Questions for the reviewers:
 | `Session.signOutEverywhere` | Sign out on all devices | සියලු උපාංගවලින් ඉවත් වන්න | எல்லாச் சாதனங்களிலிருந்தும் வெளியேறு | | |
 | `Session.approved` | Booking approved (demonstration). | වෙන්කිරීම අනුමත විය (නිදර්ශනය). | முன்பதிவு அங்கீகரிக்கப்பட்டது (மாதிரி). | | |
 | `Session.approveFailed` | Could not approve the booking. | වෙන්කිරීම අනුමත කළ නොහැකි විය. | முன்பதிவை அங்கீகரிக்க முடியவில்லை. | | |
+| `PasswordChange.title` | Change your password | ඔබගේ මුරපදය වෙනස් කරන්න | உங்கள் கடவுச்சொல்லை மாற்றுங்கள் | | |
+| `PasswordChange.description` | You'll stay signed in here. Every other device you're signed in on will be signed out. | ඔබ මෙහි පුරනය වී සිටිනු ඇත. ඔබ පුරනය වී ඇති අනෙක් සියලු උපාංගවලින් ඔබව ඉවත් කෙරේ. | இந்தச் சாதனத்தில் நீங்கள் உள்நுழைந்தே இருப்பீர்கள். நீங்கள் உள்நுழைந்துள்ள மற்ற எல்லாச் சாதனங்களிலிருந்தும் வெளியேற்றப்படுவீர்கள். | | |
+| `PasswordChange.signInFirst` | Sign in to change your password. | මුරපදය වෙනස් කිරීමට මුලින්ම පුරනය වන්න. | கடவுச்சொல்லை மாற்ற முதலில் உள்நுழையுங்கள். | | |
+| `PasswordChange.signIn` | Sign in | පුරනය වන්න | உள்நுழைக | | |
+| `PasswordChange.currentLabel` | Current password | වත්මන් මුරපදය | தற்போதைய கடவுச்சொல் | | |
+| `PasswordChange.currentRequired` | Enter your current password. | ඔබගේ වත්මන් මුරපදය ඇතුළත් කරන්න. | உங்கள் தற்போதைய கடவுச்சொல்லை உள்ளிடுங்கள். | | |
+| `PasswordChange.currentIncorrect` | That isn't your current password. | එය ඔබගේ වත්මන් මුරපදය නොවේ. | அது உங்கள் தற்போதைய கடவுச்சொல் அல்ல. | | |
+| `PasswordChange.nextLabel` | New password | නව මුරපදය | புதிய கடவுச்சொல் | | |
+| `PasswordChange.nextRequired` | Choose a new password. | නව මුරපදයක් තෝරන්න. | புதிய கடவுச்சொல்லைத் தேர்ந்தெடுங்கள். | | |
+| `PasswordChange.unchanged` | Choose a password that is different from your current one. | ඔබගේ වත්මන් මුරපදයට වඩා වෙනස් මුරපදයක් තෝරන්න. | தற்போதைய கடவுச்சொல்லிலிருந்து வேறுபட்ட ஒன்றைத் தேர்ந்தெடுங்கள். | | |
+| `PasswordChange.confirmLabel` | Confirm new password | නව මුරපදය තහවුරු කරන්න | புதிய கடவுச்சொல்லை உறுதிப்படுத்துங்கள் | | |
+| `PasswordChange.confirmRequired` | Type your new password again to confirm it. | තහවුරු කිරීමට නව මුරපදය නැවත ඇතුළත් කරන්න. | உறுதிப்படுத்த புதிய கடவுச்சொல்லை மீண்டும் உள்ளிடுங்கள். | | |
+| `PasswordChange.confirmMismatch` | This doesn't match the new password. | මෙය නව මුරපදයට නොගැළපේ. | இது புதிய கடவுச்சொல்லுடன் பொருந்தவில்லை. | | |
+| `PasswordChange.submit` | Change password | මුරපදය වෙනස් කරන්න | கடவுச்சொல்லை மாற்று | | |
+| `PasswordChange.changed` | Password changed | මුරපදය වෙනස් කරන ලදී | கடவுச்சொல் மாற்றப்பட்டது | | |
+| `PasswordChange.changedDescription` | Your other devices have been signed out. | ඔබගේ අනෙක් උපාංගවලින් ඔබව ඉවත් කරන ලදී. | உங்கள் மற்ற சாதனங்களிலிருந்து வெளியேற்றப்பட்டீர்கள். | | |
+| `PasswordChange.home` | Go to the home page | මුල් පිටුවට යන්න | முகப்புக்குச் செல் | | |
+| `Session.changePassword` | Change password | මුරපදය වෙනස් කරන්න | கடவுச்சொல்லை மாற்று | | |
 
 ## SMS templates (`notify.Templates`)
 

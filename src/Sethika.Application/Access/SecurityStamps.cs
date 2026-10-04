@@ -8,8 +8,8 @@ namespace Sethika.Application.Access;
 /// <c>UserManager</c>.
 /// </summary>
 /// <remarks>
-/// Called from every path that must end the user's existing sessions: "log out everywhere" now,
-/// password change and MFA change when they exist. It does two things, each enough on its own and
+/// Called from every path that must end the user's existing sessions: "log out everywhere",
+/// password change, and MFA change when it exists. It does two things, each enough on its own and
 /// kept together on purpose. Revoking every live refresh token ends the sessions at once. Changing
 /// the stamp catches the one revocation cannot: a refresh already mid-rotation, whose successor is
 /// written after the revoke has run - that successor carries the old stamp, and the next refresh
@@ -20,7 +20,11 @@ namespace Sethika.Application.Access;
 public static class SecurityStamps
 {
     /// <summary>Gives <paramref name="userId"/> a new stamp and revokes every live refresh token.</summary>
-    public static async Task RotateAsync(
+    /// <returns>
+    /// The new stamp, for a caller that issues a session in the same transaction - password change
+    /// keeps the calling device signed in, and its new refresh token must carry the stamp it survives.
+    /// </returns>
+    public static async Task<string> RotateAsync(
         ISethikaDbContext db,
         Guid userId,
         string revokedReason,
@@ -44,5 +48,7 @@ public static class SecurityStamps
                 setters => setters.SetProperty(t => t.RevokedAt, at).SetProperty(t => t.RevokedReason, revokedReason),
                 cancellationToken)
             .ConfigureAwait(false);
+
+        return stamp;
     }
 }

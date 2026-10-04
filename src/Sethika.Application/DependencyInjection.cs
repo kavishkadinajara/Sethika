@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Sethika.Application.Access.Bootstrap;
 using Sethika.Application.Access.Language;
+using Sethika.Application.Access.PasswordChange;
 using Sethika.Application.Access.Roles;
 using Sethika.Application.Access.Session;
 using Sethika.Application.Access.SignIn;
@@ -21,7 +22,10 @@ public static class DependencyInjection
         // not for a hash as well - which would make it slower than a wrong password instead.
         services.AddSingleton<DummyPasswordHash>();
 
+        services.AddScoped<PasswordVerifier>();
+        services.AddScoped<SessionStarter>();
         services.AddScoped<SignInHandler>();
+        services.AddScoped<ChangePasswordHandler>();
         services.AddScoped<SignUpDonorHandler>();
         services.AddScoped<SessionHandler>();
         services.AddScoped<StepUpHandler>();
