@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { logIn, readFailure } from "./api";
+import { logIn, readFailure, savePreferredLanguage } from "./api";
 import { session } from "./index";
 import { safeNextPath } from "./next-path";
 
@@ -84,5 +84,65 @@ describe("logIn", () => {
 
     expect(result.ok).toBe(true);
     expect(session.getState()).toMatchObject({ status: "authenticated", accessToken: "token-from-login" });
+  });
+});
+
+describe("savePreferredLanguage (LanguageSwitcher, PUT /api/me/language)", () => {
+  /** Signs the shared session in through logIn, then serves `next` for everything after. */
+  async function signedInThen(next: (path: string, init: RequestInit) => Response | Promise<Response>) {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) =>
+      String(input) === "/api/auth/login"
+        ? json(200, {
+            accessToken: "token-for-language",
+            accessTokenExpiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
+            institutions: [],
+            activeInstitution: null,
+          })
+        : next(String(input), init),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("document", { cookie: "sethika-csrf=csrf-1" });
+    await logIn("0771234567", "Correct-horse-1");
+    fetchMock.mockClear();
+    return fetchMock;
+  }
+
+  it("a signed-in switch PUTs the language with the Bearer token, kept alive past navigation", async () => {
+    const fetchMock = await signedInThen(() => new Response(null, { status: 204 }));
+
+    await savePreferredLanguage("si");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(path).toBe("/api/me/language");
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(String(init.body))).toEqual({ language: "si" });
+    expect(new Headers(init.headers).get("Authorization")).toBe("Bearer token-for-language");
+    expect(init.keepalive).toBe(true);
+  });
+
+  it.each([
+    ["an error answer", () => json(500, { code: "boom" })],
+    ["no answer at all", () => Promise.reject(new TypeError("Failed to fetch"))],
+  ])("%s is logged, never thrown, and leaves the session alone", async (_, answer) => {
+    await signedInThen(answer);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await expect(savePreferredLanguage("ta")).resolves.toBeUndefined();
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(session.getState()).toMatchObject({ status: "authenticated", accessToken: "token-for-language" });
+    warn.mockRestore();
+  });
+
+  it("a visitor without a session sends nothing", async () => {
+    await signedInThen(() => new Response(null, { status: 204 }));
+    await session.logout();
+    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await savePreferredLanguage("si");
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

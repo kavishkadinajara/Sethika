@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Sethika.Api.IntegrationTests.Persistence;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Access;
+using Sethika.Infrastructure.Queries;
 using Sethika.Infrastructure.Security;
 using StackExchange.Redis;
 using Xunit;
@@ -14,7 +16,9 @@ namespace Sethika.Api.IntegrationTests.Security;
 /// with Redis, not the arithmetic around it.
 /// </summary>
 /// <remarks>
-/// No SQL, so this class deliberately stays out of the serialized database collection. Each test
+/// SQL only to read the SMS templates, which are reference data no test changes, so this class stays
+/// out of the serialized database collection. The templates themselves are tested with the
+/// database, in <c>OtpSmsTemplateTests</c>. Each test
 /// uses a unique phone number, so nothing here collides with a parallel test or with leftover keys.
 /// The Redis connection comes from a shared fixture: building one per test method cost about five
 /// seconds each against local Redis 3.2, which dwarfed the tests themselves.
@@ -56,6 +60,7 @@ public sealed class OtpServiceTests
 
         return new OtpService(
             _redis,
+            new SqlConnectionFactory(SethikaTestDatabase.ConfiguredConnectionString, TestCurrentUserContext.Anonymous()),
             new RecordingSmsSender(_sent),
             Options.Create(options),
             NullLogger<OtpService>.Instance);

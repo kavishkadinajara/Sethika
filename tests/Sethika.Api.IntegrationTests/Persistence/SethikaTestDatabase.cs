@@ -11,7 +11,13 @@ public sealed class SethikaTestDatabase : IAsyncLifetime
         "Encrypt=True;TrustServerCertificate=True";
 
     /// <summary>Override with SETHIKA_TEST_SQL to point at another server.</summary>
-    public string ConnectionString { get; } =
+    public string ConnectionString { get; } = ConfiguredConnectionString;
+
+    /// <summary>
+    /// The same connection string, for a test that only reads reference data and so stays out of
+    /// the serialized collection - <c>OtpServiceTests</c> reading <c>notify.Templates</c>.
+    /// </summary>
+    public static string ConfiguredConnectionString =>
         Environment.GetEnvironmentVariable("SETHIKA_TEST_SQL") ?? DefaultConnectionString;
 
     /// <summary>

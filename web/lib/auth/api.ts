@@ -115,6 +115,33 @@ export function verifyStepUpCode(code: string) {
   );
 }
 
+// ---- signed in: preferences --------------------------------------------------------------------
+
+/**
+ * Remembers the language a signed-in user just switched to, so the API speaks it too: the SMS a
+ * step-up sends reads it from the account (PUT /api/me/language, MeEndpoints.cs).
+ *
+ * Best effort and never in the way: the switch itself is a navigation that has already happened,
+ * so this never throws and never shows anything. A failure is only logged; the next switch tries
+ * again. Visitors without a session have no account to save it to. `keepalive` lets the request
+ * outlive the page if the switch reloads it.
+ */
+export async function savePreferredLanguage(language: string): Promise<void> {
+  if (session.getState().status !== "authenticated") return;
+  // call() turns a request that never got an answer into a failure (status 0), so nothing here throws.
+  const result = await call(
+    apiFetch("/api/me/language", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ language }),
+      keepalive: true,
+    }),
+  );
+  if (!result.ok) {
+    console.warn(`Preferred language not saved: ${result.failure.status} ${result.failure.code ?? "no code"}`);
+  }
+}
+
 // ---- plumbing -----------------------------------------------------------------------------------
 
 function send(path: string, init: RequestInit) {

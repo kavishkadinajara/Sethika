@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
+import { savePreferredLanguage } from "@/lib/auth/api";
 import { cn, focusRing } from "@/lib/utils";
 
 /**
@@ -10,6 +11,9 @@ import { cn, focusRing } from "@/lib/utils";
  * next-intl's Link updates the NEXT_LOCALE cookie on click, so the choice sticks for
  * unprefixed URLs too. Each name is written in its own script and tagged with its
  * language, so a screen reader pronounces it correctly.
+ *
+ * For a signed-in user the choice is also saved to the account, so SMS arrive in it. That call
+ * runs beside the navigation, never before it: a failure to save must not stop the switch.
  */
 export function LanguageSwitcher({ className }: { className?: string }) {
   const t = useTranslations("LanguageSwitcher");
@@ -29,6 +33,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
                 lang={locale}
                 hrefLang={locale}
                 aria-current={active ? "true" : undefined}
+                onClick={active ? undefined : () => void savePreferredLanguage(locale)}
                 className={cn(
                   "inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-4 py-1.5",
                   "text-base leading-snug font-medium transition-colors",

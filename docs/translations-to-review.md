@@ -258,3 +258,27 @@ Questions for the reviewers:
 | `Session.signOutEverywhere` | Sign out on all devices | සියලු උපාංගවලින් ඉවත් වන්න | எல்லாச் சாதனங்களிலிருந்தும் வெளியேறு | | |
 | `Session.approved` | Booking approved (demonstration). | වෙන්කිරීම අනුමත විය (නිදර්ශනය). | முன்பதிவு அங்கீகரிக்கப்பட்டது (மாதிரி). | | |
 | `Session.approveFailed` | Could not approve the booking. | වෙන්කිරීම අනුමත කළ නොහැකි විය. | முன்பதிவை அங்கீகரிக்க முடியவில்லை. | | |
+
+## SMS templates (`notify.Templates`)
+
+These are not in the JSON files. They are seeded by
+`src/Sethika.Database/Scripts/Seed/11_NotifyTemplates.sql`, and a correction goes there (the seed
+updates the body in place on the next publish). The key column is `Code / Language`.
+
+Each message must stay inside **one SMS segment**, because every extra segment is paid for.
+Sinhala and Tamil are sent as UCS-2, which allows **70 characters** per segment; English is GSM-7,
+160. `{code}` is replaced by the six-digit code and must stay in the text exactly as written. The
+counts below are with the code in place.
+
+Questions for the reviewers:
+
+1. The signup and step-up messages are the same text today, carried over from the code they
+   replaced. Should the step-up message say that it confirms a sensitive action (a warning against
+   phishing), if that still fits in 70 characters?
+2. `සත්‍යාපන කේතය` and `சரிபார்ப்புக் குறியீடு` for "verification code": the words people expect
+   from bank and telecom OTPs?
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) | Reviewer | Status |
+|---|---|---|---|---|---|
+| `OTP_SIGNUP / SMS` | Your Sethika verification code is {code} (40) | ඔබගේ Sethika සත්‍යාපන කේතය: {code} (34) | உங்கள் Sethika சரிபார்ப்புக் குறியீடு: {code} (45) | | |
+| `OTP_STEPUP / SMS` | Your Sethika verification code is {code} (40) | ඔබගේ Sethika සත්‍යාපන කේතය: {code} (34) | உங்கள் Sethika சரிபார்ப்புக் குறியீடு: {code} (45) | | |
