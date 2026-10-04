@@ -25,11 +25,15 @@ internal static class AuthEndpoints
     {
         var auth = app.MapGroup("/api/auth").AllowAnonymous();
 
-        // Signup and reset count against their own budgets. Anything that is not a reset counts as
+        // Signup, reset and sign-in each count against their own budget. Any other purpose counts as
         // signup, so an unsupported purpose is still counted before it is refused.
         auth.MapPost("/otp/request", RequestOtpAsync)
-            .RateLimitPerClient<OtpRequestBody>(AuthRateLimits.OtpRequestPerClient, body => !IsResetPurpose(body.Purpose))
-            .RateLimitPerClient<OtpRequestBody>(AuthRateLimits.OtpResetRequestPerClient, body => IsResetPurpose(body.Purpose));
+            .RateLimitPerClient<OtpRequestBody>(body => ParsePurpose(body?.Purpose) switch
+            {
+                OtpPurpose.Reset => AuthRateLimits.OtpResetRequestPerClient,
+                OtpPurpose.Login => AuthRateLimits.OtpLoginRequestPerClient,
+                _ => AuthRateLimits.OtpRequestPerClient,
+            });
 
         auth.MapPost("/otp/verify", VerifyOtpAsync)
             .RateLimitPerClient<OtpVerifyBody>(AuthRateLimits.OtpVerifyPerClient, body => !IsResetPurpose(body.Purpose))
@@ -44,6 +48,12 @@ internal static class AuthEndpoints
         auth.MapPost("/password/reset", ResetPasswordAsync)
             .RateLimitPerClient(AuthRateLimits.PasswordResetPerClient);
 
+        // Anonymous like the rest of this group - signing in is how a caller gets an identity to check
+        // a permission against - and limited per number as well as per client, as /otp/verify is.
+        auth.MapPost("/otp/sign-in", SignInWithOtpAsync)
+            .RateLimitPerClient(AuthRateLimits.OtpSignInPerClient)
+            .RateLimitBy<OtpSignInBody>(AuthRateLimits.OtpSignInPerPhone, (body, services) => NormalizedPhone(body.PhoneNumber, services));
+
         auth.MapPost("/signup", SignUpAsync)
             .RateLimitPerClient(AuthRateLimits.SignUpPerClient);
 
@@ -55,16 +65,18 @@ internal static class AuthEndpoints
         return app;
     }
 
-    /// <summary>Sends a signup or password-reset code.</summary>
+    /// <summary>Sends a signup, password-reset or sign-in code.</summary>
     /// <remarks>
-    /// Only the signup and reset purposes are accepted here. Step-up codes go to the number already
-    /// on an authenticated account (slice 5.3); a public endpoint that sent them to any number would
-    /// be both an SMS-bombing tool and a way around that flow.
+    /// Only the signup, reset and login purposes are accepted here. Step-up codes go to the number
+    /// already on an authenticated account (slice 5.3); a public endpoint that sent them to any number
+    /// would be both an SMS-bombing tool and a way around that flow.
     ///
-    /// A number that already has an account is sent a signup code like any other. Refusing would
+    /// A signup code goes to a number that already has an account like to any other. Refusing would
     /// tell anyone which numbers are registered; this way only the phone's holder can learn it, by
-    /// verifying and then being told at signup. A reset answers the same for every number too, but
-    /// only an account that may reset gets the SMS (<see cref="PasswordResetHandler"/>).
+    /// verifying and then being told at signup.
+    ///
+    /// Reset and sign-in codes go only to an account that may use them, but the answer is the same
+    /// for every number (<see cref="PasswordResetHandler"/>, <see cref="OtpSignInHandler"/>).
     /// </remarks>
     private static async Task<IResult> RequestOtpAsync(
         [FromBody] OtpRequestBody body,
@@ -72,6 +84,7 @@ internal static class AuthEndpoints
         IPhoneNumberNormalizer phoneNumbers,
         IOtpService otp,
         PasswordResetHandler reset,
+        OtpSignInHandler otpSignIn,
         CancellationToken cancellationToken)
     {
         if (ParsePurpose(body.Purpose) is not { } purpose)
@@ -90,10 +103,13 @@ internal static class AuthEndpoints
             return ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_language");
         }
 
-        // A reset ignores the requested language: the SMS goes in the account's own.
-        var sent = purpose == OtpPurpose.Reset
-            ? await reset.RequestAsync(phoneNumber, cancellationToken)
-            : await otp.SendAsync(phoneNumber, OtpPurpose.Signup, language, cancellationToken);
+        // Reset and sign-in codes ignore the requested language: the SMS goes in the account's own.
+        var sent = purpose switch
+        {
+            OtpPurpose.Reset => await reset.RequestAsync(phoneNumber, cancellationToken),
+            OtpPurpose.Login => await otpSignIn.RequestAsync(phoneNumber, cancellationToken),
+            _ => await otp.SendAsync(phoneNumber, OtpPurpose.Signup, language, cancellationToken),
+        };
 
         return sent.Outcome switch
         {
@@ -116,7 +132,8 @@ internal static class AuthEndpoints
         PasswordResetHandler reset,
         CancellationToken cancellationToken)
     {
-        if (ParsePurpose(body.Purpose) is not { } purpose)
+        // A sign-in code is spent only by /otp/sign-in: a ticket for it would carry nowhere.
+        if (ParsePurpose(body.Purpose) is not { } purpose || purpose == OtpPurpose.Login)
         {
             return ApiErrors.Error(StatusCodes.Status400BadRequest, "unsupported_purpose");
         }
@@ -139,6 +156,38 @@ internal static class AuthEndpoints
             OtpVerifyOutcome.NotFound => ApiErrors.Error(StatusCodes.Status400BadRequest, "otp_not_found"),
             OtpVerifyOutcome.TooManyAttempts => ApiErrors.Error(StatusCodes.Status400BadRequest, "otp_attempts_exhausted"),
             _ => ApiErrors.Error(StatusCodes.Status503ServiceUnavailable, "verification_unavailable"),
+        };
+    }
+
+    /// <summary>Signs in with a sign-in code, answering success exactly as password login does.</summary>
+    /// <remarks>
+    /// A wrong, expired or burned code, a number with no account and a locked account are one
+    /// answer. A suspended account is told so, as password login tells it - only to someone holding
+    /// a valid code for its phone.
+    /// </remarks>
+    private static async Task<IResult> SignInWithOtpAsync(
+        [FromBody] OtpSignInBody body,
+        HttpContext httpContext,
+        IPhoneNumberNormalizer phoneNumbers,
+        OtpSignInHandler otpSignIn,
+        IHostEnvironment environment,
+        CancellationToken cancellationToken)
+    {
+        if (!phoneNumbers.TryNormalize(body.PhoneNumber, out var phoneNumber))
+        {
+            return ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_phone_number");
+        }
+
+        var result = await otpSignIn.SignInAsync(
+            new OtpSignInCommand(phoneNumber, body.Code, ClientAddress.Of(httpContext), UserAgent(httpContext)),
+            cancellationToken);
+
+        return result.Failure switch
+        {
+            SignInFailure.None => StartSession(httpContext, result, environment, StatusCodes.Status200OK),
+            SignInFailure.NotAllowed => ApiErrors.Error(StatusCodes.Status403Forbidden, "account_not_active"),
+            SignInFailure.Unavailable => ApiErrors.Error(StatusCodes.Status503ServiceUnavailable, "verification_unavailable"),
+            _ => ApiErrors.Error(StatusCodes.Status401Unauthorized, "otp_invalid"),
         };
     }
 
@@ -247,14 +296,19 @@ internal static class AuthEndpoints
         _ => ApiErrors.Error(StatusCodes.Status503ServiceUnavailable, "verification_unavailable"),
     };
 
-    /// <summary>The purposes a client may name here; blank is signup, as before reset existed.</summary>
+    /// <summary>The purposes a client may name here; blank is signup, as before the others existed.</summary>
     private static OtpPurpose? ParsePurpose(string? purpose) =>
         string.IsNullOrWhiteSpace(purpose) || string.Equals(purpose, "signup", StringComparison.OrdinalIgnoreCase)
             ? OtpPurpose.Signup
-            : IsResetPurpose(purpose) ? OtpPurpose.Reset : null;
+            : IsResetPurpose(purpose) ? OtpPurpose.Reset
+            : IsLoginPurpose(purpose) ? OtpPurpose.Login
+            : null;
 
     private static bool IsResetPurpose(string? purpose) =>
         string.Equals(purpose, "reset", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsLoginPurpose(string? purpose) =>
+        string.Equals(purpose, "login", StringComparison.OrdinalIgnoreCase);
 
     private static string? NormalizedPhone(string? phoneNumber, IServiceProvider services) =>
         services.GetRequiredService<IPhoneNumberNormalizer>().TryNormalize(phoneNumber, out var normalized)

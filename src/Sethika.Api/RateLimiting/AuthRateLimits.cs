@@ -27,6 +27,21 @@ internal static class AuthRateLimits
     /// <summary>SMS spraying from one address. Each number is also capped by OtpService.</summary>
     public static readonly RateLimitRule OtpRequestPerClient = new("otp-request-client", 20, TimeSpan.FromHours(1));
 
+    /// <summary>
+    /// Sign-in codes requested from one address. The signup budget's twin under its own key, so
+    /// neither flow can spend the other's.
+    /// </summary>
+    public static readonly RateLimitRule OtpLoginRequestPerClient = new("otp-login-request-client", 20, TimeSpan.FromHours(1));
+
+    /// <summary>
+    /// Sign-in guesses against one number's codes, across resends - the twin of
+    /// <see cref="OtpVerifyPerPhone"/>. It counts numbers with no account exactly like the rest.
+    /// </summary>
+    public static readonly RateLimitRule OtpSignInPerPhone = new("otp-signin-phone", 10, TimeSpan.FromMinutes(15));
+
+    /// <summary>Sign-in guesses against many numbers from one address - the twin of <see cref="OtpVerifyPerClient"/>.</summary>
+    public static readonly RateLimitRule OtpSignInPerClient = new("otp-signin-client", 60, TimeSpan.FromMinutes(15));
+
     /// <summary>Guesses against codes for one number, across resends.</summary>
     public static readonly RateLimitRule OtpVerifyPerPhone = new("otp-verify-phone", 10, TimeSpan.FromMinutes(15));
 

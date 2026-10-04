@@ -37,7 +37,27 @@
     "submit": "Sign in",
     "noAccount": "New to Sethika?",
     "createAccount": "Create an account",
-    "forgotPassword": "Forgot password?"
+    "forgotPassword": "Forgot password?",
+    "useCode": "Sign in with a code instead"
+  },
+  "LoginOtp": {
+    "title": "Sign in with a code",
+    "phoneHelp": "Enter the mobile number on your Sethika account. We'll text it a 6-digit code.",
+    "phoneLabel": "Mobile number",
+    "phonePlaceholder": "07X XXX XXXX",
+    "phoneRequired": "Enter your mobile number.",
+    "sendCode": "Send code",
+    "usePassword": "Sign in with a password instead",
+    "noAccount": "New to Sethika?",
+    "createAccount": "Create an account",
+    "codeTitle": "Enter the code",
+    "codeSentTo": "If {phone} is on a Sethika account, a code is on its way. It can take a minute to arrive.",
+    "codeLabel": "6-digit code",
+    "codeRequired": "Enter all 6 digits of the code.",
+    "signIn": "Sign in",
+    "changeNumber": "Change number",
+    "resend": "Send a new code",
+    "resendIn": "New code in {time}"
   },
   "NotFound": {
     "title": "Page not found",
@@ -164,7 +184,8 @@
     "no_verified_phone": "Your account has no confirmed phone number, so we can't send a code.",
     "institution_not_available": "You can no longer act for this institution.",
     "session_expired": "Your session has ended. Please sign in again.",
-    "reset_ticket_invalid": "This password reset has expired or was already used. Please verify your number again."
+    "reset_ticket_invalid": "This password reset has expired or was already used. Please verify your number again.",
+    "otp_invalid": "That code didn't work. Check the number and the code, or send a new code."
   },
   "Password": {
     "title": "Your password needs:",

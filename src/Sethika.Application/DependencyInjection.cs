@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<SessionStarter>();
         services.AddScoped<SignInHandler>();
         services.AddScoped<ChangePasswordHandler>();
+        services.AddScoped<OtpSignInHandler>();
         services.AddScoped<SignUpDonorHandler>();
         services.AddScoped<SessionHandler>();
         services.AddScoped<StepUpHandler>();

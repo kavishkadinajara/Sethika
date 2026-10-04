@@ -107,7 +107,13 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <p className="mt-8 flex flex-wrap items-center justify-center gap-x-2 text-center text-muted">
+      <p className="mt-4 text-center">
+        <Link href="/login/otp" className={cn(textLink, focusRing)}>
+          {t("useCode")}
+        </Link>
+      </p>
+
+      <p className="mt-4 flex flex-wrap items-center justify-center gap-x-2 text-center text-muted">
         <span>{t("noAccount")}</span>
         <Link href="/signup" className={cn(textLink, focusRing)}>
           {t("createAccount")}

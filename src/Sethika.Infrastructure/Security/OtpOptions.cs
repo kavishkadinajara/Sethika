@@ -61,6 +61,18 @@ public sealed class OtpOptions
     public TimeSpan SendWindow { get; set; } = TimeSpan.FromHours(1);
 
     /// <summary>
+    /// The least time a request for a sign-in code takes, whether or not the number has an account.
+    /// </summary>
+    /// <remarks>
+    /// Only a number with an account is sent an SMS, and the send - a row in
+    /// <c>notify.Notifications</c> and a call to the gateway - is the slow part. Answering every
+    /// request no sooner than this hides it. It must sit above the gateway's slow sends, not its
+    /// average; one second and a half covers the Sri Lankan gateways' usual round trip with room, and
+    /// costs nothing a user notices next to waiting for the SMS itself. Overruns are logged.
+    /// </remarks>
+    public TimeSpan UndisclosedSendDuration { get; set; } = TimeSpan.FromSeconds(1.5);
+
+    /// <summary>
     /// Writes the generated code to the log at information level. Development only.
     /// </summary>
     /// <remarks>

@@ -23,6 +23,12 @@ public enum SignInFailure
     /// reachable with the correct password, so saying so reveals nothing to a stranger.
     /// </summary>
     NotAllowed = 3,
+
+    /// <summary>
+    /// A sign-in code could not be checked because the store that holds codes is unreachable. Only
+    /// sign-in by code returns it; a password sign-in does not depend on that store.
+    /// </summary>
+    Unavailable = 4,
 }
 
 /// <summary>The outcome of a sign-in.</summary>

@@ -126,6 +126,28 @@ export async function resetPassword(ticket: string, newPassword: string): Promis
   return { ok: true, value: undefined };
 }
 
+// ---- anonymous: sign-in by code -----------------------------------------------------------------
+
+/**
+ * Asks for a sign-in code. The API answers 202 whether or not the number has an account, and texts
+ * only one that does, so a screen must never say the code "was sent".
+ */
+export function requestSignInCode(phoneNumber: string) {
+  return call(publicPost("/api/auth/otp/request", { phoneNumber, purpose: "login" }));
+}
+
+/**
+ * Signs in with a code from requestSignInCode. A wrong, expired or used code and a number with no
+ * account are all 401 otp_invalid, with no attempts-left count: telling them apart would tell a
+ * stranger which numbers are registered.
+ */
+export async function signInWithCode(phoneNumber: string, code: string): Promise<Result> {
+  const result = await call(publicPost("/api/auth/otp/sign-in", { phoneNumber, code }));
+  if (!result.ok) return result;
+  await session.establish(result.value);
+  return { ok: true, value: undefined };
+}
+
 // ---- signed in: step-up -------------------------------------------------------------------------
 
 /** Texts a code to the account's own confirmed phone. */

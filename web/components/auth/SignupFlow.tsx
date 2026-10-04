@@ -5,7 +5,6 @@ import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { OtpInput } from "@/components/ui/otp-input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Spinner } from "@/components/ui/spinner";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -20,10 +19,12 @@ import {
 import { readNextPath } from "@/lib/auth/next-path";
 import { cn, focusRing } from "@/lib/utils";
 import { AuthHeading } from "./AuthHeading";
+import { CodeStep } from "./CodeStep";
 import { FormError } from "./FormError";
 import { PasswordChecklist, PasswordFailures } from "./PasswordGuidance";
 import { textLink } from "./links";
 import { PasswordChecklist, PasswordFailures } from "./PasswordGuidance";
+import { PhoneStep } from "./PhoneStep";
 import { StepProgress } from "./StepProgress";
 import { formatWait, useCountdown } from "./useCountdown";
 import { useApiErrorMessage } from "./useApiErrorMessage";
@@ -245,66 +246,59 @@ export function SignupFlow() {
       {stepNumber > 0 && <StepProgress current={stepNumber} total={numbered.length} label={t("step", { current: stepNumber, total: numbered.length })} />}
 
       {step === "phone" && (
-        <form key="phone" noValidate onSubmit={sendCode} className="grid gap-5">
-          <AuthHeading title={t("phoneTitle")} description={t("phoneHelp")} focusOnMount={moved} />
-          <FormError>{formError}</FormError>
-          <Field label={t("phoneLabel")} error={fieldErrors.phone} required>
-            <Input
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder={t("phonePlaceholder")}
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-            />
-          </Field>
-          <Button type="submit" size="lg" loading={busy} className="w-full">
-            {t("sendCode")}
-          </Button>
-          <p className="flex flex-wrap items-center justify-center gap-x-2 text-center text-muted">
-            <span>{t("haveAccount")}</span>
-            <Link href="/login" className={cn(textLink, focusRing)}>
-              {t("signIn")}
-            </Link>
-          </p>
-        </form>
+        <PhoneStep
+          key="phone"
+          text={{
+            title: t("phoneTitle"),
+            description: t("phoneHelp"),
+            label: t("phoneLabel"),
+            placeholder: t("phonePlaceholder"),
+            submit: t("sendCode"),
+          }}
+          phone={phone}
+          onPhoneChange={setPhone}
+          onSubmit={sendCode}
+          busy={busy}
+          formError={formError}
+          fieldError={fieldErrors.phone}
+          focusOnMount={moved}
+          footer={
+            <p className="flex flex-wrap items-center justify-center gap-x-2 text-center text-muted">
+              <span>{t("haveAccount")}</span>
+              <Link href="/login" className={cn(textLink, focusRing)}>
+                {t("signIn")}
+              </Link>
+            </p>
+          }
+        />
       )}
 
       {step === "code" && (
-        <form
+        <CodeStep
           key="code"
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault();
-            void checkCode();
+          text={{
+            title: t("codeTitle"),
+            description: t("codeSentTo", { phone: phone.trim() }),
+            label: t("codeLabel"),
+            submit: t("verify"),
+            changeNumber: t("changeNumber"),
+            resend: t("resend"),
+            resendIn: (time) => t("resendIn", { time }),
           }}
-          className="grid gap-5"
-        >
-          <AuthHeading title={t("codeTitle")} description={t("codeSentTo", { phone: phone.trim() })} focusOnMount={moved} />
-          <FormError>{formError}</FormError>
-          <Field label={t("codeLabel")} error={fieldErrors.code} required>
-            <OtpInput
-              value={code}
-              onValueChange={(value) => {
-                setCode(value);
-                setFieldErrors({});
-              }}
-              onComplete={(value) => void checkCode(value)}
-              disabled={busy}
-            />
-          </Field>
-          <Button type="submit" size="lg" loading={busy} className="w-full">
-            {t("verify")}
-          </Button>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Button variant="ghost" onClick={() => go("phone")}>
-              {t("changeNumber")}
-            </Button>
-            <Button variant="ghost" onClick={() => void resendCode()} disabled={resend.remaining > 0}>
-              {resend.remaining > 0 ? t("resendIn", { time: formatWait(resend.remaining) }) : t("resend")}
-            </Button>
-          </div>
-        </form>
+          code={code}
+          onCodeChange={(value) => {
+            setCode(value);
+            setFieldErrors({});
+          }}
+          onCheck={(value) => void checkCode(value)}
+          onChangeNumber={() => go("phone")}
+          onResend={() => void resendCode()}
+          resendRemaining={resend.remaining}
+          busy={busy}
+          formError={formError}
+          fieldError={fieldErrors.code}
+          focusOnMount={moved}
+        />
       )}
 
       {step === "details" && (

@@ -1,5 +1,6 @@
 using System.Buffers.Text;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -101,31 +102,57 @@ public sealed partial class OtpService : IOtpService
         OtpPurpose purpose,
         string language,
         CancellationToken cancellationToken = default) =>
-        IssueAsync(phoneNumber, purpose, language, cancellationToken);
+        IssueAsync(phoneNumber, purpose, language, deliver: true, cancellationToken);
 
     public Task<OtpSendResult> SendDecoyAsync(
         string phoneNumber,
         OtpPurpose purpose,
         CancellationToken cancellationToken = default) =>
-        IssueAsync(phoneNumber, purpose, language: null, cancellationToken);
+        IssueAsync(phoneNumber, purpose, SupportedLanguages.Default, deliver: false, cancellationToken);
 
-    /// <summary>
-    /// The one path both sends take, so a decoy cannot drift from a real send. A null
-    /// <paramref name="language"/> is a decoy: the code is stored but neither logged nor sent.
-    /// </summary>
+    public async Task<OtpSendResult> SendUndisclosedAsync(
+        string phoneNumber,
+        OtpPurpose purpose,
+        string language,
+        bool deliver,
+        CancellationToken cancellationToken = default)
+    {
+        var started = Stopwatch.GetTimestamp();
+
+        var result = await IssueAsync(phoneNumber, purpose, language, deliver, cancellationToken)
+            .ConfigureAwait(false);
+
+        // The SMS is the one step only a number with an account pays for: a database write and,
+        // in production, a call to the gateway. Without a floor, a stopwatch on this request tells
+        // anyone which numbers are registered however equal the answers are. A gateway slower than
+        // the floor reopens the gap, so it is logged rather than hidden.
+        var remaining = _options.UndisclosedSendDuration - Stopwatch.GetElapsedTime(started);
+        if (remaining > TimeSpan.Zero)
+        {
+            await Task.Delay(remaining, cancellationToken).ConfigureAwait(false);
+        }
+        else if (deliver && result.WasSent)
+        {
+            LogFloorOverrun(_logger, purpose, -remaining);
+        }
+
+        return result;
+    }
+
     private async Task<OtpSendResult> IssueAsync(
         string phoneNumber,
         OtpPurpose purpose,
-        string? language,
+        string language,
+        bool deliver,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(phoneNumber);
 
         // Read before anything is stored or counted, so a missing template neither leaves a code
-        // nobody received nor spends the number's send budget. A decoy reads the English one: the
-        // same round trip and the same Unavailable when it is missing, so neither its timing nor
-        // its answer tells a decoy from a real send.
-        var template = await FindTemplateAsync(purpose, language ?? "en", cancellationToken).ConfigureAwait(false);
+        // nobody received nor spends the number's send budget. A send that delivers nothing reads
+        // one too: the same round trip and the same Unavailable when it is missing, so neither its
+        // timing nor its answer tells it from a real send.
+        var template = await FindTemplateAsync(purpose, language, cancellationToken).ConfigureAwait(false);
         if (template is null)
         {
             return OtpSendResult.Unavailable();
@@ -172,8 +199,10 @@ public sealed partial class OtpService : IOtpService
 
             await db.KeyExpireAsync(codeKey, _options.Lifetime).ConfigureAwait(false);
 
-            if (language is null)
+            if (!deliver)
             {
+                // Stored all the same, so presenting a code for this number costs the same work and
+                // burns after the same number of guesses as for a number that was sent one.
                 return OtpSendResult.Sent();
             }
 
@@ -421,6 +450,11 @@ public sealed partial class OtpService : IOtpService
         Level = LogLevel.Warning,
         Message = "One-time code store unavailable during {Operation}; the caller was told so.")]
     private static partial void LogStoreUnavailable(ILogger logger, string operation, Exception exception);
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "A {Purpose} code took {Overrun} longer to send than the undisclosed-send floor; its timing can reveal that the number has an account. Raise Otp:UndisclosedSendDuration.")]
+    private static partial void LogFloorOverrun(ILogger logger, OtpPurpose purpose, TimeSpan overrun);
 
     [LoggerMessage(
         Level = LogLevel.Information,
