@@ -16,10 +16,12 @@ browser; 16 Vitest tests in `web/`), but checked only against its contracts in u
 walk-through with the API is still owed (see the 5.7 boxes). **5.7's screens are done** (`4c82ac0`:
 `/signup`, `/login`, `/stepup` and its dialog, `/select-institution`; 32 Vitest tests), except
 `/login/otp`, which waits for a backend OTP-login endpoint. Every 5.7 screen still owes one live
-walk-through against the API (listed under the screens box). Three 5.8 boxes stay open: the platform-claim forgery test, the OTP burn-and-429 test
-over HTTP, and password change (no endpoint yet).
-**267 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
-Last updated 2026-10-01. Update this line and the 5.1 boxes whenever either changes — a fresh
+walk-through against the API (listed under the screens box). **5.8's platform-claim forgery and
+OTP burn-and-429 boxes are done** (`50bf0e9`, `044976e`); one 5.8 box stays open: password change
+(no endpoint yet).
+**280 tests passing** (two consecutive full runs against SQL Server 2022 Developer and Redis 7.0.15),
+`dotnet format` clean, build clean with warnings as errors.
+Last updated 2026-10-04. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
 
 Delivered so far, with the commit that added it:
@@ -51,6 +53,8 @@ Delivered so far, with the commit that added it:
 | `a2959d5` | Light and dark themes: follows the device by default, `ThemeSwitcher` (Auto / Light / Dark) saved in the `sethika_theme` cookie, applied before first paint by an inline `<head>` script and kept across locale changes by `ThemeSync`; components moved to semantic colour tokens with measured contrast in both themes. |
 | `58914a6` | Browser session (5.7 `lib/auth/` and rewrites): `lib/auth/session-client.ts` (token in memory, silent refresh with CSRF, one fetch wrapper with single-flight refresh, A19 superseded retry, A20 step-up hook, logout / logout-all / switch-institution), `next.config.ts` rewrite to `API_BASE_URL`, permissions loaded client-side (`lib/permissions/server.ts` removed), root layout no longer dynamic so every locale's pages are prerendered. Vitest 4.1 in `web/` - 16 tests, each guarded rule mutation-checked. |
 | `4c82ac0` | Auth screens (5.7): `/signup` (phone → code → details → consent, every API error code mapped to a translated message where it can be fixed), `/login`, the step-up dialog wired to `lib/auth`'s hook plus `/stepup`, `/select-institution`; a session panel and a real `RequiresMfa` demo call on the home page. Prerendered per locale; checked at 320 px in en/si/ta against mocked responses shaped per the contracts. |
+| `50bf0e9` | Platform-claim forgery (5.8): a donor's token plus `sethika:platform` under eight names, one per request, as header, query and JSON body, on `/api/me/permissions` and `/api/bookings/calendar` - same status, body and database session; the session context and RLS-visible rows are read on the app's own connections by a recording `IDbConnectionFactory`. Wrong key, swapped payload and `alg: none` give 401 with no session opened; the API's own key is the control - 10 tests. |
+| `044976e` | OTP over HTTP (5.8): five wrong codes give `attemptsRemaining` 4, 3, 2, 1 then `otp_attempts_exhausted`, and the right code is then `otp_not_found`; a fresh code after burning works at once; the per-number hourly cap gives 429 with `Retry-After` whichever client asks, while another number is unaffected. Limits read from `OtpOptions`; Redis keys cleaned per test - 3 tests. |
 
 All of the above is reachable over HTTP.
 
@@ -768,11 +772,15 @@ Integration (`Sethika.Api.IntegrationTests`), against real SQL Server and Redis:
 - [x] **replaying a rotated refresh token revokes the whole family** — the security test that matters most
 - [x] a token signed with a different key gives 401; an expired one gives 401
       (`JwtTokenServiceEndpointTests`, with a 14-minute-old token accepted as the control)
-- [ ] `sethika:platform` cannot be forged via header, query or body (extends the existing test)
+- [x] `sethika:platform` cannot be forged via header, query or body (`JwtTokenServiceEndpointTests`,
+      `50bf0e9`). No platform-scoped endpoint exists yet, so a `[HasPermission]` endpoint stands in;
+      add the first real platform endpoint to the theory when it lands.
 - [x] `switch-institution` to an institution the user holds no role in gives 403, and no token is issued
 - [x] a `RequiresMfa` permission gives 403 before step-up, 200 after, and 403 again once the TTL expires
       (`StepUpEndpointsTests`, with the TTL itself asserted at fifteen minutes)
-- [ ] OTP: a wrong code five times burns it; a fourth send within the hour gives 429
+- [x] OTP: a wrong code five times burns it; a fourth send within the hour gives 429
+      (`AuthEndpointsTests`, `044976e`). The fifth wrong code answers `otp_attempts_exhausted`,
+      not `otp_incorrect` with 0 left.
 - [x] two parallel refreshes with the same token — exactly one succeeds
 - [x] signup writes exactly one outbox row, and rolls back all five tables when any part fails
       (`SignUpDonorHandlerTests`)
