@@ -32,6 +32,24 @@ public interface IOtpService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Does everything <see cref="SendAsync"/> does - the cooldown, the per-number send count, a
+    /// stored code - except send it.
+    /// </summary>
+    /// <remarks>
+    /// For flows that must not say whether a number has an account, such as a password reset. A
+    /// number that gets no SMS still has to hit the same cooldown, reach the same 429 on the same
+    /// request, and answer a guessed code the same way, or those differences become the answer.
+    /// The code is random and never leaves the server, so it cannot be presented.
+    /// </remarks>
+    /// <param name="phoneNumber">The number in E.164 form.</param>
+    /// <param name="purpose">The flow the decoy stands in for.</param>
+    /// <param name="cancellationToken">Cancels the operation.</param>
+    Task<OtpSendResult> SendDecoyAsync(
+        string phoneNumber,
+        OtpPurpose purpose,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Checks <paramref name="code"/> against the outstanding code for this number and purpose,
     /// consuming it on success so it cannot be presented twice, and issuing a ticket that proves the
     /// verification to the step that follows.

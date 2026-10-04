@@ -68,11 +68,28 @@ public sealed partial class OtpService : IOtpService
         _options = options.Value;
     }
 
-    public async Task<OtpSendResult> SendAsync(
+    public Task<OtpSendResult> SendAsync(
         string phoneNumber,
         OtpPurpose purpose,
         string language,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        IssueAsync(phoneNumber, purpose, language, cancellationToken);
+
+    public Task<OtpSendResult> SendDecoyAsync(
+        string phoneNumber,
+        OtpPurpose purpose,
+        CancellationToken cancellationToken = default) =>
+        IssueAsync(phoneNumber, purpose, language: null, cancellationToken);
+
+    /// <summary>
+    /// The one path both sends take, so a decoy cannot drift from a real send. A null
+    /// <paramref name="language"/> is a decoy: the code is stored but neither logged nor sent.
+    /// </summary>
+    private async Task<OtpSendResult> IssueAsync(
+        string phoneNumber,
+        OtpPurpose purpose,
+        string? language,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(phoneNumber);
 
@@ -117,6 +134,11 @@ public sealed partial class OtpService : IOtpService
 
             await db.KeyExpireAsync(codeKey, _options.Lifetime).ConfigureAwait(false);
 
+            if (language is null)
+            {
+                return OtpSendResult.Sent();
+            }
+
             if (_options.LogCodesForDevelopment)
             {
                 LogDevelopmentCode(_logger, phoneNumber, purpose, code);
@@ -124,7 +146,7 @@ public sealed partial class OtpService : IOtpService
 
             await _sms.SendAsync(
                 phoneNumber,
-                BuildMessage(code, language),
+                BuildMessage(code, purpose, language),
                 dedupKey: null,
                 cancellationToken).ConfigureAwait(false);
 
@@ -279,12 +301,16 @@ public sealed partial class OtpService : IOtpService
     /// <remarks>
     /// Placeholder text until <c>notify.Templates</c> is seeded per language in slice 5.6. The
     /// language is already threaded through so that adding the templates is a change here and
-    /// nowhere else.
+    /// nowhere else. A reset code says what it is for: someone who did not ask to reset their
+    /// password should be able to tell from the message alone that somebody else did.
     /// </remarks>
-    private static string BuildMessage(string code, string language) => language switch
+    private static string BuildMessage(string code, OtpPurpose purpose, string language) => (purpose, language) switch
     {
-        "si" => $"ඔබගේ Sethika සත්‍යාපන කේතය: {code}",
-        "ta" => $"உங்கள் Sethika சரிபார்ப்புக் குறியீடு: {code}",
+        (OtpPurpose.Reset, "si") => $"ඔබගේ Sethika මුරපදය යළි සැකසීමේ කේතය: {code}",
+        (OtpPurpose.Reset, "ta") => $"உங்கள் Sethika கடவுச்சொல் மீட்டமைப்புக் குறியீடு: {code}",
+        (OtpPurpose.Reset, _) => $"Your Sethika password reset code is {code}",
+        (_, "si") => $"ඔබගේ Sethika සත්‍යාපන කේතය: {code}",
+        (_, "ta") => $"உங்கள் Sethika சரிபார்ப்புக் குறியீடு: {code}",
         _ => $"Your Sethika verification code is {code}",
     };
 

@@ -71,8 +71,9 @@ public enum OtpVerifyOutcome
 /// <see cref="OtpVerifyOutcome.Incorrect"/>.
 /// </param>
 /// <param name="Ticket">
-/// When verified: a single-use proof of the verification, for the step that follows it - signup
-/// or a password reset - to redeem through <c>IOtpService.RedeemTicketAsync</c>. A bearer secret
+/// When verified: a single-use proof of the verification, for the step that follows it - signup -
+/// to redeem through <c>IOtpService.RedeemTicketAsync</c>. A password reset needs its proof bound
+/// to an account, not a number, so it issues its own (<c>IPasswordResetTickets</c>). A bearer secret
 /// for its short life, so it is left out of <see cref="object.ToString"/>.
 /// </param>
 public readonly record struct OtpVerifyResult(OtpVerifyOutcome Outcome, int AttemptsRemaining, string? Ticket = null)

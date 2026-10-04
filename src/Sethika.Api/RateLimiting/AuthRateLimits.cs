@@ -32,6 +32,25 @@ internal static class AuthRateLimits
     /// <summary>Guessing codes for many numbers from one address.</summary>
     public static readonly RateLimitRule OtpVerifyPerClient = new("otp-verify-client", 60, TimeSpan.FromMinutes(15));
 
+    /// <summary>
+    /// The three OTP budgets again, for password-reset codes. Their own counters, so a burst of
+    /// signups from one address cannot use up the budget its users need to recover an account, nor
+    /// the reverse.
+    /// </summary>
+    public static readonly RateLimitRule OtpResetRequestPerClient = new("otp-reset-request-client", 20, TimeSpan.FromHours(1));
+
+    /// <inheritdoc cref="OtpResetRequestPerClient"/>
+    public static readonly RateLimitRule OtpResetVerifyPerPhone = new("otp-reset-verify-phone", 10, TimeSpan.FromMinutes(15));
+
+    /// <inheritdoc cref="OtpResetRequestPerClient"/>
+    public static readonly RateLimitRule OtpResetVerifyPerClient = new("otp-reset-verify-client", 60, TimeSpan.FromMinutes(15));
+
+    /// <summary>
+    /// Setting a password from one address. Not a guessing control - the ticket is 256 random bits -
+    /// but every attempt that passes the ticket check costs a 210 000-iteration hash.
+    /// </summary>
+    public static readonly RateLimitRule PasswordResetPerClient = new("password-reset-client", 20, TimeSpan.FromHours(1));
+
     /// <summary>Account creation from one address.</summary>
     public static readonly RateLimitRule SignUpPerClient = new("signup-client", 20, TimeSpan.FromHours(1));
 

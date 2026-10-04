@@ -258,3 +258,14 @@ Questions for the reviewers:
 | `Session.signOutEverywhere` | Sign out on all devices | සියලු උපාංගවලින් ඉවත් වන්න | எல்லாச் சாதனங்களிலிருந்தும் வெளியேறு | | |
 | `Session.approved` | Booking approved (demonstration). | වෙන්කිරීම අනුමත විය (නිදර්ශනය). | முன்பதிவு அங்கீகரிக்கப்பட்டது (மாதிரி). | | |
 | `Session.approveFailed` | Could not approve the booking. | වෙන්කිරීම අනුමත කළ නොහැකි විය. | முன்பதிவை அங்கீகரிக்க முடியவில்லை. | | |
+
+## SMS texts sent by the API
+
+Not in the JSON files: these live in `OtpService.BuildMessage`
+(`src/Sethika.Infrastructure/Security/OtpService.cs`) until `notify.Templates` is seeded per
+language (plan 5.6). Copy reviewed text there. `{code}` is the six-digit code. Every non-ASCII
+character makes the whole SMS UCS-2 (70 characters a segment), so keep each under 70 characters.
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) | Reviewer | Status |
+|---|---|---|---|---|---|
+| `sms.otp.reset` | Your Sethika password reset code is {code} | ඔබගේ Sethika මුරපදය යළි සැකසීමේ කේතය: {code} | உங்கள் Sethika கடவுச்சொல் மீட்டமைப்புக் குறியீடு: {code} | | |

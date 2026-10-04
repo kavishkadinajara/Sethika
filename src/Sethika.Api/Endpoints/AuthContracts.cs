@@ -2,7 +2,7 @@ using System.Text;
 
 namespace Sethika.Api.Endpoints;
 
-/// <summary>Asks for a one-time code. Only <c>signup</c> is accepted here.</summary>
+/// <summary>Asks for a one-time code: <c>signup</c> (the default) or <c>reset</c>.</summary>
 public sealed record OtpRequestBody(string? PhoneNumber, string? Purpose, string? Language);
 
 /// <summary>Presents a one-time code.</summary>
@@ -28,6 +28,16 @@ public sealed record SignUpBody(
     private bool PrintMembers(StringBuilder builder)
     {
         builder.Append("PhoneNumber = ").Append(PhoneNumber).Append(", Email = ").Append(Email);
+        return true;
+    }
+}
+
+/// <summary>Sets a new password with the ticket a verified <c>reset</c> code returned.</summary>
+public sealed record PasswordResetBody(string? Ticket, string? NewPassword)
+{
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append("Ticket = ").Append(Ticket is null ? "null" : "(redacted)");
         return true;
     }
 }
