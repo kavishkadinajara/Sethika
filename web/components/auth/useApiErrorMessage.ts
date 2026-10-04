@@ -22,6 +22,7 @@ const knownCodes = [
   "no_verified_phone",
   "institution_not_available",
   "session_expired",
+  "reset_ticket_invalid",
 ] as const;
 type KnownCode = (typeof knownCodes)[number];
 

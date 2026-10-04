@@ -97,6 +97,35 @@ export async function logIn(login: string, password: string): Promise<Result> {
   return { ok: true, value: undefined };
 }
 
+// ---- anonymous: forgotten password ---------------------------------------------------------------
+
+/**
+ * Asks for a reset code. The API answers 202 whether or not the number has an account, and texts
+ * only an account that may reset, in the account's own language; `language` is sent for parity
+ * with signup and ignored.
+ */
+export function requestResetCode(phoneNumber: string, language: string) {
+  return call(publicPost("/api/auth/otp/request", { phoneNumber, purpose: "reset", language }));
+}
+
+/** A correct code returns the single-use reset ticket, valid 10 minutes. */
+export async function verifyResetCode(phoneNumber: string, code: string): Promise<Result<string>> {
+  const result = await call(publicPost("/api/auth/otp/verify", { phoneNumber, purpose: "reset", code }));
+  if (!result.ok) return result;
+  const body = (await result.value.json()) as { ticket: string };
+  return { ok: true, value: body.ticket };
+}
+
+/**
+ * Sets the new password (204). Starts no session: every session from before the reset has
+ * ended, and the user signs in with the new password.
+ */
+export async function resetPassword(ticket: string, newPassword: string): Promise<Result> {
+  const result = await call(publicPost("/api/auth/password/reset", { ticket, newPassword }));
+  if (!result.ok) return result;
+  return { ok: true, value: undefined };
+}
+
 // ---- signed in: step-up -------------------------------------------------------------------------
 
 /** Texts a code to the account's own confirmed phone. */

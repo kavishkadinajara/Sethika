@@ -43,6 +43,10 @@ Questions for the reviewers:
    - "sign in" / "sign out" (`පුරනය වන්න` / `ඉවත් වන්න`, `உள்நுழைக` / `வெளியேறு`) match what
      donors see in other Sri Lankan apps;
    - the plural forms in `Errors.otp_incorrect` read naturally for 1 and for 2-4 attempts left.
+10. **Forgotten password** (`ForgotPassword.*`, `Login.forgotPassword`, `Errors.reset_ticket_invalid`):
+   `ForgotPassword.codeSentTo` says "*if* this number has an account, a code is on its way" on
+   purpose. The API does not say whether a number is registered, and the screen must not either.
+   Keep it conditional in the reviewed text: not "we sent", and not "no account found".
 
 | Key | English (source) | Sinhala (draft) | Tamil (draft) | Reviewer | Status |
 |---|---|---|---|---|---|
@@ -258,6 +262,37 @@ Questions for the reviewers:
 | `Session.signOutEverywhere` | Sign out on all devices | සියලු උපාංගවලින් ඉවත් වන්න | எல்லாச் சாதனங்களிலிருந்தும் வெளியேறு | | |
 | `Session.approved` | Booking approved (demonstration). | වෙන්කිරීම අනුමත විය (නිදර්ශනය). | முன்பதிவு அங்கீகரிக்கப்பட்டது (மாதிரி). | | |
 | `Session.approveFailed` | Could not approve the booking. | වෙන්කිරීම අනුමත කළ නොහැකි විය. | முன்பதிவை அங்கீகரிக்க முடியவில்லை. | | |
+| `Login.forgotPassword` | Forgot password? | මුරපදය අමතකද? | கடவுச்சொல் மறந்துவிட்டதா? | | |
+| `Errors.reset_ticket_invalid` | This password reset has expired or was already used. Please verify your number again. | මෙම මුරපදය යළි සැකසීම කල් ඉකුත් වී හෝ දැනටමත් භාවිත කර ඇත. කරුණාකර ඔබගේ අංකය නැවත තහවුරු කරන්න. | இந்தக் கடவுச்சொல் மீட்டமைப்பு காலாவதியாகிவிட்டது அல்லது ஏற்கனவே பயன்படுத்தப்பட்டது. உங்கள் எண்ணை மீண்டும் உறுதிப்படுத்துங்கள். | | |
+| `ForgotPassword.title` | Reset your password | ඔබගේ මුරපදය යළි සකසන්න | உங்கள் கடவுச்சொல்லை மீட்டமையுங்கள் | | |
+| `ForgotPassword.step` | Step {current} of {total} | පියවර {current} / {total} | படி {current} / {total} | | |
+| `ForgotPassword.phoneTitle` | Forgot your password? | ඔබගේ මුරපදය අමතකද? | கடவுச்சொல் மறந்துவிட்டதா? | | |
+| `ForgotPassword.phoneHelp` | Enter the mobile number on your account. We'll text it a 6-digit code to set a new password. | ඔබගේ ගිණුමේ ජංගම අංකය ඇතුළත් කරන්න. නව මුරපදයක් සැකසීමට අපි එයට ඉලක්කම් 6ක කේතයක් කෙටි පණිවිඩයකින් එවන්නෙමු. | உங்கள் கணக்கிலுள்ள கைபேசி எண்ணை உள்ளிடுங்கள். புதிய கடவுச்சொல்லை அமைக்க அதற்கு 6 இலக்கக் குறியீட்டைக் குறுஞ்செய்தியில் அனுப்புவோம். | | |
+| `ForgotPassword.phoneLabel` | Mobile number | ජංගම දුරකථන අංකය | கைபேசி எண் | | |
+| `ForgotPassword.phonePlaceholder` | 07X XXX XXXX | 07X XXX XXXX | 07X XXX XXXX | | |
+| `ForgotPassword.phoneRequired` | Enter your mobile number. | ඔබගේ ජංගම දුරකථන අංකය ඇතුළත් කරන්න. | உங்கள் கைபேசி எண்ணை உள்ளிடுங்கள். | | |
+| `ForgotPassword.sendCode` | Send code | කේතය යවන්න | குறியீட்டை அனுப்பு | | |
+| `ForgotPassword.remembered` | Remembered it? | මතක් වුණාද? | நினைவுக்கு வந்ததா? | | |
+| `ForgotPassword.signIn` | Sign in | පුරනය වන්න | உள்நுழைக | | |
+| `ForgotPassword.codeTitle` | Enter the code | කේතය ඇතුළත් කරන්න | குறியீட்டை உள்ளிடுங்கள் | | |
+| `ForgotPassword.codeSentTo` | If {phone} belongs to a Sethika account, a code is on its way. It can take a minute to arrive. | {phone} Sethika ගිණුමකට අයත් නම්, කේතයක් එයට එවෙමින් පවතී. එය පැමිණීමට විනාඩියක් පමණ ගත විය හැක. | {phone} ஒரு Sethika கணக்கிற்குரியது என்றால், அதற்குக் குறியீடு அனுப்பப்படுகிறது. அது வர ஒரு நிமிடம் ஆகலாம். | | |
+| `ForgotPassword.codeLabel` | 6-digit code | ඉලක්කම් 6ක කේතය | 6 இலக்கக் குறியீடு | | |
+| `ForgotPassword.codeRequired` | Enter all 6 digits of the code. | කේතයේ ඉලක්කම් 6ම ඇතුළත් කරන්න. | குறியீட்டின் 6 இலக்கங்களையும் உள்ளிடுங்கள். | | |
+| `ForgotPassword.verify` | Verify | තහවුරු කරන්න | உறுதிப்படுத்து | | |
+| `ForgotPassword.changeNumber` | Change number | අංකය වෙනස් කරන්න | எண்ணை மாற்று | | |
+| `ForgotPassword.resend` | Send a new code | අලුත් කේතයක් යවන්න | புதிய குறியீட்டை அனுப்பு | | |
+| `ForgotPassword.resendIn` | New code in {time} | {time} කින් අලුත් කේතයක් | {time} இல் புதிய குறியீடு | | |
+| `ForgotPassword.passwordTitle` | Choose a new password | නව මුරපදයක් තෝරන්න | புதிய கடவுச்சொல்லைத் தேர்ந்தெடுங்கள் | | |
+| `ForgotPassword.passwordHelp` | Every device signed in to your account will be signed out. You will sign in again with the new password. | ඔබගේ ගිණුමට පුරනය වී ඇති සියලු උපාංගවලින් ඉවත් කෙරේ. ඔබ නව මුරපදයෙන් නැවත පුරනය වනු ඇත. | உங்கள் கணக்கில் உள்நுழைந்துள்ள எல்லாச் சாதனங்களிலிருந்தும் வெளியேற்றப்படுவீர்கள். புதிய கடவுச்சொல்லுடன் மீண்டும் உள்நுழைவீர்கள். | | |
+| `ForgotPassword.passwordLabel` | New password | නව මුරපදය | புதிய கடவுச்சொல் | | |
+| `ForgotPassword.passwordRequired` | Choose a new password. | නව මුරපදයක් තෝරන්න. | புதிய கடவுச்சொல்லைத் தேர்ந்தெடுங்கள். | | |
+| `ForgotPassword.confirmLabel` | Type the new password again | නව මුරපදය නැවත ඇතුළත් කරන්න | புதிய கடவுச்சொல்லை மீண்டும் உள்ளிடுங்கள் | | |
+| `ForgotPassword.confirmRequired` | Type the new password again. | නව මුරපදය නැවත ඇතුළත් කරන්න. | புதிய கடவுச்சொல்லை மீண்டும் உள்ளிடுங்கள். | | |
+| `ForgotPassword.confirmMismatch` | The two passwords don't match. | මුරපද දෙක එකිනෙකට නොගැළපේ. | இரண்டு கடவுச்சொற்களும் பொருந்தவில்லை. | | |
+| `ForgotPassword.submit` | Change password | මුරපදය වෙනස් කරන්න | கடவுச்சொல்லை மாற்று | | |
+| `ForgotPassword.startAgain` | Start again | මුල සිට පටන් ගන්න | மீண்டும் தொடங்கு | | |
+| `ForgotPassword.changedTitle` | Your password was changed | ඔබගේ මුරපදය වෙනස් කරන ලදී | உங்கள் கடவுச்சொல் மாற்றப்பட்டது | | |
+| `ForgotPassword.changedDescription` | Sign in with your new password. | ඔබගේ නව මුරපදයෙන් පුරනය වන්න. | உங்கள் புதிய கடவுச்சொல்லுடன் உள்நுழையுங்கள். | | |
 
 ## SMS texts sent by the API
 
