@@ -17,9 +17,11 @@ walk-through with the API is still owed (see the 5.7 boxes). **5.7's screens are
 `/signup`, `/login`, `/stepup` and its dialog, `/select-institution`; 32 Vitest tests), except
 `/login/otp`, which waits for a backend OTP-login endpoint. Every 5.7 screen still owes one live
 walk-through against the API (listed under the screens box). Three 5.8 boxes stay open: the platform-claim forgery test, the OTP burn-and-429 test
-over HTTP, and password change (no endpoint yet).
+over HTTP, and password change (no endpoint yet). **5.10, the forgotten-password reset by SMS, is
+built** (`04e9ae1`, `115ccbe`, `bf5e618`), but its boxes stay open: its SQL Server tests were
+written in an environment without SQL Server and have **never run**. Run them before ticking.
 **267 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
-Last updated 2026-10-01. Update this line and the 5.1 boxes whenever either changes — a fresh
+Last updated 2026-10-04. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
 
 Delivered so far, with the commit that added it:
@@ -51,6 +53,9 @@ Delivered so far, with the commit that added it:
 | `a2959d5` | Light and dark themes: follows the device by default, `ThemeSwitcher` (Auto / Light / Dark) saved in the `sethika_theme` cookie, applied before first paint by an inline `<head>` script and kept across locale changes by `ThemeSync`; components moved to semantic colour tokens with measured contrast in both themes. |
 | `58914a6` | Browser session (5.7 `lib/auth/` and rewrites): `lib/auth/session-client.ts` (token in memory, silent refresh with CSRF, one fetch wrapper with single-flight refresh, A19 superseded retry, A20 step-up hook, logout / logout-all / switch-institution), `next.config.ts` rewrite to `API_BASE_URL`, permissions loaded client-side (`lib/permissions/server.ts` removed), root layout no longer dynamic so every locale's pages are prerendered. Vitest 4.1 in `web/` - 16 tests, each guarded rule mutation-checked. |
 | `4c82ac0` | Auth screens (5.7): `/signup` (phone → code → details → consent, every API error code mapped to a translated message where it can be fixed), `/login`, the step-up dialog wired to `lib/auth`'s hook plus `/stepup`, `/select-institution`; a session panel and a real `RequiresMfa` demo call on the home page. Prerendered per locale; checked at 320 px in en/si/ta against mocked responses shaped per the contracts. |
+| `04e9ae1` | Password reset backend (5.10): `/otp/request` and `/otp/verify` accept `reset`; `POST /api/auth/password/reset`; `PasswordResetHandler`, `IOtpService.SendDecoyAsync`, `IPasswordResetTickets` + `RedisPasswordResetTickets`; per-purpose rate-limit rules; the reset SMS in en/si/ta. 13 Redis tests, run green. |
+| `115ccbe` | `PasswordResetEndpointsTests`: 15 HTTP cases against SQL Server and Redis. **Written, not run** (no SQL Server where they were written). |
+| `bf5e618` | `/forgot-password` (phone, then code, then new password) and the "Forgot password?" link on `/login`; `StepProgress` and `PasswordGuidance` shared with signup; 21 Vitest tests. |
 
 All of the above is reachable over HTTP.
 
@@ -326,7 +331,8 @@ log) is one method. Note the weakness in the report instead of hiding it.
 Keys as built (`c59db76`): `rl:{rule}:{first 128 bits of SHA-256 of the subject}`, one rule per
 line of `AuthRateLimits` — `login-name`, `login-client`, `otp-request-client`, `otp-verify-phone`,
 `otp-verify-client`, `signup-client`, and `refresh-client` (5.2); step-up (5.3) shares the two
-OTP client budgets. The subject is hashed so a
+OTP client budgets. The password reset (5.10) has its own: `otp-reset-request-client`,
+`otp-reset-verify-client`, `otp-reset-verify-phone` and `password-reset-client`. The subject is hashed so a
 typed login cannot make a key of any size, and phone numbers and emails are not readable in
 `KEYS rl:*`. The counter and its expiry are set in one Lua step: INCR-then-EXPIRE leaves a counter
 that never expires if the process dies between them.
@@ -698,7 +704,9 @@ Anything that touches reference data in a test runs in a rolled-back transaction
       `docs/translations-to-review.md`.
 - [ ] `PUT /api/me/language` writing `auth.Users.PreferredLanguage`.
 - [ ] `notify.Templates` seeded per language for the OTP SMS — a Sinhala-preferring user must receive
-      the Sinhala OTP message, which is why `Templates` has a `Language` column.
+      the Sinhala OTP message, which is why `Templates` has a `Language` column. Since `04e9ae1`
+      there are two texts to move: verification and password reset. Both are in
+      `OtpService.BuildMessage`, and the reset text is listed in `docs/translations-to-review.md`.
 - [x] Fonts per A10. Verified on the placeholder `/login` in en, si and ta with Chromium's
       `CSS.getPlatformFontsForNode`: Latin renders in Outfit (Fraunces for the tagline), Sinhala in
       Noto Sans Sinhala, Tamil in Noto Sans Tamil. Check again on the real form in 5.7.
@@ -825,6 +833,94 @@ Backend only; the role-management screens come with week 2's screens.
       cannot assign themselves anything; cannot reach another institution's role; a member's
       permissions change at once on edit, assignment and revocation; editing and assigning need a
       step-up. `RbacCatalogueTests` (`92b6187`) covers the ceiling-in-the-view cases.
+
+### 5.10 — Forgotten password, reset by SMS *(added 2026-10-04)*
+
+The phone number is the account's identity, so the reset goes by SMS, not email (§7). Built in
+`04e9ae1` (API), `115ccbe` (HTTP tests) and `bf5e618` (screens). **No box below is ticked.** Its
+SQL Server and Redis tests were written in an environment where SQL Server could not be
+installed, and nobody has seen them pass. Tick each box only after
+`PasswordResetEndpointsTests` runs green against `Sethika_Test`, and after the mutations listed in
+`115ccbe`'s message have been run.
+
+Choices, and why:
+
+- **No sign-in after a reset: `204`, then the user signs in with the new password.** Every
+  session from before the reset has just been ended on purpose. Signing in again proves the new
+  password was set the way the user meant it, and the reset endpoint stays out of the cookie and
+  session code (A2).
+- **No enumeration, at any step.** `/otp/request` with `reset` answers `202` for every number.
+  Only an account that is active, not deleted, phone-confirmed and not `MfaRequired` gets an SMS.
+  Every other number gets `IOtpService.SendDecoyAsync`: the same cooldown, per-number send count
+  and stored code as a real send, without the SMS. So the 429 lands on the same request, and a
+  guessed code is `otp_incorrect` with the same attempts left, whether or not the number has an
+  account. Every reset request waits out a one-second floor (`PasswordResetHandler.RequestFloor`),
+  so the SMS hand-off does not show in the timing. **Limit, for the report:** a gateway slower than
+  the floor would show through again. Delivering the SMS through the outbox, off the request, is
+  the real fix, once the outbox processor exists.
+- **`MfaRequired` accounts (platform staff) cannot reset this way,** and are refused exactly like
+  an unknown number. SMS alone would be one factor for the most powerful accounts. Their recovery
+  is the `bootstrap` command (Q5), which already treats a suspended or deleted administrator as the
+  recovery case.
+- **The reset ticket is the A17 pattern, bound to an account, not a number.** Verifying a reset
+  code returns 32 random bytes. Only their SHA-256 is stored, as `pwreset:{hash}` →
+  `{userId}|{securityStamp}`, for ten minutes. The reset request carries no phone, so the ticket
+  has to name the account itself. The number-bound A17 ticket the code check also issues is
+  dropped, as step-up drops its own. Any stamp change after the ticket was issued (logout-all,
+  another reset) makes it worthless. If a decoy code is ever guessed, the guesser gets a ticket
+  that was never stored. It looks like any other ticket and no reset accepts it.
+- **The ticket is looked at, then spent.** The password policy runs first, with signup's errors and
+  signup's personal data (phone, email, name). A refused password costs a correction, not another
+  SMS, the same order signup keeps. Then a Lua GET+DEL spends the ticket before anything is
+  written, so it is gone even if a later step fails. The write is
+  `UPDATE … WHERE Id = @id AND SecurityStamp = @ticketStamp` plus the eligibility conditions, so
+  a logout-all or suspension landing in between still wins.
+- **One transaction:** the new hash and `PasswordChangedAt`, `AccessFailedCount = 0`,
+  `LockoutEnd = NULL`, `SecurityStamps.RotateAsync` (revoked reason `PasswordReset`), and a
+  `PasswordReset` outbox row holding the user id only (the `DonorSignedUp` precedent). Its consumer
+  is the "your password was changed" SMS, which does not exist yet. `audit.AuditLogs` is not
+  written, because nothing in the codebase writes it yet. `auth.PasswordHistory` is not written
+  either: nothing reads it, and `RecentlyUsed` is not enforced anywhere yet.
+- **Rate limits:** reset has its own per-client request and verify budgets and its own per-phone
+  verify budget (`otp-reset-*`), so signups from one address cannot use up the budget their users
+  need to recover an account. OtpService's per-number send counter was already keyed per purpose.
+  `/password/reset` is limited to 20 an hour per client, because each attempt that gets past the
+  ticket check costs a 210 000-iteration hash.
+- **The SMS goes in the account's `PreferredLanguage`,** not the page's. `notify.Templates` is not
+  seeded, so the text sits beside the other OTP texts (see the 5.6 templates box).
+
+- [ ] `/api/auth/otp/request` and `/otp/verify` accept `reset`; `POST /api/auth/password/reset
+      { ticket, newPassword }` answers `204` (`04e9ae1`). Anonymous and rate-limited like the rest of
+      `/api/auth`: the ticket is the gate.
+- [ ] Full reset over HTTP: request, verify, reset. The old password fails, the new one signs in, and
+      a refresh token from before the reset gives `401`, revoked `PasswordReset`. One outbox row,
+      ids only. (`AForgottenPasswordIsResetBySms_AndEverySessionFromBeforeItEnds`)
+- [ ] An unknown number and an `MfaRequired` account get the same status, body and timing as a real
+      number, no SMS, and the same answer to a guessed code. An `MfaRequired` account cannot reset
+      even with a ticket planted in Redis. Suspended, deactivated and deleted accounts get no code.
+- [ ] A ticket works once. A ticket from before a logout-all is refused. A refused password does not
+      spend the ticket.
+- [ ] A signup code or ticket cannot be used for a reset, and a reset code or ticket cannot be used
+      for signup.
+- [ ] Five wrong codes burn the code. A fourth request within the hour is `429`, for a real number and
+      an unknown one alike.
+- [ ] A locked account can reset and then signs in with the new password. A reset restarts the
+      failure count.
+- [ ] The mutations listed in `115ccbe` (remove `RotateAsync`, a reusable ticket, no purpose check, an
+      SMS for unknown numbers, `MfaRequired` let through, the lockout not cleared, the failure count
+      not reset), each turning its test red.
+- [ ] Web (`bf5e618`): "Forgot password?" on `/login` → `/forgot-password`. Phone, then code, then
+      new password twice. Success lands on `/login` with a toast. Strings in en/si/ta, with si/ta
+      drafts in `docs/translations-to-review.md`. Lint, build and 21 Vitest tests are green (11
+      mutations killed), and a 320 px pass in all three languages was made against mocked
+      responses. **Still owed:** the same walk against the live API, with the SMS from the console
+      sender arriving in the account's language.
+
+Already green against real Redis (`04e9ae1`, run twice): the decoy keeps the real cooldown, send
+cap and guess answer and sends nothing; signup and reset codes have separate keys and caps; the
+reset SMS names its purpose in all three languages; the ticket store redeems once (also under eight
+concurrent redemptions), peeks without spending, keeps only a hash with a TTL, and fails closed.
+Ten mutations, all killed.
 
 ---
 
