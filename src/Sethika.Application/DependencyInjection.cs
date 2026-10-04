@@ -20,6 +20,8 @@ public static class DependencyInjection
         // not for a hash as well - which would make it slower than a wrong password instead.
         services.AddSingleton<DummyPasswordHash>();
 
+        services.AddScoped<PasswordVerifier>();
+        services.AddScoped<SessionStarter>();
         services.AddScoped<SignInHandler>();
         services.AddScoped<SignUpDonorHandler>();
         services.AddScoped<SessionHandler>();
