@@ -1,7 +1,9 @@
 using System.Buffers.Text;
+using System.Data.Common;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using Dapper;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Sethika.Application.Abstractions;
@@ -29,6 +31,14 @@ namespace Sethika.Infrastructure.Security;
 /// login is unaffected. This is deliberately unlike the permission cache, which degrades to a SQL
 /// read: there is no safe fallback for a one-time code, because the only fallback would be to
 /// accept a code nobody issued.
+///
+/// The message is the <c>notify.Templates</c> row for the purpose, channel <c>SMS</c> and the
+/// requested language, with <c>{code}</c> replaced. A language without a template falls back to
+/// English with a warning; a purpose without an English template sends nothing and reports itself
+/// unavailable, with an error in the log, rather than reach for a hard-coded text that nobody
+/// reviews in the seed. Templates are read on every send, not cached: sends are capped at a handful
+/// per number per hour, so the read costs nothing worth saving, and a cache would let a corrected
+/// template keep going out wrong until it expired.
 /// </remarks>
 public sealed partial class OtpService : IOtpService
 {
@@ -48,7 +58,23 @@ public sealed partial class OtpService : IOtpService
     private const string RedeemTicketScript =
         "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0";
 
+    private const string CodePlaceholder = "{code}";
+    private const string FallbackLanguage = "en";
+
+    // The requested language and English in one round trip; the caller picks.
+    private const string TemplateSql =
+        """
+        SELECT t.Language AS Language,
+               t.Body     AS Body
+        FROM notify.Templates AS t
+        WHERE t.Code = @code
+          AND t.Channel = 'SMS'
+          AND t.IsActive = 1
+          AND (t.Language = @language OR t.Language = 'en');
+        """;
+
     private readonly IConnectionMultiplexer _redis;
+    private readonly IDbConnectionFactory _connections;
     private readonly ISmsSender _sms;
     private readonly ILogger<OtpService> _logger;
     private readonly OtpOptions _options;
@@ -56,6 +82,7 @@ public sealed partial class OtpService : IOtpService
     /// <summary>Creates the service.</summary>
     public OtpService(
         IConnectionMultiplexer redis,
+        IDbConnectionFactory connections,
         ISmsSender sms,
         IOptions<OtpOptions> options,
         ILogger<OtpService> logger)
@@ -63,6 +90,7 @@ public sealed partial class OtpService : IOtpService
         ArgumentNullException.ThrowIfNull(options);
 
         _redis = redis;
+        _connections = connections;
         _sms = sms;
         _logger = logger;
         _options = options.Value;
@@ -75,6 +103,14 @@ public sealed partial class OtpService : IOtpService
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(phoneNumber);
+
+        // Read before anything is stored or counted, so a missing template neither leaves a code
+        // nobody received nor spends the number's send budget.
+        var template = await FindTemplateAsync(purpose, language, cancellationToken).ConfigureAwait(false);
+        if (template is null)
+        {
+            return OtpSendResult.Unavailable();
+        }
 
         var codeKey = OtpCacheKey.ForCode(phoneNumber, purpose);
         var sendCountKey = OtpCacheKey.ForSendCount(phoneNumber, purpose);
@@ -124,7 +160,7 @@ public sealed partial class OtpService : IOtpService
 
             await _sms.SendAsync(
                 phoneNumber,
-                BuildMessage(code, language),
+                template.Replace(CodePlaceholder, code, StringComparison.Ordinal),
                 dedupKey: null,
                 cancellationToken).ConfigureAwait(false);
 
@@ -274,19 +310,88 @@ public sealed partial class OtpService : IOtpService
     }
 
     /// <summary>
-    /// Builds the message body.
+    /// The SMS body for <paramref name="purpose"/> in <paramref name="language"/>, or in English when
+    /// that language has none; null, with the reason logged as an error, when there is nothing to send.
+    /// </summary>
+    private async Task<string?> FindTemplateAsync(OtpPurpose purpose, string language, CancellationToken cancellationToken)
+    {
+        var code = TemplateCode(purpose);
+
+        List<(string Language, string Body)> rows;
+        try
+        {
+            await using var connection = await _connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+
+            rows = [.. await connection.QueryAsync<(string Language, string Body)>(new CommandDefinition(
+                TemplateSql,
+                new { code, language },
+                cancellationToken: cancellationToken)).ConfigureAwait(false)];
+        }
+        catch (DbException ex)
+        {
+            LogTemplateUnreadable(_logger, code, ex);
+            return null;
+        }
+
+        // Language is CHAR(2), so the comparison is exact only on trimmed values.
+        var chosen = rows.Find(r => string.Equals(r.Language.Trim(), language, StringComparison.Ordinal));
+        if (chosen.Body is null)
+        {
+            chosen = rows.Find(r => string.Equals(r.Language.Trim(), FallbackLanguage, StringComparison.Ordinal));
+            if (chosen.Body is null)
+            {
+                LogTemplateMissing(_logger, code, language);
+                return null;
+            }
+
+            LogTemplateFallback(_logger, code, language);
+        }
+
+        // A body that cannot carry the code would send an SMS that is no use to anyone, and cost money.
+        if (!chosen.Body.Contains(CodePlaceholder, StringComparison.Ordinal))
+        {
+            LogTemplateWithoutCode(_logger, code, chosen.Language.Trim());
+            return null;
+        }
+
+        return chosen.Body;
+    }
+
+    /// <summary>
+    /// The <c>notify.Templates</c> code for a purpose.
     /// </summary>
     /// <remarks>
-    /// Placeholder text until <c>notify.Templates</c> is seeded per language in slice 5.6. The
-    /// language is already threaded through so that adding the templates is a change here and
-    /// nowhere else.
+    /// Written out rather than built from the enum name, for the reason <see cref="OtpCacheKey"/>
+    /// gives: a rename must not silently point at a template that does not exist.
     /// </remarks>
-    private static string BuildMessage(string code, string language) => language switch
+    private static string TemplateCode(OtpPurpose purpose) => purpose switch
     {
-        "si" => $"ඔබගේ Sethika සත්‍යාපන කේතය: {code}",
-        "ta" => $"உங்கள் Sethika சரிபார்ப்புக் குறியீடு: {code}",
-        _ => $"Your Sethika verification code is {code}",
+        OtpPurpose.Signup => "OTP_SIGNUP",
+        OtpPurpose.Login => "OTP_LOGIN",
+        OtpPurpose.StepUp => "OTP_STEPUP",
+        OtpPurpose.Reset => "OTP_RESET",
+        _ => throw new ArgumentOutOfRangeException(nameof(purpose), purpose, "Unknown OTP purpose."),
     };
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "No active SMS template {TemplateCode} in '{Language}'; the English one was sent instead.")]
+    private static partial void LogTemplateFallback(ILogger logger, string templateCode, string language);
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "No active SMS template {TemplateCode} in '{Language}' or in English; no code was sent. Seed notify.Templates.")]
+    private static partial void LogTemplateMissing(ILogger logger, string templateCode, string language);
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "SMS template {TemplateCode} in '{Language}' has no {{code}} placeholder; no code was sent.")]
+    private static partial void LogTemplateWithoutCode(ILogger logger, string templateCode, string language);
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Could not read SMS template {TemplateCode}; no code was sent.")]
+    private static partial void LogTemplateUnreadable(ILogger logger, string templateCode, Exception exception);
 
     [LoggerMessage(
         Level = LogLevel.Warning,

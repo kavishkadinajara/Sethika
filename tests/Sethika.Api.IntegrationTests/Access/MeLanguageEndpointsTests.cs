@@ -1,9 +1,11 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Dapper;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -13,6 +15,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Sethika.Api.IntegrationTests.Persistence;
+using Sethika.Application.Abstractions;
 using Sethika.Domain.Access;
 
 namespace Sethika.Api.IntegrationTests.Access;
@@ -22,13 +25,14 @@ namespace Sethika.Api.IntegrationTests.Access;
 /// own <c>auth.Users.PreferredLanguage</c>, and nobody else's.
 /// </summary>
 [Collection(SethikaDatabaseCollection.Name)]
-public sealed class MeLanguageEndpointsTests(SethikaTestDatabase database) : IAsyncLifetime
+public sealed partial class MeLanguageEndpointsTests(SethikaTestDatabase database) : IAsyncLifetime
 {
     private const string SigningKey = "me-language-endpoint-test-signing-key-at-least-32-bytes";
     private const string Password = "Dana!2026Sethika";
     private const string Language = "/api/me/language";
 
     private readonly List<string> _phones = [];
+    private readonly ConcurrentQueue<(string Phone, string Message)> _sms = new();
     private WebApplicationFactory<Program> _host = null!;
 
     public async Task InitializeAsync()
@@ -41,7 +45,10 @@ public sealed class MeLanguageEndpointsTests(SethikaTestDatabase database) : IAs
             builder.UseSetting("ConnectionStrings:Redis", database.RedisConnectionString);
             builder.UseSetting("Jwt:SigningKey", SigningKey);
             builder.ConfigureTestServices(services =>
-                services.AddSingleton<IStartupFilter>(new LoopbackConnectionStartupFilter()));
+            {
+                services.AddScoped<ISmsSender>(_ => new RecordingSmsSender(_sms));
+                services.AddSingleton<IStartupFilter>(new LoopbackConnectionStartupFilter());
+            });
         });
     }
 
@@ -66,6 +73,18 @@ public sealed class MeLanguageEndpointsTests(SethikaTestDatabase database) : IAs
     }
 
     // ------------------------------------------------------------------ plumbing
+
+    private sealed class RecordingSmsSender(ConcurrentQueue<(string Phone, string Message)> sent) : ISmsSender
+    {
+        public Task SendAsync(string phoneNumber, string message, string? dedupKey = null, CancellationToken cancellationToken = default)
+        {
+            sent.Enqueue((phoneNumber, message));
+            return Task.CompletedTask;
+        }
+    }
+
+    [GeneratedRegex(@"\d{6}")]
+    private static partial Regex SixDigits();
 
     private sealed class LoopbackConnectionStartupFilter : IStartupFilter
     {
@@ -249,5 +268,44 @@ public sealed class MeLanguageEndpointsTests(SethikaTestDatabase database) : IAs
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Equal("si", await PreferredLanguageOf(caller));
         Assert.Equal(before, await EveryoneElse(caller));
+    }
+
+    [Fact]
+    public async Task TheLanguageSetHereIsTheLanguageOfTheNextStepUpSms()
+    {
+        // End to end: PUT /api/me/language writes the row StepUpHandler reads, and OtpService picks
+        // the template by it. The code in the Sinhala text is the real one - verifying it succeeds.
+        var phone = await CreateDonorAsync();
+        var token = await LogInAsync(phone);
+
+        using (var put = await PutLanguageAsync(token, "si"))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, put.StatusCode);
+        }
+
+        using (var client = NewClient(token))
+        using (var request = await client.PostAsync("/api/auth/stepup/request", content: null))
+        {
+            Assert.Equal(HttpStatusCode.Accepted, request.StatusCode);
+        }
+
+        var message = Assert.Single(_sms, m => m.Phone == phone).Message;
+        var code = SixDigits().Match(message).Value;
+
+        string template;
+        await using (var connection = new SqlConnection(database.ConnectionString))
+        {
+            template = await connection.ExecuteScalarAsync<string>(
+                "SELECT Body FROM notify.Templates WHERE Code = 'OTP_STEPUP' AND Channel = 'SMS' AND Language = 'si';") ?? "";
+        }
+
+        Assert.Equal(template.Replace("{code}", code, StringComparison.Ordinal), message);
+        Assert.Contains(message, c => c is >= '\u0D80' and <= '\u0DFF');
+
+        using (var client = NewClient(token))
+        using (var verify = await client.PostAsJsonAsync("/api/auth/stepup/verify", new { code }))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, verify.StatusCode);
+        }
     }
 }
