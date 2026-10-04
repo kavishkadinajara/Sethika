@@ -54,7 +54,7 @@ Delivered so far, with the commit that added it:
 | `58914a6` | Browser session (5.7 `lib/auth/` and rewrites): `lib/auth/session-client.ts` (token in memory, silent refresh with CSRF, one fetch wrapper with single-flight refresh, A19 superseded retry, A20 step-up hook, logout / logout-all / switch-institution), `next.config.ts` rewrite to `API_BASE_URL`, permissions loaded client-side (`lib/permissions/server.ts` removed), root layout no longer dynamic so every locale's pages are prerendered. Vitest 4.1 in `web/` - 16 tests, each guarded rule mutation-checked. |
 | `4c82ac0` | Auth screens (5.7): `/signup` (phone → code → details → consent, every API error code mapped to a translated message where it can be fixed), `/login`, the step-up dialog wired to `lib/auth`'s hook plus `/stepup`, `/select-institution`; a session panel and a real `RequiresMfa` demo call on the home page. Prerendered per locale; checked at 320 px in en/si/ta against mocked responses shaped per the contracts. |
 | `04e9ae1` | Password reset backend (5.10): `/otp/request` and `/otp/verify` accept `reset`; `POST /api/auth/password/reset`; `PasswordResetHandler`, `IOtpService.SendDecoyAsync`, `IPasswordResetTickets` + `RedisPasswordResetTickets`; per-purpose rate-limit rules; the reset SMS in en/si/ta. 13 Redis tests, run green. |
-| `115ccbe` | `PasswordResetEndpointsTests`: 15 HTTP cases against SQL Server and Redis. **Written, not run** (no SQL Server where they were written). |
+| `115ccbe` | `PasswordResetEndpointsTests`: 16 HTTP cases against SQL Server and Redis (17 with the gateway-failure case added after it). **Written, not run** (no SQL Server where they were written). |
 | `bf5e618` | `/forgot-password` (phone, then code, then new password) and the "Forgot password?" link on `/login`; `StepProgress` and `PasswordGuidance` shared with signup; 21 Vitest tests. |
 
 All of the above is reachable over HTTP.
@@ -857,7 +857,9 @@ Choices, and why:
   account. Every reset request waits out a one-second floor (`PasswordResetHandler.RequestFloor`),
   so the SMS hand-off does not show in the timing. **Limit, for the report:** a gateway slower than
   the floor would show through again. Delivering the SMS through the outbox, off the request, is
-  the real fix, once the outbox processor exists.
+  the real fix, once the outbox processor exists. For the same reason, a gateway that *throws* for
+  a real account is logged and answered `202`, not `500`. `SmsSenderBase` has already marked the
+  row `Failed` in `notify.Notifications`.
 - **`MfaRequired` accounts (platform staff) cannot reset this way,** and are refused exactly like
   an unknown number. SMS alone would be one factor for the most powerful accounts. Their recovery
   is the `bootstrap` command (Q5), which already treats a suspended or deleted administrator as the
@@ -898,6 +900,8 @@ Choices, and why:
 - [ ] An unknown number and an `MfaRequired` account get the same status, body and timing as a real
       number, no SMS, and the same answer to a guessed code. An `MfaRequired` account cannot reset
       even with a ticket planted in Redis. Suspended, deactivated and deleted accounts get no code.
+      An SMS gateway that throws for a real account is still answered `202`
+      (`AGatewayFailureIsAnsweredLikeEveryOtherNumber`).
 - [ ] A ticket works once. A ticket from before a logout-all is refused. A refused password does not
       spend the ticket.
 - [ ] A signup code or ticket cannot be used for a reset, and a reset code or ticket cannot be used

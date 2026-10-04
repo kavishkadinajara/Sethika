@@ -337,6 +337,29 @@ public sealed partial class PasswordResetEndpointsTests(SethikaTestDatabase data
         Assert.Equal("otp_incorrect", JsonDocument.Parse(guesses[0]).RootElement.GetProperty("code").GetString());
     }
 
+    private sealed class FailingSmsSender : ISmsSender
+    {
+        public Task SendAsync(string phoneNumber, string message, string? dedupKey = null, CancellationToken cancellationToken = default) =>
+            throw new HttpRequestException("gateway down");
+    }
+
+    [Fact]
+    public async Task AGatewayFailureIsAnsweredLikeEveryOtherNumber()
+    {
+        // A 500 for a real account where an unknown number gets 202 would be the enumeration
+        // oracle the decoys exist to close.
+        var phone = await CreateUserAsync();
+        await using var host = _host.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services => services.AddScoped<ISmsSender, FailingSmsSender>()));
+
+        using var client = host.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        client.DefaultRequestHeaders.Add("X-Forwarded-For", $"10.{RandomNumberGenerator.GetInt32(256)}.{RandomNumberGenerator.GetInt32(256)}.{RandomNumberGenerator.GetInt32(1, 255)}");
+        using var response = await client.PostAsJsonAsync("/api/auth/otp/request", new { phoneNumber = phone, purpose = "reset" });
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.Equal(string.Empty, await response.Content.ReadAsStringAsync());
+    }
+
     [Fact]
     public async Task AnMfaRequiredAccountCannotResetEvenWithATicket()
     {

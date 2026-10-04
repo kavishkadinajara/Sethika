@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Sethika.Application.Abstractions;
 using Sethika.Domain.Access;
 using Sethika.Domain.Core;
@@ -30,13 +31,14 @@ namespace Sethika.Application.Access.PasswordReset;
 /// cleared lockout and an outbox row commit together. The user is not signed in: they sign in with
 /// the new password, which proves it was set as they meant it.
 /// </remarks>
-public sealed class PasswordResetHandler(
+public sealed partial class PasswordResetHandler(
     ISethikaDbContext db,
     IOtpService otp,
     IPasswordResetTickets tickets,
     IPasswordPolicy passwordPolicy,
     IPasswordHasher<User> passwordHasher,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ILogger<PasswordResetHandler> logger)
 {
     /// <summary>The shortest a reset request may take to answer, whatever the number.</summary>
     /// <remarks>
@@ -75,11 +77,29 @@ public sealed class PasswordResetHandler(
 
         var holder = await FindHolderAsync(phoneNumber, cancellationToken).ConfigureAwait(false);
 
-        // The message goes in the account's language, not the page's: the account holder reads it,
-        // and whoever typed the number may not be them.
-        var sent = holder is null
-            ? await otp.SendDecoyAsync(phoneNumber, OtpPurpose.Reset, cancellationToken).ConfigureAwait(false)
-            : await otp.SendAsync(phoneNumber, OtpPurpose.Reset, holder.PreferredLanguage, cancellationToken).ConfigureAwait(false);
+        OtpSendResult sent;
+        if (holder is null)
+        {
+            sent = await otp.SendDecoyAsync(phoneNumber, OtpPurpose.Reset, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            try
+            {
+                // The message goes in the account's language, not the page's: the account holder
+                // reads it, and whoever typed the number may not be them.
+                sent = await otp.SendAsync(phoneNumber, OtpPurpose.Reset, holder.PreferredLanguage, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // The gateway failed after the code was stored. A 500 here, where a number without an
+                // account gets 202, would say the number has one. The failure is logged here and in
+                // notify.Notifications; the holder sees no SMS and asks again.
+                LogSmsFailed(logger, ex);
+                sent = OtpSendResult.Sent();
+            }
+        }
 
         var remaining = RequestFloor - timeProvider.GetElapsedTime(started);
         if (remaining > TimeSpan.Zero)
@@ -219,6 +239,11 @@ public sealed class PasswordResetHandler(
 
         return ResetPasswordResult.Success;
     }
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "A password-reset SMS could not be sent; the request was answered as if it had been.")]
+    private static partial void LogSmsFailed(ILogger logger, Exception exception);
 
     /// <summary>The accounts a reset may touch. One definition for the request, the code and the write.</summary>
     private IQueryable<User> EligibleAccounts() =>
