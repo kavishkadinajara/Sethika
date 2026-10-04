@@ -177,6 +177,25 @@
     "ContainsPersonalData": "Not your name, phone number or email",
     "RecentlyUsed": "Not a password you used recently"
   },
+  "PasswordChange": {
+    "title": "Change your password",
+    "description": "You'll stay signed in here. Every other device you're signed in on will be signed out.",
+    "signInFirst": "Sign in to change your password.",
+    "signIn": "Sign in",
+    "currentLabel": "Current password",
+    "currentRequired": "Enter your current password.",
+    "currentIncorrect": "That isn't your current password.",
+    "nextLabel": "New password",
+    "nextRequired": "Choose a new password.",
+    "unchanged": "Choose a password that is different from your current one.",
+    "confirmLabel": "Confirm new password",
+    "confirmRequired": "Type your new password again to confirm it.",
+    "confirmMismatch": "This doesn't match the new password.",
+    "submit": "Change password",
+    "changed": "Password changed",
+    "changedDescription": "Your other devices have been signed out.",
+    "home": "Go to the home page"
+  },
   "Signup": {
     "title": "Create your account",
     "step": "Step {current} of {total}",
@@ -252,6 +271,7 @@
     "signedIn": "You're signed in.",
     "actingFor": "Acting for {name}",
     "switchInstitution": "Switch institution",
+    "changePassword": "Change password",
     "signOut": "Sign out",
     "signOutEverywhere": "Sign out on all devices",
     "approved": "Booking approved (demonstration).",

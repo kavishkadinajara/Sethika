@@ -4,7 +4,6 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import { CheckIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { OtpInput } from "@/components/ui/otp-input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -17,12 +16,12 @@ import {
   verifySignupCode,
   type ApiFailure,
   type LegalDocument,
-  type PasswordRule,
 } from "@/lib/auth/api";
 import { readNextPath } from "@/lib/auth/next-path";
 import { cn, focusRing } from "@/lib/utils";
 import { AuthHeading } from "./AuthHeading";
 import { FormError } from "./FormError";
+import { PasswordChecklist, PasswordFailures } from "./PasswordGuidance";
 import { textLink } from "./links";
 import { formatWait, useCountdown } from "./useCountdown";
 import { useApiErrorMessage } from "./useApiErrorMessage";
@@ -32,17 +31,6 @@ const numbered: Step[] = ["phone", "code", "details", "consent"];
 
 /** The API's resend cooldown (OtpOptions.ResendCooldown). A 429 with Retry-After overrides it. */
 const RESEND_SECONDS = 60;
-
-/*  The password rules as the API applies them today (Identity's defaults: 6 characters, upper,
-    lower, digit, symbol). The checklist is guidance while typing; the server decides, and its
-    password_rejected list is what is shown after submit.                                      */
-const liveRules: { rule: PasswordRule; met: (password: string) => boolean }[] = [
-  { rule: "TooShort", met: (p) => p.length >= 6 },
-  { rule: "MissingUppercase", met: (p) => /\p{Lu}/u.test(p) },
-  { rule: "MissingLowercase", met: (p) => /\p{Ll}/u.test(p) },
-  { rule: "MissingDigit", met: (p) => /\p{Nd}/u.test(p) },
-  { rule: "MissingNonAlphanumeric", met: (p) => /[^\p{L}\p{Nd}]/u.test(p) },
-];
 
 type FieldErrors = Partial<Record<"phone" | "code" | "fullName" | "email" | "password", ReactNode>>;
 
@@ -418,18 +406,6 @@ export function SignupFlow() {
   );
 }
 
-/** The rules the server said the password broke (password_rejected's failures list). */
-function PasswordFailures({ failures }: { failures: PasswordRule[] }) {
-  const t = useTranslations("Password");
-  return (
-    <span className="mt-1 grid gap-0.5">
-      {failures.map((rule) => (
-        <span key={rule}>• {t(rule)}</span>
-      ))}
-    </span>
-  );
-}
-
 function Progress({ current, total, label }: { current: number; total: number; label: string }) {
   return (
     <div className="mb-6 grid gap-2">
@@ -440,29 +416,5 @@ function Progress({ current, total, label }: { current: number; total: number; l
         ))}
       </div>
     </div>
-  );
-}
-
-/** Live guidance under the password field. Each rule says whether it is met, for screen readers too. */
-function PasswordChecklist({ password }: { password: string }) {
-  const t = useTranslations("Password");
-  return (
-    <span className="grid gap-1">
-      <span>{t("title")}</span>
-      <span className="grid gap-0.5">
-        {liveRules.map(({ rule, met }) => {
-          const ok = met(password);
-          return (
-            <span key={rule} className={cn("flex items-center gap-2", ok ? "text-success" : "text-muted")}>
-              {ok ? <CheckIcon className="size-4 shrink-0" /> : <span aria-hidden className="mx-1.5 size-1 shrink-0 rounded-full bg-current" />}
-              <span>
-                <span className="sr-only">{ok ? t("met") : t("notMet")} </span>
-                {t(rule)}
-              </span>
-            </span>
-          );
-        })}
-      </span>
-    </span>
   );
 }
