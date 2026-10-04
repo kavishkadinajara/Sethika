@@ -194,20 +194,12 @@ internal static class AuthEndpoints
         SignUpFailure.InvalidFullName => ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_full_name"),
         SignUpFailure.InvalidEmail => ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_email"),
         SignUpFailure.InvalidLanguage => ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_language"),
-        SignUpFailure.PasswordRejected => Results.Json(
-            new { code = "password_rejected", failures = Describe(result.PasswordFailures) },
-            statusCode: StatusCodes.Status400BadRequest),
+        SignUpFailure.PasswordRejected => ApiErrors.PasswordRejected(result.PasswordFailures),
         SignUpFailure.ConsentMissing => ApiErrors.Error(StatusCodes.Status400BadRequest, "consent_missing"),
         SignUpFailure.PhoneNotVerified => ApiErrors.Error(StatusCodes.Status400BadRequest, "phone_not_verified"),
         SignUpFailure.AlreadyRegistered => ApiErrors.Error(StatusCodes.Status409Conflict, "already_registered"),
         _ => ApiErrors.Error(StatusCodes.Status503ServiceUnavailable, "verification_unavailable"),
     };
-
-    /// <summary>Every rule the password broke, by name, for the client to explain in its language.</summary>
-    private static string[] Describe(PasswordFailure failures) =>
-        [.. Enum.GetValues<PasswordFailure>()
-            .Where(f => f != PasswordFailure.None && failures.HasFlag(f))
-            .Select(f => f.ToString())];
 
     private static bool IsSignupPurpose(string? purpose) =>
         string.IsNullOrWhiteSpace(purpose) || string.Equals(purpose, "signup", StringComparison.OrdinalIgnoreCase);

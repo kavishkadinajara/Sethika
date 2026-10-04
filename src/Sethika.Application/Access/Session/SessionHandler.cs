@@ -37,6 +37,7 @@ public sealed class SessionHandler(ISethikaDbContext db, ITokenService tokens, T
         public const string ReuseDetected = "ReuseDetected";
         public const string Logout = "Logout";
         public const string LogoutEverywhere = "LogoutEverywhere";
+        public const string PasswordChanged = "PasswordChanged";
         public const string SecurityStampChanged = "SecurityStampChanged";
         public const string AccountNotActive = "AccountNotActive";
     }
