@@ -47,7 +47,8 @@ public enum SessionFailure
     /// <summary>
     /// Another request presenting the same token rotated it moments ago - two tabs refreshing at
     /// once. Nothing issued, nothing revoked. The browser holds the successor, or is about to, so
-    /// its cookies must be left alone and the client retries with them.
+    /// its cookies must be left alone and the client retries with them. Only while that successor's
+    /// session is alive: once it has ended, the answer is <see cref="Invalid"/>.
     /// </summary>
     Superseded = 5,
 }

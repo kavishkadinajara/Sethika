@@ -18,8 +18,8 @@ walk-through with the API is still owed (see the 5.7 boxes). **5.7's screens are
 `/login/otp`, which waits for a backend OTP-login endpoint. Every 5.7 screen still owes one live
 walk-through against the API (listed under the screens box). Three 5.8 boxes stay open: the platform-claim forgery test, the OTP burn-and-429 test
 over HTTP, and password change (no endpoint yet).
-**267 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
-Last updated 2026-10-01. Update this line and the 5.1 boxes whenever either changes — a fresh
+**273 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
+Last updated 2026-10-04. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
 
 Delivered so far, with the commit that added it:
@@ -51,6 +51,7 @@ Delivered so far, with the commit that added it:
 | `a2959d5` | Light and dark themes: follows the device by default, `ThemeSwitcher` (Auto / Light / Dark) saved in the `sethika_theme` cookie, applied before first paint by an inline `<head>` script and kept across locale changes by `ThemeSync`; components moved to semantic colour tokens with measured contrast in both themes. |
 | `58914a6` | Browser session (5.7 `lib/auth/` and rewrites): `lib/auth/session-client.ts` (token in memory, silent refresh with CSRF, one fetch wrapper with single-flight refresh, A19 superseded retry, A20 step-up hook, logout / logout-all / switch-institution), `next.config.ts` rewrite to `API_BASE_URL`, permissions loaded client-side (`lib/permissions/server.ts` removed), root layout no longer dynamic so every locale's pages are prerendered. Vitest 4.1 in `web/` - 16 tests, each guarded rule mutation-checked. |
 | `4c82ac0` | Auth screens (5.7): `/signup` (phone → code → details → consent, every API error code mapped to a translated message where it can be fixed), `/login`, the step-up dialog wired to `lib/auth`'s hook plus `/stepup`, `/select-institution`; a session panel and a real `RequiresMfa` demo call on the home page. Prerendered per locale; checked at 320 px in en/si/ta against mocked responses shaped per the contracts. |
+| `0e770a4` | A19 edge (5.2): a spent token presented within the grace window is `409 session_superseded` only while its family still has a live token (not revoked, not expired, stamp unchanged) - otherwise `401 session_expired` with the cookies cleared, as for any ended session. Same rule for a refresh that loses its claim to a concurrent logout. One extra read, no schema change - 6 tests over HTTP, 6 mutations all killed. |
 
 All of the above is reachable over HTTP.
 
@@ -489,6 +490,18 @@ out anyway. The mutation run found it: with the claim's `RevokedAt IS NULL` remo
 test still passed, because ten requests on their own rarely overlap. The test now holds an update
 lock on the token's row until all ten are waiting at the claim, and the race is deterministic.
 
+*Amended 2026-10-04 (`0e770a4`).* "Superseded" tells the client its cookies already hold the
+winner's successor, so it is only said while that session is alive: the family still has a token
+that is not revoked, not expired, and carries the user's current stamp - the test a refresh
+applies. A walk-through found the gap: log out, send the old cookie within 10 seconds, and the
+answer was `409` instead of `401`. Now a late token whose session has ended (logout, logout
+everywhere, family revoked, successor expired, stamp changed) is answered `401 session_expired`
+with the cookies cleared, like every ended session. The question is asked of the family, not of
+the direct successor, so a winner that rotated again inside the grace (A to B to C) still counts
+as alive; asking B alone would have the late tab clear the shared cookie jar and delete C. The
+same check covers a refresh that loses its claim to a concurrent logout. Outside the grace nothing
+changed: a replay still revokes the family.
+
 Rotation itself is claimed by a conditional `UPDATE … WHERE Id = @id AND RevokedAt IS NULL` rather
 than `UPDLOCK, ROWLOCK` as 5.2 first said. The guarantee is the same - of any number of requests with
 one token, exactly one finds it unrevoked - and it keeps the SQL Server hint out of Application (A16).
@@ -618,7 +631,9 @@ oracle, and it is exactly the kind of thing an examiner asks about.
       drops out of the next token.
 - [x] **Reuse detection:** a rotated token presented again revokes the entire family
       (`RevokedReason = 'ReuseDetected'`), except within the 10-second grace of A19, which is
-      `409 session_superseded` with the cookies untouched.
+      `409 session_superseded` with the cookies untouched - while the family still has a live
+      token; once the session has ended it is `401 session_expired` and the cookies are cleared
+      (`0e770a4`, A19 amended).
 - [x] `POST /api/auth/session/logout` — revoke this family, clear both cookies.
 - [x] `POST /api/auth/session/logout-all` — `SecurityStamps.RotateAsync`: new stamp and every live
       refresh token revoked, in one transaction. Needs a live token, so a revoked copy cannot be used
