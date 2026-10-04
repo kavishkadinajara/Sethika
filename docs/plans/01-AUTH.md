@@ -14,12 +14,14 @@ budget every screen follows are in `docs/DESIGN.md` (`3fcb41c`). **5.7's `lib/au
 boxes are done** (`58914a6`: session client, fetch wrapper, `/api` rewrite, permissions loaded in the
 browser; 16 Vitest tests in `web/`), but checked only against its contracts in unit tests: the live
 walk-through with the API is still owed (see the 5.7 boxes). **5.7's screens are done** (`4c82ac0`:
-`/signup`, `/login`, `/stepup` and its dialog, `/select-institution`; 32 Vitest tests), except
-`/login/otp`, which waits for a backend OTP-login endpoint. Every 5.7 screen still owes one live
-walk-through against the API (listed under the screens box). Three 5.8 boxes stay open: the platform-claim forgery test, the OTP burn-and-429 test
-over HTTP, and password change (no endpoint yet).
-**267 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
-Last updated 2026-10-01. Update this line and the 5.1 boxes whenever either changes — a fresh
+`/signup`, `/login`, `/stepup` and its dialog, `/select-institution`; 32 Vitest tests).
+**Sign-in by SMS code is done** (A21): the API slice (`33abfcb`, `2718e1a`) and `/login/otp`
+(`ec72f37`, 35 Vitest tests in all), walked through live against the API. The other 5.7 screens
+still owe one live walk-through against the API (listed under the screens box). Two 5.8 boxes stay
+open: the platform-claim forgery test, and password change (no endpoint yet).
+**281 tests passing** (two consecutive full runs, against SQL Server 2022 and Redis 7), `dotnet format`
+clean, build clean with warnings as errors.
+Last updated 2026-10-04. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
 
 Delivered so far, with the commit that added it:
@@ -51,6 +53,9 @@ Delivered so far, with the commit that added it:
 | `a2959d5` | Light and dark themes: follows the device by default, `ThemeSwitcher` (Auto / Light / Dark) saved in the `sethika_theme` cookie, applied before first paint by an inline `<head>` script and kept across locale changes by `ThemeSync`; components moved to semantic colour tokens with measured contrast in both themes. |
 | `58914a6` | Browser session (5.7 `lib/auth/` and rewrites): `lib/auth/session-client.ts` (token in memory, silent refresh with CSRF, one fetch wrapper with single-flight refresh, A19 superseded retry, A20 step-up hook, logout / logout-all / switch-institution), `next.config.ts` rewrite to `API_BASE_URL`, permissions loaded client-side (`lib/permissions/server.ts` removed), root layout no longer dynamic so every locale's pages are prerendered. Vitest 4.1 in `web/` - 16 tests, each guarded rule mutation-checked. |
 | `4c82ac0` | Auth screens (5.7): `/signup` (phone → code → details → consent, every API error code mapped to a translated message where it can be fixed), `/login`, the step-up dialog wired to `lib/auth`'s hook plus `/stepup`, `/select-institution`; a session panel and a real `RequiresMfa` demo call on the home page. Prerendered per locale; checked at 320 px in en/si/ta against mocked responses shaped per the contracts. |
+| `33abfcb` | Sign-in by SMS code, API (A21): `/api/auth/otp/request` takes purpose `login`; `POST /api/auth/otp/sign-in`; `OtpSignInHandler`; `IOtpService.SendUndisclosedAsync` (cooldown, cap and stored code for every number, SMS only to an active, unlocked, phone-confirmed account, `Otp:UndisclosedSendDuration` floor of 1.5 s); `SignInHandler.CompleteAsync` + `SessionStart` shared by both ways in; three rate-limit rules; the sign-in SMS text per language. Also the 5.8 signup burn-and-429 test over HTTP. |
+| `2718e1a` | 14 tests over HTTP for sign-in by code (`OtpSignInEndpointsTests`). Every mutation in the commit message killed except removing one of the two burn checks alone, which is unobservable in sequence (see A21). |
+| `ec72f37` | `/login/otp` (phone → code), linked from `/login`; signup's phone and code steps extracted to `PhoneStep` and `CodeStep` and shared; `requestSignInCode` / `signInWithCode` in `lib/auth/api.ts` (3 Vitest tests); `LoginOtp.*`, `Login.useCode`, `Errors.otp_invalid` in en/si/ta. |
 
 All of the above is reachable over HTTP.
 
@@ -326,7 +331,8 @@ log) is one method. Note the weakness in the report instead of hiding it.
 Keys as built (`c59db76`): `rl:{rule}:{first 128 bits of SHA-256 of the subject}`, one rule per
 line of `AuthRateLimits` — `login-name`, `login-client`, `otp-request-client`, `otp-verify-phone`,
 `otp-verify-client`, `signup-client`, and `refresh-client` (5.2); step-up (5.3) shares the two
-OTP client budgets. The subject is hashed so a
+OTP client budgets. Sign-in by code (A21) adds `otp-login-request-client`, `otp-signin-phone` and
+`otp-signin-client`, the twins of signup's three under their own keys. The subject is hashed so a
 typed login cannot make a key of any size, and phone numbers and emails are not readable in
 `KEYS rl:*`. The counter and its expiry are set in one Lua step: INCR-then-EXPIRE leaves a counter
 that never expires if the process dies between them.
@@ -515,6 +521,43 @@ it cannot step up, so nothing sensitive is reachable with it; and a grant is loo
 closed, the reverse of the rate limiter: an outage refuses sensitive actions rather than letting
 them through unverified.
 
+### A21 — Sign-in by SMS code, without telling anyone which numbers have accounts *(decided 2026-10-04)*
+
+`POST /api/auth/otp/request` with purpose `login`, then `POST /api/auth/otp/sign-in
+{ phoneNumber, code }`. Anyone can type any number, so both answer a number with no account exactly
+as they answer a registered one:
+
+- **Request.** Every number gets the 60-second cooldown, the 3-per-hour cap (`otp:sends:login:…`)
+  and a stored code hash; only an account that is active, not locked and has a confirmed phone is
+  actually texted, in its `PreferredLanguage`. The SMS - a `notify.Notifications` row and a gateway
+  call - is the one step only a real account pays for, so the request answers no sooner than
+  `Otp:UndisclosedSendDuration` (1.5 s). A send slower than that is logged: it means the floor must
+  rise, because the timing is leaking again. The cost, for the report: every sign-in-code request
+  takes at least 1.5 s, which nobody waiting for an SMS notices.
+- **Sign-in.** The code is checked whether or not an account matched, and the stored code for an
+  unknown number burns after the same five guesses. A wrong, expired or burned code, an unknown
+  number and a locked account are one answer, `401 otp_invalid`, with no attempts-left count (it
+  would differ between a wrong code and a burned one). A suspended account gets `403
+  account_not_active`, as password login gives it - and only to someone holding a valid code.
+- **Success** goes through `SignInHandler.CompleteAsync`, the password path's own completion:
+  institution rule, tokens, a new refresh family bound to the `SecurityStamp`, the history row,
+  the same body and cookies.
+- **`AccessFailedCount` is not reset by a code sign-in, and wrong codes do not add to it.** A1's reset
+  belongs to the password: the count is evidence about guesses at the password, and clearing it
+  would hand whoever is guessing a fresh five every time the owner signs in by code. Counting wrong
+  codes against it would let anyone lock any account by typing its number.
+- **A locked account is not texted** (the lockout outlasts the code, and the SMS is paid for), so a
+  password lockout also blocks code sign-in for its fifteen minutes. Someone can therefore stop an
+  owner signing in either way for fifteen minutes by guessing wrong passwords - as they already could
+  for password sign-in.
+- `/api/auth/otp/verify` still refuses purpose `login`: it reports attempts left, which sign-in hides.
+
+Two honest gaps for the report. `auth.LoginHistory` has no method column, so a successful code
+sign-in and a password sign-in write the same row; failures are told apart by `FailureReason`
+(`InvalidCode`, `PhoneNotConfirmed`). And the burn has two checks - the fifth wrong guess deletes the
+code, and any attempt past five deletes it - so a mutation removing either one alone survives the
+sequential tests; the second matters only for concurrent guesses, which no test drives.
+
 ---
 
 ## 3. Open questions
@@ -599,7 +642,8 @@ One commit per slice, Conventional Commits (CI blocks the PR title otherwise).
       both sides go through `SethikaJwt.CreateSigningKey`, and a host round-trip test guards the pair.
 - [x] Endpoints (`94b1c29`): `POST /api/auth/otp/request`, `/api/auth/otp/verify`, `/api/auth/signup`,
       `/api/auth/login`, plus `GET /api/legal/current`. Anonymous and rate-limited. `LockedOut`
-      answers exactly like `InvalidCredentials`; `/otp/request` accepts only the signup purpose;
+      answers exactly like `InvalidCredentials`; `/otp/request` accepted only the signup purpose
+      (since `33abfcb` also `login`, A21);
       `/signup` signs the donor in through `SignInHandler`; login and signup set the A2 cookies and
       `Cache-Control: no-store`. Errors are `{ "code": ... }` for the client to translate — a
       convention every later endpoint should keep.
@@ -698,7 +742,9 @@ Anything that touches reference data in a test runs in a rolled-back transaction
       `docs/translations-to-review.md`.
 - [ ] `PUT /api/me/language` writing `auth.Users.PreferredLanguage`.
 - [ ] `notify.Templates` seeded per language for the OTP SMS — a Sinhala-preferring user must receive
-      the Sinhala OTP message, which is why `Templates` has a `Language` column.
+      the Sinhala OTP message, which is why `Templates` has a `Language` column. Two texts to move
+      in: the verification text and, since `33abfcb`, the sign-in text (A21), both in
+      `OtpService.BuildMessage` and listed in `docs/translations-to-review.md`.
 - [x] Fonts per A10. Verified on the placeholder `/login` in en, si and ta with Chromium's
       `CSS.getPlatformFontsForNode`: Latin renders in Outfit (Fraunces for the tagline), Sinhala in
       Noto Sans Sinhala, Tamil in Noto Sans Tamil. Check again on the real form in 5.7.
@@ -715,10 +761,12 @@ Anything that touches reference data in a test runs in a rolled-back transaction
       `/ta/design`. Toast is Radix Toast and `OtpInput` is hand-written, so `sonner` and `input-otp`
       are not dependencies.
 - [x] Screens: `/signup` (phone → OTP → details → consent), `/login`, `/stepup`,
-      `/select-institution` — `4c82ac0`. **`/login/otp` is not built:** the API has no OTP sign-in
-      (`/api/auth/otp/request` accepts only `signup`, see `AuthEndpoints.cs`), and a screen for it
-      would be a fake. It needs a backend slice first: an OTP-login purpose, its rate limits, and
-      a sign-in that does not reveal whether a number is registered.
+      `/select-institution` — `4c82ac0`. **`/login/otp` (phone → code) followed in `ec72f37`**, once
+      the API had sign-in by code (A21, `33abfcb`); it shares `PhoneStep` and `CodeStep` with signup.
+      Walked through live on 2026-10-04 at 320 px against the API with SQL Server and Redis: from
+      `/si/login`'s link, the Sinhala sign-in SMS arrived (console sender), a wrong code showed
+      `otp_invalid`, the right one signed in, and a reload stayed signed in; an unknown number got the
+      same screens and error and no SMS; signup's phone → code → details still worked.
       Checked so far without the API: lint, build, 32 unit tests, and a browser pass at 320 px in
       en/si/ta against mocked responses shaped per the C# contracts (no overflow, no clipped text,
       44 px targets, focus moves to each step heading, request bodies match `SignUpBody`,
@@ -772,7 +820,13 @@ Integration (`Sethika.Api.IntegrationTests`), against real SQL Server and Redis:
 - [x] `switch-institution` to an institution the user holds no role in gives 403, and no token is issued
 - [x] a `RequiresMfa` permission gives 403 before step-up, 200 after, and 403 again once the TTL expires
       (`StepUpEndpointsTests`, with the TTL itself asserted at fifteen minutes)
-- [ ] OTP: a wrong code five times burns it; a fourth send within the hour gives 429
+- [x] OTP: a wrong code five times burns it; a fourth send within the hour gives 429
+      (`ASignupCodeBurnsAfterFiveWrongGuesses_AndAFourthSendInTheHourIs429`, `33abfcb`)
+- [x] sign-in by code (A21, `OtpSignInEndpointsTests`, `2718e1a`): a registered number signs in and
+      gets password login's response; an unknown number gets the same answer to the request, the
+      same time, no SMS, and cannot sign in; five wrong codes burn it; a code works once; a signup
+      code cannot sign in and a sign-in code cannot be used for signup; a fourth request in the hour
+      is 429 for both; locked, suspended and unconfirmed accounts; `AccessFailedCount` untouched
 - [x] two parallel refreshes with the same token — exactly one succeeds
 - [x] signup writes exactly one outbox row, and rolls back all five tables when any part fails
       (`SignUpDonorHandlerTests`)
