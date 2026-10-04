@@ -14,10 +14,15 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using Sethika.Api.IntegrationTests.Persistence;
 using Sethika.Application.Abstractions;
+using Sethika.Application.Access;
 using Sethika.Domain.Access;
+using Sethika.Infrastructure.Caching;
+using Sethika.Infrastructure.Security;
+using StackExchange.Redis;
 
 namespace Sethika.Api.IntegrationTests.Access;
 
@@ -64,11 +69,29 @@ public sealed class AuthEndpointsTests(SethikaTestDatabase database) : IAsyncLif
                 new { phones = _phones });
         }
 
+        // The one-time-code keys of every number this test used, so a number drawn again by a later
+        // run starts with no code, no send count and no verify budget spent. Its own connection, not a
+        // host's: one test points its host at a Redis that is not there.
+        if (_phones.Count > 0)
+        {
+            await using var connection = await ConnectionMultiplexer.ConnectAsync(database.RedisConnectionString);
+            await connection.GetDatabase().KeyDeleteAsync([.. _phones.SelectMany(phone => new RedisKey[]
+            {
+                OtpCacheKey.ForCode(phone, OtpPurpose.Signup),
+                OtpCacheKey.ForSendCount(phone, OtpPurpose.Signup),
+                OtpCacheKey.ForTicket(phone, OtpPurpose.Signup),
+                RateLimitKey.For(AuthRateLimitsOtpVerifyPerPhone, phone),
+            })]);
+        }
+
         foreach (var host in _hosts)
         {
             await host.DisposeAsync();
         }
     }
+
+    /// <summary>The rule name of <c>AuthRateLimits.OtpVerifyPerPhone</c>, which is internal to the Api.</summary>
+    private const string AuthRateLimitsOtpVerifyPerPhone = "otp-verify-phone";
 
     // ------------------------------------------------------------------ plumbing
 
@@ -147,6 +170,38 @@ public sealed class AuthEndpointsTests(SethikaTestDatabase database) : IAsyncLif
             new { phone, hash, status });
 
         return phone;
+    }
+
+    private string LastCodeSentTo(string phone) =>
+        new([.. _sms.Last(m => m.Phone == phone).Message.Where(char.IsAsciiDigit)]);
+
+    private static string AnotherCode(string code) => code == "000000" ? "111111" : "000000";
+
+    private static Task<HttpResponseMessage> RequestCodeAsync(HttpClient client, string phone) =>
+        client.PostAsJsonAsync("/api/auth/otp/request", new { phoneNumber = phone, purpose = "signup" });
+
+    private static Task<HttpResponseMessage> VerifyCodeAsync(HttpClient client, string phone, string code) =>
+        client.PostAsJsonAsync("/api/auth/otp/verify", new { phoneNumber = phone, purpose = "signup", code });
+
+    private static OtpOptions OtpOptionsOf(WebApplicationFactory<Program> host) =>
+        host.Services.GetRequiredService<IOptions<OtpOptions>>().Value;
+
+    /// <summary>
+    /// Moves the outstanding code to the age at which its resend cooldown has just run out.
+    /// </summary>
+    /// <remarks>
+    /// The cooldown is read from the code's own TTL (see OtpService), so shortening the TTL is exactly
+    /// what a minute of waiting does to it - and only to it: the hourly send counter is a separate key
+    /// and keeps its window. The configured cooldown stays in force; the test just does not sleep.
+    /// </remarks>
+    private static async Task LetTheResendCooldownPassAsync(WebApplicationFactory<Program> host, string phone)
+    {
+        var options = OtpOptionsOf(host);
+        var redis = host.Services.GetRequiredService<IConnectionMultiplexer>().GetDatabase();
+        var codeKey = OtpCacheKey.ForCode(phone, OtpPurpose.Signup);
+
+        Assert.True(await redis.KeyExistsAsync(codeKey), "there is no outstanding code to age");
+        Assert.True(await redis.KeyExpireAsync(codeKey, options.Lifetime - options.ResendCooldown - TimeSpan.FromSeconds(1)));
     }
 
     private static Task<HttpResponseMessage> LogInAsync(HttpClient client, string login, string password) =>
@@ -424,6 +479,116 @@ public sealed class AuthEndpointsTests(SethikaTestDatabase database) : IAsyncLif
         using var right = await client.PostAsJsonAsync("/api/auth/otp/verify", new { phoneNumber = phone, code });
         Assert.Equal(HttpStatusCode.OK, right.StatusCode);
         Assert.False(string.IsNullOrEmpty((await JsonAsync(right)).GetProperty("ticket").GetString()));
+    }
+
+    [Fact]
+    public async Task FiveWrongCodesBurnTheCode_SoTheRightCodeIsRefusedAfterThem()
+    {
+        // Plan 5.8 and A4: five verify attempts per code, then the code is burned. The fifth wrong
+        // guess is answered as exhausted rather than "incorrect, 0 left", and from then on the code
+        // does not exist - the right code included, which is what makes the cap a cap.
+        var host = Host();
+        using var client = Client(host);
+        var phone = NewPhone();
+
+        using var sent = await RequestCodeAsync(client, phone);
+        Assert.Equal(HttpStatusCode.Accepted, sent.StatusCode);
+        var code = LastCodeSentTo(phone);
+
+        var remaining = new List<int>();
+        for (var i = 0; i < 4; i++)
+        {
+            using var wrong = await VerifyCodeAsync(client, phone, AnotherCode(code));
+            Assert.Equal(HttpStatusCode.BadRequest, wrong.StatusCode);
+            var body = await JsonAsync(wrong);
+            Assert.Equal("otp_incorrect", body.GetProperty("code").GetString());
+            remaining.Add(body.GetProperty("attemptsRemaining").GetInt32());
+        }
+
+        Assert.Equal([4, 3, 2, 1], remaining);
+
+        using var fifth = await VerifyCodeAsync(client, phone, AnotherCode(code));
+        Assert.Equal(HttpStatusCode.BadRequest, fifth.StatusCode);
+        var exhausted = await JsonAsync(fifth);
+        Assert.Equal("otp_attempts_exhausted", exhausted.GetProperty("code").GetString());
+        Assert.False(exhausted.TryGetProperty("attemptsRemaining", out _));
+
+        using var right = await VerifyCodeAsync(client, phone, code);
+        Assert.Equal(HttpStatusCode.BadRequest, right.StatusCode);
+        var refused = await JsonAsync(right);
+        Assert.Equal("otp_not_found", refused.GetProperty("code").GetString());
+        Assert.False(refused.TryGetProperty("ticket", out _));
+    }
+
+    [Fact]
+    public async Task AfterACodeIsBurnedAFreshRequestIssuesANewCodeThatWorks()
+    {
+        // The resend cooldown is measured on the outstanding code (A4: 60 s), and burning deletes it,
+        // so a new code may be requested at once without waiting out a cooldown. It is the second of
+        // the number's sends this hour, inside the cap, so nothing here is rate-limited.
+        var host = Host();
+        using var client = Client(host);
+        var phone = NewPhone();
+
+        using var first = await RequestCodeAsync(client, phone);
+        Assert.Equal(HttpStatusCode.Accepted, first.StatusCode);
+        var burned = LastCodeSentTo(phone);
+
+        for (var i = 0; i < OtpOptionsOf(host).MaxVerifyAttempts; i++)
+        {
+            using var wrong = await VerifyCodeAsync(client, phone, AnotherCode(burned));
+            Assert.Equal(HttpStatusCode.BadRequest, wrong.StatusCode);
+        }
+
+        using var again = await RequestCodeAsync(client, phone);
+        Assert.Equal(HttpStatusCode.Accepted, again.StatusCode);
+        Assert.Equal(2, _sms.Count(m => m.Phone == phone));
+
+        var fresh = LastCodeSentTo(phone);
+        using var verified = await VerifyCodeAsync(client, phone, fresh);
+        Assert.Equal(HttpStatusCode.OK, verified.StatusCode);
+        Assert.False(string.IsNullOrEmpty((await JsonAsync(verified)).GetProperty("ticket").GetString()));
+    }
+
+    [Fact]
+    public async Task ANumberGetsItsHourlySendsAndTheNextIsRefusedWithRetryAfter_WhileAnotherNumberIsNot()
+    {
+        // A4's cost control: three codes per number per hour. Each send comes from a different client
+        // address, so what refuses the fourth is the per-number cap and not the per-client limit - and
+        // the other number is asked for from the refused client, so the cap is not per client either.
+        var host = Host();
+        var options = OtpOptionsOf(host);
+        Assert.InRange(options.MaxSendsPerWindow, 1, 10);   // keeps the loop below honest about its size
+
+        var phone = NewPhone();
+
+        for (var i = 0; i < options.MaxSendsPerWindow; i++)
+        {
+            if (i > 0)
+            {
+                await LetTheResendCooldownPassAsync(host, phone);
+            }
+
+            using var sender = Client(host);
+            using var sent = await RequestCodeAsync(sender, phone);
+            Assert.Equal(HttpStatusCode.Accepted, sent.StatusCode);
+        }
+
+        await LetTheResendCooldownPassAsync(host, phone);
+
+        using var client = Client(host);
+        using var refused = await RequestCodeAsync(client, phone);
+        Assert.Equal((HttpStatusCode)429, refused.StatusCode);
+
+        // The window's remainder, not the cooldown's: longer than a cooldown, at most the window.
+        var retryAfter = int.Parse(Assert.Single(refused.Headers.GetValues("Retry-After")), CultureInfo.InvariantCulture);
+        Assert.InRange(retryAfter, (int)options.ResendCooldown.TotalSeconds + 1, (int)options.SendWindow.TotalSeconds);
+        Assert.Equal(options.MaxSendsPerWindow, _sms.Count(m => m.Phone == phone));
+
+        var other = NewPhone();
+        using var otherSent = await RequestCodeAsync(client, other);
+        Assert.Equal(HttpStatusCode.Accepted, otherSent.StatusCode);
+        Assert.Single(_sms, m => m.Phone == other);
     }
 
     [Theory]
