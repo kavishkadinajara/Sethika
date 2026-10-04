@@ -32,6 +32,27 @@ public interface IOtpService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Like <see cref="SendAsync"/>, for a flow whose answer must not reveal whether the number has
+    /// an account: sign-in by code. The cooldown, the send cap and a stored code apply whether or not
+    /// anything is sent, and the call takes no less than a fixed time, so neither the answer nor its
+    /// timing differs between a number that receives a message and one that does not.
+    /// </summary>
+    /// <param name="phoneNumber">The number in E.164 form, whether or not it has an account.</param>
+    /// <param name="purpose">Which flow the code is valid for.</param>
+    /// <param name="language">Which language to send the message in, when it is sent.</param>
+    /// <param name="deliver">
+    /// False for a number with no account that may receive the code. Everything happens except the
+    /// SMS, and the stored code is one nobody was told.
+    /// </param>
+    /// <param name="cancellationToken">Cancels the operation.</param>
+    Task<OtpSendResult> SendUndisclosedAsync(
+        string phoneNumber,
+        OtpPurpose purpose,
+        string language,
+        bool deliver,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Checks <paramref name="code"/> against the outstanding code for this number and purpose,
     /// consuming it on success so it cannot be presented twice, and issuing a ticket that proves the
     /// verification to the step that follows.

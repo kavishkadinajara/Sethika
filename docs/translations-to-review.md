@@ -258,3 +258,19 @@ Questions for the reviewers:
 | `Session.signOutEverywhere` | Sign out on all devices | සියලු උපාංගවලින් ඉවත් වන්න | எல்லாச் சாதனங்களிலிருந்தும் வெளியேறு | | |
 | `Session.approved` | Booking approved (demonstration). | වෙන්කිරීම අනුමත විය (නිදර්ශනය). | முன்பதிவு அங்கீகரிக்கப்பட்டது (மாதிரி). | | |
 | `Session.approveFailed` | Could not approve the booking. | වෙන්කිරීම අනුමත කළ නොහැකි විය. | முன்பதிவை அங்கீகரிக்க முடியவில்லை. | | |
+
+## SMS texts sent by the API
+
+These live in `OtpService.BuildMessage` (`src/Sethika.Infrastructure/Security/OtpService.cs`), not in
+the JSON files, until `notify.Templates` is seeded per language (plan 5.6). They are sent in the
+account's `PreferredLanguage`. `{code}` is the six digits; keep it, and keep the message free of any
+other digits, because the integration tests and some phones pick the code out by its digits.
+Shorter is cheaper: one Sinhala or Tamil character makes the whole SMS UCS-2, 70 characters a segment.
+
+| Purpose | English (source) | Sinhala (draft) | Tamil (draft) | Reviewer | Status |
+|---|---|---|---|---|---|
+| signup, step-up | Your Sethika verification code is {code} | ඔබගේ Sethika සත්‍යාපන කේතය: {code} | உங்கள் Sethika சரிபார்ப்புக் குறியீடு: {code} | | |
+| sign-in | Your Sethika sign-in code is {code}. Do not share it with anyone. | ඔබගේ Sethika පිවිසුම් කේතය: {code}. එය කිසිවෙකු සමඟ බෙදා නොගන්න. | உங்கள் Sethika உள்நுழைவுக் குறியீடு: {code}. இதை யாருடனும் பகிர வேண்டாம். | | |
+
+Question for the reviewers: the sign-in SMS says `පිවිසුම්` ("entry/login") where the web pages say
+`පුරනය වන්න` for "sign in". Which one would a donor recognise in a text message?

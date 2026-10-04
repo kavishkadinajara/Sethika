@@ -115,7 +115,12 @@ public sealed class SignInHandler(
             ? passwordHasher.HashPassword(new User { Id = account.Id }, password)
             : null;
 
-        return await CompleteAsync(account, loginName, rehashed, command, now, cancellationToken)
+        return await CompleteAsync(
+                new SessionStart(account.Id, account.UserType, account.SecurityStamp, loginName, command.IpAddress, command.UserAgent),
+                resetFailures: true,
+                rehashed,
+                now,
+                cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -177,15 +182,28 @@ public sealed class SignInHandler(
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<SignInResult> CompleteAsync(
-        Account account,
-        string loginName,
+    /// <summary>
+    /// Starts the session for a user who has proved who they are: the institution rules, the tokens,
+    /// a new refresh family bound to the current security stamp, and the success row. Sign-in by
+    /// code comes through here too, so the two ways in cannot drift apart.
+    /// </summary>
+    /// <param name="start">Who is signing in, and from where.</param>
+    /// <param name="resetFailures">
+    /// Clears the password failure count and lockout - plan A1's reset. Only a correct password
+    /// does: the count is evidence about guesses at the password, and another factor succeeding says
+    /// nothing about those.
+    /// </param>
+    /// <param name="rehashed">A replacement password hash, when the stored one is outdated.</param>
+    /// <param name="now">The time of the sign-in.</param>
+    /// <param name="cancellationToken">Cancels the operation.</param>
+    internal async Task<SignInResult> CompleteAsync(
+        SessionStart start,
+        bool resetFailures,
         string? rehashed,
-        SignInCommand command,
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
-        var institutions = await UserInstitutions.LoadAsync(db, account.Id, now, cancellationToken).ConfigureAwait(false);
+        var institutions = await UserInstitutions.LoadAsync(db, start.UserId, now, cancellationToken).ConfigureAwait(false);
 
         // One institution is the common case - an owner with one temple - and a chooser screen with
         // one option is a pointless click. With several, the token acts for none until the user
@@ -194,9 +212,9 @@ public sealed class SignInHandler(
         var activeInstitutionId = activeInstitution?.Id;
 
         var issued = tokens.Issue(new TokenSubject(
-            account.Id,
+            start.UserId,
             activeInstitutionId,
-            IsPlatform: string.Equals(account.UserType, PlatformStaffUserType, StringComparison.Ordinal)));
+            IsPlatform: string.Equals(start.UserType, PlatformStaffUserType, StringComparison.Ordinal)));
 
         await using var transaction = await db.Database
             .BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
@@ -205,12 +223,16 @@ public sealed class SignInHandler(
         // UserManager. Without it, failures from different days accumulate until a user who types
         // the right password is locked out anyway.
         await db.Users
-            .Where(u => u.Id == account.Id)
+            .Where(u => u.Id == start.UserId)
             .ExecuteUpdateAsync(
                 setters =>
                 {
-                    setters.SetProperty(u => u.AccessFailedCount, 0);
-                    setters.SetProperty(u => u.LockoutEnd, (DateTimeOffset?)null);
+                    if (resetFailures)
+                    {
+                        setters.SetProperty(u => u.AccessFailedCount, 0);
+                        setters.SetProperty(u => u.LockoutEnd, (DateTimeOffset?)null);
+                    }
+
                     setters.SetProperty(u => u.LastLoginAt, now.UtcDateTime);
 
                     if (rehashed is not null)
@@ -224,15 +246,15 @@ public sealed class SignInHandler(
         // A new family: every refresh from here on rotates within it, and a replayed member ends it.
         db.RefreshTokens.Add(RefreshTokenRows.New(
             issued,
-            account.Id,
+            start.UserId,
             familyId: Guid.NewGuid(),
             activeInstitutionId,
-            account.SecurityStamp,
-            command.IpAddress,
-            command.UserAgent,
+            start.SecurityStamp,
+            start.IpAddress,
+            start.UserAgent,
             now));
 
-        db.LoginAttempts.Add(Attempt(account.Id, loginName, failureReason: null, command, now));
+        db.LoginAttempts.Add(Attempt(start.UserId, start.LoginName, failureReason: null, start.IpAddress, start.UserAgent, now));
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -251,14 +273,24 @@ public sealed class SignInHandler(
         string loginName,
         string? failureReason,
         SignInCommand command,
+        DateTimeOffset now) =>
+        Attempt(userId, loginName, failureReason, command.IpAddress, command.UserAgent, now);
+
+    /// <summary>One <c>auth.LoginHistory</c> row, cut to the column widths.</summary>
+    internal static LoginAttempt Attempt(
+        Guid? userId,
+        string loginName,
+        string? failureReason,
+        string? ipAddress,
+        string? userAgent,
         DateTimeOffset now) => new()
         {
             UserId = userId,
             LoginName = Truncate(loginName, 256)!,
             Succeeded = failureReason is null,
             FailureReason = failureReason,
-            IpAddress = Truncate(command.IpAddress, 45),
-            UserAgent = Truncate(command.UserAgent, 400),
+            IpAddress = Truncate(ipAddress, 45),
+            UserAgent = Truncate(userAgent, 400),
             AttemptedAt = now.UtcDateTime,
         };
 

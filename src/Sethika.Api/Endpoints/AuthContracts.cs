@@ -2,7 +2,10 @@ using System.Text;
 
 namespace Sethika.Api.Endpoints;
 
-/// <summary>Asks for a one-time code. Only <c>signup</c> is accepted here.</summary>
+/// <summary>
+/// Asks for a one-time code: <c>signup</c> (the default) or <c>login</c>. A sign-in code is sent in
+/// the account's own language, so <c>Language</c> applies to signup codes only.
+/// </summary>
 public sealed record OtpRequestBody(string? PhoneNumber, string? Purpose, string? Language);
 
 /// <summary>Presents a one-time code.</summary>
@@ -11,6 +14,16 @@ public sealed record OtpVerifyBody(string? PhoneNumber, string? Purpose, string?
     private bool PrintMembers(StringBuilder builder)
     {
         builder.Append("PhoneNumber = ").Append(PhoneNumber).Append(", Purpose = ").Append(Purpose);
+        return true;
+    }
+}
+
+/// <summary>Signs in with a code sent by <c>/otp/request</c> with purpose <c>login</c>.</summary>
+public sealed record OtpSignInBody(string? PhoneNumber, string? Code)
+{
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append("PhoneNumber = ").Append(PhoneNumber).Append(", Code = ").Append(Code is null ? "null" : "(redacted)");
         return true;
     }
 }

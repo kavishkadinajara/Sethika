@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddSingleton<DummyPasswordHash>();
 
         services.AddScoped<SignInHandler>();
+        services.AddScoped<OtpSignInHandler>();
         services.AddScoped<SignUpDonorHandler>();
         services.AddScoped<SessionHandler>();
         services.AddScoped<StepUpHandler>();

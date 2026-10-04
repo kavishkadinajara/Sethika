@@ -426,14 +426,61 @@ public sealed class AuthEndpointsTests(SethikaTestDatabase database) : IAsyncLif
         Assert.False(string.IsNullOrEmpty((await JsonAsync(right)).GetProperty("ticket").GetString()));
     }
 
+    [Fact]
+    public async Task ASignupCodeBurnsAfterFiveWrongGuesses_AndAFourthSendInTheHourIs429()
+    {
+        // Plan 5.8's OTP box, over HTTP. The cooldown is taken out so the hourly cap is what refuses.
+        var host = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("ConnectionStrings:Sql", database.ConnectionString);
+            builder.UseSetting("ConnectionStrings:Redis", database.RedisConnectionString);
+            builder.UseSetting("Jwt:SigningKey", SigningKey);
+            builder.UseSetting("Otp:ResendCooldown", "00:00:00");
+            builder.ConfigureTestServices(services =>
+            {
+                services.AddScoped<ISmsSender>(_ => new RecordingSmsSender(_sms));
+                services.AddSingleton<IStartupFilter>(new RemoteAddressStartupFilter(IPAddress.Loopback));
+            });
+        });
+        _hosts.Add(host);
+        using var client = Client(host);
+        var phone = NewPhone();
+
+        using var sent = await client.PostAsJsonAsync("/api/auth/otp/request", new { phoneNumber = phone });
+        var code = new string([.. _sms.Last(m => m.Phone == phone).Message.Where(char.IsAsciiDigit)]);
+        var wrongCode = code == "000000" ? "111111" : "000000";
+
+        for (var remaining = 4; remaining >= 1; remaining--)
+        {
+            using var wrong = await client.PostAsJsonAsync("/api/auth/otp/verify", new { phoneNumber = phone, code = wrongCode });
+            Assert.Equal(remaining, (await JsonAsync(wrong)).GetProperty("attemptsRemaining").GetInt32());
+        }
+
+        using var fifth = await client.PostAsJsonAsync("/api/auth/otp/verify", new { phoneNumber = phone, code = wrongCode });
+        Assert.Equal("otp_attempts_exhausted", (await JsonAsync(fifth)).GetProperty("code").GetString());
+
+        using var burned = await client.PostAsJsonAsync("/api/auth/otp/verify", new { phoneNumber = phone, code });
+        Assert.Equal(HttpStatusCode.BadRequest, burned.StatusCode);
+        Assert.Equal("otp_not_found", (await JsonAsync(burned)).GetProperty("code").GetString());
+
+        for (var i = 0; i < 2; i++)
+        {
+            using var again = await client.PostAsJsonAsync("/api/auth/otp/request", new { phoneNumber = phone });
+            Assert.Equal(HttpStatusCode.Accepted, again.StatusCode);
+        }
+
+        using var fourth = await client.PostAsJsonAsync("/api/auth/otp/request", new { phoneNumber = phone });
+        Assert.Equal((HttpStatusCode)429, fourth.StatusCode);
+        Assert.Equal(3, _sms.Count(m => m.Phone == phone));
+    }
+
     [Theory]
     [InlineData("stepup")]
-    [InlineData("login")]
     [InlineData("reset")]
-    public async Task OnlySignupCodesCanBeRequestedAnonymously(string purpose)
+    public async Task OnlySignupAndSignInCodesCanBeRequestedAnonymously(string purpose)
     {
         // A step-up code sent to any number on request would be an SMS-bombing tool and a way around
-        // the authenticated step-up flow.
+        // the authenticated step-up flow. Sign-in codes are covered by OtpSignInEndpointsTests.
         var host = Host();
         using var client = Client(host);
         var phone = NewPhone();

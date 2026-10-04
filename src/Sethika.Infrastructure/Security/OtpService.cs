@@ -1,4 +1,5 @@
 using System.Buffers.Text;
+using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -68,11 +69,48 @@ public sealed partial class OtpService : IOtpService
         _options = options.Value;
     }
 
-    public async Task<OtpSendResult> SendAsync(
+    public Task<OtpSendResult> SendAsync(
         string phoneNumber,
         OtpPurpose purpose,
         string language,
+        CancellationToken cancellationToken = default) =>
+        IssueAsync(phoneNumber, purpose, language, deliver: true, cancellationToken);
+
+    public async Task<OtpSendResult> SendUndisclosedAsync(
+        string phoneNumber,
+        OtpPurpose purpose,
+        string language,
+        bool deliver,
         CancellationToken cancellationToken = default)
+    {
+        var started = Stopwatch.GetTimestamp();
+
+        var result = await IssueAsync(phoneNumber, purpose, language, deliver, cancellationToken)
+            .ConfigureAwait(false);
+
+        // The SMS is the one step only a number with an account pays for: a database write and,
+        // in production, a call to the gateway. Without a floor, a stopwatch on this request tells
+        // anyone which numbers are registered however equal the answers are. A gateway slower than
+        // the floor reopens the gap, so it is logged rather than hidden.
+        var remaining = _options.UndisclosedSendDuration - Stopwatch.GetElapsedTime(started);
+        if (remaining > TimeSpan.Zero)
+        {
+            await Task.Delay(remaining, cancellationToken).ConfigureAwait(false);
+        }
+        else if (deliver && result.WasSent)
+        {
+            LogFloorOverrun(_logger, purpose, -remaining);
+        }
+
+        return result;
+    }
+
+    private async Task<OtpSendResult> IssueAsync(
+        string phoneNumber,
+        OtpPurpose purpose,
+        string language,
+        bool deliver,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(phoneNumber);
 
@@ -117,6 +155,13 @@ public sealed partial class OtpService : IOtpService
 
             await db.KeyExpireAsync(codeKey, _options.Lifetime).ConfigureAwait(false);
 
+            if (!deliver)
+            {
+                // Stored all the same, so presenting a code for this number costs the same work and
+                // burns after the same number of guesses as for a number that was sent one.
+                return OtpSendResult.Sent();
+            }
+
             if (_options.LogCodesForDevelopment)
             {
                 LogDevelopmentCode(_logger, phoneNumber, purpose, code);
@@ -124,7 +169,7 @@ public sealed partial class OtpService : IOtpService
 
             await _sms.SendAsync(
                 phoneNumber,
-                BuildMessage(code, language),
+                BuildMessage(code, purpose, language),
                 dedupKey: null,
                 cancellationToken).ConfigureAwait(false);
 
@@ -280,11 +325,17 @@ public sealed partial class OtpService : IOtpService
     /// Placeholder text until <c>notify.Templates</c> is seeded per language in slice 5.6. The
     /// language is already threaded through so that adding the templates is a change here and
     /// nowhere else.
+    ///
+    /// A sign-in code says what it is for and not to share it: it is the one code that, read out to
+    /// a caller claiming to be Sethika, hands over the account by itself.
     /// </remarks>
-    private static string BuildMessage(string code, string language) => language switch
+    private static string BuildMessage(string code, OtpPurpose purpose, string language) => (purpose, language) switch
     {
-        "si" => $"ඔබගේ Sethika සත්‍යාපන කේතය: {code}",
-        "ta" => $"உங்கள் Sethika சரிபார்ப்புக் குறியீடு: {code}",
+        (OtpPurpose.Login, "si") => $"ඔබගේ Sethika පිවිසුම් කේතය: {code}. එය කිසිවෙකු සමඟ බෙදා නොගන්න.",
+        (OtpPurpose.Login, "ta") => $"உங்கள் Sethika உள்நுழைவுக் குறியீடு: {code}. இதை யாருடனும் பகிர வேண்டாம்.",
+        (OtpPurpose.Login, _) => $"Your Sethika sign-in code is {code}. Do not share it with anyone.",
+        (_, "si") => $"ඔබගේ Sethika සත්‍යාපන කේතය: {code}",
+        (_, "ta") => $"உங்கள் Sethika சரிபார்ப்புக் குறியீடு: {code}",
         _ => $"Your Sethika verification code is {code}",
     };
 
@@ -292,6 +343,11 @@ public sealed partial class OtpService : IOtpService
         Level = LogLevel.Warning,
         Message = "One-time code store unavailable during {Operation}; the caller was told so.")]
     private static partial void LogStoreUnavailable(ILogger logger, string operation, Exception exception);
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "A {Purpose} code took {Overrun} longer to send than the undisclosed-send floor; its timing can reveal that the number has an account. Raise Otp:UndisclosedSendDuration.")]
+    private static partial void LogFloorOverrun(ILogger logger, OtpPurpose purpose, TimeSpan overrun);
 
     [LoggerMessage(
         Level = LogLevel.Information,

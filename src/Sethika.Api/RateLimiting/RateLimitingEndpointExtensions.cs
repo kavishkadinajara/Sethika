@@ -16,6 +16,18 @@ internal static class RateLimitingEndpointExtensions
     public static RouteHandlerBuilder RateLimitPerClient(this RouteHandlerBuilder builder, RateLimitRule rule) =>
         builder.RateLimit(rule, context => ClientAddress.Of(context.HttpContext));
 
+    /// <summary>Limits by the client's address, under a rule the request body chooses.</summary>
+    /// <remarks>
+    /// For one endpoint serving several flows that must not share a budget - the code request, whose
+    /// purpose decides which counter a request spends.
+    /// </remarks>
+    public static RouteHandlerBuilder RateLimitPerClient<TBody>(
+        this RouteHandlerBuilder builder,
+        Func<TBody?, RateLimitRule> ruleFor) =>
+        builder.RateLimit(context => (
+            ruleFor(context.Arguments.OfType<TBody>().FirstOrDefault()),
+            ClientAddress.Of(context.HttpContext)));
+
     /// <summary>Limits by a value taken from the request body.</summary>
     /// <param name="builder">The endpoint.</param>
     /// <param name="rule">The limit.</param>
@@ -36,9 +48,14 @@ internal static class RateLimitingEndpointExtensions
         this RouteHandlerBuilder builder,
         RateLimitRule rule,
         Func<EndpointFilterInvocationContext, string?> subjectOf) =>
+        builder.RateLimit(context => (rule, subjectOf(context)));
+
+    private static RouteHandlerBuilder RateLimit(
+        this RouteHandlerBuilder builder,
+        Func<EndpointFilterInvocationContext, (RateLimitRule Rule, string? Subject)> limitOf) =>
         builder.AddEndpointFilter(async (context, next) =>
         {
-            var subject = subjectOf(context);
+            var (rule, subject) = limitOf(context);
             if (subject is null)
             {
                 return await next(context).ConfigureAwait(false);

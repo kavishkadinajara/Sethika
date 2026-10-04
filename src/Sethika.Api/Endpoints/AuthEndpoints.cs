@@ -24,11 +24,19 @@ internal static class AuthEndpoints
         var auth = app.MapGroup("/api/auth").AllowAnonymous();
 
         auth.MapPost("/otp/request", RequestOtpAsync)
-            .RateLimitPerClient(AuthRateLimits.OtpRequestPerClient);
+            .RateLimitPerClient<OtpRequestBody>(body => IsLoginPurpose(body?.Purpose)
+                ? AuthRateLimits.OtpLoginRequestPerClient
+                : AuthRateLimits.OtpRequestPerClient);
 
         auth.MapPost("/otp/verify", VerifyOtpAsync)
             .RateLimitPerClient(AuthRateLimits.OtpVerifyPerClient)
             .RateLimitBy<OtpVerifyBody>(AuthRateLimits.OtpVerifyPerPhone, (body, services) => NormalizedPhone(body.PhoneNumber, services));
+
+        // Anonymous like the rest of this group - signing in is how a caller gets an identity to check
+        // a permission against - and limited per number as well as per client, as /otp/verify is.
+        auth.MapPost("/otp/sign-in", SignInWithOtpAsync)
+            .RateLimitPerClient(AuthRateLimits.OtpSignInPerClient)
+            .RateLimitBy<OtpSignInBody>(AuthRateLimits.OtpSignInPerPhone, (body, services) => NormalizedPhone(body.PhoneNumber, services));
 
         auth.MapPost("/signup", SignUpAsync)
             .RateLimitPerClient(AuthRateLimits.SignUpPerClient);
@@ -41,24 +49,29 @@ internal static class AuthEndpoints
         return app;
     }
 
-    /// <summary>Sends a signup code.</summary>
+    /// <summary>Sends a signup or sign-in code.</summary>
     /// <remarks>
-    /// Only the signup purpose is accepted here. Step-up codes go to the number already on an
-    /// authenticated account (slice 5.3); a public endpoint that sent them to any number would be
-    /// both an SMS-bombing tool and a way around that flow.
+    /// Only the signup and login purposes are accepted here. Step-up codes go to the number already
+    /// on an authenticated account (slice 5.3); a public endpoint that sent them to any number would
+    /// be both an SMS-bombing tool and a way around that flow.
     ///
-    /// A number that already has an account is sent a code like any other. Refusing would tell
-    /// anyone which numbers are registered; this way only the phone's holder can learn it, by
+    /// A signup code goes to a number that already has an account like to any other. Refusing would
+    /// tell anyone which numbers are registered; this way only the phone's holder can learn it, by
     /// verifying and then being told at signup.
+    ///
+    /// A sign-in code goes only to a number with an account that may sign in, but the answer is the
+    /// same for every number, in body, status and time (<see cref="OtpSignInHandler"/>).
     /// </remarks>
     private static async Task<IResult> RequestOtpAsync(
         [FromBody] OtpRequestBody body,
         HttpContext httpContext,
         IPhoneNumberNormalizer phoneNumbers,
         IOtpService otp,
+        OtpSignInHandler otpSignIn,
         CancellationToken cancellationToken)
     {
-        if (!IsSignupPurpose(body.Purpose))
+        var isLogin = IsLoginPurpose(body.Purpose);
+        if (!isLogin && !IsSignupPurpose(body.Purpose))
         {
             return ApiErrors.Error(StatusCodes.Status400BadRequest, "unsupported_purpose");
         }
@@ -74,7 +87,9 @@ internal static class AuthEndpoints
             return ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_language");
         }
 
-        var sent = await otp.SendAsync(phoneNumber, OtpPurpose.Signup, language, cancellationToken);
+        var sent = isLogin
+            ? await otpSignIn.RequestAsync(phoneNumber, cancellationToken)
+            : await otp.SendAsync(phoneNumber, OtpPurpose.Signup, language, cancellationToken);
 
         return sent.Outcome switch
         {
@@ -113,6 +128,38 @@ internal static class AuthEndpoints
             OtpVerifyOutcome.NotFound => ApiErrors.Error(StatusCodes.Status400BadRequest, "otp_not_found"),
             OtpVerifyOutcome.TooManyAttempts => ApiErrors.Error(StatusCodes.Status400BadRequest, "otp_attempts_exhausted"),
             _ => ApiErrors.Error(StatusCodes.Status503ServiceUnavailable, "verification_unavailable"),
+        };
+    }
+
+    /// <summary>Signs in with a sign-in code, answering success exactly as password login does.</summary>
+    /// <remarks>
+    /// A wrong, expired or burned code, a number with no account and a locked account are one
+    /// answer. A suspended account is told so, as password login tells it - only to someone holding
+    /// a valid code for its phone.
+    /// </remarks>
+    private static async Task<IResult> SignInWithOtpAsync(
+        [FromBody] OtpSignInBody body,
+        HttpContext httpContext,
+        IPhoneNumberNormalizer phoneNumbers,
+        OtpSignInHandler otpSignIn,
+        IHostEnvironment environment,
+        CancellationToken cancellationToken)
+    {
+        if (!phoneNumbers.TryNormalize(body.PhoneNumber, out var phoneNumber))
+        {
+            return ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_phone_number");
+        }
+
+        var result = await otpSignIn.SignInAsync(
+            new OtpSignInCommand(phoneNumber, body.Code, ClientAddress.Of(httpContext), UserAgent(httpContext)),
+            cancellationToken);
+
+        return result.Failure switch
+        {
+            SignInFailure.None => StartSession(httpContext, result, environment, StatusCodes.Status200OK),
+            SignInFailure.NotAllowed => ApiErrors.Error(StatusCodes.Status403Forbidden, "account_not_active"),
+            SignInFailure.Unavailable => ApiErrors.Error(StatusCodes.Status503ServiceUnavailable, "verification_unavailable"),
+            _ => ApiErrors.Error(StatusCodes.Status401Unauthorized, "otp_invalid"),
         };
     }
 
@@ -211,6 +258,9 @@ internal static class AuthEndpoints
 
     private static bool IsSignupPurpose(string? purpose) =>
         string.IsNullOrWhiteSpace(purpose) || string.Equals(purpose, "signup", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsLoginPurpose(string? purpose) =>
+        string.Equals(purpose, "login", StringComparison.OrdinalIgnoreCase);
 
     private static string? NormalizedPhone(string? phoneNumber, IServiceProvider services) =>
         services.GetRequiredService<IPhoneNumberNormalizer>().TryNormalize(phoneNumber, out var normalized)
