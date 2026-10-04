@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Mvc;
 using Sethika.Application.Abstractions;
+using Sethika.Application.Access.Language;
 
 namespace Sethika.Api.Endpoints;
 
@@ -15,6 +17,7 @@ internal static class MeEndpoints
         var me = app.MapGroup("/api/me").RequireAuthorization();
 
         me.MapGet("/permissions", GetPermissionsAsync);
+        me.MapPut("/language", SetLanguageAsync);
 
         return app;
     }
@@ -46,5 +49,36 @@ internal static class MeEndpoints
             isPlatform = currentUser.IsPlatform,
             permissions = effective.Codes.OrderBy(c => c, StringComparer.Ordinal),
         });
+    }
+
+    /// <summary>
+    /// Sets the caller's preferred language: 204 whether or not it changed, so the web app can send
+    /// it on every switch without reading it first.
+    /// </summary>
+    /// <remarks>
+    /// The user is the token's <c>sub</c>, never a value in the body, so a caller can only ever change
+    /// their own row. The language reaches the SMS a step-up sends, which reads it from the row.
+    /// </remarks>
+    private static async Task<IResult> SetLanguageAsync(
+        [FromBody] PreferredLanguageBody body,
+        ICurrentUserContext currentUser,
+        PreferredLanguageHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        return await handler.SetAsync(userId, body.Language, cancellationToken) switch
+        {
+            PreferredLanguageResult.Saved => Results.NoContent(),
+            PreferredLanguageResult.UnsupportedLanguage =>
+                ApiErrors.Error(StatusCodes.Status400BadRequest, "unsupported_language"),
+
+            // A valid token for a deleted account: the same answer as a token that is not valid.
+            PreferredLanguageResult.UserNotFound => Results.Unauthorized(),
+            _ => ApiErrors.Error(StatusCodes.Status409Conflict, "concurrency_conflict"),
+        };
     }
 }
