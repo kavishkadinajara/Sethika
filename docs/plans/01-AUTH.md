@@ -6,9 +6,10 @@ because every slice below depends on `IPermissionService` and `[HasPermission]`,
 Status: **in progress. The backend slices are done: 5.1–5.5 and 5.9** — signup, OTP, login,
 lockout, refresh rotation with reuse detection, institution switching, logout, MFA step-up, rate
 limiting, the RBAC catalogue with level ceilings, the `bootstrap` command, and custom roles with rank
-anti-escalation, all over HTTP. **5.6's web half is done** (next-intl routing via `proxy.ts`,
-`messages/{en,si,ta}.json`, fonts, brand theme; `730bd06`); its two backend boxes (`PUT
-/api/me/language`, OTP templates per language) are still open. **5.7's primitives are done**
+anti-escalation, all over HTTP. **5.6 is done**: the web half (next-intl routing via `proxy.ts`,
+`messages/{en,si,ta}.json`, fonts, brand theme; `730bd06`), `PUT /api/me/language` with the
+LanguageSwitcher saving to it (`1006af8`, `dbc37ac`), and the OTP SMS from `notify.Templates` in the
+user's language (`c89e634`, `1b97c75`). **5.7's primitives are done**
 (`components/ui`, `/design` review page; `4309393`), and the design language and performance
 budget every screen follows are in `docs/DESIGN.md` (`3fcb41c`). **5.7's `lib/auth/` and rewrite
 boxes are done** (`58914a6`: session client, fetch wrapper, `/api` rewrite, permissions loaded in the
@@ -18,8 +19,9 @@ walk-through with the API is still owed (see the 5.7 boxes). **5.7's screens are
 `/login/otp`, which waits for a backend OTP-login endpoint. Every 5.7 screen still owes one live
 walk-through against the API (listed under the screens box). Three 5.8 boxes stay open: the platform-claim forgery test, the OTP burn-and-429 test
 over HTTP, and password change (no endpoint yet).
-**267 tests passing** (two consecutive full runs), `dotnet format` clean, build clean with warnings as errors.
-Last updated 2026-10-01. Update this line and the 5.1 boxes whenever either changes — a fresh
+**283 tests passing** (two consecutive full runs, SQL Server 2022 and Redis), `dotnet format` clean, build
+clean with warnings as errors; 36 Vitest tests in `web/`.
+Last updated 2026-10-04. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
 
 Delivered so far, with the commit that added it:
@@ -50,6 +52,12 @@ Delivered so far, with the commit that added it:
 | `3fcb41c` | Design language and load budget (refines 5.7's primitives): `docs/DESIGN.md` (bowl shapes, one focus glow, green-tinted depth, two type voices; usability rules; performance budget). English pages no longer fetch Noto fonts, Fraunces is one static weight, Radix Toast loads at idle, client providers ship only the namespaces they need (`i18n/pick.ts`). |
 | `a2959d5` | Light and dark themes: follows the device by default, `ThemeSwitcher` (Auto / Light / Dark) saved in the `sethika_theme` cookie, applied before first paint by an inline `<head>` script and kept across locale changes by `ThemeSync`; components moved to semantic colour tokens with measured contrast in both themes. |
 | `58914a6` | Browser session (5.7 `lib/auth/` and rewrites): `lib/auth/session-client.ts` (token in memory, silent refresh with CSRF, one fetch wrapper with single-flight refresh, A19 superseded retry, A20 step-up hook, logout / logout-all / switch-institution), `next.config.ts` rewrite to `API_BASE_URL`, permissions loaded client-side (`lib/permissions/server.ts` removed), root layout no longer dynamic so every locale's pages are prerendered. Vitest 4.1 in `web/` - 16 tests, each guarded rule mutation-checked. |
+| `ba683fb` | `/api/me/*` moved from `Program.cs` into `Endpoints/MeEndpoints.cs`, one authenticated-only group. No behaviour change. |
+| `2d8d2a4` | `InstitutionRoleEndpointsTests` logins get their own client address: from loopback they shared one login-client budget, and two full runs inside 15 minutes failed 11 tests with 429. |
+| `1006af8` | `PUT /api/me/language` (5.6): `PreferredLanguageHandler` through `ISethikaDbContext`, tracked so `RowVersion` is in the UPDATE (one retry, then `409 concurrency_conflict`); `400 unsupported_language`; 204 and no write when unchanged — 7 tests over HTTP. |
+| `dbc37ac` | `LanguageSwitcher` saves a signed-in user's choice through `savePreferredLanguage` (`lib/auth/api.ts`, session fetch wrapper, `keepalive`); a failure is logged only and never blocks the switch — 4 Vitest tests. |
+| `c89e634` | `Scripts/Seed/11_NotifyTemplates.sql`: `OTP_SIGNUP` and `OTP_STEPUP`, SMS, en/si/ta, MERGE on (Code, Channel, Language), body compared as binary, `IsActive` left to operators — 3 tests. |
+| `1b97c75` | `OtpService` reads its SMS from `notify.Templates` (Dapper, no cache); English fallback with a warning, and no send at all (error logged, `Unavailable`) when English is missing too. `BuildMessage` deleted — 6 tests, including PUT language → Sinhala step-up SMS end to end. |
 | `4c82ac0` | Auth screens (5.7): `/signup` (phone → code → details → consent, every API error code mapped to a translated message where it can be fixed), `/login`, the step-up dialog wired to `lib/auth`'s hook plus `/stepup`, `/select-institution`; a session panel and a real `RequiresMfa` demo call on the home page. Prerendered per locale; checked at 320 px in en/si/ta against mocked responses shaped per the contracts. |
 
 All of the above is reachable over HTTP.
@@ -696,9 +704,17 @@ Anything that touches reference data in a test runs in a rolled-back transaction
 - [x] `next-intl`, `proxy.ts` (Next.js 16's name for `middleware.ts`), `messages/{en,si,ta}.json`,
       `localePrefix: 'as-needed'` (A11). Sinhala and Tamil are drafts until a native speaker signs off
       `docs/translations-to-review.md`.
-- [ ] `PUT /api/me/language` writing `auth.Users.PreferredLanguage`.
-- [ ] `notify.Templates` seeded per language for the OTP SMS — a Sinhala-preferring user must receive
-      the Sinhala OTP message, which is why `Templates` has a `Language` column.
+- [x] `PUT /api/me/language` writing `auth.Users.PreferredLanguage` (`1006af8`) — authenticated-only,
+      like `/api/me/permissions`; `en`/`si`/`ta` or `400 unsupported_language`; 204, idempotent.
+      `LanguageSwitcher` calls it for a signed-in user (`dbc37ac`), beside the navigation, never in
+      its way. **Not yet done:** the web app does not *read* `PreferredLanguage` back, so A11's first
+      resolution step (account language before the `NEXT_LOCALE` cookie) is still owed; and the
+      switcher's call has no component test (Vitest here is node-only) and no live browser check.
+- [x] `notify.Templates` seeded per language for the OTP SMS — a Sinhala-preferring user must receive
+      the Sinhala OTP message, which is why `Templates` has a `Language` column. `11_NotifyTemplates.sql`
+      (`c89e634`) and `OtpService` reading it (`1b97c75`). The si and ta bodies are drafts in
+      `docs/translations-to-review.md`. `login` and `reset` have no templates because nothing sends
+      them yet; the endpoint that does must add its rows, or its sends report `Unavailable`.
 - [x] Fonts per A10. Verified on the placeholder `/login` in en, si and ta with Chromium's
       `CSS.getPlatformFontsForNode`: Latin renders in Outfit (Fraunces for the tagline), Sinhala in
       Noto Sans Sinhala, Tamil in Noto Sans Tamil. Check again on the real form in 5.7.
