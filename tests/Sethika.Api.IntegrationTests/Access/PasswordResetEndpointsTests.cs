@@ -322,7 +322,9 @@ public sealed partial class PasswordResetEndpointsTests(SethikaTestDatabase data
         }
 
         Assert.All(answers, a => Assert.Equal((HttpStatusCode.Accepted, string.Empty), (a.Status, a.Body)));
-        Assert.All(answers, a => Assert.True(a.Took >= PasswordResetHandler.RequestFloor, $"{a.Phone} answered in {a.Took}"));
+        // 95% of the floor, as OtpSignInEndpointsTests allows: a Windows timer can end Task.Delay a
+        // fraction of a tick early (0.9998 s was seen). What this catches is a skipped floor.
+        Assert.All(answers, a => Assert.True(a.Took >= PasswordResetHandler.RequestFloor * 0.95, $"{a.Phone} answered in {a.Took}"));
         Assert.True(
             answers.Max(a => a.Took) - answers.Min(a => a.Took) < TimeSpan.FromMilliseconds(750),
             string.Join(", ", answers.Select(a => a.Took)));
