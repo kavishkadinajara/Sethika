@@ -16,12 +16,15 @@ boxes are done** (`58914a6`: session client, fetch wrapper, `/api` rewrite, perm
 browser; 16 Vitest tests in `web/`), but checked only against its contracts in unit tests: the live
 walk-through with the API is still owed (see the 5.7 boxes). **5.7's screens are done** (`4c82ac0`:
 `/signup`, `/login`, `/stepup` and its dialog, `/select-institution`; 32 Vitest tests).
-**Sign-in by SMS code is done** (A22): the API slice (`33abfcb`, `2718e1a`) and `/login/otp`
-(`ec72f37`, 35 Vitest tests in all), walked through live against the API. The other 5.7 screens
-still owe one live walk-through against the API (listed under the screens box). Two 5.8 boxes stay
-open: the platform-claim forgery test, and password change (no endpoint yet).
-**281 tests passing** (two consecutive full runs, against SQL Server 2022 and Redis 7), `dotnet format`
-clean, build clean with warnings as errors.
+**Six cloud branches merged on 2026-10-04/05** (`cloud/*`, merge commits up to `adf903f`): the
+A19 grace-after-logout fix (5.2), `PUT /api/me/language` and `notify.Templates` (5.6, done), the
+platform-claim forgery and OTP-over-HTTP tests (5.8), password change (A21, 5.8 done), the password
+reset (5.10) and sign-in by SMS code (A22, `/login/otp`). **5.8 is done.** 5.10 has its tests green
+but three of its mutations and its live walk-through still owed. The other 5.7 screens still owe
+one live walk-through in a browser (an HTTP-level one through the rewrite passed on 2026-10-04).
+**357 tests passing** (Domain 1, Application 15, integration 341; two consecutive full runs against
+SQL Server 2022 and Redis), 73 Vitest tests, `dotnet format` clean, build clean with warnings as
+errors, `next build` clean.
 Last updated 2026-10-04. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
 
@@ -962,11 +965,11 @@ Backend only; the role-management screens come with week 2's screens.
 ### 5.10 — Forgotten password, reset by SMS *(added 2026-10-04)*
 
 The phone number is the account's identity, so the reset goes by SMS, not email (§7). Built in
-`04e9ae1` (API), `115ccbe` (HTTP tests) and `bf5e618` (screens). **No box below is ticked.** Its
-SQL Server and Redis tests were written in an environment where SQL Server could not be
-installed, and nobody has seen them pass. Tick each box only after
-`PasswordResetEndpointsTests` runs green against `Sethika_Test`, and after the mutations listed in
-`115ccbe`'s message have been run.
+`04e9ae1` (API), `115ccbe` (HTTP tests) and `bf5e618` (screens). Its SQL Server tests were
+written where SQL Server could not be installed and first ran after the merge (`525b8f1`):
+`PasswordResetEndpointsTests`, 17 tests, green against `Sethika_Test` and Redis in two full runs,
+after two test fixes in `e9d3465` and one in the commit after it (warming the host before timing,
+and allowing 95% of the floor for Windows timer resolution).
 
 Choices, and why:
 
@@ -1014,30 +1017,35 @@ Choices, and why:
   `/password/reset` is limited to 20 an hour per client, because each attempt that gets past the
   ticket check costs a 210 000-iteration hash.
 - **The SMS goes in the account's `PreferredLanguage`,** not the page's. `notify.Templates` is not
-  seeded, so the text sits beside the other OTP texts (see the 5.6 templates box).
+  seeded: `OTP_RESET`, added when the branches were merged (see the 5.6 templates box).
 
-- [ ] `/api/auth/otp/request` and `/otp/verify` accept `reset`; `POST /api/auth/password/reset
+- [x] `/api/auth/otp/request` and `/otp/verify` accept `reset`; `POST /api/auth/password/reset
       { ticket, newPassword }` answers `204` (`04e9ae1`). Anonymous and rate-limited like the rest of
       `/api/auth`: the ticket is the gate.
-- [ ] Full reset over HTTP: request, verify, reset. The old password fails, the new one signs in, and
+- [x] Full reset over HTTP: request, verify, reset. The old password fails, the new one signs in, and
       a refresh token from before the reset gives `401`, revoked `PasswordReset`. One outbox row,
       ids only. (`AForgottenPasswordIsResetBySms_AndEverySessionFromBeforeItEnds`)
-- [ ] An unknown number and an `MfaRequired` account get the same status, body and timing as a real
+- [x] An unknown number and an `MfaRequired` account get the same status, body and timing as a real
       number, no SMS, and the same answer to a guessed code. An `MfaRequired` account cannot reset
       even with a ticket planted in Redis. Suspended, deactivated and deleted accounts get no code.
       An SMS gateway that throws for a real account is still answered `202`
       (`AGatewayFailureIsAnsweredLikeEveryOtherNumber`).
-- [ ] A ticket works once. A ticket from before a logout-all is refused. A refused password does not
+- [x] A ticket works once. A ticket from before a logout-all is refused. A refused password does not
       spend the ticket.
-- [ ] A signup code or ticket cannot be used for a reset, and a reset code or ticket cannot be used
+- [x] A signup code or ticket cannot be used for a reset, and a reset code or ticket cannot be used
       for signup.
-- [ ] Five wrong codes burn the code. A fourth request within the hour is `429`, for a real number and
+- [x] Five wrong codes burn the code. A fourth request within the hour is `429`, for a real number and
       an unknown one alike.
-- [ ] A locked account can reset and then signs in with the new password. A reset restarts the
+- [x] A locked account can reset and then signs in with the new password. A reset restarts the
       failure count.
 - [ ] The mutations listed in `115ccbe` (remove `RotateAsync`, a reusable ticket, no purpose check, an
       SMS for unknown numbers, `MfaRequired` let through, the lockout not cleared, the failure count
-      not reset), each turning its test red.
+      not reset), each turning its test red. **Four run so far, against SQL Server and Redis:**
+      `RotateAsync` removed, `MfaRequired` let through and the lockout not cleared are killed. The
+      reusable ticket (the Lua `DEL` removed) **survives**: the second use is refused anyway,
+      because the ticket carries the old `SecurityStamp` and the reset rotates it. The stamp
+      condition in the `UPDATE` is what makes a ticket single-use; the `DEL` is a second line. Still
+      to run: no purpose check, an SMS for unknown numbers, the failure count not reset.
 - [ ] Web (`bf5e618`): "Forgot password?" on `/login` → `/forgot-password`. Phone, then code, then
       new password twice. Success lands on `/login` with a toast. Strings in en/si/ta, with si/ta
       drafts in `docs/translations-to-review.md`. Lint, build and 21 Vitest tests are green (11
