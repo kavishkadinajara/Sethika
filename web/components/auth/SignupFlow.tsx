@@ -23,7 +23,6 @@ import { CodeStep } from "./CodeStep";
 import { FormError } from "./FormError";
 import { PasswordChecklist, PasswordFailures } from "./PasswordGuidance";
 import { textLink } from "./links";
-import { PasswordChecklist, PasswordFailures } from "./PasswordGuidance";
 import { PhoneStep } from "./PhoneStep";
 import { StepProgress } from "./StepProgress";
 import { useCountdown } from "./useCountdown";
@@ -165,6 +164,8 @@ export function SignupFlow() {
   }, [locale]);
 
   useEffect(() => {
+    // Loading the documents is the point of this step; the state it sets is the fetched data.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (step === "consent" && documents === null) void loadDocuments();
   }, [step, documents, loadDocuments]);
 
