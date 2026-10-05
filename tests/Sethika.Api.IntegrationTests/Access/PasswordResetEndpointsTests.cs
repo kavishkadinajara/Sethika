@@ -307,6 +307,12 @@ public sealed partial class PasswordResetEndpointsTests(SethikaTestDatabase data
         var unknown = NewPhone();
         var staff = await CreateUserAsync(mfaRequired: true);
 
+        // Warm both paths first, a real account and an unknown number: otherwise the first timed
+        // request also pays for the host starting and the JIT, seconds that say nothing about
+        // whether the answer leaks.
+        using (await RequestResetAsync(await CreateUserAsync())) { }
+        using (await RequestResetAsync(NewPhone())) { }
+
         var answers = new List<(string Phone, HttpStatusCode Status, string Body, TimeSpan Took)>();
         foreach (var phone in new[] { real, unknown, staff })
         {

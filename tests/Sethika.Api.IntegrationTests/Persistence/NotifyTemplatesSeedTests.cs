@@ -75,7 +75,12 @@ public sealed class NotifyTemplatesSeedTests(SethikaTestDatabase database)
             """)).ToList();
 
         Assert.Equal(
-            ["OTP_SIGNUP en", "OTP_SIGNUP si", "OTP_SIGNUP ta", "OTP_STEPUP en", "OTP_STEPUP si", "OTP_STEPUP ta"],
+            [
+                "OTP_LOGIN en", "OTP_LOGIN si", "OTP_LOGIN ta",
+                "OTP_RESET en", "OTP_RESET si", "OTP_RESET ta",
+                "OTP_SIGNUP en", "OTP_SIGNUP si", "OTP_SIGNUP ta",
+                "OTP_STEPUP en", "OTP_STEPUP si", "OTP_STEPUP ta",
+            ],
             rows.Select(r => $"{r.Code} {r.Language}"));
 
         Assert.All(rows, r => Assert.Contains("{code}", r.Body, StringComparison.Ordinal));

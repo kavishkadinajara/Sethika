@@ -173,18 +173,36 @@ public sealed partial class OtpSmsTemplateTests(SethikaTestDatabase database) : 
     [Fact]
     public async Task APurposeWithoutAnEnglishTemplateSendsNothing_AndSaysSoLoudly()
     {
-        // OTP_LOGIN has no template in any language (no endpoint sends one yet), which is exactly the
-        // state of a purpose whose English template is missing. Nothing is sent, nothing is stored,
-        // the send budget is untouched, and the caller hears "unavailable".
+        // Every purpose is seeded, so OTP_LOGIN is switched off for this test, in every language,
+        // and switched back on after it: a purpose with no active English template. Nothing is sent,
+        // nothing is stored, the send budget is untouched, and the caller hears "unavailable". The
+        // database tests share one collection and never run alongside this one.
         var phone = NewPhone();
         var logger = new RecordingLogger<OtpService>();
 
-        var sent = await NewService(logger).SendAsync(phone, OtpPurpose.Login, "si");
+        await SetLoginTemplatesActiveAsync(false);
+        OtpSendResult sent;
+        try
+        {
+            sent = await NewService(logger).SendAsync(phone, OtpPurpose.Login, "si");
+        }
+        finally
+        {
+            await SetLoginTemplatesActiveAsync(true);
+        }
 
         Assert.Equal(OtpSendOutcome.Unavailable, sent.Outcome);
         Assert.DoesNotContain(_sms, m => m.Phone == phone);
         Assert.False(await _redis.GetDatabase().KeyExistsAsync(OtpCacheKey.ForCode(phone, OtpPurpose.Login)));
         Assert.False(await _redis.GetDatabase().KeyExistsAsync(OtpCacheKey.ForSendCount(phone, OtpPurpose.Login)));
         Assert.Contains(logger.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("OTP_LOGIN", StringComparison.Ordinal));
+    }
+
+    private async Task SetLoginTemplatesActiveAsync(bool active)
+    {
+        await using var connection = new SqlConnection(database.ConnectionString);
+        await connection.ExecuteAsync(
+            "UPDATE notify.Templates SET IsActive = @active WHERE Code = 'OTP_LOGIN' AND Channel = 'SMS';",
+            new { active });
     }
 }
