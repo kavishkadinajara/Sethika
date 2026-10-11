@@ -59,6 +59,12 @@ public sealed partial class OtpService : IOtpService
     private const string RedeemTicketScript =
         "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0";
 
+    /// <summary>Replaces the code and its attempt count and sets its lifetime, in one step.</summary>
+    /// <remarks>HMSET rather than a multi-field HSET, which the local Redis 3.2 does not have.</remarks>
+    private const string StoreCodeScript =
+        "redis.call('HMSET', KEYS[1], '" + CodeHashField + "', ARGV[1], '" + AttemptsField + "', 0) " +
+        "redis.call('PEXPIRE', KEYS[1], ARGV[2])";
+
     private const string CodePlaceholder = "{code}";
     private const string FallbackLanguage = "en";
 
@@ -189,15 +195,13 @@ public sealed partial class OtpService : IOtpService
             var code = GenerateCode(_options.CodeLength);
 
             // A fresh hash replaces any outstanding code and resets the attempt count, so a resend
-            // cannot be used to top up a budget already spent guessing the previous code.
-            await db.HashSetAsync(
-                codeKey,
-                [
-                    new HashEntry(CodeHashField, Hash(code)),
-                    new HashEntry(AttemptsField, 0),
-                ]).ConfigureAwait(false);
-
-            await db.KeyExpireAsync(codeKey, _options.Lifetime).ConfigureAwait(false);
+            // cannot be used to top up a budget already spent guessing the previous code. The hash
+            // and its expiry are written in one step, as the send counter's are: a process dying
+            // between two separate calls would leave a live code that never expires.
+            await db.ScriptEvaluateAsync(
+                StoreCodeScript,
+                [codeKey],
+                [Hash(code), (long)_options.Lifetime.TotalMilliseconds]).ConfigureAwait(false);
 
             if (!deliver)
             {
