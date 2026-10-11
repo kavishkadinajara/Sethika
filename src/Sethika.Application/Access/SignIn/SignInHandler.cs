@@ -30,6 +30,9 @@ public sealed class SignInHandler(
     SessionStarter sessions,
     TimeProvider timeProvider)
 {
+    /// <summary>The history reason for a right password refused because the account locked meanwhile.</summary>
+    private const string LockedOutReason = "LockedOut";
+
     /// <summary>Attempts the sign-in and records the attempt, whatever the outcome.</summary>
     public async Task<SignInResult> HandleAsync(
         SignInCommand command,
@@ -103,8 +106,12 @@ public sealed class SignInHandler(
         // Resetting the failure count here is one of the three duties plan A1 took over from
         // UserManager. Without it, failures from different days accumulate until a user who types
         // the right password is locked out anyway.
-        await db.Users
-            .Where(u => u.Id == account.Id)
+        //
+        // Conditional on the account not being locked now, not merely when it was read. A burst of
+        // parallel guesses all read the account unlocked; the failures among them lock it, and an
+        // unconditional reset would let a right guess in the same burst clear that lock and sign in.
+        var reset = await db.Users
+            .Where(u => u.Id == account.Id && (u.LockoutEnd == null || u.LockoutEnd <= now))
             .ExecuteUpdateAsync(
                 setters =>
                 {
@@ -119,6 +126,16 @@ public sealed class SignInHandler(
                 },
                 cancellationToken)
             .ConfigureAwait(false);
+
+        if (reset == 0)
+        {
+            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+
+            db.LoginAttempts.Add(LoginAttempts.Failed(account.Id, loginName, LockedOutReason, command.IpAddress, command.UserAgent, now));
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            return SignInResult.Failed(SignInFailure.LockedOut);
+        }
 
         var session = await sessions
             .StartAsync(account, loginName, preferredInstitutionId: null, command.IpAddress, command.UserAgent, now, cancellationToken)

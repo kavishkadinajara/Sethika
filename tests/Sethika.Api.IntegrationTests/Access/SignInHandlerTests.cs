@@ -356,6 +356,78 @@ public sealed class SignInHandlerTests(SethikaTestDatabase database) : IAsyncLif
     }
 
     [Fact]
+    public async Task ARightPasswordCannotClearALockSetWhileItWasBeingChecked()
+    {
+        // A burst of parallel guesses all read the account unlocked. The wrong ones lock it; the
+        // right one, finishing after, must not reset that lock and sign in.
+        //
+        // Made deterministic as the refresh race is: an update lock on the user's row lets the
+        // sign-in read the account and check the password, and stops it at its reset. While it
+        // waits there, this connection locks the account - what the fifth failure would do - and
+        // commits, and the sign-in carries on against the locked row.
+        var user = await CreateUserAsync();
+
+        await using var holder = new SqlConnection(database.ConnectionString);
+        await holder.OpenAsync();
+        await using var hold = await holder.BeginTransactionAsync();
+        await holder.ExecuteAsync("SELECT Id FROM auth.Users WITH (UPDLOCK, ROWLOCK) WHERE Id = @id;", new { id = user.Id }, hold);
+
+        var signIn = SignInAsync(user.Phone, Password);
+        await WaitForLockWaitOnUsersAsync();
+
+        await holder.ExecuteAsync(
+            "UPDATE auth.Users SET LockoutEnd = DATEADD(MINUTE, 15, SYSDATETIMEOFFSET()) WHERE Id = @id;",
+            new { id = user.Id },
+            hold);
+        await hold.CommitAsync();
+
+        var result = await signIn;
+
+        Assert.Equal(SignInFailure.LockedOut, result.Failure);
+        Assert.Null(result.Tokens);
+
+        var state = await ReadUserAsync(user.Id);
+        Assert.NotNull(state.LockoutEnd);
+        Assert.Null(state.LastLoginAt);
+
+        await using var connection = new SqlConnection(database.ConnectionString);
+        Assert.Equal(0, await connection.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM auth.RefreshTokens WHERE UserId = @id;", new { id = user.Id }));
+
+        var attempt = Assert.Single(await ReadAttemptsAsync(user.Phone));
+        Assert.False(attempt.Succeeded);
+        Assert.Equal("LockedOut", attempt.FailureReason);
+    }
+
+    /// <summary>Waits until a lock request on <c>auth.Users</c> is queued behind the test's own.</summary>
+    private async Task WaitForLockWaitOnUsersAsync()
+    {
+        await using var connection = new SqlConnection(database.ConnectionString);
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+
+        while (true)
+        {
+            var waiting = await connection.ExecuteScalarAsync<int>(
+                """
+                SELECT COUNT(*)
+                FROM sys.dm_tran_locks AS l
+                JOIN sys.partitions AS p ON p.hobt_id = l.resource_associated_entity_id
+                WHERE l.resource_database_id = DB_ID()
+                  AND l.request_status = 'WAIT'
+                  AND p.object_id = OBJECT_ID(N'auth.Users');
+                """);
+
+            if (waiting >= 1)
+            {
+                return;
+            }
+
+            Assert.True(DateTime.UtcNow < deadline, "The sign-in never reached its reset.");
+            await Task.Delay(50);
+        }
+    }
+
+    [Fact]
     public async Task ASuspendedAccountIsReportedOnlyToSomeoneWithItsPassword()
     {
         var user = await CreateUserAsync(status: "Suspended");
