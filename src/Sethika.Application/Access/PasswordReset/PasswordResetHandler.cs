@@ -61,7 +61,8 @@ public sealed partial class PasswordResetHandler(
         string PreferredLanguage,
         string PhoneNumber,
         string? Email,
-        string FullName);
+        string FullName,
+        string? PasswordHash);
 
     /// <summary>
     /// Sends a reset code to <paramref name="phoneNumber"/> if it belongs to an account that may
@@ -182,6 +183,14 @@ public sealed partial class PasswordResetHandler(
             return ResetPasswordResult.Failed(ResetPasswordFailure.PasswordRejected, policy.Failures);
         }
 
+        // The forgotten password included: a reset that sets it again leaves whoever knew it - the
+        // reason for many resets - still knowing it. Before the ticket is spent, like the policy.
+        if (await PasswordReuse.IsRecentAsync(db, passwordHasher, holder.Id, holder.PasswordHash, password, cancellationToken)
+                .ConfigureAwait(false))
+        {
+            return ResetPasswordResult.Failed(ResetPasswordFailure.PasswordRejected, PasswordFailure.RecentlyUsed);
+        }
+
         // Spent before anything is written, so whatever fails from here on, the ticket is gone and
         // cannot be presented again. Of two requests racing with one ticket, only one gets past here.
         var redeemed = await tickets.RedeemAsync(presented, cancellationToken).ConfigureAwait(false);
@@ -223,6 +232,9 @@ public sealed partial class PasswordResetHandler(
         // resets - loses every session it opened.
         await SecurityStamps.RotateAsync(db, spent.UserId, RevokedReason, now, cancellationToken).ConfigureAwait(false);
 
+        // The hash read with the ticket's stamp, which the UPDATE above has just matched: the one replaced.
+        PasswordReuse.Remember(db, spent.UserId, holder.PasswordHash, now);
+
         // The id only, like DonorSignedUp: the consumer that tells the holder their password was
         // changed looks the number up, so the outbox holds no PII.
         db.OutboxMessages.Add(new OutboxMessage
@@ -253,13 +265,13 @@ public sealed partial class PasswordResetHandler(
         EligibleAccounts()
             .AsNoTracking()
             .Where(u => u.PhoneNumber == phoneNumber)
-            .Select(u => new Holder(u.Id, u.SecurityStamp, u.PreferredLanguage, u.PhoneNumber!, u.Email, u.FullName))
+            .Select(u => new Holder(u.Id, u.SecurityStamp, u.PreferredLanguage, u.PhoneNumber!, u.Email, u.FullName, u.PasswordHash))
             .SingleOrDefaultAsync(cancellationToken);
 
     private Task<Holder?> FindHolderAsync(PasswordResetTicket issuedFor, CancellationToken cancellationToken) =>
         EligibleAccounts()
             .AsNoTracking()
             .Where(u => u.Id == issuedFor.UserId && u.SecurityStamp == issuedFor.SecurityStamp)
-            .Select(u => new Holder(u.Id, u.SecurityStamp, u.PreferredLanguage, u.PhoneNumber!, u.Email, u.FullName))
+            .Select(u => new Holder(u.Id, u.SecurityStamp, u.PreferredLanguage, u.PhoneNumber!, u.Email, u.FullName, u.PasswordHash))
             .SingleOrDefaultAsync(cancellationToken);
 }

@@ -24,6 +24,7 @@ public class SethikaDbContext(DbContextOptions<SethikaDbContext> options)
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<Institution> Institutions => Set<Institution>();
     public DbSet<LoginAttempt> LoginAttempts => Set<LoginAttempt>();
+    public DbSet<PreviousPassword> PreviousPasswords => Set<PreviousPassword>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<DonorProfile> DonorProfiles => Set<DonorProfile>();
     public DbSet<UserConsent> UserConsents => Set<UserConsent>();

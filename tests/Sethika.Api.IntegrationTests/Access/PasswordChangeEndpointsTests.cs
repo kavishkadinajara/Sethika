@@ -61,6 +61,7 @@ public sealed class PasswordChangeEndpointsTests(SethikaTestDatabase database) :
                     AND AggregateId IN (SELECT CONVERT(VARCHAR(50), Id) FROM @ids);
                 UPDATE auth.RefreshTokens SET ReplacedByTokenId = NULL WHERE UserId IN (SELECT Id FROM @ids);
                 DELETE FROM auth.RefreshTokens WHERE UserId IN (SELECT Id FROM @ids);
+                DELETE FROM auth.PasswordHistory WHERE UserId IN (SELECT Id FROM @ids);
                 DELETE FROM auth.LoginHistory  WHERE UserId IN (SELECT Id FROM @ids);
                 DELETE FROM auth.UserRoles     WHERE UserId IN (SELECT Id FROM @ids);
                 DELETE FROM auth.Users         WHERE Id     IN (SELECT Id FROM @ids);
@@ -354,6 +355,70 @@ public sealed class PasswordChangeEndpointsTests(SethikaTestDatabase database) :
     }
 
     [Fact]
+    public async Task ARightCurrentPasswordCannotClearALockSetWhileItWasBeingChecked()
+    {
+        // Sign-in's race, through this door: parallel guesses at the current password all read the
+        // account unlocked, the wrong ones lock it, and the right one must not then clear the lock
+        // and replace the password. An update lock on the row stops the change at its write while
+        // this connection locks the account, as the fifth wrong guess would.
+        var phone = await CreateUserAsync();
+        var session = await SignInAsync(phone);
+        var before = await ReadUserAsync(phone);
+
+        await using var holder = new SqlConnection(database.ConnectionString);
+        await holder.OpenAsync();
+        await using var hold = await holder.BeginTransactionAsync();
+        await holder.ExecuteAsync("SELECT Id FROM auth.Users WITH (UPDLOCK, ROWLOCK) WHERE Id = @id;", new { id = before.Id }, hold);
+
+        var change = ChangeAsync(session, Password, NewPassword);
+        await WaitForLockWaitOnUsersAsync();
+
+        await holder.ExecuteAsync(
+            "UPDATE auth.Users SET LockoutEnd = DATEADD(MINUTE, 15, SYSDATETIMEOFFSET()) WHERE Id = @id;",
+            new { id = before.Id },
+            hold);
+        await hold.CommitAsync();
+
+        using var response = await change;
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("password_incorrect", await CodeOf(response));
+
+        var after = await ReadUserAsync(phone);
+        Assert.Equal(before.SecurityStamp, after.SecurityStamp);
+        Assert.Equal(before.PasswordChangedAt, after.PasswordChangedAt);
+        Assert.NotNull(after.LockoutEnd);
+    }
+
+    /// <summary>Waits until a lock request on <c>auth.Users</c> is queued behind the test's own.</summary>
+    private async Task WaitForLockWaitOnUsersAsync()
+    {
+        await using var connection = new SqlConnection(database.ConnectionString);
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+
+        while (true)
+        {
+            var waiting = await connection.ExecuteScalarAsync<int>(
+                """
+                SELECT COUNT(*)
+                FROM sys.dm_tran_locks AS l
+                JOIN sys.partitions AS p ON p.hobt_id = l.resource_associated_entity_id
+                WHERE l.resource_database_id = DB_ID()
+                  AND l.request_status = 'WAIT'
+                  AND p.object_id = OBJECT_ID(N'auth.Users');
+                """);
+
+            if (waiting >= 1)
+            {
+                return;
+            }
+
+            Assert.True(DateTime.UtcNow < deadline, "The change never reached its write.");
+            await Task.Delay(50);
+        }
+    }
+
+    [Fact]
     public async Task WrongCurrentPasswordsAndWrongSignInsCountTowardOneLockout()
     {
         var phone = await CreateUserAsync();
@@ -448,6 +513,60 @@ public sealed class PasswordChangeEndpointsTests(SethikaTestDatabase database) :
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("password_unchanged", await CodeOf(response));
         Assert.Equal(before.SecurityStamp, (await ReadUserAsync(phone)).SecurityStamp);
+    }
+
+    [Fact]
+    public async Task TheLastFivePasswordsCannotComeBack_TheSixthCan()
+    {
+        // The current password and the four before it. Each change answers with the device's new
+        // session, whose token the next change uses.
+        string[] passwords = [Password, NewPassword, "Rice!Bowl2028", "Morning#Meal29", "Offering$Gold30", "Estate%Green31"];
+        var phone = await CreateUserAsync();
+        var session = await SignInAsync(phone);
+
+        async Task<HttpResponseMessage> ChangeFromAsync(string current, string next)
+        {
+            var response = await ChangeAsync(session, current, next);
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                session = await ParseAsync(response);
+            }
+
+            return response;
+        }
+
+        using (var first = await ChangeFromAsync(passwords[0], passwords[1]))
+        {
+            Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        }
+
+        using (var second = await ChangeFromAsync(passwords[1], passwords[2]))
+        {
+            Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        }
+
+        var before = await ReadUserAsync(phone);
+        using (var back = await ChangeFromAsync(passwords[2], passwords[0]))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, back.StatusCode);
+            var body = JsonDocument.Parse(await back.Content.ReadAsStringAsync()).RootElement;
+            Assert.Equal("password_rejected", body.GetProperty("code").GetString());
+            Assert.Equal(["RecentlyUsed"], body.GetProperty("failures").EnumerateArray().Select(f => f.GetString()));
+        }
+
+        Assert.Equal(before.SecurityStamp, (await ReadUserAsync(phone)).SecurityStamp);
+
+        for (var i = 2; i < 5; i++)
+        {
+            using var step = await ChangeFromAsync(passwords[i], passwords[i + 1]);
+            Assert.Equal(HttpStatusCode.OK, step.StatusCode);
+        }
+
+        // Five changes on, the first password has dropped out of the five remembered.
+        using var again = await ChangeFromAsync(passwords[5], passwords[0]);
+        Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+        using var signIn = await LogInAsync(phone, passwords[0]);
+        Assert.Equal(HttpStatusCode.OK, signIn.StatusCode);
     }
 
     [Fact]

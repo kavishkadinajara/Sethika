@@ -25,6 +25,7 @@ public interface ISethikaDbContext
     DbSet<UserRole> UserRoles { get; }
     DbSet<Institution> Institutions { get; }
     DbSet<LoginAttempt> LoginAttempts { get; }
+    DbSet<PreviousPassword> PreviousPasswords { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<DonorProfile> DonorProfiles { get; }
     DbSet<UserConsent> UserConsents { get; }

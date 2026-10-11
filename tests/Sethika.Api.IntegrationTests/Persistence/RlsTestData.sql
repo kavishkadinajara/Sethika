@@ -42,6 +42,7 @@ DECLARE @districtId SMALLINT = (SELECT Id FROM core.Districts       WHERE Code =
     otherwise leave rows that block every later reset.                                    */
 DELETE FROM auth.RefreshTokens;
 DELETE FROM auth.LoginHistory;
+DELETE FROM auth.PasswordHistory;
 DELETE FROM auth.UserRoles;
 DELETE FROM auth.UserRolesHistory;
 DELETE rp FROM auth.RolePermissions rp

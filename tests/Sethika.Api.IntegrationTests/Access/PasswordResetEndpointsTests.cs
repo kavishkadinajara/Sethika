@@ -77,6 +77,7 @@ public sealed partial class PasswordResetEndpointsTests(SethikaTestDatabase data
                     AND AggregateId IN (SELECT LOWER(CONVERT(VARCHAR(36), Id)) FROM @ids);
                 UPDATE auth.RefreshTokens SET ReplacedByTokenId = NULL WHERE UserId IN (SELECT Id FROM @ids);
                 DELETE FROM auth.RefreshTokens WHERE UserId IN (SELECT Id FROM @ids);
+                DELETE FROM auth.PasswordHistory WHERE UserId IN (SELECT Id FROM @ids);
                 DELETE FROM auth.LoginHistory  WHERE UserId IN (SELECT Id FROM @ids);
                 DELETE FROM auth.Users         WHERE Id     IN (SELECT Id FROM @ids);
                 """,
@@ -481,6 +482,36 @@ public sealed partial class PasswordResetEndpointsTests(SethikaTestDatabase data
 
         using var good = await ResetAsync(ticket);
         Assert.Equal(HttpStatusCode.NoContent, good.StatusCode);
+    }
+
+    [Fact]
+    public async Task TheForgottenPasswordCannotBeSetAgain_AndTheRefusalDoesNotSpendTheTicket()
+    {
+        // Whoever knew the old password - the reason for many resets - must not still know the new one.
+        var phone = await CreateUserAsync();
+        var ticket = await TicketForAsync(phone);
+        var replaced = await QuerySingleAsync<string>("SELECT PasswordHash FROM auth.Users WHERE PhoneNumber = @phone;", new { phone });
+
+        using (var same = await ResetAsync(ticket, OldPassword))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, same.StatusCode);
+            var body = await JsonAsync(same);
+            Assert.Equal("password_rejected", body.GetProperty("code").GetString());
+            Assert.Equal(["RecentlyUsed"], body.GetProperty("failures").EnumerateArray().Select(f => f.GetString()));
+        }
+
+        using var good = await ResetAsync(ticket);
+        Assert.Equal(HttpStatusCode.NoContent, good.StatusCode);
+
+        // The hash it replaced is remembered, not the password.
+        var userId = await UserIdOf(phone);
+        Assert.Equal(replaced, await QuerySingleAsync<string>(
+            "SELECT PasswordHash FROM auth.PasswordHistory WHERE UserId = @userId;", new { userId }));
+
+        // And a second reset cannot go back to it either. (No cooldown to wait out: it is counted
+        // from the outstanding code, and the verification spent it.)
+        using var back = await ResetAsync(await TicketForAsync(phone), OldPassword);
+        Assert.Equal(["RecentlyUsed"], (await JsonAsync(back)).GetProperty("failures").EnumerateArray().Select(f => f.GetString()));
     }
 
     [Fact]

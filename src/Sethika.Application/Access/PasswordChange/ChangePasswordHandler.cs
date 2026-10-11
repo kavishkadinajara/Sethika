@@ -40,6 +40,8 @@ public sealed class ChangePasswordHandler(
     /// <summary>The outbox event a password change writes.</summary>
     public const string ChangedEvent = "PasswordChanged";
 
+    private const string LockedOutReason = "LockedOut";
+
     private sealed record Holder(
         PasswordAccount Account,
         string? PhoneNumber,
@@ -106,6 +108,14 @@ public sealed class ChangePasswordHandler(
             return ChangePasswordResult.Failed(ChangePasswordFailure.PasswordRejected, policy.Failures);
         }
 
+        // Last, because it is the expensive check: a hash per remembered password. The current one
+        // was ruled out above without one.
+        if (await PasswordReuse.IsRecentAsync(db, passwordHasher, holder.Account.Id, currentHash: null, replacement, cancellationToken)
+                .ConfigureAwait(false))
+        {
+            return ChangePasswordResult.Failed(ChangePasswordFailure.PasswordRejected, PasswordFailure.RecentlyUsed);
+        }
+
         var hash = passwordHasher.HashPassword(new User { Id = holder.Account.Id }, replacement);
         var at = now.UtcDateTime;
 
@@ -113,9 +123,11 @@ public sealed class ChangePasswordHandler(
             .BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
         // The reset is the same duty sign-in carries (plan A1): failures typed before the right
-        // password must not survive into the new one's life and lock the user out later.
-        await db.Users
-            .Where(u => u.Id == holder.Account.Id)
+        // password must not survive into the new one's life and lock the user out later. As at
+        // sign-in, only while the account is not locked now: a right guess among parallel wrong
+        // ones must not clear the lock they set.
+        var written = await db.Users
+            .Where(u => u.Id == holder.Account.Id && (u.LockoutEnd == null || u.LockoutEnd <= now))
             .ExecuteUpdateAsync(
                 setters => setters
                     .SetProperty(u => u.PasswordHash, hash)
@@ -125,9 +137,22 @@ public sealed class ChangePasswordHandler(
                 cancellationToken)
             .ConfigureAwait(false);
 
+        if (written == 0)
+        {
+            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+
+            db.LoginAttempts.Add(LoginAttempts.Failed(
+                holder.Account.Id, loginName, LockedOutReason, command.IpAddress, command.UserAgent, now));
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            return ChangePasswordResult.Failed(ChangePasswordFailure.LockedOut);
+        }
+
         var stamp = await SecurityStamps
             .RotateAsync(db, holder.Account.Id, SessionHandler.RevokedReasons.PasswordChanged, at, cancellationToken)
             .ConfigureAwait(false);
+
+        PasswordReuse.Remember(db, holder.Account.Id, holder.Account.PasswordHash, at);
 
         // The id only, as every outbox row so far: a consumer that tells the user their password
         // changed looks up where to send it, so the outbox holds no PII.
