@@ -662,4 +662,30 @@ public sealed class SessionEndpointsTests(SethikaTestDatabase database) : IAsync
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal("session_expired", await CodeOf(response));
     }
+
+    [Fact]
+    public async Task LogoutsSpendTheRefreshBudgetOfTheirClient()
+    {
+        // Logout and logout-all look a cookie up before there is any account to limit by. They
+        // share the per-client refresh budget, so one address cannot query for cookies unbounded.
+        using var client = NewClient();
+
+        async Task<HttpStatusCode> PostWithCookieAsync(string path)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/session/" + path);
+            request.Headers.Add("Cookie", "sethika-refresh=not-a-token; sethika-csrf=csrf");
+            request.Headers.Add("X-CSRF-Token", "csrf");
+            using var response = await client.SendAsync(request);
+            return response.StatusCode;
+        }
+
+        for (var i = 0; i < 300; i++)
+        {
+            Assert.NotEqual(HttpStatusCode.TooManyRequests, await PostWithCookieAsync(i % 2 == 0 ? "logout" : "logout-all"));
+        }
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, await PostWithCookieAsync("logout"));
+        Assert.Equal(HttpStatusCode.TooManyRequests, await PostWithCookieAsync("logout-all"));
+        Assert.Equal(HttpStatusCode.TooManyRequests, await PostWithCookieAsync("refresh"));
+    }
 }

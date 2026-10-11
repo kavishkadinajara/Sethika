@@ -28,9 +28,13 @@ internal static class SessionEndpoints
         session.MapPost("/switch-institution", SwitchInstitutionAsync)
             .RateLimitPerClient(AuthRateLimits.RefreshPerClient);
 
-        session.MapPost("/logout", LogOutAsync);
+        // Not a guessing control either, but each one hashes a cookie and queries for it with no
+        // account behind the request yet, so they share the refresh budget rather than have none.
+        session.MapPost("/logout", LogOutAsync)
+            .RateLimitPerClient(AuthRateLimits.RefreshPerClient);
 
-        session.MapPost("/logout-all", LogOutEverywhereAsync);
+        session.MapPost("/logout-all", LogOutEverywhereAsync)
+            .RateLimitPerClient(AuthRateLimits.RefreshPerClient);
 
         return app;
     }

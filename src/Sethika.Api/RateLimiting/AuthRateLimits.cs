@@ -77,7 +77,7 @@ internal static class AuthRateLimits
     public static readonly RateLimitRule LoginPerName = new("login-name", 10, TimeSpan.FromMinutes(15));
 
     /// <summary>
-    /// Refreshes and institution switches from one address. Not a guessing control - a refresh token
+    /// Refreshes, institution switches and logouts from one address. Not a guessing control - a refresh token
     /// is 256 random bits - but a bound on load: every open tab refreshes every fifteen minutes and
     /// once per page load, and many users share an address.
     /// </summary>
