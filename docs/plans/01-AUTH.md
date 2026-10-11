@@ -19,13 +19,17 @@ walk-through with the API is still owed (see the 5.7 boxes). **5.7's screens are
 **Six cloud branches merged on 2026-10-04/05** (`cloud/*`, merge commits up to `adf903f`): the
 A19 grace-after-logout fix (5.2), `PUT /api/me/language` and `notify.Templates` (5.6, done), the
 platform-claim forgery and OTP-over-HTTP tests (5.8), password change (A21, 5.8 done), the password
-reset (5.10) and sign-in by SMS code (A22, `/login/otp`). **5.8 is done.** 5.10 has its tests green
-but three of its mutations and its live walk-through still owed. The other 5.7 screens still owe
-one live walk-through in a browser (an HTTP-level one through the rewrite passed on 2026-10-04).
-**357 tests passing** (Domain 1, Application 15, integration 341; two consecutive full runs against
-SQL Server 2022 and Redis), 73 Vitest tests, `dotnet format` clean, build clean with warnings as
-errors, `next build` clean.
-Last updated 2026-10-04. Update this line and the 5.1 boxes whenever either changes — a fresh
+reset (5.10) and sign-in by SMS code (A22, `/login/otp`). **5.8 is done.** 5.10's API is done, its last
+three mutations killed on 2026-10-11; its screens and the other 5.7 screens still owe one live
+walk-through in a browser (an HTTP-level one through the rewrite passed on 2026-10-04).
+**A review of the whole slice on 2026-10-11 (§8) fixed six gaps** - SMS sign-in for `MfaRequired`
+accounts, a lockout that a right guess in a parallel burst could clear, OTP codes stored without
+their expiry in one step, unthrottled logout, password history, and A11's read-back of
+`PreferredLanguage` - each with tests and every mutation killed.
+**367 tests passing** (Domain 1, Application 15, integration 351, against SQL Server 2022 and
+Redis), 84 Vitest tests, `dotnet format` clean, build clean with warnings as errors, `next build`
+clean.
+Last updated 2026-10-11. Update this line and the 5.1 boxes whenever either changes — a fresh
 session trusts them and will rebuild anything they claim is missing.
 
 Delivered so far, with the commit that added it:
@@ -76,6 +80,7 @@ Delivered so far, with the commit that added it:
 | `bf5e618` | `/forgot-password` (phone, then code, then new password) and the "Forgot password?" link on `/login`; `StepProgress` and `PasswordGuidance` shared with signup; 21 Vitest tests. |
 | `33abfcb` | Sign-in by SMS code, API (A22): `/api/auth/otp/request` takes purpose `login`; `POST /api/auth/otp/sign-in`; `OtpSignInHandler`; `IOtpService.SendUndisclosedAsync` (cooldown, cap and stored code for every number, SMS only to an active, unlocked, phone-confirmed account, `Otp:UndisclosedSendDuration` floor of 1.5 s); `SignInHandler.CompleteAsync` + `SessionStart` shared by both ways in; three rate-limit rules; the sign-in SMS text per language. Also the 5.8 signup burn-and-429 test over HTTP. |
 | `2718e1a` | 14 tests over HTTP for sign-in by code (`OtpSignInEndpointsTests`). Every mutation in the commit message killed except removing one of the two burn checks alone, which is unobservable in sequence (see A21). |
+| review (§8) | `MfaRequired` accounts refused SMS sign-in (A22); lockout-clearing race closed in sign-in and password change; OTP hash and expiry in one Lua step; logout and logout-all rate-limited; `auth.PasswordHistory` written and read (last five refused, change and reset; `IX_PasswordHistory_User_Time`); `GET /api/me` and the web app landing a signed-in user in the account's language (A11). 10 HTTP tests, 11 Vitest tests, 22 mutations (15 .NET, 7 web) all killed. |
 | `ec72f37` | `/login/otp` (phone → code), linked from `/login`; signup's phone and code steps extracted to `PhoneStep` and `CodeStep` and shared; `requestSignInCode` / `signInWithCode` in `lib/auth/api.ts` (3 Vitest tests); `LoginOtp.*`, `Login.useCode`, `Errors.otp_invalid` in en/si/ta. |
 
 All of the above is reachable over HTTP.
@@ -576,8 +581,11 @@ own account, named by the token, and a permission for it could only ever be held
   `SessionStarter`, added after the rotation so it carries the new stamp. The device keeps the
   institution its token acted for. Every other device keeps its access token until it expires (A2)
   and loses its session at its next refresh.
-- **Not done:** `auth.PasswordHistory` is still unused, so `RecentlyUsed` is never reported and an
-  older password can be reused (only the current one is refused). A refresh that another tab of the
+- **Password history** *(added 2026-10-11, §8)*: the new password must not be the current one or any
+  of the four before it (`PasswordReuse`, shared with the reset), answered as `password_rejected`
+  with `RecentlyUsed`, checked last because it costs a hash per remembered password. The replaced
+  hash is added to `auth.PasswordHistory` in the change's transaction.
+- **Not done:** a refresh that another tab of the
   same browser has in flight with the old cookie at the moment of the change can be answered `401`,
   which clears the cookies; if that answer lands after the change's, this browser loses its new
   session too and must sign in again. Rare - a tab refreshes on load and every fifteen minutes - and
@@ -614,6 +622,12 @@ as they answer a registered one:
   owner signing in either way for fifteen minutes by guessing wrong passwords - as they already could
   for password sign-in.
 - `/api/auth/otp/verify` still refuses purpose `login`: it reports attempts left, which sign-in hides.
+- **`MfaRequired` accounts cannot sign in by code** *(added 2026-10-11, §8)*: platform staff and,
+  once onboarding sets it, institution owners. They are sent nothing and answered exactly like a
+  number with no account, as the password reset (5.10) already answers them; a code held from
+  before the flag was set is refused like a wrong one (`FailureReason = 'MfaRequired'`). A code
+  alone is one factor, and the step-up code goes to the same phone, so SMS sign-in would have made
+  the SIM the whole account. These accounts sign in with their password.
 
 Two honest gaps for the report. `auth.LoginHistory` has no method column, so a successful code
 sign-in and a password sign-in write the same row; failures are told apart by `FailureReason`
@@ -758,7 +772,8 @@ oracle, and it is exactly the kind of thing an examiner asks about.
 - [x] An endpoint filter that applies it, keyed per route; `429` with `Retry-After` — `94b1c29`
       (`RateLimitPerClient`, `RateLimitBy<TBody>`).
 - [x] Applied to OTP request/verify, login, refresh and signup — refresh and switch-institution use
-      `refresh-client` (`f4fabd8`).
+      `refresh-client` (`f4fabd8`). Logout and logout-all joined that budget on 2026-10-11 (§8):
+      each looks a cookie up before there is an account to limit by.
 - [x] Redis down means **fail open with a logged warning**, not closed. A cache outage must not lock
       everyone out — the same principle already applied to the permission cache.
 
@@ -808,9 +823,11 @@ Anything that touches reference data in a test runs in a rolled-back transaction
 - [x] `PUT /api/me/language` writing `auth.Users.PreferredLanguage` (`1006af8`) — authenticated-only,
       like `/api/me/permissions`; `en`/`si`/`ta` or `400 unsupported_language`; 204, idempotent.
       `LanguageSwitcher` calls it for a signed-in user (`dbc37ac`), beside the navigation, never in
-      its way. **Not yet done:** the web app does not *read* `PreferredLanguage` back, so A11's first
-      resolution step (account language before the `NEXT_LOCALE` cookie) is still owed; and the
-      switcher's call has no component test (Vitest here is node-only) and no live browser check.
+      its way. A11's first resolution step was added on 2026-10-11 (§8): `GET /api/me` returns the
+      account's name and language; `logIn` and `signInWithCode` read it before resolving and
+      `useLandAfterSignIn` lands the user in it, and `SessionBoot` moves a page restored from the
+      refresh cookie to it. **Still not done:** no component test for the switcher or the boot move
+      (Vitest here is node-only) and no live browser check.
 - [x] `notify.Templates` seeded per language for the OTP SMS — a Sinhala-preferring user must receive
       the Sinhala OTP message, which is why `Templates` has a `Language` column. `11_NotifyTemplates.sql`
       (`c89e634`) and `OtpService` reading it (`1b97c75`). The si and ta bodies are drafts in
@@ -1009,8 +1026,8 @@ Choices, and why:
   `LockoutEnd = NULL`, `SecurityStamps.RotateAsync` (revoked reason `PasswordReset`), and a
   `PasswordReset` outbox row holding the user id only (the `DonorSignedUp` precedent). Its consumer
   is the "your password was changed" SMS, which does not exist yet. `audit.AuditLogs` is not
-  written, because nothing in the codebase writes it yet. `auth.PasswordHistory` is not written
-  either: nothing reads it, and `RecentlyUsed` is not enforced anywhere yet.
+  written, because nothing in the codebase writes it yet. `auth.PasswordHistory` is written and
+  read since 2026-10-11 (A21's password-history bullet).
 - **Rate limits:** reset has its own per-client request and verify budgets and its own per-phone
   verify budget (`otp-reset-*`), so signups from one address cannot use up the budget their users
   need to recover an account. OtpService's per-number send counter was already keyed per purpose.
@@ -1038,14 +1055,20 @@ Choices, and why:
       an unknown one alike.
 - [x] A locked account can reset and then signs in with the new password. A reset restarts the
       failure count.
-- [ ] The mutations listed in `115ccbe` (remove `RotateAsync`, a reusable ticket, no purpose check, an
+- [x] The mutations listed in `115ccbe` (remove `RotateAsync`, a reusable ticket, no purpose check, an
       SMS for unknown numbers, `MfaRequired` let through, the lockout not cleared, the failure count
-      not reset), each turning its test red. **Four run so far, against SQL Server and Redis:**
+      not reset), each turning its test red, against SQL Server and Redis:
       `RotateAsync` removed, `MfaRequired` let through and the lockout not cleared are killed. The
       reusable ticket (the Lua `DEL` removed) **survives**: the second use is refused anyway,
       because the ticket carries the old `SecurityStamp` and the reset rotates it. The stamp
-      condition in the `UPDATE` is what makes a ticket single-use; the `DEL` is a second line. Still
-      to run: no purpose check, an SMS for unknown numbers, the failure count not reset.
+      condition in the `UPDATE` is what makes a ticket single-use; the `DEL` is a second line. The
+      last three ran on 2026-10-11 and are killed: the code checked as a signup code
+      (`SignupAndResetCodesAndTicketsDoNotCross`), a real SMS for an unknown number
+      (`UnknownAndMfaRequiredNumbersGetTheSameAnswerAsARealOne_AndNoSms`), and the failure count not
+      reset (`AResetStartsTheFailureCountAgain`).
+- [x] Password history (§8): a reset to the forgotten password, or to any of the four before it, is
+      `password_rejected` with `RecentlyUsed` and does not spend the ticket; the replaced hash is
+      remembered (`TheForgottenPasswordCannotBeSetAgain_AndTheRefusalDoesNotSpendTheTicket`).
 - [ ] Web (`bf5e618`): "Forgot password?" on `/login` → `/forgot-password`. Phone, then code, then
       new password twice. Success lands on `/login` with a toast. Strings in en/si/ta, with si/ta
       drafts in `docs/translations-to-review.md`. Lint, build and 21 Vitest tests are green (11
@@ -1081,3 +1104,30 @@ acceptance, impersonation (`auth.ImpersonationSessions` exists but is Phase-opti
 role-management **screens** (the API and its anti-escalation are §5.9), a screen for the platform to
 edit levels and ceilings (seeded only, for now), and enforcing `auth.PermissionDependencies` at grant
 time. All have tables already; none block week 2.
+
+## 8. Review of the slice, 2026-10-11
+
+Every handler, endpoint and the browser session client were read again against this plan before
+the PR. Six findings, each fixed with a test and its mutations killed (15 .NET, 7 web):
+
+| # | Finding | Fix | Test (mutation killed) |
+|---|---|---|---|
+| 1 | **SMS sign-in made the SIM the whole account for `MfaRequired` users.** The reset refused them for exactly this reason; A22 did not, and the step-up code goes to the same phone. | Not sent a code, answered like an unknown number; a code from before the flag is refused (A22). | `AnMfaRequiredAccountIsSentNoCode_…`, `ACodeHeldByAnMfaRequiredAccountIsRefusedLikeAWrongOne` |
+| 2 | **A right password in a parallel burst could clear the lockout the wrong ones set.** Every request read the account unlocked; the success path's reset was unconditional. Same in password change. | The reset `UPDATE` is conditional on `LockoutEnd` being past; zero rows rolls back and answers `LockedOut` with its history row. | `ARightPasswordCannotClearALockSetWhileItWasBeingChecked` (sign-in), `ARightCurrentPasswordCannotClearALock…` (change), both forced with an `UPDLOCK` held while the lock is set |
+| 3 | **An OTP hash and its expiry were two Redis calls.** A process dying between them leaves a live code that never expires - the case `RedisWindowCounter` already guards for the send counter. | One Lua step (`HMSET` + `PEXPIRE`; Redis 3.2 has no multi-field `HSET`). | `OtpServiceTests` TTL assertions (3 fail with `PEXPIRE` removed). The crash itself cannot be driven by a test. |
+| 4 | **Logout and logout-all were not rate-limited** - an anonymous hash and query per request. | Both spend `refresh-client`. | `LogoutsSpendTheRefreshBudgetOfTheirClient` |
+| 5 | **`auth.PasswordHistory` was never written** (A21 "not done"), and a reset could set the forgotten password again. | `PasswordReuse`: current + last four refused in change and reset; `IX_PasswordHistory_User_Time` added in the SQL project. | `TheLastFivePasswordsCannotComeBack_TheSixthCan`, `TheForgottenPasswordCannotBeSetAgain_…` |
+| 6 | **A11's account language was never read back.** | `GET /api/me` (Dapper); sign-in lands in the account's language; boot moves to it. | `MeLanguageEndpointsTests` (3 new), `account-locale.test.ts`, `api.test.ts` |
+
+Checked and left as they are, with the reason:
+
+- **Refresh families have no absolute lifetime.** Each rotation sets a fresh 14 days, so a device
+  used once a fortnight stays signed in indefinitely. Common practice, but a cap (e.g. 90 days from
+  the family's first token) is a small change in `SessionHandler` if the report wants one.
+- **Spent and expired refresh tokens are never deleted.** A cleanup job belongs with Hangfire,
+  which does not exist yet.
+- **Step-up verify is limited per client, not per user.** The per-code burn (5) and the per-number
+  send cap (3 an hour) already bound guessing to 15 an hour per account.
+- **Still owed and not something a review can close:** the live browser walk-throughs of 5.7 and
+  5.10, a native speaker's sign-off on `docs/translations-to-review.md`, and the user's review of
+  the `10_RbacCatalogue.sql` ceilings.
