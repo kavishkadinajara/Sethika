@@ -134,8 +134,9 @@ WHEN NOT MATCHED BY SOURCE THEN DELETE;
 
 /*  What any role at each level may ever hold (A15). OWNER and MANAGER may hold every institution
     permission - rank, not the ceiling, is what stops a manager managing managers. STAFF may see
-    and do the day's work, but never manage access or change the institution's profile. The
-    platform and donor levels are empty until their screens exist.                             */
+    and do the day's work, but never manage access or change the institution's profile - nor
+    see the access screens, which list other staff and their phone numbers. The platform and
+    donor levels are empty until their screens exist.                                           */
 DECLARE @RbacCeilings TABLE (LevelCode VARCHAR(30) NOT NULL, PermissionCode VARCHAR(150) NOT NULL);
 
 INSERT @RbacCeilings (LevelCode, PermissionCode)
@@ -148,9 +149,7 @@ SELECT 'STAFF', v.Code
 FROM (VALUES
     ('INSTITUTION.PROFILE.VIEW'),
     ('BOOKINGS.CALENDAR.VIEW'),
-    ('BOOKINGS.CALENDAR.APPROVE'),
-    ('ACCESS.ROLES.VIEW'),
-    ('ACCESS.MEMBERS.VIEW')
+    ('BOOKINGS.CALENDAR.APPROVE')
 ) AS v(Code);
 
 IF EXISTS (SELECT 1 FROM @RbacCeilings c
