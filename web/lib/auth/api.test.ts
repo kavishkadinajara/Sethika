@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { changePassword, logIn, readFailure, requestSignInCode, savePreferredLanguage, signInWithCode } from "./api";
+import {
+  changePassword,
+  getAccountLanguage,
+  logIn,
+  readFailure,
+  requestSignInCode,
+  savePreferredLanguage,
+  signInWithCode,
+} from "./api";
 import { session } from "./index";
 import { safeNextPath } from "./next-path";
 
@@ -237,5 +245,72 @@ describe("sign-in by code", () => {
     expect(result.ok).toBe(true);
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ phoneNumber: "0771234567", code: "123456" });
     expect(session.getState()).toMatchObject({ status: "authenticated", accessToken: "token-from-code" });
+  });
+});
+
+describe("the account's language after signing in (A11, GET /api/me)", () => {
+  function sessionBody(accessToken: string) {
+    return {
+      accessToken,
+      accessTokenExpiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
+      institutions: [],
+      activeInstitution: null,
+    };
+  }
+
+  function serve(me: () => Response | Promise<Response>) {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path === "/api/auth/login" || path === "/api/auth/otp/sign-in") return json(200, sessionBody("token-for-me"));
+      if (path === "/api/me") return me();
+      return new Response(null, { status: 204 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("document", { cookie: "sethika-csrf=csrf-1" });
+    return fetchMock;
+  }
+
+  it("a password sign-in reads the account's language with the new token before it resolves", async () => {
+    const fetchMock = serve(() => json(200, { fullName: "A Donor", displayName: null, preferredLanguage: "ta" }));
+
+    const result = await logIn("0771234567", "Correct-horse-1");
+
+    expect(result.ok).toBe(true);
+    expect(getAccountLanguage()).toBe("ta");
+    const [path, init] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
+    expect(path).toBe("/api/me");
+    expect(new Headers(init.headers).get("Authorization")).toBe("Bearer token-for-me");
+  });
+
+  it("a sign-in by code reads it too", async () => {
+    serve(() => json(200, { fullName: "A Donor", displayName: null, preferredLanguage: "si" }));
+
+    await signInWithCode("0771234567", "123456");
+
+    expect(getAccountLanguage()).toBe("si");
+  });
+
+  it.each([
+    ["an error answer", () => json(500, { code: "boom" })],
+    ["no answer at all", () => Promise.reject(new TypeError("Failed to fetch"))],
+  ])("%s leaves the language unknown and the sign-in a success", async (_, answer) => {
+    serve(() => json(200, { fullName: "A Donor", displayName: null, preferredLanguage: "ta" }));
+    await logIn("0771234567", "Correct-horse-1");
+    serve(answer);
+
+    const result = await logIn("0771234567", "Correct-horse-1");
+
+    expect(result.ok).toBe(true);
+    expect(getAccountLanguage()).toBeNull();
+    expect(session.getState()).toMatchObject({ status: "authenticated", accessToken: "token-for-me" });
+  });
+
+  it("a language saved here is the account's language from then on", async () => {
+    serve(() => json(200, { fullName: "A Donor", displayName: null, preferredLanguage: "en" }));
+    await logIn("0771234567", "Correct-horse-1");
+
+    await savePreferredLanguage("si");
+
+    expect(getAccountLanguage()).toBe("si");
   });
 });

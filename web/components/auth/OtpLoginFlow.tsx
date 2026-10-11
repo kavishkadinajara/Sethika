@@ -7,7 +7,7 @@ import { requestSignInCode, signInWithCode, type ApiFailure } from "@/lib/auth/a
 import { useSession } from "@/lib/auth/useSession";
 import { cn, focusRing } from "@/lib/utils";
 import { CodeStep } from "./CodeStep";
-import { destinationAfterSignIn } from "./LoginForm";
+import { destinationAfterSignIn, useLandAfterSignIn } from "./LoginForm";
 import { textLink } from "./links";
 import { PhoneStep } from "./PhoneStep";
 import { useApiErrorMessage } from "./useApiErrorMessage";
@@ -29,6 +29,7 @@ export function OtpLoginFlow() {
   const t = useTranslations("LoginOtp");
   const errorMessage = useApiErrorMessage();
   const router = useRouter();
+  const land = useLandAfterSignIn();
   const current = useSession();
   const resend = useCountdown();
 
@@ -41,10 +42,11 @@ export function OtpLoginFlow() {
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
 
-  // Already signed in (another tab, or the boot refresh): nothing to do here.
+  // Already signed in (another tab, or the boot refresh): nothing to do here. Not while a code is
+  // being checked: that sign-in lands the user itself, in the account's language.
   useEffect(() => {
-    if (current.status === "authenticated" && !signedIn) router.replace(destinationAfterSignIn());
-  }, [current.status, signedIn, router]);
+    if (current.status === "authenticated" && !signedIn && !busy) router.replace(destinationAfterSignIn());
+  }, [current.status, signedIn, busy, router]);
 
   function go(next: Step) {
     setStep(next);
@@ -108,7 +110,7 @@ export function OtpLoginFlow() {
     const result = await signInWithCode(phone.trim(), value);
     if (result.ok) {
       setSignedIn(true);
-      router.replace(destinationAfterSignIn());
+      land();
       return;
     }
     setCode("");

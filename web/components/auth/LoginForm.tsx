@@ -1,14 +1,16 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Link, useRouter } from "@/i18n/navigation";
+import { routing } from "@/i18n/routing";
 import { cn, focusRing } from "@/lib/utils";
-import { logIn, type ApiFailure } from "@/lib/auth/api";
+import { accountLocaleToAdopt } from "@/lib/auth/account-locale";
+import { getAccountLanguage, logIn, type ApiFailure } from "@/lib/auth/api";
 import { readNextPath } from "@/lib/auth/next-path";
 import { session } from "@/lib/auth";
 import { useSession } from "@/lib/auth/useSession";
@@ -27,11 +29,25 @@ export function destinationAfterSignIn() {
   return next;
 }
 
+/**
+ * Goes to destinationAfterSignIn, in the account's language when it differs from the page's
+ * (A11): a donor who chose Sinhala on another phone lands in Sinhala here.
+ */
+export function useLandAfterSignIn() {
+  const router = useRouter();
+  const locale = useLocale();
+  return () => {
+    const target = accountLocaleToAdopt(getAccountLanguage(), locale, routing.locales);
+    router.replace(destinationAfterSignIn(), target ? { locale: target } : undefined);
+  };
+}
+
 /** Phone number or email, and a password (POST /api/auth/login). */
 export function LoginForm() {
   const t = useTranslations("Login");
   const errorMessage = useApiErrorMessage();
   const router = useRouter();
+  const land = useLandAfterSignIn();
   const current = useSession();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
@@ -55,7 +71,7 @@ export function LoginForm() {
 
     const result = await logIn(login.trim(), password);
     if (result.ok) {
-      router.replace(destinationAfterSignIn());
+      land();
       return;
     }
 

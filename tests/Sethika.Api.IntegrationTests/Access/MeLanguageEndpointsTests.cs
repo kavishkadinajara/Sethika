@@ -21,8 +21,8 @@ using Sethika.Domain.Access;
 namespace Sethika.Api.IntegrationTests.Access;
 
 /// <summary>
-/// <c>PUT /api/me/language</c> (plan 5.6) over HTTP, against real SQL Server and Redis: the caller's
-/// own <c>auth.Users.PreferredLanguage</c>, and nobody else's.
+/// <c>PUT /api/me/language</c> (plan 5.6) and <c>GET /api/me</c> (A11) over HTTP, against real SQL
+/// Server and Redis: the caller's own <c>auth.Users.PreferredLanguage</c>, and nobody else's.
 /// </summary>
 [Collection(SethikaDatabaseCollection.Name)]
 public sealed partial class MeLanguageEndpointsTests(SethikaTestDatabase database) : IAsyncLifetime
@@ -307,5 +307,71 @@ public sealed partial class MeLanguageEndpointsTests(SethikaTestDatabase databas
         {
             Assert.Equal(HttpStatusCode.NoContent, verify.StatusCode);
         }
+    }
+
+    // ------------------------------------------------------------------ GET /api/me
+
+    [Fact]
+    public async Task TheAccountReadsBackTheLanguageItWasGiven_SoTheNextDeviceOpensInIt()
+    {
+        var phone = await CreateDonorAsync();
+        var token = await LogInAsync(phone);
+
+        using (var put = await PutLanguageAsync(token, "ta"))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, put.StatusCode);
+        }
+
+        // A second device: a new sign-in, nothing carried over but the account.
+        using var client = NewClient(await LogInAsync(phone));
+        using var response = await client.GetAsync("/api/me");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("no-store", response.Headers.CacheControl?.ToString(), StringComparison.Ordinal);
+
+        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal(["fullName", "displayName", "preferredLanguage"], body.EnumerateObject().Select(p => p.Name));
+        Assert.Equal("ta", body.GetProperty("preferredLanguage").GetString());
+        Assert.Equal("Language Test", body.GetProperty("fullName").GetString());
+    }
+
+    [Fact]
+    public async Task TheAccountIsTheCallersOwn_AndNeedsAToken()
+    {
+        var phone = await CreateDonorAsync();
+        var other = await CreateDonorAsync();
+        await using (var connection = new SqlConnection(database.ConnectionString))
+        {
+            await connection.ExecuteAsync(
+                "UPDATE auth.Users SET PreferredLanguage = 'si', FullName = N'Someone Else' WHERE PhoneNumber = @other;",
+                new { other });
+        }
+
+        using var client = NewClient(await LogInAsync(phone));
+        using var mine = await client.GetAsync("/api/me");
+        var body = JsonDocument.Parse(await mine.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal("en", body.GetProperty("preferredLanguage").GetString());
+        Assert.Equal("Language Test", body.GetProperty("fullName").GetString());
+
+        using var anonymous = NewClient();
+        using var refused = await anonymous.GetAsync("/api/me");
+        Assert.Equal(HttpStatusCode.Unauthorized, refused.StatusCode);
+    }
+
+    [Fact]
+    public async Task ADeletedAccountsTokenIsAnsweredLikeNoToken()
+    {
+        var phone = await CreateDonorAsync();
+        var token = await LogInAsync(phone);
+
+        await using (var connection = new SqlConnection(database.ConnectionString))
+        {
+            await connection.ExecuteAsync("UPDATE auth.Users SET IsDeleted = 1 WHERE PhoneNumber = @phone;", new { phone });
+        }
+
+        using var client = NewClient(token);
+        using var response = await client.GetAsync("/api/me");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

@@ -49,6 +49,7 @@ public static class DependencyInjection
                 connectionString,
                 serviceProvider.GetRequiredService<ICurrentUserContext>()));
 
+        services.AddScoped<IAccountQueries, AccountQueries>();
         services.AddScoped<ILegalDocumentQueries, LegalDocumentQueries>();
         services.AddScoped<IRoleLevelQueries, RoleLevelQueries>();
 

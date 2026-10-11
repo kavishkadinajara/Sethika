@@ -89,11 +89,15 @@ export async function signUp(input: SignUpInput): Promise<Result<{ signedIn: boo
   return { ok: true, value: { signedIn: isSession } };
 }
 
-/** `login` is a phone number or an email address. */
+/**
+ * `login` is a phone number or an email address. Resolves once the account's language is known
+ * too (getAccountLanguage), so the screen can land the user in it (A11).
+ */
 export async function logIn(login: string, password: string): Promise<Result> {
   const result = await call(publicPost("/api/auth/login", { login, password }));
   if (!result.ok) return result;
   await session.establish(result.value);
+  await loadAccountLanguage();
   return { ok: true, value: undefined };
 }
 
@@ -145,6 +149,7 @@ export async function signInWithCode(phoneNumber: string, code: string): Promise
   const result = await call(publicPost("/api/auth/otp/sign-in", { phoneNumber, code }));
   if (!result.ok) return result;
   await session.establish(result.value);
+  await loadAccountLanguage();
   return { ok: true, value: undefined };
 }
 
@@ -190,7 +195,35 @@ export async function savePreferredLanguage(language: string): Promise<void> {
   );
   if (!result.ok) {
     console.warn(`Preferred language not saved: ${result.failure.status} ${result.failure.code ?? "no code"}`);
+    return;
   }
+  accountLanguage = language;
+}
+
+let accountLanguage: string | null = null;
+
+/** The signed-in account's preferred language as last read or saved here, or null if unknown. */
+export function getAccountLanguage(): string | null {
+  return accountLanguage;
+}
+
+/**
+ * Reads the account's preferred language (GET /api/me, MeEndpoints.cs). Best effort, like
+ * savePreferredLanguage: a failure leaves it unknown and the page stays in its own locale, never
+ * blocking the sign-in that asked.
+ */
+export async function loadAccountLanguage(): Promise<string | null> {
+  accountLanguage = null;
+  if (session.getState().status !== "authenticated") return null;
+  const result = await call(apiFetch("/api/me", { method: "GET", cache: "no-store" }));
+  if (!result.ok) return null;
+  try {
+    const body = (await result.value.json()) as { preferredLanguage?: unknown };
+    accountLanguage = typeof body.preferredLanguage === "string" ? body.preferredLanguage : null;
+  } catch {
+    accountLanguage = null;
+  }
+  return accountLanguage;
 }
 
 // ---- signed in: own account ---------------------------------------------------------------------

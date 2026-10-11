@@ -16,10 +16,44 @@ internal static class MeEndpoints
     {
         var me = app.MapGroup("/api/me").RequireAuthorization();
 
+        me.MapGet(string.Empty, GetProfileAsync);
         me.MapGet("/permissions", GetPermissionsAsync);
         me.MapPut("/language", SetLanguageAsync);
 
         return app;
+    }
+
+    /// <summary>The caller's name and preferred language.</summary>
+    /// <remarks>
+    /// The web app reads the language once a session starts and opens in it (plan A11: the account's
+    /// language comes before the locale cookie), so a donor who chose Sinhala on one device sees
+    /// Sinhala on the next. No contact details: the app has no screen that needs them yet.
+    /// </remarks>
+    private static async Task<IResult> GetProfileAsync(
+        HttpContext httpContext,
+        ICurrentUserContext currentUser,
+        IAccountQueries accounts,
+        CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        // A valid token for a deleted account: the same answer as a token that is not valid.
+        if (await accounts.GetProfileAsync(userId, cancellationToken) is not { } profile)
+        {
+            return Results.Unauthorized();
+        }
+
+        httpContext.Response.Headers.CacheControl = "no-store";
+
+        return Results.Ok(new
+        {
+            fullName = profile.FullName,
+            displayName = profile.DisplayName,
+            preferredLanguage = profile.PreferredLanguage,
+        });
     }
 
     /// <summary>

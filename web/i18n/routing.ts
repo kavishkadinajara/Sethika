@@ -5,7 +5,7 @@ import { defineRouting } from "next-intl/routing";
  * `/ta/login`), so Phase B's public pages are indexable per language.
  *
  * Resolution without a prefix: NEXT_LOCALE cookie, then Accept-Language, then `en`.
- * The signed-in user's PreferredLanguage goes in front of these once the API serves it.
+ * A signed-in user's PreferredLanguage goes in front of these (lib/auth/account-locale.ts).
  */
 export const routing = defineRouting({
   locales: ["en", "si", "ta"],
