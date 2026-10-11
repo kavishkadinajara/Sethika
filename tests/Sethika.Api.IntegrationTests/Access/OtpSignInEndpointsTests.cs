@@ -144,17 +144,18 @@ public sealed class OtpSignInEndpointsTests(SethikaTestDatabase database) : IAsy
         string status = "Active",
         bool phoneConfirmed = true,
         string language = "en",
-        int accessFailedCount = 0)
+        int accessFailedCount = 0,
+        bool mfaRequired = false)
     {
         var phone = NewPhone();
 
         await using var connection = new SqlConnection(database.ConnectionString);
         await connection.ExecuteAsync(
             """
-            INSERT auth.Users (Id, UserType, FullName, PhoneNumber, PhoneConfirmed, PreferredLanguage, Status, AccessFailedCount)
-            VALUES (NEWID(), 'Donor', N'Otp Sign-in Test', @phone, @phoneConfirmed, @language, @status, @accessFailedCount);
+            INSERT auth.Users (Id, UserType, FullName, PhoneNumber, PhoneConfirmed, PreferredLanguage, Status, AccessFailedCount, MfaRequired)
+            VALUES (NEWID(), 'Donor', N'Otp Sign-in Test', @phone, @phoneConfirmed, @language, @status, @accessFailedCount, @mfaRequired);
             """,
-            new { phone, phoneConfirmed, language, status, accessFailedCount });
+            new { phone, phoneConfirmed, language, status, accessFailedCount, mfaRequired });
 
         return phone;
     }
@@ -495,6 +496,56 @@ public sealed class OtpSignInEndpointsTests(SethikaTestDatabase database) : IAsy
 
         Assert.Equal(await AnswerAsync(toUnknown), await AnswerAsync(response));
         Assert.DoesNotContain(_sms, m => m.Phone == phone);
+    }
+
+    [Fact]
+    public async Task AnMfaRequiredAccountIsSentNoCode_AndIsAnsweredLikeANumberWithNoAccount()
+    {
+        // Platform staff and institution owners. A code alone is one factor, and the step-up code
+        // goes to the same phone, so SMS sign-in would make the SIM the whole account.
+        var host = Host();
+        using var client = Client(host);
+        var phone = await CreateUserAsync(mfaRequired: true);
+        var unknown = NewPhone();
+
+        using var response = await RequestAsync(client, phone);
+        using var toUnknown = await RequestAsync(client, unknown);
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.Equal(await AnswerAsync(toUnknown), await AnswerAsync(response));
+        Assert.DoesNotContain(_sms, m => m.Phone == phone);
+    }
+
+    [Fact]
+    public async Task ACodeHeldByAnMfaRequiredAccountIsRefusedLikeAWrongOne()
+    {
+        // The code was sent before the account became MfaRequired; the right code still opens nothing.
+        var host = Host();
+        using var client = Client(host);
+        var phone = await CreateUserAsync();
+
+        using (await RequestAsync(client, phone))
+        {
+        }
+
+        var code = CodeSentTo(phone);
+        using var wrong = await SignInAsync(client, phone, WrongCode(code));
+
+        await ExecuteAsync("UPDATE auth.Users SET MfaRequired = 1 WHERE PhoneNumber = @phone;", new { phone });
+
+        using var refused = await SignInAsync(client, phone, code);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, refused.StatusCode);
+        Assert.Equal(await AnswerAsync(wrong), await AnswerAsync(refused));
+        Assert.Equal(0, await ScalarAsync<int>(
+            "SELECT COUNT(*) FROM auth.RefreshTokens t JOIN auth.Users u ON u.Id = t.UserId WHERE u.PhoneNumber = @phone;",
+            new { phone }));
+        Assert.Equal(1, await ScalarAsync<int>(
+            """
+            SELECT COUNT(*) FROM auth.LoginHistory h JOIN auth.Users u ON u.Id = h.UserId
+            WHERE u.PhoneNumber = @phone AND h.Succeeded = 0 AND h.FailureReason = 'MfaRequired';
+            """,
+            new { phone }));
     }
 
     [Fact]

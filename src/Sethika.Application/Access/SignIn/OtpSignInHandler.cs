@@ -15,6 +15,11 @@ namespace Sethika.Application.Access.SignIn;
 /// account that is active, not locked and has a confirmed phone is actually sent the SMS - a code
 /// sent to a number nobody confirmed would sign its new holder into someone else's account.
 ///
+/// <c>MfaRequired</c> accounts (platform staff, institution owners) are never sent one, and are
+/// answered like a number with no account, as the password reset answers them. A code alone is one
+/// factor, and a step-up code goes to the same phone: whoever holds the SIM would hold every
+/// <c>RequiresMfa</c> permission the account has. These accounts sign in with their password.
+///
 /// Signing in. A wrong code, an expired or burned one, and a number with no account are one failure,
 /// with the same work behind it: the code is checked whether or not an account was found.
 ///
@@ -36,6 +41,7 @@ public sealed class OtpSignInHandler(
     private static class FailureReasons
     {
         public const string UnknownLogin = "UnknownLogin";
+        public const string MfaRequired = "MfaRequired";
         public const string PhoneNotConfirmed = "PhoneNotConfirmed";
         public const string InvalidCode = "InvalidCode";
         public const string LockedOut = "LockedOut";
@@ -49,7 +55,8 @@ public sealed class OtpSignInHandler(
         DateTimeOffset? LockoutEnd,
         string UserType,
         string SecurityStamp,
-        string PreferredLanguage);
+        string PreferredLanguage,
+        bool MfaRequired);
 
     /// <summary>
     /// Sends a sign-in code to <paramref name="phoneNumber"/> if it belongs to an account that may
@@ -66,7 +73,7 @@ public sealed class OtpSignInHandler(
 
         // A locked account is not sent a code it would be refused with: the lockout lasts longer than
         // the code, and the SMS is paid for.
-        var mayReceive = account is { PhoneConfirmed: true }
+        var mayReceive = account is { PhoneConfirmed: true, MfaRequired: false }
             && string.Equals(account.Status, ActiveStatus, StringComparison.Ordinal)
             && !IsLocked(account, now);
 
@@ -104,6 +111,7 @@ public sealed class OtpSignInHandler(
         var failure = (account, verified.IsVerified) switch
         {
             (null, _) => FailureReasons.UnknownLogin,
+            ({ MfaRequired: true }, _) => FailureReasons.MfaRequired,
             ({ PhoneConfirmed: false }, _) => FailureReasons.PhoneNotConfirmed,
             (_, false) => FailureReasons.InvalidCode,
             _ when IsLocked(account, now) => FailureReasons.LockedOut,
@@ -156,7 +164,7 @@ public sealed class OtpSignInHandler(
         db.Users
           .AsNoTracking()
           .Where(u => u.PhoneNumber == phoneNumber && !u.IsDeleted)
-          .Select(u => new Account(u.Id, u.Status, u.PhoneConfirmed, u.LockoutEnd, u.UserType, u.SecurityStamp, u.PreferredLanguage))
+          .Select(u => new Account(u.Id, u.Status, u.PhoneConfirmed, u.LockoutEnd, u.UserType, u.SecurityStamp, u.PreferredLanguage, u.MfaRequired))
           .SingleOrDefaultAsync(cancellationToken);
 
     private static bool IsLocked(Account account, DateTimeOffset now) =>
