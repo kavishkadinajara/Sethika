@@ -3,6 +3,7 @@ using Sethika.Application.Abstractions;
 using Sethika.Domain.Access;
 using Sethika.Domain.Core;
 using Sethika.Domain.Institutions;
+using Sethika.Domain.Onboarding;
 
 namespace Sethika.Infrastructure.Persistence;
 
@@ -30,6 +31,11 @@ public class SethikaDbContext(DbContextOptions<SethikaDbContext> options)
     public DbSet<UserConsent> UserConsents => Set<UserConsent>();
     public DbSet<LegalDocument> LegalDocuments => Set<LegalDocument>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<RegistrationRequest> RegistrationRequests => Set<RegistrationRequest>();
+    public DbSet<StoredFile> StoredFiles => Set<StoredFile>();
+    public DbSet<DocumentType> DocumentTypes => Set<DocumentType>();
+    public DbSet<InstitutionTypeRequiredDocument> InstitutionTypeRequiredDocuments => Set<InstitutionTypeRequiredDocument>();
+    public DbSet<VerificationChecklistItem> VerificationChecklistItems => Set<VerificationChecklistItem>();
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<RoleLevel> RoleLevels => Set<RoleLevel>();
     public DbSet<RoleLevelPermission> RoleLevelPermissions => Set<RoleLevelPermission>();

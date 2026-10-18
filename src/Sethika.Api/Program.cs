@@ -36,6 +36,7 @@ builder.Services.AddSethikaPermissions(redisConnectionString);
 // Reads its configuration now, so a production host with the console SMS sender - or with
 // one-time codes going to the log - fails to start rather than failing its first signup.
 builder.Services.AddSethikaAccess(builder.Configuration, builder.Environment.IsDevelopment());
+builder.Services.AddSethikaFiles(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddSethikaApplication();
 
 // The three values that stamp the database session context for Row-Level Security are

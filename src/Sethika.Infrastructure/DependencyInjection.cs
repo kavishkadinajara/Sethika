@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Sethika.Application.Abstractions;
 using Sethika.Domain.Access;
 using Sethika.Infrastructure.Caching;
+using Sethika.Infrastructure.Files;
 using Sethika.Infrastructure.Notifications;
 using Sethika.Infrastructure.Persistence;
 using Sethika.Infrastructure.Queries;
@@ -43,6 +44,9 @@ public static class DependencyInjection
         // else in the request share one context, one connection and one transaction.
         services.AddScoped<ISethikaDbContext>(serviceProvider =>
             serviceProvider.GetRequiredService<SethikaDbContext>());
+
+        // On the scoped context, so a number is taken inside the handler's own transaction.
+        services.AddScoped<INumberSeries, SqlNumberSeries>();
 
         services.AddScoped<IDbConnectionFactory>(serviceProvider =>
             new SqlConnectionFactory(
@@ -168,6 +172,42 @@ public static class DependencyInjection
 
         // Stateless over the singleton multiplexer, like the step-up grants.
         services.AddSingleton<IPasswordResetTickets, RedisPasswordResetTickets>();
+
+        return services;
+    }
+
+    /// <summary>Registers where uploaded files are kept (plan 02, B4).</summary>
+    /// <remarks>
+    /// Read at registration for the same reason as <see cref="AddSethikaAccess"/>: a host that
+    /// would lose every upload must not start. Development defaults to a folder under the user's
+    /// local application data; anywhere else <c>Files:LocalRoot</c> must be set.
+    /// </remarks>
+    public static IServiceCollection AddSethikaFiles(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        bool isDevelopment)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var root = configuration.GetSection(FileStorageOptions.SectionName).Get<FileStorageOptions>()?.LocalRoot;
+
+        if (string.IsNullOrWhiteSpace(root))
+        {
+            if (!isDevelopment)
+            {
+                throw new InvalidOperationException(
+                    "Files:LocalRoot is not set. Uploaded documents would have nowhere to go; set it to an " +
+                    "absolute directory outside the application's content root.");
+            }
+
+            root = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Sethika", "files");
+        }
+
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<IFileStorage>(serviceProvider =>
+            new LocalFileStorage(root, serviceProvider.GetRequiredService<TimeProvider>()));
 
         return services;
     }

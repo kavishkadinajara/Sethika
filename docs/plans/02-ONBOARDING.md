@@ -189,16 +189,27 @@ Every transition is unit-tested in `Sethika.Domain.Tests`, each allowed pair and
 
 ### B5 — Request and institution numbers come from `core.NumberSeries` inside the caller's transaction
 
-`INumberSeries.NextAsync(series, scope, year)` runs one statement on the EF transaction's
-connection: an `UPDATE ... WITH (UPDLOCK, HOLDLOCK)` that increments and returns `LastNumber`, and
-inserts the row first if it is missing (MERGE with `HOLDLOCK`, so two first callers cannot both
-insert). A rolled-back transaction rolls the number back too, so the series stays gap-free.
+`INumberSeries.NextAsync(series, scope, year)` runs one batch on the EF transaction's connection,
+and refuses to run without a transaction:
+
+1. insert the series row at 0 if it is missing (`WHERE NOT EXISTS`). Two callers that both find it
+   missing both insert; the second waits on the first's key lock and then fails on the primary key
+   (2627), which a T-SQL `CATCH` swallows;
+2. `UPDATE ... SET LastNumber = LastNumber + 1 OUTPUT ...`, whose row lock is held to the end of the
+   caller's transaction.
+
+A rolled-back transaction rolls the number back too (and a new row with it), so the series stays
+gap-free. **The first version was a single `MERGE ... WITH (HOLDLOCK)`, and it deadlocked** (1205)
+when callers raced to create a new series - the first number ever, or the first of each year - on
+their key-range locks, with `UPDLOCK` added as well (found by a stress test, 5.2). The two-step
+version takes no range locks at all.
 
 - `REQUEST` / `PLATFORM` → `REQ-2026-000123`, taken when the draft is created (`RequestNo` is NOT
   NULL). A draft that is abandoned keeps its number. Gap-free matters for receipts (Phase D), not
   for applications.
 - `INSTITUTION` / `PLATFORM` → `INS-2026-000045`, taken inside the approval transaction.
-- Tested with the forced-race pattern: N concurrent callers, N distinct consecutive numbers, and a
+- Tested with the forced-race pattern (6 callers queued behind a held lock, on a new series and on
+  an existing one), a stress test (40 rounds of 8 callers released together on a new series), and a
   rolled-back caller's number reused. The receipts in Phase D reuse this service unchanged.
 
 ### B6 — Approval is one transaction, and it is the slice's centrepiece
@@ -383,13 +394,35 @@ demonstrates the flow, not the tests.
 
 ### 5.2 — Building blocks
 
-- [ ] `INumberSeries` + `SqlNumberSeries` on the EF transaction's connection (B5), with forced-race
-      and rollback tests.
-- [ ] `IFileStorage` + `LocalFileStorage` + `UploadedFileValidator` (B4): extension, size, magic
-      bytes, hash. Tests with real files, including a renamed `.exe` and an oversize PDF.
-- [ ] `Domain/Onboarding/RegistrationRequest` and its children, the state machine (B3), unit-tested
-      transition by transition. EF configurations for all onboarding tables (`RowVersion`, masked
-      columns as plain strings).
+- [x] `INumberSeries` + `SqlNumberSeries` on the EF transaction's connection (B5), registered
+      scoped. `NumberSeriesTests` (7): counting and format, a new year starting at 1, a rollback
+      handing its number back (on insert and on increment), no transaction refused, two forced
+      races and the stress test. **Mutations:** the CATCH removed, a new row starting at 1, no
+      increment, the year left out of the UPDATE, the transaction check removed - all killed. The
+      `NOT EXISTS` removed survives, as it should: the CATCH is the guarantee, `NOT EXISTS` only
+      spares the ordinary call an error.
+- [x] `IFileStorage` + `LocalFileStorage` (B4) under `Infrastructure/Files`, `Files:LocalRoot`
+      required outside Development (`AddSethikaFiles`, the host refuses to start without it), and
+      `UploadedFileRules` in `Application/Files` (extension against the document type's list, size,
+      first bytes; the content type is decided there, never taken from the client). 17 unit tests,
+      12 against the real file system (hash, exact limit, an oversize body that never says its
+      length, a copy failing half way, six keys the storage could not have issued), 2 startup
+      tests. **Mutations:** 10, all killed but one: the root guard after the key-shape check
+      survives, as it should (the shape already rules out escaping the root; the guard holds if the
+      shape is ever loosened).
+- [x] `Domain/Onboarding/RegistrationRequest` and its children (B3), and the reference entities
+      (`DocumentType`, `InstitutionTypeRequiredDocument`, `VerificationChecklistItem`) and
+      `Domain/Core/StoredFile`. 81 unit tests, among them every transition from every status (49).
+      EF configurations for all of them, the aggregate's five collections cascading, and five
+      `DbSet`s on `ISethikaDbContext`. `RegistrationRequestPersistenceTests` (4) under RLS: a draft
+      to answered questions with every row written, a replacement superseding in one save, office
+      bearers replaced naming the same person, two reviewers verifying at once (one gets
+      `DbUpdateConcurrencyException`). **Found:** a change at the same millisecond as the last one
+      left `UpdatedAt` equal, so EF did not write the application row and its `RowVersion` went
+      unchecked; `Touch` now always moves `UpdatedAt` on, by a millisecond if it must.
+      **Mutations:** 14 on the aggregate, all killed; RowVersion and the monotonic `Touch` killed
+      in EF. Dropping the two unique-index declarations survives: EF already orders those writes,
+      and the comments say so.
 
 ### 5.3 — Applicant API (`/api/onboarding/applications`)
 

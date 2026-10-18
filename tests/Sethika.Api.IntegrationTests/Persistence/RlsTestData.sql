@@ -67,6 +67,8 @@ ALTER TABLE org.RegistrationRequests NOCHECK CONSTRAINT FK_RegReq_Institution;
 DELETE FROM org.Institutions;
 DELETE FROM org.RegistrationRequests;
 ALTER TABLE org.RegistrationRequests WITH CHECK CHECK CONSTRAINT FK_RegReq_Institution;
+-- Uploads the fixture's users made in a test; their documents went with the requests above.
+DELETE FROM core.Files WHERE UploadedBy IN (@alphaUser, @betaUser);
 DELETE FROM auth.Users WHERE Id IN (@alphaUser, @betaUser);
 
 
