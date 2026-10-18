@@ -397,6 +397,26 @@ Questions for the reviewers:
 | `ONBOARD_APPROVED / SMS` | Sethika: application {requestNo} is approved. Sign in to open your institution. (83) | Sethika: අයදුම්පත {requestNo} අනුමතයි. ආයතනය විවෘත කිරීමට පිවිසෙන්න. (72) | Sethika: விண்ணப்பம் {requestNo} அங்கீகரிக்கப்பட்டது. நிறுவனத்தைத் திறக்க உள்நுழையவும். (90) | | |
 | `ONBOARD_REJECTED / SMS` | Sethika: application {requestNo} was not approved. Sign in to see why. (74) | Sethika: අයදුම්පත {requestNo} අනුමත නොවීය. හේතුව බැලීමට පිවිසෙන්න. (70) | Sethika: விண்ணப்பம் {requestNo} அங்கீகரிக்கப்படவில்லை. காரணத்தைப் பார்க்க உள்நுழையவும். (91) | | |
 
+## Institution application screens (`Apply` namespace)
+
+The applicant's screens (plan 02, 5.5): `web/messages/si.json` and `ta.json`, namespace `Apply`,
+169 strings, and `Home.apply`. Every Sinhala and Tamil string there is a draft. They are not copied
+into a table here because of their number: review them in the JSON files side by side with
+`en.json`, and record sign-off below.
+
+Questions for the reviewers:
+
+1. `නිලධාරීන්` / `பதவியாளர்கள்` for "office bearers": what a temple society or a children's home
+   committee calls its office bearers?
+2. `ජා.හැ. අංකය` / `தே.அ.அ. எண்` for "NIC number": the abbreviation people write on forms?
+3. `ග්‍රාම නිලධාරී වසම` / `கிராம உத்தியோகத்தர் பிரிவு` for "Grama Niladhari division".
+4. `සමාලෝචකයා` / `மதிப்பாய்வாளர்` for "reviewer": would "Sethika team" read more naturally?
+5. `ප්‍රකාශය` / `உறுதிமொழி` for the "declaration" an institution makes when it applies.
+
+| Namespace | Reviewer (si) | Reviewer (ta) | Status |
+|---|---|---|---|
+| `Apply`, `Home.apply` | | | |
+
 ## Legal texts (`core.LegalDocuments`)
 
 Seeded by `src/Sethika.Database/Scripts/Seed/09_LegalDocuments.sql`. These are `0.1-draft`
