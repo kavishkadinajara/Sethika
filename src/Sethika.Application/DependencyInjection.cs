@@ -12,6 +12,7 @@ using Sethika.Application.Access.StepUp;
 using Sethika.Application.Onboarding.Applying;
 using Sethika.Application.Onboarding.Approval;
 using Sethika.Application.Onboarding.Notifications;
+using Sethika.Application.Onboarding.Review;
 
 namespace Sethika.Application;
 
@@ -41,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<PreferredLanguageHandler>();
         services.AddScoped<ApplicationHandler>();
         services.AddScoped<ApproveRegistrationHandler>();
+        services.AddScoped<RegistrationReviewHandler>();
 
         // What the outbox processor dispatches to, by event type.
         services.AddScoped<IOutboxHandler, OnboardingSmsHandler>();

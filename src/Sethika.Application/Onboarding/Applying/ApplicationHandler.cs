@@ -441,14 +441,7 @@ public sealed class ApplicationHandler(
         return name.Length <= 255 ? name : name[^255..];
     }
 
-    /// <summary>An outbox message for the applicant's SMS (5.7). Ids and codes only.</summary>
+    /// <summary>An outbox message for the applicant's SMS (5.7).</summary>
     private void Notify(RegistrationRequest request, string eventType, DateTime now) =>
-        db.OutboxMessages.Add(new OutboxMessage
-        {
-            EventType = eventType,
-            AggregateType = "RegistrationRequest",
-            AggregateId = request.RequestNo,
-            Payload = JsonSerializer.Serialize(new { requestNo = request.RequestNo, applicantUserId = request.ApplicantUserId }),
-            OccurredAt = now,
-        });
+        db.OutboxMessages.Add(OnboardingOutbox.Message(request, eventType, now));
 }

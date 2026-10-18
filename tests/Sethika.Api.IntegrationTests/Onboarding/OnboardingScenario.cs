@@ -37,6 +37,36 @@ internal sealed class OnboardingScenario(SethikaTestDatabase database)
     /// </summary>
     public async Task ReadyToApproveAsync(string requestNo, string registrationNo, string name = "Sri Sudharmaramaya", string city = "Galle")
     {
+        var mandatory = await SubmittedAsync(requestNo, registrationNo, name, city);
+
+        await using var reviewer = AsReviewer();
+        var submitted = await reviewer.RegistrationRequests
+            .Include(r => r.Documents)
+            .Include(r => r.ChecklistEntries)
+            .Include(r => r.StatusHistory)
+            .SingleAsync(r => r.RequestNo == requestNo);
+        var checklist = await reviewer.VerificationChecklistItems.Where(i => i.IsActive).Select(i => i.Id).ToListAsync();
+
+        Assert.True(submitted.StartReview(Reviewer, Now).Succeeded);
+        foreach (var type in mandatory)
+        {
+            Assert.True(submitted.VerifyDocument(type, true, null, Reviewer, Now).Succeeded);
+        }
+
+        foreach (var item in checklist)
+        {
+            Assert.True(submitted.RecordChecklist(item, true, null, Reviewer, Now).Succeeded);
+        }
+
+        await reviewer.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// A temple's application, submitted by the applicant with a file for every mandatory document;
+    /// left as a draft when <paramref name="submit"/> is false. Returns the mandatory document types.
+    /// </summary>
+    public async Task<short[]> SubmittedAsync(string requestNo, string registrationNo, string name = "Sri Sudharmaramaya", string city = "Galle", bool submit = true)
+    {
         short[] mandatory;
 
         await using (var applicant = AsApplicant())
@@ -90,30 +120,15 @@ internal sealed class OnboardingScenario(SethikaTestDatabase database)
                 request.AttachDocument(new RegistrationRequestDocument { DocumentTypeId = type, FileId = file.Id, ReferenceNo = $"REF-{type}" }, Applicant, Now);
             }
 
-            Assert.True(request.Submit(mandatory, declarationDocumentId: 1, "203.0.113.5", Applicant, Now).Succeeded);
+            if (submit)
+            {
+                Assert.True(request.Submit(mandatory, declarationDocumentId: 1, "203.0.113.5", Applicant, Now).Succeeded);
+            }
+
             applicant.RegistrationRequests.Add(request);
             await applicant.SaveChangesAsync();
         }
 
-        await using var reviewer = AsReviewer();
-        var submitted = await reviewer.RegistrationRequests
-            .Include(r => r.Documents)
-            .Include(r => r.ChecklistEntries)
-            .Include(r => r.StatusHistory)
-            .SingleAsync(r => r.RequestNo == requestNo);
-        var checklist = await reviewer.VerificationChecklistItems.Where(i => i.IsActive).Select(i => i.Id).ToListAsync();
-
-        Assert.True(submitted.StartReview(Reviewer, Now).Succeeded);
-        foreach (var type in mandatory)
-        {
-            Assert.True(submitted.VerifyDocument(type, true, null, Reviewer, Now).Succeeded);
-        }
-
-        foreach (var item in checklist)
-        {
-            Assert.True(submitted.RecordChecklist(item, true, null, Reviewer, Now).Succeeded);
-        }
-
-        await reviewer.SaveChangesAsync();
+        return mandatory;
     }
 }

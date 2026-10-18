@@ -50,8 +50,9 @@ public sealed class OnboardingApplicationQueries(IDbConnectionFactory connection
         ORDER BY r.CreatedAt DESC, r.Id DESC;
         """;
 
-    // Columns in the order of ApplicationView's constructor, which is how Dapper matches them.
-    private const string GetMineSql =
+    // The applicant's own application, in any state; or, with no applicant (the reviewer), any that
+    // is past its draft. One predicate in every statement, so the parts cannot disagree.
+    private const string GetSql =
         """
         SELECT r.RequestNo AS RequestNo, r.Status AS Status, t.Code AS InstitutionType,
                r.ProposedName AS ProposedName, r.NameSi AS NameSi, r.NameTa AS NameTa,
@@ -71,13 +72,13 @@ public sealed class OnboardingApplicationQueries(IDbConnectionFactory connection
         JOIN core.Districts AS d ON d.Id = r.DistrictId
         LEFT JOIN core.LookupValues AS reason ON reason.Id = r.RejectReasonLookupId
         LEFT JOIN org.Institutions AS i ON i.Id = r.CreatedInstitutionId
-        WHERE r.RequestNo = @requestNo AND r.ApplicantUserId = @applicantId;
+        WHERE r.RequestNo = @requestNo AND (r.ApplicantUserId = @applicantId OR (@applicantId IS NULL AND r.Status <> 'Draft'));
 
         SELECT b.FullName AS FullName, b.NicNumber AS Nic, b.Designation AS Designation, b.Phone AS Phone,
                b.Email AS Email, b.IsSignatory AS IsSignatory
         FROM org.RegistrationRequestOfficeBearers AS b
         JOIN org.RegistrationRequests AS r ON r.Id = b.RequestId
-        WHERE r.RequestNo = @requestNo AND r.ApplicantUserId = @applicantId
+        WHERE r.RequestNo = @requestNo AND (r.ApplicantUserId = @applicantId OR (@applicantId IS NULL AND r.Status <> 'Draft'))
         ORDER BY b.Id;
 
         SELECT dt.Code AS DocumentType, f.OriginalName AS FileName, f.SizeBytes AS SizeBytes,
@@ -88,7 +89,7 @@ public sealed class OnboardingApplicationQueries(IDbConnectionFactory connection
         JOIN org.RegistrationRequests AS r ON r.Id = doc.RequestId
         JOIN org.DocumentTypes AS dt ON dt.Id = doc.DocumentTypeId
         JOIN core.Files AS f ON f.Id = doc.FileId
-        WHERE r.RequestNo = @requestNo AND r.ApplicantUserId = @applicantId
+        WHERE r.RequestNo = @requestNo AND (r.ApplicantUserId = @applicantId OR (@applicantId IS NULL AND r.Status <> 'Draft'))
           AND doc.VerificationStatus <> 'Superseded'
         ORDER BY dt.Code;
 
@@ -96,13 +97,13 @@ public sealed class OnboardingApplicationQueries(IDbConnectionFactory connection
                c.AskedAt AS AskedAt, c.Response AS Response, c.RespondedAt AS RespondedAt
         FROM org.RegistrationRequestClarifications AS c
         JOIN org.RegistrationRequests AS r ON r.Id = c.RequestId
-        WHERE r.RequestNo = @requestNo AND r.ApplicantUserId = @applicantId
+        WHERE r.RequestNo = @requestNo AND (r.ApplicantUserId = @applicantId OR (@applicantId IS NULL AND r.Status <> 'Draft'))
         ORDER BY Number;
 
         SELECT h.FromStatus AS FromStatus, h.ToStatus AS ToStatus, h.ChangedAt AS ChangedAt
         FROM org.RegistrationRequestStatusHistory AS h
         JOIN org.RegistrationRequests AS r ON r.Id = h.RequestId
-        WHERE r.RequestNo = @requestNo AND r.ApplicantUserId = @applicantId
+        WHERE r.RequestNo = @requestNo AND (r.ApplicantUserId = @applicantId OR (@applicantId IS NULL AND r.Status <> 'Draft'))
         ORDER BY h.Id;
         """;
 
@@ -114,7 +115,7 @@ public sealed class OnboardingApplicationQueries(IDbConnectionFactory connection
         JOIN org.DocumentTypes AS dt ON dt.Id = doc.DocumentTypeId AND dt.Code = @documentTypeCode
         JOIN core.Files AS f ON f.Id = doc.FileId AND f.IsDeleted = 0
         WHERE r.RequestNo = @requestNo
-          AND (@applicantId IS NULL OR r.ApplicantUserId = @applicantId);
+          AND (r.ApplicantUserId = @applicantId OR (@applicantId IS NULL AND r.Status <> 'Draft'));
         """;
 
     public async Task<(short? InstitutionTypeId, short? DistrictId)> ResolveCodesAsync(
@@ -160,11 +161,17 @@ public sealed class OnboardingApplicationQueries(IDbConnectionFactory connection
         return [.. rows];
     }
 
-    public async Task<ApplicationView?> GetMineAsync(Guid applicantId, string requestNo, CancellationToken cancellationToken = default)
+    public Task<ApplicationView?> GetMineAsync(Guid applicantId, string requestNo, CancellationToken cancellationToken = default) =>
+        GetAsync(applicantId, requestNo, cancellationToken);
+
+    public Task<ApplicationView?> GetSubmittedAsync(string requestNo, CancellationToken cancellationToken = default) =>
+        GetAsync(null, requestNo, cancellationToken);
+
+    private async Task<ApplicationView?> GetAsync(Guid? applicantId, string requestNo, CancellationToken cancellationToken)
     {
         await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         await using var grid = await connection.QueryMultipleAsync(new CommandDefinition(
-            GetMineSql,
+            GetSql,
             new { applicantId, requestNo },
             cancellationToken: cancellationToken)).ConfigureAwait(false);
 

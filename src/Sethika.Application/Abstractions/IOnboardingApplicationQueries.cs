@@ -126,9 +126,13 @@ public interface IOnboardingApplicationQueries
 
     Task<ApplicationView?> GetMineAsync(Guid applicantId, string requestNo, CancellationToken cancellationToken = default);
 
+    /// <summary>Any application the session may see that is past its draft: the reviewer's read.</summary>
+    Task<ApplicationView?> GetSubmittedAsync(string requestNo, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// The live upload of a document type on an application: the applicant's own when
-    /// <paramref name="applicantId"/> is given, any the session may see when it is not (the reviewer).
+    /// <paramref name="applicantId"/> is given, any non-draft one the session may see when it is not
+    /// (the reviewer).
     /// </summary>
     Task<StoredFileLocation?> GetLiveDocumentFileAsync(
         Guid? applicantId,
