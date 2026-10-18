@@ -254,9 +254,10 @@ public sealed class InstitutionRoleEndpointsTests(SethikaTestDatabase database) 
         var staff = Assert.Single(managerLevels);
         Assert.Equal("STAFF", staff.GetProperty("level").GetString());
 
-        // STAFF's ceiling is the four VIEWs and calendar APPROVE; the manager does not hold APPROVE.
+        // STAFF's ceiling is the profile and calendar VIEWs and calendar APPROVE; the manager does
+        // not hold APPROVE, and the access screens' VIEWs are outside the ceiling though the manager holds them.
         Assert.Equal(
-            ["ACCESS.MEMBERS.VIEW", "ACCESS.ROLES.VIEW", "BOOKINGS.CALENDAR.VIEW", "INSTITUTION.PROFILE.VIEW"],
+            ["BOOKINGS.CALENDAR.VIEW", "INSTITUTION.PROFILE.VIEW"],
             staff.GetProperty("permissions").EnumerateArray().Select(p => p.GetString()));
 
         var ownerLevels = (await BodyOf(forOwner)).EnumerateArray().Select(l => l.GetProperty("level").GetString()).ToList();

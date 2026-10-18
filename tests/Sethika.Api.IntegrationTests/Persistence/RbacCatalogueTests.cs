@@ -46,8 +46,9 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
     [Fact]
     public async Task AGrantOutsideTheLevelsCeilingIsNotEffective()
     {
-        // The steward is at STAFF. ACCESS.ROLES.VIEW is inside STAFF's ceiling, ACCESS.ROLES.CREATE
-        // is not; both are granted by hand, as a buggy screen or a script might, with the module on.
+        // The steward is at STAFF. INSTITUTION.PROFILE.VIEW is inside STAFF's ceiling; ACCESS.ROLES.VIEW
+        // is not, since staff never see who else holds which role. Both are granted by hand, as a
+        // buggy screen or a script might, with their modules on.
         var (connection, transaction) = await BeginAsync();
         await using (connection)
         await using (transaction)
@@ -56,18 +57,18 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
                 """
                 INSERT auth.RolePermissions (RoleId, PermissionId)
                 SELECT r.Id, p.Id FROM auth.Roles r CROSS JOIN auth.Permissions p
-                WHERE r.Code = 'ALPHA_STEWARD' AND (p.Code = 'ACCESS.ROLES.VIEW' OR p.Code = 'ACCESS.ROLES.CREATE');
+                WHERE r.Code = 'ALPHA_STEWARD' AND (p.Code = 'INSTITUTION.PROFILE.VIEW' OR p.Code = 'ACCESS.ROLES.VIEW');
 
                 INSERT org.InstitutionModules (InstitutionId, ModuleId, IsEnabled, Source, ChangedBy)
-                SELECT @institutionId, m.Id, 1, 'Manual', @userId FROM auth.Modules m WHERE m.Code = 'ACCESS';
+                SELECT @institutionId, m.Id, 1, 'Manual', @userId FROM auth.Modules m WHERE m.Code IN ('ACCESS', 'INSTITUTION');
                 """,
                 new { institutionId = database.AlphaInstitutionId, userId = SethikaTestDatabase.AlphaUserId },
                 transaction);
 
             var codes = await AlphaCodesAsync(connection, transaction, database.AlphaInstitutionId);
 
-            Assert.Contains("ACCESS.ROLES.VIEW", codes);
-            Assert.DoesNotContain("ACCESS.ROLES.CREATE", codes);
+            Assert.Contains("INSTITUTION.PROFILE.VIEW", codes);
+            Assert.DoesNotContain("ACCESS.ROLES.VIEW", codes);
         }
     }
 
@@ -181,7 +182,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
     {
         // The ceilings are synced exactly, deletions included, so taking a permission out of the
         // seed takes it out of the database on the next publish.
-        const string StaffApprove = "    ('BOOKINGS.CALENDAR.APPROVE'),\n    ('ACCESS.ROLES.VIEW'),";
+        const string StaffApprove = "    ('BOOKINGS.CALENDAR.VIEW'),\n    ('BOOKINGS.CALENDAR.APPROVE')\n)";
         var seed = CatalogueSeed().ReplaceLineEndings("\n");
         Assert.Contains(StaffApprove, seed, StringComparison.Ordinal);
 
@@ -190,10 +191,10 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
         await using (transaction)
         {
             await connection.ExecuteAsync(
-                seed.Replace(StaffApprove, "    ('ACCESS.ROLES.VIEW'),", StringComparison.Ordinal), transaction: transaction);
+                seed.Replace(StaffApprove, "    ('BOOKINGS.CALENDAR.VIEW')\n)", StringComparison.Ordinal), transaction: transaction);
 
             Assert.DoesNotContain("BOOKINGS.CALENDAR.APPROVE", await AlphaCodesAsync(connection, transaction, database.AlphaInstitutionId));
-            Assert.Equal(4, await connection.ExecuteScalarAsync<int>(
+            Assert.Equal(2, await connection.ExecuteScalarAsync<int>(
                 """
                 SELECT COUNT(*) FROM auth.RoleLevelPermissions c JOIN auth.RoleLevels l ON l.Id = c.RoleLevelId
                 WHERE l.Code = 'STAFF';

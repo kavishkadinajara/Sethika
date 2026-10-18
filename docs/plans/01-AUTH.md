@@ -789,12 +789,15 @@ oracle, and it is exactly the kind of thing an examiner asks about.
       grants are synced exactly, deletions included; modules, screens and permissions are never
       deleted.
 - [x] Ceilings: OWNER and MANAGER may hold every institution permission (rank, not the ceiling,
-      stops a manager managing managers); STAFF the four VIEWs and `BOOKINGS.CALENDAR.APPROVE`.
+      stops a manager managing managers); STAFF the profile and calendar VIEWs and
+      `BOOKINGS.CALENDAR.APPROVE` (the access screens' VIEWs were removed on 2026-10-11: they list
+      other staff and their phone numbers).
       Platform and donor levels are empty until their screens exist. Templates `OWNER` (all nine),
       `MANAGER` (all but `INSTITUTION.PROFILE.EDIT`), `STAFF` (the profile and calendar VIEWs), as
       `IsSystem = 1` so the fixture reset keeps them; the seed THROWs if a template grant falls
-      outside its ceiling, which the view would otherwise drop without a word. **These are a
-      first cut for the user to review** — product choices, not facts.
+      outside its ceiling, which the view would otherwise drop without a word. Reviewed by the user
+      on 2026-10-11: MANAGER may be given `INSTITUTION.PROFILE.EDIT`, STAFF may be given
+      `BOOKINGS.CALENDAR.APPROVE`, and the MANAGER template keeps the access EDITs by default.
 - [x] Role levels per A15 (`92b6187`): `auth.RoleLevelPermissions` + history, temporal, with composite
       FKs to `RoleLevels(Id, Scope)` and `Permissions(Id, Scope)` (new `UQ_Permissions_IdScope`), and
       the ceiling as a JOIN in `auth.vw_EffectivePermissions`. **Stricter than A15 said:**
