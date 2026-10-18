@@ -293,7 +293,8 @@ public sealed class RegistrationReviewEndpointsTests(SethikaTestDatabase databas
             HttpStatusCode.NotFound,
             "document_not_found");
 
-        using var refused = await reviewer.PutAsJsonAsync($"{Base}/REQ-TEST-R20/documents/{code}/verification", new { verified = false, remarks = "The seal is not readable." });
+        // The code in the address is matched whatever its case.
+        using var refused = await reviewer.PutAsJsonAsync($"{Base}/REQ-TEST-R20/documents/{code.ToLowerInvariant()}/verification", new { verified = false, remarks = "The seal is not readable." });
         Assert.Equal(HttpStatusCode.NoContent, refused.StatusCode);
 
         var document = (await JsonAsync(await reviewer.GetAsync($"{Base}/REQ-TEST-R20"))).GetProperty("application").GetProperty("documents")
@@ -317,7 +318,15 @@ public sealed class RegistrationReviewEndpointsTests(SethikaTestDatabase databas
         Assert.Equal(HttpStatusCode.BadRequest, duplicate.StatusCode);
         Assert.Equal(["items[1].code"], (await JsonAsync(duplicate)).GetProperty("fields").EnumerateArray().Select(f => f.GetString()));
 
-        // A real, active item - for children's homes, not temples.
+        // A real, active item - for children's homes, not temples. Its answers go first: a run that
+        // wrongly accepted one must not leave the item behind for the next.
+        const string Cleanup =
+            """
+            DELETE c FROM org.RegistrationRequestChecklist c
+            JOIN org.VerificationChecklistItems i ON i.Id = c.ChecklistItemId WHERE i.Code = 'TEST_CHILDREN_ONLY';
+            DELETE FROM org.VerificationChecklistItems WHERE Code = 'TEST_CHILDREN_ONLY';
+            """;
+        await ExecuteAsync(Cleanup);
         await ExecuteAsync(
             """
             INSERT org.VerificationChecklistItems (InstitutionTypeId, Code, Question, IsMandatory, SortOrder, IsActive)
@@ -332,7 +341,7 @@ public sealed class RegistrationReviewEndpointsTests(SethikaTestDatabase databas
         }
         finally
         {
-            await ExecuteAsync("DELETE FROM org.VerificationChecklistItems WHERE Code = 'TEST_CHILDREN_ONLY';");
+            await ExecuteAsync(Cleanup);
         }
 
         Assert.Equal(0, await ScalarAsync<int>(

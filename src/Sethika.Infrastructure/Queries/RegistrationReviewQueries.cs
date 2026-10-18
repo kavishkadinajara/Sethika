@@ -22,7 +22,7 @@ public sealed class RegistrationReviewQueries(IDbConnectionFactory connections, 
         JOIN org.InstitutionTypes AS t ON t.Id = r.InstitutionTypeId
         JOIN core.Districts AS d ON d.Id = r.DistrictId
         WHERE r.Status IN @statuses
-        ORDER BY r.Id
+        ORDER BY r.SubmittedAt, r.Id
         OFFSET @skip ROWS FETCH NEXT @take ROWS ONLY;
 
         SELECT COUNT(*) FROM org.RegistrationRequests AS r WHERE r.Status IN @statuses;
