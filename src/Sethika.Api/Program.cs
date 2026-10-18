@@ -104,6 +104,7 @@ app.MapSessionEndpoints();
 app.MapStepUpEndpoints();
 app.MapPasswordEndpoints();
 app.MapInstitutionRoleEndpoints();
+app.MapOnboardingApplicationEndpoints();
 app.MapLegalEndpoints();
 app.MapMeEndpoints();
 

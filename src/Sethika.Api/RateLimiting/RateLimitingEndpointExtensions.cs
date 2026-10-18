@@ -42,6 +42,11 @@ internal static class RateLimitingEndpointExtensions
             ruleFor(context.Arguments.OfType<TBody>().FirstOrDefault()),
             ClientAddress.Of(context.HttpContext)));
 
+    /// <summary>Limits by the signed-in user, for work an account does, wherever it does it from.</summary>
+    public static RouteHandlerBuilder RateLimitPerUser(this RouteHandlerBuilder builder, RateLimitRule rule) =>
+        builder.RateLimit(rule, context =>
+            context.HttpContext.RequestServices.GetRequiredService<ICurrentUserContext>().UserId?.ToString());
+
     /// <summary>Limits by a value taken from the request body.</summary>
     /// <param name="builder">The endpoint.</param>
     /// <param name="rule">The limit.</param>

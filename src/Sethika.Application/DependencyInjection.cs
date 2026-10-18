@@ -8,6 +8,7 @@ using Sethika.Application.Access.Session;
 using Sethika.Application.Access.SignIn;
 using Sethika.Application.Access.SignUp;
 using Sethika.Application.Access.StepUp;
+using Sethika.Application.Onboarding.Applying;
 using Sethika.Application.Onboarding.Approval;
 
 namespace Sethika.Application;
@@ -36,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<BootstrapPlatformAdminHandler>();
         services.AddScoped<RoleManagementHandler>();
         services.AddScoped<PreferredLanguageHandler>();
+        services.AddScoped<ApplicationHandler>();
         services.AddScoped<ApproveRegistrationHandler>();
 
         return services;

@@ -13,12 +13,7 @@ public sealed class SqlRegistrationLocks(SethikaDbContext context) : IRegistrati
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(requestNo);
 
-        if (context.Database.CurrentTransaction is null)
-        {
-            throw new InvalidOperationException(
-                "The decision locks are held until the transaction that makes the decision ends; without " +
-                "one they would be released before the decision is saved.");
-        }
+        RequireTransaction();
 
         // sp_getapplock answers 0 or 1 when granted and a negative number otherwise (timeout,
         // deadlock victim, cancelled); a refusal must stop the decision, not be read as "granted".
@@ -36,5 +31,25 @@ public sealed class SqlRegistrationLocks(SethikaDbContext context) : IRegistrati
             """).ToListAsync(cancellationToken).ConfigureAwait(false);
 
         return found.Single() == 1;
+    }
+
+    public async Task LockApplicantAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        RequireTransaction();
+
+        await context.Database.SqlQuery<int>(
+            $"SELECT COUNT(*) AS Value FROM auth.Users WITH (UPDLOCK) WHERE Id = {userId};")
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private void RequireTransaction()
+    {
+        if (context.Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException(
+                "The onboarding locks are held until the transaction that needs them ends; without one " +
+                "they would be released before its work is saved.");
+        }
     }
 }

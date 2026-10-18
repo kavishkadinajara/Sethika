@@ -1,10 +1,11 @@
 namespace Sethika.Application.Abstractions;
 
 /// <summary>
-/// Serialises decisions on applications, inside the caller's transaction (plan 02, B6).
+/// Serialises decisions on applications, and one applicant's new applications, inside the caller's
+/// transaction (plan 02, B3 and B6).
 /// </summary>
 /// <remarks>
-/// Two locks, both held until the transaction ends:
+/// A decision takes two locks, both held until the transaction ends:
 /// <list type="number">
 /// <item>One application lock that every approval and rejection takes, so decisions happen one at a
 /// time. They are rare - a platform administrator pressing a button - and this makes everything an
@@ -21,4 +22,11 @@ public interface IRegistrationLocks
     /// <returns>Whether the application exists and the caller may see it.</returns>
     /// <exception cref="InvalidOperationException">No transaction is open on the context.</exception>
     Task<bool> ClaimForDecisionAsync(string requestNo, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Takes an update lock on the applicant's own user row, so one person's new applications are
+    /// counted and created one at a time: two at once cannot both see room under the limit.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No transaction is open on the context.</exception>
+    Task LockApplicantAsync(Guid userId, CancellationToken cancellationToken = default);
 }

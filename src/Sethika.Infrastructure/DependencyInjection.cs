@@ -55,9 +55,13 @@ public static class DependencyInjection
                 connectionString,
                 serviceProvider.GetRequiredService<ICurrentUserContext>()));
 
+        // Dapper's handlers are process-wide; reads that return a date need this one.
+        DateOnlyTypeHandler.Register();
+
         services.AddScoped<IAccountQueries, AccountQueries>();
         services.AddScoped<ILegalDocumentQueries, LegalDocumentQueries>();
         services.AddScoped<IRoleLevelQueries, RoleLevelQueries>();
+        services.AddScoped<IOnboardingApplicationQueries, OnboardingApplicationQueries>();
 
         return services;
     }

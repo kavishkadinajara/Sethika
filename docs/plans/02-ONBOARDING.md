@@ -3,14 +3,14 @@
 Branch: `3-institution-onboarding` (cut from `develop` at `481397e`, after PR #4 and #5 merged the
 auth slice).
 
-Status: **5.1, 5.2 and 5.4's approval transaction done** (schema, catalogue, draft seeds, RLS on
-applications; number series, file storage, the application aggregate and its EF mappings; the
-one-transaction approval with its decision locks). **527 tests passing** (Domain 82, Application
-43, integration 402), every new one seen to fail under a mutation. Next: 5.3, the applicant API
-(§4's order). Scope agreed on 2026-10-18: the core flow plus clarifications
+Status: **5.1, 5.2, 5.3 and 5.4's approval transaction done** (schema, catalogue, draft seeds, RLS
+on applications; number series, file storage, the application aggregate and its EF mappings; the
+applicant API; the one-transaction approval with its decision locks). **569 tests passing**
+(Domain 82, Application 71, integration 416), every new one seen to fail under a mutation. Next:
+5.7, the outbox processor and the onboarding SMS (§4's order), then the rest of 5.4's review API. Scope agreed on 2026-10-18: the core flow plus clarifications
 (§4). Required documents and checklist items are seeded as clearly-marked drafts, reject reasons as
 Sethika's own policy (B9). Files go to local disk behind `IFileStorage` (B4).
-Last updated 2026-10-18 (5.4 approval). Update this line and the §5 boxes whenever either changes. A fresh session
+Last updated 2026-10-18 (5.3 applicant API). Update this line and the §5 boxes whenever either changes. A fresh session
 trusts them and will rebuild anything they claim is missing.
 
 ---
@@ -438,15 +438,33 @@ demonstrates the flow, not the tests.
 
 ### 5.3 — Applicant API (`/api/onboarding/applications`)
 
-- [ ] `GET /lookups`: types, districts, required documents per type, current declaration (Dapper).
-- [ ] `POST /` create draft → `{ requestNo }`; `GET /` mine; `GET /{requestNo}`.
-- [ ] `PUT /{requestNo}` details; `PUT /{requestNo}/office-bearers` replaces the set (no internal ids
-      exposed).
-- [ ] `PUT /{requestNo}/documents/{documentTypeCode}` multipart upload / replace; `GET .../file`.
-- [ ] `POST /{requestNo}/submit` (declaration hash), `POST /{requestNo}/withdraw`,
-      `POST /{requestNo}/answers`.
-- [ ] Tests over HTTP: the happy path, each submit refusal, edit refused outside Draft/InfoRequested,
+- [x] `GET /lookups`: types, districts, required documents per type, current declaration (Dapper,
+      `OnboardingApplicationQueries`; `DateOnlyTypeHandler` because Dapper has no `DateOnly`).
+- [x] `POST /` create draft → `{ requestNo }`; `GET /` mine; `GET /{requestNo}`. Create locks the
+      applicant's `auth.Users` row (`IRegistrationLocks.LockApplicantAsync`) before counting open
+      applications, so the limit of 3 holds under concurrent creates.
+- [x] `PUT /{requestNo}` details; `PUT /{requestNo}/office-bearers` replaces the set (no internal ids
+      exposed). `ApplicationInput` checks and tidies every field to its column's limits and names
+      each bad one (`{ code: "invalid_details", fields: [...] }`).
+- [x] `PUT /{requestNo}/documents/{documentTypeCode}` multipart upload / replace; `GET .../file`
+      (attachment, `nosniff`, `no-store`). Extension and magic bytes checked (`UploadedFileRules`);
+      the bytes are stored before the transaction and deleted again if the save fails.
+- [x] `POST /{requestNo}/submit` (declaration hash), `POST /{requestNo}/withdraw`,
+      `POST /{requestNo}/answers`. A live registration number clash is seen only by
+      `UX_RegReq_ActiveRegNo`: `SethikaDbContext` turns 2601/2627 into `DuplicateKeyException`
+      with the index name, and the handler answers `409 registration_no_in_use`.
+- [x] Tests over HTTP: the happy path, each submit refusal, edit refused outside Draft/InfoRequested,
       another applicant gets 404 everywhere, the limit of 3, rate limits, `409 registration_no_in_use`.
+      `ApplicationEndpointsTests` (14): also the download's own bytes and headers, a renamed
+      executable refused with nothing kept, a document type the institution type does not take,
+      the stored file deleted when a planted CHECK fails the save, 403 in an institution session,
+      and the limit of 3 forced (three creates queued on the applicant's row, released together).
+      `ApplicationInputTests` (28). **Mutations:** 6 on the input rules, all killed; 15 on the
+      handler and endpoints, all killed but two that are expected to survive: the applicant check
+      in `ChangeAsync` (RLS already hides other applicants' rows) and the early editable check on
+      upload (the aggregate refuses the same, only after the file is stored). A broken type check
+      first left its test's document type behind and failed later runs for the wrong reason; the
+      test now clears its own leftovers before and after.
 
 ### 5.4 — Review and approval API (`/api/admin/registrations`)
 
