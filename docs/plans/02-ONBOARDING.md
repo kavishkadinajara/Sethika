@@ -3,14 +3,15 @@
 Branch: `3-institution-onboarding` (cut from `develop` at `481397e`, after PR #4 and #5 merged the
 auth slice).
 
-Status: **5.1, 5.2, 5.3 and 5.4's approval transaction done** (schema, catalogue, draft seeds, RLS
-on applications; number series, file storage, the application aggregate and its EF mappings; the
-applicant API; the one-transaction approval with its decision locks). **569 tests passing**
-(Domain 82, Application 71, integration 416), every new one seen to fail under a mutation. Next:
-5.7, the outbox processor and the onboarding SMS (§4's order), then the rest of 5.4's review API. Scope agreed on 2026-10-18: the core flow plus clarifications
+Status: **5.1, 5.2, 5.3, 5.7 and 5.4's approval transaction done** (schema, catalogue, draft
+seeds, RLS on applications; number series, file storage, the application aggregate and its EF
+mappings; the applicant API; Hangfire, the outbox processor and the four onboarding texts; the
+one-transaction approval with its decision locks). **591 tests passing** (Domain 82, Application
+71, integration 438), every new one seen to fail under a mutation. Next: the rest of 5.4, the
+review API, then the screens (5.5, 5.6). Scope agreed on 2026-10-18: the core flow plus clarifications
 (§4). Required documents and checklist items are seeded as clearly-marked drafts, reject reasons as
 Sethika's own policy (B9). Files go to local disk behind `IFileStorage` (B4).
-Last updated 2026-10-18 (5.3 applicant API). Update this line and the §5 boxes whenever either changes. A fresh session
+Last updated 2026-10-18 (5.7 outbox and texts). Update this line and the §5 boxes whenever either changes. A fresh session
 trusts them and will rebuild anything they claim is missing.
 
 ---
