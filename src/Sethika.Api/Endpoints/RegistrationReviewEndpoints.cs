@@ -52,6 +52,10 @@ internal static class RegistrationReviewEndpoints
         var registrations = app.MapGroup("/api/admin/registrations");
 
         registrations.MapGet("/", ListAsync).WithMetadata(new HasPermissionAttribute(View));
+
+        // The names behind the codes the queue and the detail carry (types, districts, documents),
+        // under the reviewer's own permission: a reviewer holds none of the applicant's.
+        registrations.MapGet("/lookups", OnboardingApplicationEndpoints.GetLookupsAsync).WithMetadata(new HasPermissionAttribute(View));
         registrations.MapGet("/{requestNo}", GetAsync).WithMetadata(new HasPermissionAttribute(View));
         registrations.MapGet("/{requestNo}/documents/{documentType}/file", DownloadAsync).WithMetadata(new HasPermissionAttribute(View));
 

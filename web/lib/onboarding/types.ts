@@ -158,3 +158,45 @@ export type ApplicationView = {
 
 /** A document upload's metadata; empty strings are "not given". */
 export type DocumentMeta = { referenceNo: string; issuedBy: string; issuedDate: string; expiryDate: string };
+
+// ---- the reviewer's side: /api/admin/registrations (RegistrationReviewEndpoints.cs) -------------
+
+/** One application in the reviewer's queue. Type and district are codes; Lookups has their names. */
+export type ReviewQueueItem = {
+  requestNo: string;
+  proposedName: string;
+  institutionType: string;
+  district: string;
+  city: string;
+  status: ApplicationStatus;
+  submittedAt: string | null;
+  updatedAt: string;
+};
+
+export type ReviewQueuePage = { items: ReviewQueueItem[]; total: number; page: number; pageSize: number };
+
+/** A document the institution type provides, uploaded or not. */
+export type ReviewRequiredDocument = { code: string; name: string; isMandatory: boolean };
+
+/** A checklist item that applies, with the reviewer's answer if there is one. */
+export type ReviewChecklistItem = {
+  code: string;
+  question: string;
+  isMandatory: boolean;
+  isPassed: boolean | null;
+  remarks: string | null;
+  checkedAt: string | null;
+};
+
+export type RejectReasonOption = { code: string; name: string };
+
+/** Everything the reviewer's detail screen shows (ReviewView). */
+export type ReviewView = {
+  application: ApplicationView;
+  requiredDocuments: ReviewRequiredDocument[];
+  checklist: ReviewChecklistItem[];
+  rejectReasons: RejectReasonOption[];
+};
+
+/** One checklist answer as the API takes it (ChecklistAnswer). */
+export type ChecklistAnswer = { code: string; passed: boolean; remarks: string | null };

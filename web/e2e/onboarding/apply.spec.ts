@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { uniqueRegistrationNo } from "../support/applications";
 import { field } from "../support/fields";
 import { expect, pdf, scrollsSideways, test } from "../support/test";
 
@@ -7,7 +8,7 @@ const stepLabel = (current: number, total: number, name: string) => `Step ${curr
 async function fillDetails(page: Page, name: string) {
   await field(page, "Type of institution").selectOption({ index: 1 });
   await field(page, "Name in English").fill(name);
-  await field(page, "Registration number").fill(`E2E/${Date.now()}`);
+  await field(page, "Registration number").fill(uniqueRegistrationNo());
   await field(page, "Registered with").fill("Department of Buddhist Affairs");
   await field(page, "Date registered").fill("2015-06-01");
   await field(page, "Year founded").fill("1950");

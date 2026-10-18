@@ -186,6 +186,22 @@ public sealed class RegistrationReviewEndpointsTests(SethikaTestDatabase databas
     // ------------------------------------------------------------------ the queue
 
     [Fact]
+    public async Task AReviewerReadsTheNamesBehindTheCodes_UnderTheirOwnPermission()
+    {
+        var lookups = await JsonAsync(await Reviewer().GetAsync($"{Base}/lookups?language=si"));
+        Assert.Equal(25, lookups.GetProperty("districts").GetArrayLength());
+        Assert.NotEqual(0, lookups.GetProperty("institutionTypes").GetArrayLength());
+        Assert.NotEqual(0, lookups.GetProperty("documents").GetArrayLength());
+
+        await AssertRefusedAsync(await Reviewer().GetAsync($"{Base}/lookups?language=xx"), HttpStatusCode.BadRequest, "invalid_language");
+
+        // The applicant holds the applicant API's permissions, not the reviewer's.
+        var (applicant, _) = PlatformClient(OnboardingScenario.Applicant);
+        using var refused = await applicant.GetAsync($"{Base}/lookups?language=en");
+        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+    }
+
+    [Fact]
     public async Task TheQueueIsOldestSubmittedFirst_AndADraftIsNeverShown()
     {
         await _scenario.SubmittedAsync("REQ-TEST-R01", "BUD/R/01");

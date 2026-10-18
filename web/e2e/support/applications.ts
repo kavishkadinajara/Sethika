@@ -18,12 +18,17 @@ async function ok(response: Awaited<ReturnType<APIRequestContext["get"]>>, what:
   return response;
 }
 
+/** A registration number no other test is using: two open applications cannot share one. */
+export function uniqueRegistrationNo(): string {
+  return `E2E/${Date.now()}/${Math.floor(Math.random() * 1_000_000)}`;
+}
+
 /** Details that pass every rule, with a name the test can recognise. */
 export function sampleDetails(institutionType: string, district: string, name: string) {
   return {
     institutionType,
     proposedName: name,
-    officialRegistrationNo: `E2E/${Date.now()}`,
+    officialRegistrationNo: uniqueRegistrationNo(),
     registeringAuthority: "Department of Buddhist Affairs",
     registrationDate: "2015-06-01",
     establishedYear: 1950,

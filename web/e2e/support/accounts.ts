@@ -9,6 +9,18 @@ import { sql } from "./sql";
 
 export const password = "E2e-Sethika-1";
 
+/*  Every test runs from 127.0.0.1, and a run makes more accounts than the API's 20 signup codes
+    per client per hour. People signing up are on different phones, so each account made here
+    goes to the API directly with an address of its own in X-Forwarded-For, which the API believes
+    from loopback (Program.cs, ForwardedHeaders) - the limit stays on, and each "person" has
+    their own budget, as in life. Sign-ins through the screens still come from 127.0.0.1.      */
+const apiURL = process.env.E2E_API_URL ?? "http://localhost:5182";
+
+function anotherPhoneAddress(): string {
+  const octet = () => 1 + Math.floor(Math.random() * 254);
+  return `10.${octet()}.${octet()}.${octet()}`;
+}
+
 export type Account = { phone: string; fullName: string };
 
 /** A fresh mobile number, in the local format a person types: 0779 plus six random digits. */
@@ -44,9 +56,9 @@ async function ok(response: Awaited<ReturnType<APIRequestContext["post"]>>, what
 }
 
 /** Signs a new donor up through the API and returns how to sign in as them. */
-export async function createAccount(baseURL: string, fullName = "E2E Applicant", language: "en" | "si" | "ta" = "en"): Promise<Account> {
+export async function createAccount(_baseURL: string, fullName = "E2E Applicant", language: "en" | "si" | "ta" = "en"): Promise<Account> {
   const phone = newPhone();
-  const api = await request.newContext({ baseURL });
+  const api = await request.newContext({ baseURL: apiURL, extraHTTPHeaders: { "X-Forwarded-For": anotherPhoneAddress() } });
   try {
     await ok(await api.post("/api/auth/otp/request", { data: { phoneNumber: phone, purpose: "signup", language } }), "OTP request");
     const { code } = await latestCode(phone);
@@ -105,4 +117,20 @@ export async function apiAs(baseURL: string, account: Account): Promise<APIReque
   const { accessToken } = (await response.json()) as { accessToken: string };
   await login.dispose();
   return request.newContext({ baseURL, extraHTTPHeaders: { Authorization: `Bearer ${accessToken}` } });
+}
+
+/** The id of the last text sent to <phone>, 0 if none: a later code is one with a higher id. */
+export function lastTextId(phone: string): number {
+  const last9 = phone.replace(/\D/g, "").slice(-9);
+  const [row] = sql("SELECT ISNULL(MAX(Id), 0) FROM notify.Notifications WHERE Channel = 'SMS' AND RIGHT(Recipient, 9) = '$(last9)';", { last9 });
+  return Number(row ?? 0);
+}
+
+/** Answers the step-up dialog with the code texted to <account> after text <after>. */
+export async function stepUp(page: Page, account: Account, after: number) {
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "Confirm it's you" })).toBeVisible();
+  const { code } = await latestCode(account.phone, after);
+  await dialog.getByLabel("6-digit code").fill(code);
+  await expect(dialog).toBeHidden();
 }

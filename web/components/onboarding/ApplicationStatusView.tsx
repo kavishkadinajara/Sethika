@@ -15,10 +15,9 @@ import type { ApplicationView, Lookups } from "@/lib/onboarding/types";
 import { cn } from "@/lib/utils";
 import { DocumentsStep } from "./DocumentsStep";
 import { StatusBadge } from "./StatusBadge";
+import { useRejectReasonName } from "./useRejectReasonName";
 import { useOnboardingError } from "./useOnboardingError";
 import { WithdrawControl } from "./WithdrawControl";
-
-const rejectReasons = ["DOCUMENTS_INCOMPLETE", "NOT_VERIFIABLE", "DUPLICATE", "NOT_ELIGIBLE", "OTHER"] as const;
 
 /**
  * A submitted application: where it stands, the reviewer's questions and the answers to them, the
@@ -39,6 +38,7 @@ export function ApplicationStatusView({
   const format = useFormatter();
   const errorMessage = useOnboardingError();
   const router = useRouter();
+  const reasonName = useRejectReasonName();
   const [formError, setFormError] = useState<ReactNode>(null);
   const [busy, setBusy] = useState(false);
 
@@ -71,9 +71,7 @@ export function ApplicationStatusView({
     else setFormError(t("view.openFailed"));
   }
 
-  const reason = view.rejectReason && (rejectReasons as readonly string[]).includes(view.rejectReason)
-    ? t(`rejectReasons.${view.rejectReason as (typeof rejectReasons)[number]}`)
-    : view.rejectReason;
+  const reason = view.rejectReason && reasonName(view.rejectReason);
 
   return (
     <div className="grid gap-6">

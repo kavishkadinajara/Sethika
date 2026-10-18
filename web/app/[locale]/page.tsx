@@ -31,6 +31,14 @@ export default function Home({ params }: PageProps<"/[locale]">) {
           </p>
         </Can>
 
+        <Can permission="ONBOARDING.REQUESTS.VIEW">
+          <p className="mb-8">
+            <Link href="/admin/registrations" className={cn(textLink, focusRing)}>
+              {t("Home.review")}
+            </Link>
+          </p>
+        </Can>
+
         <section className="space-y-4">
           <h2 className="text-lg font-medium text-brand">{t("Home.calendarHeading")}</h2>
 

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input, inputClasses } from "@/components/ui/input";
 import { createApplication, updateApplication } from "@/lib/onboarding/api";
-import { mapLink } from "@/lib/onboarding/progress";
+import { localName, mapLink } from "@/lib/onboarding/progress";
 import type { ApplicationDetails, Lookups } from "@/lib/onboarding/types";
 import { cn, focusRing } from "@/lib/utils";
 import { useOnboardingError } from "./useOnboardingError";
@@ -17,10 +17,6 @@ import { useOnboardingError } from "./useOnboardingError";
 type Key = keyof ApplicationDetails;
 
 /** A lookup's name in the page's language, English when it has none. */
-export function localName(option: { name: string; nameSi: string | null; nameTa: string | null }, locale: string) {
-  return (locale === "si" ? option.nameSi : locale === "ta" ? option.nameTa : null) || option.name;
-}
-
 /**
  * Step 1: the institution and the applicant. Creates the draft the first time (POST), saves it
  * after that (PUT). The API names every field it refuses, and each is marked where it is.

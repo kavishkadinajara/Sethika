@@ -118,13 +118,13 @@ function blankToNull(value: string): string | null {
   return trimmed ? trimmed : null;
 }
 
-// ---- plumbing -----------------------------------------------------------------------------------
+// ---- plumbing, shared with review-api.ts --------------------------------------------------------
 
-function jsonBody(method: string, body: unknown): RequestInit {
+export function jsonBody(method: string, body: unknown): RequestInit {
   return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
 
-async function send(path: string, init: RequestInit): Promise<OnboardingResult<Response>> {
+export async function send(path: string, init: RequestInit): Promise<OnboardingResult<Response>> {
   let response: Response;
   try {
     response = await apiFetch(path, { cache: "no-store", ...init });
@@ -155,11 +155,11 @@ async function readFields(response: Response): Promise<string[]> {
   }
 }
 
-async function json<T>(result: OnboardingResult<Response>): Promise<OnboardingResult<T>> {
+export async function json<T>(result: OnboardingResult<Response>): Promise<OnboardingResult<T>> {
   if (!result.ok) return result;
   return { ok: true, value: (await result.value.json()) as T };
 }
 
-async function empty(result: OnboardingResult<Response>): Promise<OnboardingResult> {
+export async function empty(result: OnboardingResult<Response>): Promise<OnboardingResult> {
   return result.ok ? { ok: true, value: undefined } : result;
 }

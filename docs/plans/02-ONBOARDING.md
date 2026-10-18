@@ -3,15 +3,16 @@
 Branch: `3-institution-onboarding` (cut from `develop` at `481397e`, after PR #4 and #5 merged the
 auth slice).
 
-Status: **5.1-5.5 and 5.7 done** (schema, catalogue, draft seeds, RLS on
+Status: **5.1-5.7 done** (schema, catalogue, draft seeds, RLS on
 applications; number series, file storage, the application aggregate and its EF mappings; the
 applicant API; Hangfire, the outbox processor and the four onboarding texts; the review API and the
-one-transaction approval with its decision locks; the applicant screens). **602 tests passing**
-(Domain 82, Application 71, integration 449) plus 97 web unit tests, every new one seen to fail
-under a mutation, and 14 browser tests of the applicant screens. Next: the reviewer screens (5.6). Scope agreed on 2026-10-18: the core flow plus clarifications
+one-transaction approval with its decision locks; the applicant and reviewer screens). **603 tests
+passing** (Domain 82, Application 71, integration 450) plus 105 web unit tests, every new one seen
+to fail under a mutation, and 21 browser tests of both sides. Next: the onboarding PR (§6), then
+the booking engine. Scope agreed on 2026-10-18: the core flow plus clarifications
 (§4). Required documents and checklist items are seeded as clearly-marked drafts, reject reasons as
 Sethika's own policy (B9). Files go to local disk behind `IFileStorage` (B4).
-Last updated 2026-10-18 (5.4 review API, 5.5 screens). Update this line and the §5 boxes whenever either changes. A fresh session
+Last updated 2026-10-18 (5.6 reviewer screens). Update this line and the §5 boxes whenever either changes. A fresh session
 trusts them and will rebuild anything they claim is missing.
 
 ---
@@ -536,8 +537,12 @@ demonstrates the flow, not the tests.
       with something left to do (`resumeStep`).
 - [x] `/apply/[requestNo]`: status, history, open questions with answers and document replacement,
       withdraw (a draft too: it counts towards the three); after approval, "Open <institution>"
-      (B8) through `session.switchInstitution`. **Known gap:** an applicant in an institution's
-      session is told to sign in again, because the API has no switch back to a personal session.
+      (B8) through `session.switchInstitution`. **Known gap (found by the browser tests):**
+      sign-in and every refresh pick the only institution a user holds, so after approval any
+      reload puts the owner in their institution, and there is no switch back to a personal
+      session: an owner can no longer see their applications or apply for a second institution.
+      The screen says so plainly. "Open the institution" is the path while Sethika is still open
+      from before the decision. A switch back is future work (an auth-session change).
 - [x] en/si/ta strings, si/ta drafts in `docs/translations-to-review.md` (the `Apply` namespace,
       169 strings each); Vitest for the step logic (`lib/onboarding/progress.test.ts`, 13).
 - [x] **Browser tests (Playwright, `web/e2e`, skill `.claude/skills/browser-test`)** against the
@@ -556,10 +561,30 @@ demonstrates the flow, not the tests.
 
 ### 5.6 — Reviewer screens
 
-- [ ] `/admin/registrations` queue with status filter.
-- [ ] `/admin/registrations/[requestNo]`: details, OSM link, documents (open / verify / reject with
-      remarks, `ScanStatus` shown), checklist, ask a question, approve and reject through the
-      step-up dialog.
+- [x] `/admin/registrations` queue with status filter: "to do" by default, the filter and page in
+      the address (`?status=&page=`); type and district by name through a new
+      `GET /api/admin/registrations/lookups` under the reviewer's own VIEW permission (a reviewer
+      holds none of the applicant's) - the applicant endpoint's handler, mapped twice.
+      `AReviewerReadsTheNamesBehindTheCodes_UnderTheirOwnPermission`; mutation (the applicant's
+      permission on the route) killed.
+- [x] `/admin/registrations/[requestNo]`: what the applicant said (the applicant form's labels,
+      a blank answer shown as "Not given"), OSM link, documents (download; accept, or "Do not
+      accept" with remarks; "files are not checked for viruses yet" in place of `ScanStatus`, B4),
+      checklist (yes / no / not checked, saved together), questions (one to ten), and the decision:
+      what approval still waits for, listed; approve and "do not approve" (a reason, an optional
+      note) each confirmed once, then the step-up dialog. A reviewer sees the decision as an
+      administrator's. The status reads from the reviewer's side ("Waiting for answers", not the
+      applicant's "Questions for you"). `lib/onboarding/review.ts` + `review.test.ts` (8);
+      **mutations** 6, all killed (one after a test was added: unanswered checklist items were
+      not proved left out).
+- [x] Browser tests (`e2e/review`, 7 runs): a reviewer's whole pass - the queue and its filter,
+      start, a refusal needing remarks, the checklist kept across a reload, no decision for a
+      reviewer, two questions; an administrator approving with a texted code once everything is
+      checked, and the applicant - Sethika still open - opening their institution; a "do not
+      approve" with reason and note read by the applicant; an applicant kept out; Sinhala and
+      Tamil at 320 px with nothing clipped. Accounts made through the API now each come from an
+      address of their own (`X-Forwarded-For`, believed from loopback), as different people's
+      phones would: a full run makes more than the 20 signup codes one client may ask for.
 
 ### 5.7 — Outbox processor and onboarding SMS (B10)
 

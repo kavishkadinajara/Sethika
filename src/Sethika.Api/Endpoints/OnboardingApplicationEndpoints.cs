@@ -74,7 +74,8 @@ internal static class OnboardingApplicationEndpoints
 
     // ------------------------------------------------------------------ reads
 
-    private static async Task<IResult> GetLookupsAsync(string? language, IOnboardingApplicationQueries queries, CancellationToken cancellationToken)
+    /// <summary>The form's lookups in one language. The reviewer's screens read them too (RegistrationReviewEndpoints).</summary>
+    internal static async Task<IResult> GetLookupsAsync(string? language, IOnboardingApplicationQueries queries, CancellationToken cancellationToken)
     {
         var resolved = SupportedLanguages.Resolve(language);
         if (resolved is null)

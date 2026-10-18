@@ -50,6 +50,16 @@ npm run e2e:report                           # the HTML report of the last run
   `apiAs(baseURL, account)` is an API client signed in as them, for steps that have no screen.
 - `submittedApplication(api)` makes a submitted application through the applicant API, for
   scenarios that start after the form.
+- Step-up (approve, reject, anything `RequiresMfa`): `const before = lastTextId(account.phone)`
+  before the click, then `await stepUp(page, account, before)` answers the dialog with the new code.
+- Accounts made through the API go to it directly, each with its own `X-Forwarded-For` address
+  (loopback is a trusted proxy locally), so a run is not stopped by the per-client signup limit.
+  Sign-ins through the screens all come from 127.0.0.1.
+- Playwright matches names by substring and ignores case: "Accept" also finds "Do not accept".
+  Use `exact: true` for buttons whose words appear inside others'. A toast's text appears twice
+  (the toast and its screen-reader copy): take `.first()`.
+- Signing in lands a person in their account's language and, with one institution, in that
+  institution (A11, B8); make the account in the language under test.
 - `field(scope, "Label")` finds a control by its exact label, `(required)` or not.
 - Prefer roles and labels (`getByRole`, `field`) over CSS: if a test cannot find a control by
   its name, a screen reader cannot either - fix the screen, not the selector.

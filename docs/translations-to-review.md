@@ -417,6 +417,25 @@ Questions for the reviewers:
 |---|---|---|---|
 | `Apply`, `Home.apply` | | | |
 
+## Reviewer screens (`Review` namespace)
+
+The platform reviewer's and administrator's screens (plan 02, 5.6): namespace `Review`, 116
+strings, and `Home.review`; field labels are borrowed from `Apply`, so each has one translation.
+Drafts, as above. `Apply.institutionSession` was rewritten at the same time (an institution's owner
+cannot switch back to their own account yet) and needs a second look.
+
+Questions for the reviewers:
+
+1. `සමාලෝචනය` / `மதிப்பாய்வு` for "review" as a staff task, beside its use for the applicant.
+2. `පිරික්සුම් ලැයිස්තුව` / `சரிபார்ப்புப் பட்டியல்` for the verification "checklist".
+3. "Do not accept" a document (`පිළිනොගන්න` / `ஏற்க வேண்டாம்`) and "Do not approve" an application
+   (`අනුමත නොකරන්න` / `அங்கீகரிக்க வேண்டாம்`): firm enough, and not rude to a temple?
+4. `වේදිකා පරිපාලක` / `தள நிர்வாகி` for "platform administrator".
+
+| Namespace | Reviewer (si) | Reviewer (ta) | Status |
+|---|---|---|---|
+| `Review`, `Home.review`, `Apply.institutionSession` | | | |
+
 ## Legal texts (`core.LegalDocuments`)
 
 Seeded by `src/Sethika.Database/Scripts/Seed/09_LegalDocuments.sql`. These are `0.1-draft`

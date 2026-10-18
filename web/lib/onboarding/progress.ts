@@ -17,6 +17,11 @@ export type WizardStep = (typeof wizardSteps)[number];
 /** More than enough for a committee; the API's own limit (ApplicationInput.MaxOfficeBearers). */
 export const MAX_OFFICE_BEARERS = 15;
 
+/** A lookup's name in the screen's language, English when there is none. */
+export function localName(option: { name: string; nameSi: string | null; nameTa: string | null }, locale: string): string {
+  return (locale === "si" ? option.nameSi : locale === "ta" ? option.nameTa : null) || option.name;
+}
+
 /** The applicant may change details, office bearers and documents only here (plan 02, B3). */
 export function isEditable(status: ApplicationStatus): boolean {
   return status === "Draft" || status === "InfoRequested";
