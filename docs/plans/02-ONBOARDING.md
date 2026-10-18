@@ -294,21 +294,39 @@ Onboarding is the first feature that needs its outbox rows *sent* (SMS to the ap
 info requested, approved, rejected). The processor is shared with booking, so it is built once,
 here:
 
-- **Hangfire** (`Hangfire.Core`, `Hangfire.SqlServer`, `Hangfire.AspNetCore`: already in CLAUDE.md's
-  stack, so no new architectural piece) in the API process, with SQL Server storage in the same
-  database under Hangfire's own `HangFire` schema. The publish profile has
-  `DropObjectsNotInSource = False`, so a dacpac publish leaves that schema alone. This is checked,
-  not assumed. The dashboard sits at `/jobs`, platform-only.
-- `ProcessOutboxJob`, every minute: `SELECT TOP (50) ... WITH (UPDLOCK, READPAST, ROWLOCK) WHERE
-  ProcessedAt IS NULL AND Attempts < 5 ORDER BY OccurredAt`, dispatch by `EventType`, set
-  `ProcessedAt`; on failure `Attempts + 1` and `LastError`. Two workers never take the same row
-  (READPAST, tested by forcing it). It runs with `IsPlatform = 1`.
+- **Hangfire** (`Hangfire.NetCore`, `Hangfire.SqlServer` 1.8.25: already in CLAUDE.md's stack, so
+  no new architectural piece) in the API process, with SQL Server storage in the same database
+  under Hangfire's own `HangFire` schema. The publish profile has `DropObjectsNotInSource = False`,
+  so a dacpac publish leaves that schema alone. Checked on 2026-10-18: with Hangfire's 11 tables in
+  `Sethika_Test`, `SqlPackage /Action:Script` mentions `HangFire` nowhere and drops nothing.
+  `Newtonsoft.Json` is pinned to 13.0.4: Hangfire.Core would resolve 11.0.1 (CVE-2024-21907).
+  `Jobs:Enabled` (default true) turns the server off; the integration tests do, through one
+  environment variable, so a test host does not start a job server on the shared database.
+- **No dashboard (changed 2026-10-18).** The access token lives in the web app's memory and is
+  sent as a header, so a browser opening `/jobs` carries no credentials, and making it carry some
+  means a cookie scheme or a token hand-off: a new way in, for an operator's convenience. The
+  outbox itself is the operational view (`Attempts`, `LastError`, `ProcessedAt`). Hence
+  `Hangfire.NetCore`, not `Hangfire.AspNetCore`.
+- `OutboxJob` (recurring, every minute) runs `OutboxProcessor`: `SELECT TOP (50) ... WITH
+  (UPDLOCK, READPAST, ROWLOCK) WHERE ProcessedAt IS NULL AND Attempts < 5 ORDER BY OccurredAt`,
+  dispatch by `EventType` to an `IOutboxHandler`, set `ProcessedAt`; on failure `Attempts + 1` and
+  `LastError`, and the batch goes on. A run keeps taking full batches but stops at the first
+  failure, so five attempts are five runs, not five batches in one second. Two workers never take
+  the same row (READPAST, tested by forcing it). A crash mid-batch rolls the batch back and hands
+  it over again, so every handler is idempotent.
+- It runs with `IsPlatform = 1`: the job opens its own scope with `JobScopes.CreatePlatformScope`,
+  where `ICurrentUserContext` is `PlatformJobUser` (`AddSethikaCurrentUser<T>` binds the request's
+  user everywhere else). This is the first thing that makes CLAUDE.md's "background jobs use
+  `IsPlatform = 1`" true.
 - An event type with no handler (`DonorSignedUp`, `PasswordReset`, ... already in the table) is
   marked processed and logged, so it never blocks the queue.
-- Each SMS writes `notify.Notifications` with a `DedupKey` (`ONBOARD_APPROVED:REQ-2026-000123`).
-  `UX_Notifications_Dedup` makes a re-run harmless.
+- Each SMS writes `notify.Notifications` with a `DedupKey`
+  `ONBOARD_INFO_REQUESTED:REQ-2026-000123:{outbox id}` (changed 2026-10-18 from the request alone: a
+  reviewer can ask more than once, and each question is its own text). `UX_Notifications_Dedup`
+  makes a re-run of one message harmless. Only a confirmed phone is texted.
 - `notify.Templates` for the four messages in en/si/ta, sent in the applicant's
-  `PreferredLanguage` (as the OTP SMS is).
+  `PreferredLanguage` (as the OTP SMS is), English when the language has none, a failure when
+  English is missing too. `{requestNo}` is the only placeholder.
 
 ### B11 — The location is entered as coordinates, with "use my location"
 
@@ -322,6 +340,9 @@ and a link that opens OpenStreetMap at the pin for the reviewer to compare. No n
 Security as a sysadmin, so masking never applies, and a reviewer sees the NIC because of that
 accident. Before deployment the API's login needs `GRANT UNMASK` (SQL Server 2022 allows it per
 column) on the columns its screens show, and nothing else. Report-reading users keep the mask.
+The outbox job reads `auth.Users.PhoneNumber` (masked) to text applicants, so that column needs it
+too. Hangfire creates its `HangFire` schema on first start, which a restricted login cannot: either
+the first start runs once with DDL rights or the schema is installed from Hangfire's script.
 This is written in `docs/LOCAL_SETUP.md` and the deploy checklist. It is not built here, because
 there is no deployment login yet.
 
@@ -511,11 +532,25 @@ demonstrates the flow, not the tests.
 
 ### 5.7 — Outbox processor and onboarding SMS (B10)
 
-- [ ] Hangfire in-process with SQL storage; the second dacpac publish leaves `HangFire.*` untouched;
-      `/jobs` platform-only.
-- [ ] `ProcessOutboxJob`: READPAST batch, retries, unknown events marked processed; forced two-worker
-      test.
-- [ ] Four onboarding SMS with `DedupKey`, templates in en/si/ta; a re-run sends nothing twice.
+- [x] Hangfire in-process with SQL storage; the second dacpac publish leaves `HangFire.*` untouched
+      (checked, B10). No `/jobs` dashboard (B10, changed). `HangfireJobsTests` (2): the host's own
+      server runs the recurring job - registered by that host, which the test proves by removing it
+      afterwards, since Hangfire keeps recurring jobs in the database - as the platform (a probe
+      handler reads both tenants' applications), and the applicant is texted; a test host runs no
+      jobs. `JobScopeTests` (3): a request's scope is its user and sees its own application, a job's
+      is the platform and sees both, and the mark does not leak into the next scope.
+- [x] `OutboxJob` / `OutboxProcessor`: READPAST batch, retries, unknown events marked processed;
+      forced two-worker test. `OutboxProcessorTests` (5): oldest first and unhandled types
+      processed; a failure counted, the batch going on, and the message left alone after the fifth;
+      full batches in one run but a stop at a failure; the second worker skips the first's locked
+      rows without waiting; two handlers for one type refused.
+- [x] Four onboarding SMS with `DedupKey`, templates in en/si/ta; a re-run sends nothing twice.
+      `OnboardingSmsTests` (11): each event its template in the applicant's language; a repeated
+      run texts nobody twice; two questions are two texts; no text to an unconfirmed phone; English
+      when the language has none, a failure when no language has it; a payload without the request
+      or the applicant is a failure. The template seed test covers the twelve new rows and the
+      zero-width joiner. **Mutations:** 23, all killed. The recurring-job one first survived: an
+      earlier run's job, still in Hangfire's tables, answered the trigger.
 
 ---
 

@@ -87,6 +87,33 @@ public sealed class NotifyTemplatesSeedTests(SethikaTestDatabase database)
     }
 
     [Fact]
+    public async Task EveryOnboardingTextHasOneActiveSmsTemplateInEachLanguage_WithTheRequestNumberInIt()
+    {
+        await using var connection = new SqlConnection(database.ConnectionString);
+
+        var rows = (await connection.QueryAsync<(string Code, string Language, string Body)>(
+            """
+            SELECT t.Code AS Code, t.Language AS Language, t.Body AS Body
+            FROM notify.Templates AS t
+            WHERE t.Channel = 'SMS' AND t.IsActive = 1 AND t.Code LIKE 'ONBOARD[_]%'
+            ORDER BY t.Code, t.Language;
+            """)).ToList();
+
+        Assert.Equal(
+            [
+                "ONBOARD_APPROVED en", "ONBOARD_APPROVED si", "ONBOARD_APPROVED ta",
+                "ONBOARD_INFO_REQUESTED en", "ONBOARD_INFO_REQUESTED si", "ONBOARD_INFO_REQUESTED ta",
+                "ONBOARD_REJECTED en", "ONBOARD_REJECTED si", "ONBOARD_REJECTED ta",
+                "ONBOARD_SUBMITTED en", "ONBOARD_SUBMITTED si", "ONBOARD_SUBMITTED ta",
+            ],
+            rows.Select(r => $"{r.Code} {r.Language}"));
+
+        // The placeholder is the only one, and the zero-width joiner in ප්‍රශ්නයක් survived the build.
+        Assert.All(rows, r => Assert.Contains("{requestNo}", r.Body, StringComparison.Ordinal));
+        Assert.Contains('‍', rows.Single(r => r is { Code: "ONBOARD_INFO_REQUESTED", Language: "si" }).Body);
+    }
+
+    [Fact]
     public async Task ABodyEditedInTheDatabaseIsPutBack_ButASwitchedOffTemplateStaysOff()
     {
         // The seed owns the wording. Whether a template is in use is an operator's call.

@@ -16,6 +16,14 @@
     The Tamil sign-in text is three over and goes as two segments until a reviewer shortens it
     (docs/translations-to-review.md). Keep any new body under those limits.
 
+    Onboarding texts (plan 02, B10), sent by the outbox processor through UserTextMessages: received,
+    a reviewer's question, approved, not approved. {requestNo} is the only placeholder, and the text
+    says nothing else about the application - signing in shows the rest. With a 15-character request
+    number: submitted en 93, si 69, ta 78; info requested en 93, si 77, ta 84; approved en 83, si 72,
+    ta 90; rejected en 74, si 70, ta 91. English is one segment; Sinhala and Tamil are one or two. At
+    most four of these go to an application, so the second segment is accepted rather than cutting
+    the wording to a code.
+
     Matched on (Code, Channel, Language), never on Id: notify.Notifications.TemplateId points at
     these rows, so they are updated in place, and rows another seed owns are never deleted.
 
@@ -35,7 +43,19 @@ USING (VALUES
  ('OTP_RESET',  'SMS', 'ta', N'உங்கள் Sethika கடவுச்சொல் மீட்டமைப்புக் குறியீடு: {code}'),
  ('OTP_LOGIN',  'SMS', 'en', N'Your Sethika sign-in code is {code}. Do not share it with anyone.'),
  ('OTP_LOGIN',  'SMS', 'si', N'ඔබගේ Sethika පිවිසුම් කේතය: {code}. එය කිසිවෙකු සමඟ බෙදා නොගන්න.'),
- ('OTP_LOGIN',  'SMS', 'ta', N'உங்கள் Sethika உள்நுழைவுக் குறியீடு: {code}. இதை யாருடனும் பகிர வேண்டாம்.')
+ ('OTP_LOGIN',  'SMS', 'ta', N'உங்கள் Sethika உள்நுழைவுக் குறியீடு: {code}. இதை யாருடனும் பகிர வேண்டாம்.'),
+ ('ONBOARD_SUBMITTED',      'SMS', 'en', N'Sethika: we received application {requestNo}. We will text you when it has been reviewed.'),
+ ('ONBOARD_SUBMITTED',      'SMS', 'si', N'Sethika: අයදුම්පත {requestNo} ලැබුණා. සමාලෝචනයෙන් පසු දන්වන්නෙමු.'),
+ ('ONBOARD_SUBMITTED',      'SMS', 'ta', N'Sethika: விண்ணப்பம் {requestNo} கிடைத்தது. மதிப்பாய்வின் பின் அறிவிப்போம்.'),
+ ('ONBOARD_INFO_REQUESTED', 'SMS', 'en', N'Sethika: the reviewer has a question about application {requestNo}. Sign in to answer it.'),
+ ('ONBOARD_INFO_REQUESTED', 'SMS', 'si', N'Sethika: අයදුම්පත {requestNo} ගැන ප්‍රශ්නයක් ඇත. පිළිතුරු දීමට පිවිසෙන්න.'),
+ ('ONBOARD_INFO_REQUESTED', 'SMS', 'ta', N'Sethika: விண்ணப்பம் {requestNo} பற்றி ஒரு கேள்வி உள்ளது. பதிலளிக்க உள்நுழையவும்.'),
+ ('ONBOARD_APPROVED',       'SMS', 'en', N'Sethika: application {requestNo} is approved. Sign in to open your institution.'),
+ ('ONBOARD_APPROVED',       'SMS', 'si', N'Sethika: අයදුම්පත {requestNo} අනුමතයි. ආයතනය විවෘත කිරීමට පිවිසෙන්න.'),
+ ('ONBOARD_APPROVED',       'SMS', 'ta', N'Sethika: விண்ணப்பம் {requestNo} அங்கீகரிக்கப்பட்டது. நிறுவனத்தைத் திறக்க உள்நுழையவும்.'),
+ ('ONBOARD_REJECTED',       'SMS', 'en', N'Sethika: application {requestNo} was not approved. Sign in to see why.'),
+ ('ONBOARD_REJECTED',       'SMS', 'si', N'Sethika: අයදුම්පත {requestNo} අනුමත නොවීය. හේතුව බැලීමට පිවිසෙන්න.'),
+ ('ONBOARD_REJECTED',       'SMS', 'ta', N'Sethika: விண்ணப்பம் {requestNo} அங்கீகரிக்கப்படவில்லை. காரணத்தைப் பார்க்க உள்நுழையவும்.')
 ) AS s(Code, Channel, Language, Body)
 ON t.Code = s.Code AND t.Channel = s.Channel AND t.Language = s.Language
 -- Compared as binary: under the database's case-insensitive collation a case-only edit would never

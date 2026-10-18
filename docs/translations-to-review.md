@@ -375,6 +375,28 @@ Questions for the reviewers:
 | `OTP_RESET / SMS` | Your Sethika password reset code is {code} (42) | ඔබගේ Sethika මුරපදය යළි සැකසීමේ කේතය: {code} (44) | உங்கள் Sethika கடவுச்சொல் மீட்டமைப்புக் குறியீடு: {code} (56) | | |
 | `OTP_LOGIN / SMS` | Your Sethika sign-in code is {code}. Do not share it with anyone. (65) | ඔබගේ Sethika පිවිසුම් කේතය: {code}. එය කිසිවෙකු සමඟ බෙදා නොගන්න. (64) | உங்கள் Sethika உள்நுழைவுக் குறியீடு: {code}. இதை யாருடனும் பகிர வேண்டாம். (73) | | |
 
+### Onboarding texts
+
+Sent to an institution's applicant at four points of an application. `{requestNo}` is replaced by
+a 15-character number such as `REQ-2026-000123` and must stay exactly as written; the counts are
+with it in place. These are allowed **two** segments in Sinhala and Tamil (at most four go to one
+application), so the limit is 134 characters, but one segment (70) is better where the meaning
+survives.
+
+Questions for the reviewers:
+
+1. `අයදුම්පත` / `விண்ணப்பம்` for "application": the word an institution's secretary would use?
+2. The texts say only "sign in", not where. Is that clear enough, or should they name sethika.com?
+3. `අනුමත නොවීය` and `அங்கீகரிக்கப்படவில்லை` for "not approved": too blunt for a temple or a
+   children's home? The reason is shown after signing in, not in the text.
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) | Reviewer | Status |
+|---|---|---|---|---|---|
+| `ONBOARD_SUBMITTED / SMS` | Sethika: we received application {requestNo}. We will text you when it has been reviewed. (93) | Sethika: අයදුම්පත {requestNo} ලැබුණා. සමාලෝචනයෙන් පසු දන්වන්නෙමු. (69) | Sethika: விண்ணப்பம் {requestNo} கிடைத்தது. மதிப்பாய்வின் பின் அறிவிப்போம். (78) | | |
+| `ONBOARD_INFO_REQUESTED / SMS` | Sethika: the reviewer has a question about application {requestNo}. Sign in to answer it. (93) | Sethika: අයදුම්පත {requestNo} ගැන ප්‍රශ්නයක් ඇත. පිළිතුරු දීමට පිවිසෙන්න. (77) | Sethika: விண்ணப்பம் {requestNo} பற்றி ஒரு கேள்வி உள்ளது. பதிலளிக்க உள்நுழையவும். (84) | | |
+| `ONBOARD_APPROVED / SMS` | Sethika: application {requestNo} is approved. Sign in to open your institution. (83) | Sethika: අයදුම්පත {requestNo} අනුමතයි. ආයතනය විවෘත කිරීමට පිවිසෙන්න. (72) | Sethika: விண்ணப்பம் {requestNo} அங்கீகரிக்கப்பட்டது. நிறுவனத்தைத் திறக்க உள்நுழையவும். (90) | | |
+| `ONBOARD_REJECTED / SMS` | Sethika: application {requestNo} was not approved. Sign in to see why. (74) | Sethika: අයදුම්පත {requestNo} අනුමත නොවීය. හේතුව බැලීමට පිවිසෙන්න. (70) | Sethika: விண்ணப்பம் {requestNo} அங்கீகரிக்கப்படவில்லை. காரணத்தைப் பார்க்க உள்நுழையவும். (91) | | |
+
 ## Legal texts (`core.LegalDocuments`)
 
 Seeded by `src/Sethika.Database/Scripts/Seed/09_LegalDocuments.sql`. These are `0.1-draft`

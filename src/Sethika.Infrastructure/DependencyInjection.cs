@@ -1,4 +1,7 @@
+using Hangfire;
+using Hangfire.SqlServer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,6 +10,8 @@ using Sethika.Application.Abstractions;
 using Sethika.Domain.Access;
 using Sethika.Infrastructure.Caching;
 using Sethika.Infrastructure.Files;
+using Sethika.Infrastructure.Jobs;
+using Sethika.Infrastructure.Messaging;
 using Sethika.Infrastructure.Notifications;
 using Sethika.Infrastructure.Persistence;
 using Sethika.Infrastructure.Queries;
@@ -214,6 +219,73 @@ public static class DependencyInjection
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<IFileStorage>(serviceProvider =>
             new LocalFileStorage(root, serviceProvider.GetRequiredService<TimeProvider>()));
+
+        return services;
+    }
+
+    /// <summary>
+    /// Binds <see cref="ICurrentUserContext"/>: <typeparamref name="TRequestUser"/> in a request's
+    /// scope, <see cref="PlatformJobUser"/> in a scope from <see cref="JobScopes.CreatePlatformScope"/>.
+    /// </summary>
+    /// <remarks>
+    /// One registration for both, so the persistence layer stamps every connection from whichever
+    /// is in force without knowing there are two. The request's is the default: a scope is a job's
+    /// only when job code says so.
+    /// </remarks>
+    public static IServiceCollection AddSethikaCurrentUser<TRequestUser>(this IServiceCollection services)
+        where TRequestUser : class, ICurrentUserContext
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddScoped<JobScope>();
+        services.AddScoped<TRequestUser>();
+        services.AddScoped<ICurrentUserContext>(serviceProvider =>
+            serviceProvider.GetRequiredService<JobScope>().IsJob
+                ? PlatformJobUser.Instance
+                : serviceProvider.GetRequiredService<TRequestUser>());
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the outbox processor, and - unless <c>Jobs:Enabled</c> is false - Hangfire with
+    /// SQL Server storage and the recurring jobs (plan 02, B10).
+    /// </summary>
+    /// <remarks>
+    /// Hangfire keeps its tables in its own <c>HangFire</c> schema in the same database and creates
+    /// them on first start. The SQL project does not own them, and its publish profile does not drop
+    /// objects it does not know, so a publish leaves them alone. Hangfire's connections are not
+    /// stamped with a session context: its tables are not under Row-Level Security, and its
+    /// connections run no Sethika queries.
+    /// </remarks>
+    public static IServiceCollection AddSethikaJobs(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+
+        services.Configure<OutboxOptions>(configuration.GetSection(OutboxOptions.SectionName));
+        services.AddScoped<OutboxProcessor>();
+        services.AddScoped<IUserTextMessages, UserTextMessages>();
+        services.AddTransient<OutboxJob>();
+
+        var jobs = configuration.GetSection(JobsOptions.SectionName).Get<JobsOptions>() ?? new JobsOptions();
+        if (!jobs.Enabled)
+        {
+            return services;
+        }
+
+        services.AddHangfire(hangfire => hangfire
+            .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+            .UseSimpleAssemblyNameTypeSerializer()
+            .UseRecommendedSerializerSettings()
+            .UseSqlServerStorage(() => new SqlConnection(connectionString), new SqlServerStorageOptions()));
+
+        services.AddHangfireServer(options => options.WorkerCount = jobs.WorkerCount);
+        services.AddHostedService<RecurringJobs>();
 
         return services;
     }

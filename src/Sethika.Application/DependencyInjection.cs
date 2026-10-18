@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Sethika.Application.Abstractions;
 using Sethika.Application.Access.Bootstrap;
 using Sethika.Application.Access.Language;
 using Sethika.Application.Access.PasswordChange;
@@ -10,6 +11,7 @@ using Sethika.Application.Access.SignUp;
 using Sethika.Application.Access.StepUp;
 using Sethika.Application.Onboarding.Applying;
 using Sethika.Application.Onboarding.Approval;
+using Sethika.Application.Onboarding.Notifications;
 
 namespace Sethika.Application;
 
@@ -39,6 +41,9 @@ public static class DependencyInjection
         services.AddScoped<PreferredLanguageHandler>();
         services.AddScoped<ApplicationHandler>();
         services.AddScoped<ApproveRegistrationHandler>();
+
+        // What the outbox processor dispatches to, by event type.
+        services.AddScoped<IOutboxHandler, OnboardingSmsHandler>();
 
         return services;
     }
