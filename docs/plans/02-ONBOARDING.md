@@ -3,12 +3,13 @@
 Branch: `3-institution-onboarding` (cut from `develop` at `481397e`, after PR #4 and #5 merged the
 auth slice).
 
-Status: **5.1 done** (schema, catalogue, draft seeds, RLS on applications; `2bc3bc7` and the
-legal-documents fix after it). **381 tests passing** (Domain 1, Application 15, integration 365),
-every new one seen to fail under a mutation. Next: 5.2. Scope agreed on 2026-10-18: the core flow plus clarifications
+Status: **5.1 and 5.2 done** (schema, catalogue, draft seeds, RLS on applications; number series,
+file storage, the application aggregate and its EF mappings; `2bc3bc7`, `8c85645`, `f30bd69`).
+**504 tests passing** (Domain 82, Application 32, integration 390), every new one seen to fail
+under a mutation. Next: 5.4's approval transaction, then 5.3 (§4's order). Scope agreed on 2026-10-18: the core flow plus clarifications
 (§4). Required documents and checklist items are seeded as clearly-marked drafts, reject reasons as
 Sethika's own policy (B9). Files go to local disk behind `IFileStorage` (B4).
-Last updated 2026-10-18 (5.1). Update this line and the §5 boxes whenever either changes. A fresh session
+Last updated 2026-10-18 (5.2). Update this line and the §5 boxes whenever either changes. A fresh session
 trusts them and will rebuild anything they claim is missing.
 
 ---
