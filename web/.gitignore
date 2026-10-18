@@ -40,3 +40,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# browser tests (Playwright): results, screenshots, report
+/e2e/.results/
+/e2e/.report/
+/e2e/.screens/

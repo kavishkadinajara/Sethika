@@ -34,13 +34,16 @@ export function ThemeSwitcher({ className }: { className?: string }) {
   return (
     <fieldset className={className}>
       <legend className="sr-only">{t("label")}</legend>
-      <div className="inline-flex max-w-full flex-wrap gap-1 rounded-full bg-subtle p-1">
+      {/* On a phone, three equal columns across the width: wrapping the pills instead left
+          "Dark" alone on a second line at 320 px, and Sinhala's longer words made it worse.
+          The icons are decoration, so they give way to the words below sm. */}
+      <div className="grid w-full grid-cols-3 gap-1 rounded-3xl bg-subtle p-1 sm:inline-flex sm:w-auto sm:max-w-full sm:flex-wrap sm:rounded-full">
         {themePreferences.map((option) => (
           <label
             key={option}
             className={cn(
-              "relative inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-full px-4 py-1.5",
-              "text-base leading-snug font-medium text-fg transition-colors hover:bg-surface hover:text-brand",
+              "relative inline-flex min-h-11 min-w-0 cursor-pointer items-center justify-center gap-2 rounded-full px-1.5 py-1.5 text-center sm:min-w-11 sm:px-4",
+              "text-sm leading-snug font-medium sm:text-base text-fg transition-colors hover:bg-surface hover:text-brand",
               "has-checked:bg-primary has-checked:text-on-primary has-checked:shadow-[0_1px_2px_rgb(14_42_33/0.3)]",
               // The same offering glow as every other control, drawn on the visible pill.
               "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand",
@@ -55,7 +58,7 @@ export function ThemeSwitcher({ className }: { className?: string }) {
               onChange={() => applyThemePreference(option)}
               className="sr-only"
             />
-            {icons[option]}
+            <span className="hidden shrink-0 sm:inline-flex">{icons[option]}</span>
             <span>{t(option)}</span>
           </label>
         ))}

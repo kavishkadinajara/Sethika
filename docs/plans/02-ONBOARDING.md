@@ -3,15 +3,15 @@
 Branch: `3-institution-onboarding` (cut from `develop` at `481397e`, after PR #4 and #5 merged the
 auth slice).
 
-Status: **5.1, 5.2, 5.3, 5.7 and 5.4's approval transaction done** (schema, catalogue, draft
-seeds, RLS on applications; number series, file storage, the application aggregate and its EF
-mappings; the applicant API; Hangfire, the outbox processor and the four onboarding texts; the
-one-transaction approval with its decision locks). **591 tests passing** (Domain 82, Application
-71, integration 438), every new one seen to fail under a mutation. Next: the rest of 5.4, the
-review API, then the screens (5.5, 5.6). Scope agreed on 2026-10-18: the core flow plus clarifications
+Status: **5.1-5.5 and 5.7 done** (schema, catalogue, draft seeds, RLS on
+applications; number series, file storage, the application aggregate and its EF mappings; the
+applicant API; Hangfire, the outbox processor and the four onboarding texts; the review API and the
+one-transaction approval with its decision locks; the applicant screens). **602 tests passing**
+(Domain 82, Application 71, integration 449) plus 97 web unit tests, every new one seen to fail
+under a mutation, and 14 browser tests of the applicant screens. Next: the reviewer screens (5.6). Scope agreed on 2026-10-18: the core flow plus clarifications
 (§4). Required documents and checklist items are seeded as clearly-marked drafts, reject reasons as
 Sethika's own policy (B9). Files go to local disk behind `IFileStorage` (B4).
-Last updated 2026-10-18 (5.7 outbox and texts). Update this line and the §5 boxes whenever either changes. A fresh session
+Last updated 2026-10-18 (5.4 review API, 5.5 screens). Update this line and the §5 boxes whenever either changes. A fresh session
 trusts them and will rebuild anything they claim is missing.
 
 ---
@@ -490,10 +490,16 @@ demonstrates the flow, not the tests.
 
 ### 5.4 — Review and approval API (`/api/admin/registrations`)
 
-- [ ] `GET /?status=&page=` queue (Dapper, paged, oldest submitted first); `GET /{requestNo}` detail
-      with documents, office bearers, checklist, clarifications, history.
-- [ ] `POST /{requestNo}/start-review`, `PUT /{requestNo}/documents/{code}/verification`,
-      `PUT /{requestNo}/checklist`, `POST /{requestNo}/questions`, `GET .../documents/{code}/file`.
+- [x] `GET /?status=&page=` queue (Dapper, paged, oldest submitted first; open = Submitted,
+      UnderReview, InfoRequested); `GET /{requestNo}` detail with documents, office bearers,
+      checklist, clarifications, history, plus the required documents, the checklist items that
+      apply to the type and the reject reasons. A draft is never shown to a reviewer: the
+      applicant read and the reviewer read share one query, `@applicantId IS NULL` meaning
+      "reviewer, not a draft".
+- [x] `POST /{requestNo}/start-review`, `PUT /{requestNo}/documents/{code}/verification` (refusal needs
+      remarks), `PUT /{requestNo}/checklist` (all items or none; unknown, duplicate and other-type
+      items refused), `POST /{requestNo}/questions` (1-10, outbox `RegistrationInfoRequested`),
+      `GET .../documents/{code}/file`. `RegistrationReviewHandler`, `IRegistrationReviewQueries`.
 - [x] **The approval transaction (B6)**: `ApproveRegistrationHandler`, `InstitutionSlug`,
       `RegistrationLoading`, `IRegistrationLocks`/`SqlRegistrationLocks`,
       `IInstitutionModules`/`SqlInstitutionModules`, and the entities and mappings it writes
@@ -510,19 +516,43 @@ demonstrates the flow, not the tests.
       (11). **Mutations:** 21, all killed but one - the THROW on a refused applock, which cannot
       be forced without a 30-second wait. The fixture now clears what approvals create (members,
       institution documents and history, and the test requests' audit and outbox rows).
-- [ ] `POST /{requestNo}/approve` (B6) and `POST /{requestNo}/reject` (reason code + note), both
-      answering `403 stepup_required` without a step-up.
-- [ ] Tests: B6's list, the stale-RowVersion race, own-application refusal, reviewer may not
-      approve or reject, outbox and audit rows present.
+- [x] `POST /{requestNo}/approve` (B6) and `POST /{requestNo}/reject` (reason code + note; takes the
+      same decision lock as approval), both answering `403 stepup_required` without a step-up.
+- [x] Tests: `RegistrationReviewEndpointsTests` (11) - the queue's order and no drafts; a full
+      review and a stepped-up approval; a reviewer cannot decide, even stepped up; remarks and
+      checklist rules; questions with their outbox row; rejection audited, texted and final; a
+      rejection waiting for a decision in progress; own application 403; two reviewers at once, one
+      told `stale`; a reviewer downloads an upload but not a draft's. **Mutations:** 22, killed
+      but three: R2 and R7 (a second layer refuses drafts too) and R9 (upper-casing the document
+      code: the lookup runs in SQL under a case-insensitive collation; a lowercase request now pins
+      that). The checklist test left its children's-home item behind when R12 let an answer
+      reference it; it now clears the answers and the item before and after.
 
 ### 5.5 — Applicant screens
 
-- [ ] `/apply`: type → details (B11 location) → office bearers → documents → declaration → submit.
-      Draft saved per step, resumable.
-- [ ] `/apply/[requestNo]`: status, history, open questions with answers and document replacement,
-      withdraw; after approval, "Open <institution>" (B8).
-- [ ] en/si/ta strings, si/ta drafts in `docs/translations-to-review.md`; 320 px pass; Vitest for
-      the step logic.
+- [x] `/apply` (the applicant's list) and `/apply/new`: type → details (B11 location, with "use my
+      location" and an OpenStreetMap link to the pin) → office bearers → documents → declaration →
+      submit. Draft saved per step, resumable: `/apply/[requestNo]` opens a draft at the first step
+      with something left to do (`resumeStep`).
+- [x] `/apply/[requestNo]`: status, history, open questions with answers and document replacement,
+      withdraw (a draft too: it counts towards the three); after approval, "Open <institution>"
+      (B8) through `session.switchInstitution`. **Known gap:** an applicant in an institution's
+      session is told to sign in again, because the API has no switch back to a personal session.
+- [x] en/si/ta strings, si/ta drafts in `docs/translations-to-review.md` (the `Apply` namespace,
+      169 strings each); Vitest for the step logic (`lib/onboarding/progress.test.ts`, 13).
+- [x] **Browser tests (Playwright, `web/e2e`, skill `.claude/skills/browser-test`)** against the
+      real API, SQL Server and Redis, on a desktop window and a 320 px phone, failing on any
+      console error or 5xx: signup by texted code (a wrong code, a weak password refused by the API
+      and fixed); the whole application from a blank form to submitted, every refusal on the way
+      (empty form, no signatory, missing documents, a .txt file, the declaration unticked); a draft
+      reopening at office bearers and withdrawn; another's number not found; a reviewer's question
+      answered after changing the details (three steps, no declaration); the list and form in all
+      three languages with nothing wider than the window and nothing clipped. 14 runs, all
+      passing. Found and fixed: at 320 px the theme switcher left "Dark" alone on a second line,
+      and in Sinhala and Tamil its icons pushed the words out of their pills (the clipping check
+      fails on the old version). Next's dev server races on its prerender manifest when two
+      routes first compile at once (500 "Unexpected end of JSON input"); the setup warms every
+      route up one at a time.
 
 ### 5.6 — Reviewer screens
 
