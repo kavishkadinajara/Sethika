@@ -4,8 +4,9 @@
     role to have no institution and IsTemplate = 0, so it is a system role, not a template.
 
     PLATFORM_ADMIN is what the bootstrap command (plan Q5) gives the first platform administrator.
-    Neither holds a permission yet: the donor and platform screens bring theirs, into their levels'
-    ceilings in 10_RbacCatalogue.sql.
+    PLATFORM_REVIEWER (plan 02, B1) sits at PLATFORM_STAFF: it reviews registration requests but
+    does not decide them. What each holds is granted, inside its level's ceiling, in
+    10_RbacCatalogue.sql.
 
     The target is narrowed to global roles in a CTE rather than in ON: UX_Roles_Code_Global only
     makes Code unique where InstitutionId IS NULL, and a filter in ON would let a same-coded
@@ -20,7 +21,8 @@ USING (
     SELECT v.Scope, l.Id AS RoleLevelId, v.Code, v.Name
     FROM (VALUES
         ('Donor',    'DONOR',          'DONOR',          N'Donor'),
-        ('Platform', 'PLATFORM_ADMIN', 'PLATFORM_ADMIN', N'Platform administrator')
+        ('Platform', 'PLATFORM_ADMIN', 'PLATFORM_ADMIN', N'Platform administrator'),
+        ('Platform', 'PLATFORM_STAFF', 'PLATFORM_REVIEWER', N'Platform reviewer')
     ) AS v(Scope, LevelCode, Code, Name)
     JOIN auth.RoleLevels l ON l.Code = v.LevelCode
 ) AS s

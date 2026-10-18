@@ -112,6 +112,21 @@ maximum).
 - Per-user Grant/Deny overrides; Deny always wins; temporary role validity windows
 - Institution modules come from type defaults + plan; disabled module removes its permissions automatically
 
+## Unconfirmed reference data (seeded as drafts)
+CLAUDE.md forbids inventing facts about real institutions. Where the flow cannot run without a row,
+the row is seeded as a visibly marked draft and listed here until someone confirms or replaces it.
+
+| Data | Seed | Marked | Confirm with |
+|------|------|--------|--------------|
+| Terms of Use, Privacy Policy | `09_LegalDocuments.sql` | `0.1-draft` in title and body | a legal reviewer |
+| Institution declaration | `09_LegalDocuments.sql` | `0.1-draft` in title and body | a legal reviewer |
+| Document types and the documents each institution type must upload | `12_OnboardingDrafts.sql` | `DRAFT` in every name and instruction | real institutions of each type |
+| Reviewer checklist items | `12_OnboardingDrafts.sql` | `DRAFT` in every question | the platform's reviewers |
+
+The registration reject reasons in the same seed are Sethika's own review policy, not facts about
+institutions, and are not drafts. Every row is read from the tables at run time, so a confirmed list
+is a seed edit, not a code change.
+
 ## Deliverables produced so far
 - `docs/proposal/Sethika_Project_Proposal.docx` (NIBM format)
 - `src/Sethika.Database/` SQL project (78 tables, idempotent seeds) and `docs/erd/*.png` (5 diagrams)
@@ -124,4 +139,5 @@ tables above once the code exists and the choice has held.
 
 | Plan | Branch | State |
 |------|--------|-------|
-| `docs/plans/01-AUTH.md` — authentication, MFA step-up, i18n foundation, design system | `2-authentication-and-i18n-foundation` | In progress — its status line is kept current |
+| `docs/plans/01-AUTH.md` — authentication, MFA step-up, i18n foundation, design system | `2-authentication-and-i18n-foundation` | Merged into `develop` (PR #4, #5); browser walk-throughs still owed — see its status line |
+| `docs/plans/02-ONBOARDING.md` — institution onboarding and approval, outbox processor | `3-institution-onboarding` | In progress — its status line is kept current |

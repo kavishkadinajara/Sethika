@@ -85,14 +85,24 @@ endpoints get real permissions rather than "any signed-in user":
 
 | Portal / module / screen | Permission | Scope | MFA | Held by |
 |---|---|---|---|---|
-| DONOR / `APPLY` / `ONBOARDING.APPLICATION` | `ONBOARDING.APPLICATION.VIEW` | Donor | 0 | `DONOR` |
-| | `ONBOARDING.APPLICATION.CREATE` | Donor | 0 | `DONOR` |
-| | `ONBOARDING.APPLICATION.EDIT` (edit, upload, submit, withdraw, answer) | Donor | 0 | `DONOR` |
+| DONOR / `APPLY` / `ONBOARDING.APPLICATION` | `ONBOARDING.APPLICATION.VIEW` | Self | 0 | `DONOR` |
+| | `ONBOARDING.APPLICATION.CREATE` | Self | 0 | `DONOR` |
+| | `ONBOARDING.APPLICATION.EDIT` (edit, upload, submit, withdraw, answer) | Self | 0 | `DONOR` |
 | ADMIN / `ONBOARDING` / `ONBOARDING.REQUESTS` | `ONBOARDING.REQUESTS.VIEW` | Platform | 0 | `PLATFORM_ADMIN`, `PLATFORM_REVIEWER` |
 | | `ONBOARDING.REQUESTS.EDIT` (start review, verify documents, checklist, ask) | Platform | 0 | `PLATFORM_ADMIN`, `PLATFORM_REVIEWER` |
 | | `ONBOARDING.REQUESTS.APPROVE` | Platform | **1** | `PLATFORM_ADMIN` |
 | | `ONBOARDING.REQUESTS.REJECT` | Platform | **1** | `PLATFORM_ADMIN` |
 
+- The applicant's permissions are `Self` scope. `auth.Permissions.Scope` has no `Donor` value, and
+  `CK_RoleLevelPermissions_Scope` lets any level hold a `Self` permission. That fits: applying is
+  something a person does for themselves.
+- The `DONOR` role is global (`InstitutionId NULL`), and `PermissionService` reads only the grants
+  for the session's own institution, or the global ones when none is selected. So **the applicant's
+  endpoints answer only in a personal session**. An owner who switched into an institution and then
+  wants to apply for a second one switches back first. The web `/apply` page does that switch
+  itself (5.5).
+- The new modules `APPLY` (DONOR portal) and `ONBOARDING` (ADMIN portal) are not `IsCore`. Core
+  means "on in every institution", and neither belongs to an institution.
 - A new system role `PLATFORM_REVIEWER` at the existing `PLATFORM_STAFF` level: it reviews but does
   not decide. That is maker-checker at the level ceiling, and it costs one seed row. Only the
   `bootstrap` admin exists in the demo, so the admin can do every step.
@@ -201,7 +211,7 @@ insert). A rolled-back transaction rolls the number back too, so the series stay
 3. Insert `org.Institutions` (B7) with `ApprovedBy/At`.
 4. Copy every `Verified` request document into `org.InstitutionDocuments`
    (`SourceRequestDocumentId`, same `FileId`: no file copy).
-5. Enable modules: every `IsCore` module (`Source = 'Default'`), plus `InstitutionTypeDefaultModules`
+5. Enable modules: every `IsCore` module of the INSTITUTION portal (`Source = 'Default'`), plus `InstitutionTypeDefaultModules`
    (`Default`) and `PlanModules` of the requested plan or `FREE` (`Plan`).
 6. Clone the template roles: one institution role per template (`TemplateRoleId` set, same level,
    code and name), with the template's grants copied into `auth.RolePermissions`.
@@ -246,7 +256,8 @@ user chose the same answer as for the legal texts (plan 01, Q4): seed a small, g
 - `org.VerificationChecklistItems`: registration number matches the certificate; applicant appears
   on the documents; the location pin matches the address; the office phone was answered.
 - `core.LookupValues` for `REJECT_REASON`: documents incomplete, registration could not be
-  verified, duplicate application, not an eligible institution, other (note required).
+  verified, duplicate application, not an eligible institution, other (note required). These are
+  Sethika's own review policy, not facts about institutions, so they are **not** marked DRAFT.
 - `core.LegalDocuments`: `INSTITUTION_DECLARATION` `0.1-draft` in en/si/ta, si/ta added to
   `docs/translations-to-review.md`.
 
@@ -335,16 +346,29 @@ demonstrates the flow, not the tests.
 
 ### 5.1 — Schema, catalogue and draft seeds
 
-- [ ] RLS predicate on `org.RegistrationRequests` (B2); second publish shows no schema statements.
-- [ ] `10_RbacCatalogue.sql`: the `APPLY` and `ONBOARDING` modules, both screens, 7 permissions,
-      their dependencies, the `DONOR`/`PLATFORM_ADMIN`/`PLATFORM_STAFF` ceilings, and the synced
-      system-role grants (B1). `08_SystemRoles.sql`: `PLATFORM_REVIEWER`.
-- [ ] `12_OnboardingDrafts.sql` (B9) and `INSTITUTION_DECLARATION` in `09_LegalDocuments.sql`,
-      run from `PostDeployment.sql`, idempotent (published twice, second publish changes nothing).
-- [ ] `RbacCatalogueTests` extended: every system-role grant is inside its ceiling; the donor holds
-      exactly the three applicant permissions; approve and reject are `RequiresMfa`.
-- [ ] RLS tests: applicant A cannot see, update or insert-as B's request; platform sees all; the
-      created institution sees its own request.
+- [x] RLS predicate on `org.RegistrationRequests` (B2): FILTER + BLOCK AFTER INSERT/UPDATE with the
+      existing `sec.fn_TenantOrOwner`. A second publish (`/Action:Script`) shows no schema statements.
+- [x] `10_RbacCatalogue.sql`: the `APPLY` and `ONBOARDING` modules (not `IsCore`), both screens,
+      7 permissions (applicant ones `Self` scope, see B1), 5 dependencies, the
+      `DONOR`/`PLATFORM_ADMIN`/`PLATFORM_STAFF` ceilings, and a fourth synced set, the system-role
+      grants, guarded by `THROW 51006`. `08_SystemRoles.sql`: `PLATFORM_REVIEWER`.
+- [x] `12_OnboardingDrafts.sql` (B9) and `INSTITUTION_DECLARATION` `0.1-draft` in
+      `09_LegalDocuments.sql` (each row now carries its own `EffectiveFrom`), run from
+      `PostDeployment.sql`. Published to `Sethika` and `Sethika_Test`. `docs/DECISIONS.md` lists the
+      drafts; the declaration's si/ta are in `docs/translations-to-review.md`.
+- [x] `RbacCatalogueTests`: every template and system-role grant inside its ceiling; each system role
+      holds exactly its grants, read back through the view; only approve and reject need step-up; a
+      reviewer granted APPROVE in the seed stops the deploy (51006), as does an unknown role; a grant
+      taken out of the seed is removed.
+- [x] `RegistrationRequestSecurityTests` (7): an applicant sees only their own; the platform sees all;
+      the institution sees only the request that created it, and only once linked; nobody else, and
+      an unstamped connection, sees none; another applicant's UPDATE changes 0 rows; filing in
+      someone else's name and handing one's application to someone else are refused (33504).
+      The fixture reset now switches `FK_RegReq_Institution` off around its two deletes and back on
+      `WITH CHECK`: a request and the institution it created point at each other.
+      **Mutations, all killed:** each of the three predicates dropped; a donor grant deleted; REJECT
+      without step-up; the reviewer granted APPROVE; the PLATFORM_STAFF ceiling narrowed; the 51006
+      guard removed from the seed; the system-grant MERGE without its delete.
 
 ### 5.2 — Building blocks
 

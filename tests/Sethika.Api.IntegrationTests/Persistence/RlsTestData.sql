@@ -58,8 +58,15 @@ DELETE FROM org.InstitutionModulesHistory;
 DELETE FROM booking.Bookings;
 DELETE FROM booking.SlotInstances;
 DELETE FROM booking.MealSlots;
+
+/*  An institution and the application that created it point at each other (RegistrationRequestId
+    one way, CreatedInstitutionId the other), so neither can go first once a test has linked them
+    (plan 02). CreatedInstitutionId cannot simply be nulled either: an Approved request must keep
+    it. The FK is switched off for the two deletes and back on WITH CHECK, so it stays trusted.  */
+ALTER TABLE org.RegistrationRequests NOCHECK CONSTRAINT FK_RegReq_Institution;
 DELETE FROM org.Institutions;
 DELETE FROM org.RegistrationRequests;
+ALTER TABLE org.RegistrationRequests WITH CHECK CHECK CONSTRAINT FK_RegReq_Institution;
 DELETE FROM auth.Users WHERE Id IN (@alphaUser, @betaUser);
 
 

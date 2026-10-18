@@ -374,3 +374,23 @@ Questions for the reviewers:
 | `OTP_STEPUP / SMS` | Your Sethika verification code is {code} (40) | ඔබගේ Sethika සත්‍යාපන කේතය: {code} (34) | உங்கள் Sethika சரிபார்ப்புக் குறியீடு: {code} (45) | | |
 | `OTP_RESET / SMS` | Your Sethika password reset code is {code} (42) | ඔබගේ Sethika මුරපදය යළි සැකසීමේ කේතය: {code} (44) | உங்கள் Sethika கடவுச்சொல் மீட்டமைப்புக் குறியீடு: {code} (56) | | |
 | `OTP_LOGIN / SMS` | Your Sethika sign-in code is {code}. Do not share it with anyone. (65) | ඔබගේ Sethika පිවිසුම් කේතය: {code}. එය කිසිවෙකු සමඟ බෙදා නොගන්න. (64) | உங்கள் Sethika உள்நுழைவுக் குறியீடு: {code}. இதை யாருடனும் பகிர வேண்டாம். (73) | | |
+
+## Legal texts (`core.LegalDocuments`)
+
+Seeded by `src/Sethika.Database/Scripts/Seed/09_LegalDocuments.sql`. These are `0.1-draft`
+placeholders, and their English is a placeholder too: the real legal text has not been written.
+Review the Sinhala and Tamil for meaning and tone only.
+
+A seeded version is **never edited in place**. Its `ContentSha256` is the proof of what a user
+accepted, so a correction is a new `Version` row with `IsCurrent = 1`, not a change to the old
+text.
+
+| Code / Language | What it is | Reviewer | Status |
+|---|---|---|---|
+| `TERMS / si`, `TERMS / ta` | Terms of Use placeholder, accepted at signup | | |
+| `PRIVACY / si`, `PRIVACY / ta` | Privacy Policy placeholder, accepted at signup | | |
+| `INSTITUTION_DECLARATION / si`, `INSTITUTION_DECLARATION / ta` | What an applicant declares when submitting an institution application (plan 02): the details and documents are true, the institution authorised them to apply, and they have seen this draft | | |
+
+Question for the reviewers: the declaration says `ආයතනය ඔබට බලය දී ඇති බව` / `நிறுவனம் உங்களுக்கு
+அதிகாரம் அளித்துள்ளது` for "the institution has authorised you". Is that how a trustee or a home's
+manager would put it?
