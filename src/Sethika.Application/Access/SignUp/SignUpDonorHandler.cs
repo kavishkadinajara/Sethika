@@ -40,7 +40,7 @@ public sealed class SignUpDonorHandler(
     private const string DonorRoleCode = "DONOR";
 
     /// <summary>The documents a donor must accept. Each in any one language.</summary>
-    private static readonly string[] RequiredDocuments = ["TERMS", "PRIVACY"];
+    private static readonly string[] RequiredDocuments = [.. LegalDocumentCodes.Signup];
 
     /// <summary>Creates the account, or says why not.</summary>
     public async Task<SignUpDonorResult> HandleAsync(

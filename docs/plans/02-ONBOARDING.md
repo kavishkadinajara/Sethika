@@ -3,10 +3,12 @@
 Branch: `3-institution-onboarding` (cut from `develop` at `481397e`, after PR #4 and #5 merged the
 auth slice).
 
-Status: **planned, nothing built.** Scope agreed on 2026-10-18: the core flow plus clarifications
-(§4). Required documents, checklist items and reject reasons are seeded as clearly-marked drafts
-(B9). Files go to local disk behind `IFileStorage` (B4).
-Last updated 2026-10-18. Update this line and the §5 boxes whenever either changes. A fresh session
+Status: **5.1 done** (schema, catalogue, draft seeds, RLS on applications; `2bc3bc7` and the
+legal-documents fix after it). **381 tests passing** (Domain 1, Application 15, integration 365),
+every new one seen to fail under a mutation. Next: 5.2. Scope agreed on 2026-10-18: the core flow plus clarifications
+(§4). Required documents and checklist items are seeded as clearly-marked drafts, reject reasons as
+Sethika's own policy (B9). Files go to local disk behind `IFileStorage` (B4).
+Last updated 2026-10-18 (5.1). Update this line and the §5 boxes whenever either changes. A fresh session
 trusts them and will rebuild anything they claim is missing.
 
 ---
@@ -369,6 +371,15 @@ demonstrates the flow, not the tests.
       **Mutations, all killed:** each of the three predicates dropped; a donor grant deleted; REJECT
       without step-up; the reviewer granted APPROVE; the PLATFORM_STAFF ceiling narrowed; the 51006
       guard removed from the seed; the system-grant MERGE without its delete.
+- [x] **Found by the full suite:** `GET /api/legal/current` returned every current document, so the
+      declaration would have appeared on the donor signup screen as a third thing to accept. The
+      query now takes the codes it wants (`LegalDocumentCodes.Signup` for that endpoint, shared with
+      `SignUpDonorHandler`); `ADonorSignsUpWithAPhoneAndMakesAnAuthenticatedCall` asserts exactly
+      `PRIVACY` and `TERMS`, and goes red with the code filter removed.
+- [x] `System.Security.Cryptography.Pkcs` pinned to 10.0.13 in Infrastructure, and the 10.0.12
+      packages moved to 10.0.13: two .NET DoS advisories published 2026-10-13 made restore fail
+      (NuGet audit warnings are errors). Remove the pin once `Microsoft.Data.SqlClient` depends on a
+      patched version.
 
 ### 5.2 — Building blocks
 

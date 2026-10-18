@@ -1,7 +1,7 @@
 namespace Sethika.Application.Abstractions;
 
 /// <summary>A legal document as shown to a user before they accept it.</summary>
-/// <param name="Code"><c>TERMS</c> or <c>PRIVACY</c>.</param>
+/// <param name="Code">One of <c>LegalDocumentCodes</c>.</param>
 /// <param name="Version">The version, e.g. <c>0.1-draft</c>.</param>
 /// <param name="Language">The language this text is in, which may be the fallback.</param>
 /// <param name="Title">Shown as the heading.</param>
@@ -21,10 +21,11 @@ public sealed record CurrentLegalDocument(
 public interface ILegalDocumentQueries
 {
     /// <summary>
-    /// The current version of each document in <paramref name="language"/>, or in English where
-    /// that language has none.
+    /// The current version of each of <paramref name="codes"/> in <paramref name="language"/>, or in
+    /// English where that language has none.
     /// </summary>
     Task<IReadOnlyList<CurrentLegalDocument>> GetCurrentAsync(
         string language,
+        IReadOnlyCollection<string> codes,
         CancellationToken cancellationToken = default);
 }

@@ -227,7 +227,8 @@ public sealed class AuthEndpointsTests(SethikaTestDatabase database) : IAsyncLif
 
         var documents = await client.GetFromJsonAsync<JsonElement[]>("/api/legal/current?language=si");
         Assert.NotNull(documents);
-        Assert.Equal(2, documents.Length);
+        // Signup's two, and not the institution declaration (plan 02), which a donor never makes.
+        Assert.Equal(["PRIVACY", "TERMS"], documents.Select(d => d.GetProperty("code").GetString()));
         Assert.All(documents, d => Assert.Equal("si", d.GetProperty("language").GetString()));
 
         using var request = await client.PostAsJsonAsync("/api/auth/otp/request", new { phoneNumber = LocalSpelling(phone), purpose = "signup", language = "si" });
