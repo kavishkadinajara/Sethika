@@ -48,3 +48,8 @@ dotnet_naming_symbols.private_instance_fields.applicable_accessibilities = priva
 dotnet_naming_style.underscore_prefix.required_prefix = _
 dotnet_naming_style.underscore_prefix.capitalization = camel_case
 dotnet_naming_style.pascal_case.capitalization = pascal_case
+
+# CA1711 reserves the "Permission" suffix for System.Security permission classes, which this
+# codebase has none of. The RBAC entities are named for their tables (auth.Permissions,
+# auth.RolePermissions, ...), and renaming them to dodge the rule would hide that mapping.
+dotnet_code_quality.CA1711.allowed_suffixes = Permission

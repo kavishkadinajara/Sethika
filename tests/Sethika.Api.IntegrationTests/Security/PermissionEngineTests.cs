@@ -171,7 +171,8 @@ public sealed class PermissionEngineTests(SethikaTestDatabase database)
         await ExecuteAsync(
             """
             DELETE FROM auth.RolePermissions
-            WHERE PermissionId IN (SELECT Id FROM auth.Permissions WHERE Code = @code);
+            WHERE PermissionId IN (SELECT Id FROM auth.Permissions WHERE Code = @code)
+              AND RoleId IN (SELECT Id FROM auth.Roles WHERE Code = 'ALPHA_STEWARD');
 
             INSERT auth.UserPermissionOverrides
                 (UserId, InstitutionId, PermissionId, Effect, Reason, CreatedBy)
@@ -279,7 +280,8 @@ public sealed class PermissionEngineTests(SethikaTestDatabase database)
         await ExecuteAsync(
             """
             DELETE FROM auth.RolePermissions
-            WHERE PermissionId IN (SELECT Id FROM auth.Permissions WHERE Code = @code);
+            WHERE PermissionId IN (SELECT Id FROM auth.Permissions WHERE Code = @code)
+              AND RoleId IN (SELECT Id FROM auth.Roles WHERE Code = 'ALPHA_STEWARD');
             """,
             new { code = Approve });
 
@@ -341,5 +343,6 @@ public sealed class PermissionEngineTests(SethikaTestDatabase database)
         public Guid? UserId { get; init; }
         public int? InstitutionId { get; init; }
         public bool IsPlatform { get; init; }
+        public string? TokenId { get; init; }
     }
 }

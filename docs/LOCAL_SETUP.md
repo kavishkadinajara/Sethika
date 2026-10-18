@@ -42,3 +42,15 @@ The project targets SQL Server 2022 (`Sql160`). When publishing to Azure SQL add
 
 ## 5. Secrets
 Keep connection strings in `dotnet user-secrets` (API) and `.env.local` (web). Never commit them.
+
+## 6. Web app and API together
+The browser only talks to the Next.js app; `/api/*` is proxied to the API (plan A3).
+`API_BASE_URL` (server-only) says where the API is and defaults to the API's `http` launch profile,
+`http://localhost:5182`. It is read when `next build` runs, so set it before building, not only
+before `next start`:
+
+```bash
+dotnet run --project src/Sethika.Api --launch-profile http   # API on :5182
+cd web && npm run dev                                         # web on :3000, /api/* -> :5182
+cd web && npm test                                            # unit tests (Vitest)
+```

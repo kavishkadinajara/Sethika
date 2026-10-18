@@ -5,6 +5,10 @@ public class Role
     public int Id { get; set; }
     public int? InstitutionId { get; set; }
     public string Scope { get; set; } = null!;
+
+    /// <summary>The level the role sits at - plan A15. Always a level of the role's own scope.</summary>
+    public byte RoleLevelId { get; set; }
+
     public string Code { get; set; } = null!;
     public string Name { get; set; } = null!;
     public string? Description { get; set; }

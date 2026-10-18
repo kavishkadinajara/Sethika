@@ -1,0 +1,48 @@
+﻿/*  SMS templates for one-time codes (plan 5.6): one per OtpPurpose that sends an SMS today - signup
+    (/api/auth/otp/request), stepup (/api/auth/stepup/request) and reset (/api/auth/otp/request with
+    purpose reset) - in en, si and ta. A reset code says what it is for, so someone who did not ask
+    to reset their password can tell from the message alone that somebody else did. login
+    (/api/auth/otp/request with purpose login) says not to share the code: read out to a caller
+    claiming to be Sethika, it hands over the account by itself.
+
+    OtpService reads a body by (Code, Channel, Language), falls back to 'en' with a warning when the
+    language has none, and refuses to send at all when 'en' is missing too. {code} is the only
+    placeholder. The wording started from the hard-coded texts these replace, so nothing a user
+    receives changed with the move.
+
+    Every body fits one SMS segment, because each extra segment is paid for: English is GSM-7
+    (160 characters a segment), Sinhala and Tamil are UCS-2 (70). Sent with a six-digit code:
+    verification en 40, si 34, ta 45; reset en 42, si 44, ta 56; login en 65, si 64, ta 73.
+    The Tamil sign-in text is three over and goes as two segments until a reviewer shortens it
+    (docs/translations-to-review.md). Keep any new body under those limits.
+
+    Matched on (Code, Channel, Language), never on Id: notify.Notifications.TemplateId points at
+    these rows, so they are updated in place, and rows another seed owns are never deleted.
+
+    The si and ta bodies are drafts until a native speaker signs off docs/translations-to-review.md.
+
+    Saved as UTF-8 with a BOM so the Sinhala and Tamil survive the build on any machine's code page. */
+MERGE notify.Templates AS t
+USING (VALUES
+ ('OTP_SIGNUP', 'SMS', 'en', N'Your Sethika verification code is {code}'),
+ ('OTP_SIGNUP', 'SMS', 'si', N'ඔබගේ Sethika සත්‍යාපන කේතය: {code}'),
+ ('OTP_SIGNUP', 'SMS', 'ta', N'உங்கள் Sethika சரிபார்ப்புக் குறியீடு: {code}'),
+ ('OTP_STEPUP', 'SMS', 'en', N'Your Sethika verification code is {code}'),
+ ('OTP_STEPUP', 'SMS', 'si', N'ඔබගේ Sethika සත්‍යාපන කේතය: {code}'),
+ ('OTP_STEPUP', 'SMS', 'ta', N'உங்கள் Sethika சரிபார்ப்புக் குறியீடு: {code}'),
+ ('OTP_RESET',  'SMS', 'en', N'Your Sethika password reset code is {code}'),
+ ('OTP_RESET',  'SMS', 'si', N'ඔබගේ Sethika මුරපදය යළි සැකසීමේ කේතය: {code}'),
+ ('OTP_RESET',  'SMS', 'ta', N'உங்கள் Sethika கடவுச்சொல் மீட்டமைப்புக் குறியீடு: {code}'),
+ ('OTP_LOGIN',  'SMS', 'en', N'Your Sethika sign-in code is {code}. Do not share it with anyone.'),
+ ('OTP_LOGIN',  'SMS', 'si', N'ඔබගේ Sethika පිවිසුම් කේතය: {code}. එය කිසිවෙකු සමඟ බෙදා නොගන්න.'),
+ ('OTP_LOGIN',  'SMS', 'ta', N'உங்கள் Sethika உள்நுழைவுக் குறியீடு: {code}. இதை யாருடனும் பகிர வேண்டாம்.')
+) AS s(Code, Channel, Language, Body)
+ON t.Code = s.Code AND t.Channel = s.Channel AND t.Language = s.Language
+-- Compared as binary: under the database's case-insensitive collation a case-only edit would never
+-- deploy, and a zero-width joiner - which Sinhala conjuncts such as සත්‍යාපන depend on - can compare
+-- as equal to its absence. IsActive is left alone: switching a template off is an operator's call.
+WHEN MATCHED AND t.Body COLLATE Latin1_General_BIN2 <> s.Body COLLATE Latin1_General_BIN2
+    THEN UPDATE SET Body = s.Body
+WHEN NOT MATCHED THEN
+    INSERT (Code, Channel, Language, Subject, Body, IsActive)
+    VALUES (s.Code, s.Channel, s.Language, NULL, s.Body, 1);

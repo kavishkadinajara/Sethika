@@ -8,6 +8,7 @@ internal sealed class TestCurrentUserContext : ICurrentUserContext
     public Guid? UserId { get; init; }
     public int? InstitutionId { get; init; }
     public bool IsPlatform { get; init; }
+    public string? TokenId { get; init; }
 
     /// <summary>Institution staff: sees one tenant.</summary>
     internal static TestCurrentUserContext ForInstitution(int institutionId) =>

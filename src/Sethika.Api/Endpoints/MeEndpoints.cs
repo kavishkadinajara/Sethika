@@ -1,0 +1,118 @@
+using Microsoft.AspNetCore.Mvc;
+using Sethika.Application.Abstractions;
+using Sethika.Application.Access.Language;
+
+namespace Sethika.Api.Endpoints;
+
+/// <summary>The signed-in user's view of their own account.</summary>
+/// <remarks>
+/// Authenticated but not permission-gated: everything under <c>/api/me</c> reads or changes only
+/// the caller's own row, named by the token, never by the request. A permission to see one's own
+/// permissions would be circular, and no role should be needed to choose one's own language.
+/// </remarks>
+internal static class MeEndpoints
+{
+    public static IEndpointRouteBuilder MapMeEndpoints(this IEndpointRouteBuilder app)
+    {
+        var me = app.MapGroup("/api/me").RequireAuthorization();
+
+        me.MapGet(string.Empty, GetProfileAsync);
+        me.MapGet("/permissions", GetPermissionsAsync);
+        me.MapPut("/language", SetLanguageAsync);
+
+        return app;
+    }
+
+    /// <summary>The caller's name and preferred language.</summary>
+    /// <remarks>
+    /// The web app reads the language once a session starts and opens in it (plan A11: the account's
+    /// language comes before the locale cookie), so a donor who chose Sinhala on one device sees
+    /// Sinhala on the next. No contact details: the app has no screen that needs them yet.
+    /// </remarks>
+    private static async Task<IResult> GetProfileAsync(
+        HttpContext httpContext,
+        ICurrentUserContext currentUser,
+        IAccountQueries accounts,
+        CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        // A valid token for a deleted account: the same answer as a token that is not valid.
+        if (await accounts.GetProfileAsync(userId, cancellationToken) is not { } profile)
+        {
+            return Results.Unauthorized();
+        }
+
+        httpContext.Response.Headers.CacheControl = "no-store";
+
+        return Results.Ok(new
+        {
+            fullName = profile.FullName,
+            displayName = profile.DisplayName,
+            preferredLanguage = profile.PreferredLanguage,
+        });
+    }
+
+    /// <summary>
+    /// The caller's own effective permission codes.
+    /// </summary>
+    /// <remarks>
+    /// The Next.js app reads this once per session to decide what to render; it is a convenience
+    /// for the UI, not a security boundary - each endpoint still carries its own [HasPermission].
+    /// </remarks>
+    private static async Task<IResult> GetPermissionsAsync(
+        ICurrentUserContext currentUser,
+        IPermissionService permissions,
+        CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        var effective = await permissions
+            .GetEffectivePermissionsAsync(userId, currentUser.InstitutionId, cancellationToken);
+
+        return Results.Ok(new
+        {
+            userId,
+            institutionId = currentUser.InstitutionId,
+            isPlatform = currentUser.IsPlatform,
+            permissions = effective.Codes.OrderBy(c => c, StringComparer.Ordinal),
+        });
+    }
+
+    /// <summary>
+    /// Sets the caller's preferred language: 204 whether or not it changed, so the web app can send
+    /// it on every switch without reading it first.
+    /// </summary>
+    /// <remarks>
+    /// The user is the token's <c>sub</c>, never a value in the body, so a caller can only ever change
+    /// their own row. The language reaches the SMS a step-up sends, which reads it from the row.
+    /// </remarks>
+    private static async Task<IResult> SetLanguageAsync(
+        [FromBody] PreferredLanguageBody body,
+        ICurrentUserContext currentUser,
+        PreferredLanguageHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        return await handler.SetAsync(userId, body.Language, cancellationToken) switch
+        {
+            PreferredLanguageResult.Saved => Results.NoContent(),
+            PreferredLanguageResult.UnsupportedLanguage =>
+                ApiErrors.Error(StatusCodes.Status400BadRequest, "unsupported_language"),
+
+            // A valid token for a deleted account: the same answer as a token that is not valid.
+            PreferredLanguageResult.UserNotFound => Results.Unauthorized(),
+            _ => ApiErrors.Error(StatusCodes.Status409Conflict, "concurrency_conflict"),
+        };
+    }
+}

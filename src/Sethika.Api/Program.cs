@@ -1,10 +1,15 @@
-using System.Text;
+using System.Net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
+using Sethika.Api.Bootstrap;
+using Sethika.Api.Endpoints;
 using Sethika.Api.Security;
+using Sethika.Application;
 using Sethika.Application.Abstractions;
 using Sethika.Infrastructure;
+using Sethika.Infrastructure.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +33,11 @@ static string Required(string? value, string key) =>
 builder.Services.AddSethikaPersistence(sqlConnectionString);
 builder.Services.AddSethikaPermissions(redisConnectionString);
 
+// Reads its configuration now, so a production host with the console SMS sender - or with
+// one-time codes going to the log - fails to start rather than failing its first signup.
+builder.Services.AddSethikaAccess(builder.Configuration, builder.Environment.IsDevelopment());
+builder.Services.AddSethikaApplication();
+
 // The three values that stamp the database session context for Row-Level Security are
 // read from the validated token, never from the request.
 builder.Services.AddHttpContextAccessor();
@@ -44,7 +54,7 @@ builder.Services
             ValidateAudience = true,
             ValidAudience = SethikaJwt.Audience,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSigningKey)),
+            IssuerSigningKey = SethikaJwt.CreateSigningKey(jwtSigningKey),
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30),
         };
@@ -53,40 +63,48 @@ builder.Services
 // Policies are built per permission code on demand rather than registered one by one.
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, StepUpAuthorizationResultHandler>();
 builder.Services.AddAuthorization();
+
+// The client address feeds the per-client rate limits and the sign-in history. Behind the Next.js
+// rewrite (plan A3) and Azure's front end, the connection comes from a proxy and the client is in
+// X-Forwarded-For - but anyone can send that header, so it is believed only from a proxy listed
+// here. Loopback is trusted by default, which covers local development. In production the proxy
+// addresses must be configured, or every client appears to be the proxy and shares one budget.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+
+    foreach (var proxy in builder.Configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [])
+    {
+        options.KnownProxies.Add(IPAddress.Parse(proxy));
+    }
+});
 
 var app = builder.Build();
 
+// `dotnet run --project src/Sethika.Api -- bootstrap` creates the first platform administrator
+// (plan Q5) and exits instead of serving.
+if (args is [BootstrapCommand.Name, ..])
+{
+    Environment.ExitCode = await BootstrapCommand.RunAsync(app.Services, app.Configuration, Console.Out);
+    return;
+}
+
+app.UseForwardedHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
-// Returns the caller's own effective permission codes. The Next.js app reads this once per
-// session to decide what to render; it is a convenience for the UI, not a security boundary -
-// each endpoint still carries its own [HasPermission].
-app.MapGet("/api/me/permissions", async (
-        ICurrentUserContext currentUser,
-        IPermissionService permissions,
-        CancellationToken cancellationToken) =>
-    {
-        if (currentUser.UserId is not { } userId)
-        {
-            return Results.Unauthorized();
-        }
-
-        var effective = await permissions
-            .GetEffectivePermissionsAsync(userId, currentUser.InstitutionId, cancellationToken);
-
-        return Results.Ok(new
-        {
-            userId,
-            institutionId = currentUser.InstitutionId,
-            isPlatform = currentUser.IsPlatform,
-            permissions = effective.Codes.OrderBy(c => c, StringComparer.Ordinal),
-        });
-    })
-    .RequireAuthorization();
+app.MapAuthEndpoints();
+app.MapSessionEndpoints();
+app.MapStepUpEndpoints();
+app.MapPasswordEndpoints();
+app.MapInstitutionRoleEndpoints();
+app.MapLegalEndpoints();
+app.MapMeEndpoints();
 
 // Demonstrates the guard, and is what the integration tests exercise.
 app.MapGet("/api/bookings/calendar", () => Results.Ok(new { ok = true }))

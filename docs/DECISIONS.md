@@ -116,3 +116,12 @@ maximum).
 - `docs/proposal/Sethika_Project_Proposal.docx` (NIBM format)
 - `src/Sethika.Database/` SQL project (78 tables, idempotent seeds) and `docs/erd/*.png` (5 diagrams)
 - `branding/` logo kit (light/dark transparent SVG/PNG, favicon set)
+
+## Plans
+
+Design work that is agreed but not yet implemented lives in `docs/plans/`. Decisions move up into the
+tables above once the code exists and the choice has held.
+
+| Plan | Branch | State |
+|------|--------|-------|
+| `docs/plans/01-AUTH.md` — authentication, MFA step-up, i18n foundation, design system | `2-authentication-and-i18n-foundation` | In progress — its status line is kept current |
