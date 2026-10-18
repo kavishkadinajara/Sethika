@@ -36,6 +36,10 @@ public class SethikaDbContext(DbContextOptions<SethikaDbContext> options)
     public DbSet<DocumentType> DocumentTypes => Set<DocumentType>();
     public DbSet<InstitutionTypeRequiredDocument> InstitutionTypeRequiredDocuments => Set<InstitutionTypeRequiredDocument>();
     public DbSet<VerificationChecklistItem> VerificationChecklistItems => Set<VerificationChecklistItem>();
+    public DbSet<InstitutionMember> InstitutionMembers => Set<InstitutionMember>();
+    public DbSet<InstitutionDocument> InstitutionDocuments => Set<InstitutionDocument>();
+    public DbSet<InstitutionStatusChange> InstitutionStatusHistory => Set<InstitutionStatusChange>();
+    public DbSet<AuditLogEntry> AuditLogs => Set<AuditLogEntry>();
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<RoleLevel> RoleLevels => Set<RoleLevel>();
     public DbSet<RoleLevelPermission> RoleLevelPermissions => Set<RoleLevelPermission>();

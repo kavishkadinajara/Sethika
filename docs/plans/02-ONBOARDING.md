@@ -3,13 +3,14 @@
 Branch: `3-institution-onboarding` (cut from `develop` at `481397e`, after PR #4 and #5 merged the
 auth slice).
 
-Status: **5.1 and 5.2 done** (schema, catalogue, draft seeds, RLS on applications; number series,
-file storage, the application aggregate and its EF mappings; `2bc3bc7`, `8c85645`, `f30bd69`).
-**504 tests passing** (Domain 82, Application 32, integration 390), every new one seen to fail
-under a mutation. Next: 5.4's approval transaction, then 5.3 (§4's order). Scope agreed on 2026-10-18: the core flow plus clarifications
+Status: **5.1, 5.2 and 5.4's approval transaction done** (schema, catalogue, draft seeds, RLS on
+applications; number series, file storage, the application aggregate and its EF mappings; the
+one-transaction approval with its decision locks). **527 tests passing** (Domain 82, Application
+43, integration 402), every new one seen to fail under a mutation. Next: 5.3, the applicant API
+(§4's order). Scope agreed on 2026-10-18: the core flow plus clarifications
 (§4). Required documents and checklist items are seeded as clearly-marked drafts, reject reasons as
 Sethika's own policy (B9). Files go to local disk behind `IFileStorage` (B4).
-Last updated 2026-10-18 (5.2). Update this line and the §5 boxes whenever either changes. A fresh session
+Last updated 2026-10-18 (5.4 approval). Update this line and the §5 boxes whenever either changes. A fresh session
 trusts them and will rebuild anything they claim is missing.
 
 ---
@@ -215,20 +216,29 @@ version takes no range locks at all.
 
 ### B6 — Approval is one transaction, and it is the slice's centrepiece
 
-`ApproveRegistrationHandler`, one `ISethikaDbContext` transaction, RowVersion-checked:
+`ApproveRegistrationHandler`, one `ISethikaDbContext` transaction. It first takes the decision
+locks (`IRegistrationLocks`): one `sp_getapplock` that every approval and rejection takes, so
+decisions happen one at a time (they are rare, and this makes the code, slug and owner race-free
+with no range to deadlock on), and an `UPDLOCK` on the application's row, so a reviewer's change
+waits for the decision instead of being lost under it. A second approval of the same application
+then reads it as `Approved` and gets `invalid_transition`; nothing depends on a unique-key
+violation being caught and translated.
 
-1. Load the request: `UnderReview`, decider ≠ applicant, every mandatory document `Verified`, every
+1. Load the request (its five collections one query each - `RegistrationLoading`; split queries
+   are relational-only and Application depends on EF Core alone): `UnderReview`, decider ≠ applicant, every mandatory document `Verified`, every
    mandatory checklist item passed. Otherwise `409` with which ones are missing.
 2. `InstitutionCode` from B5. `Slug` from `ProposedName` + `City`, lower-case ASCII with `-`. A name
-   with no Latin letters falls back to the code. A taken slug gets `-2`, `-3`, ... (checked in the
-   transaction; `UNIQUE` on `Slug` is the final guard, and its violation answers `409` for a retry).
+   with no Latin letters falls back to the code (a slug of the city alone would name no
+   institution). A taken slug gets `-2`, `-3`, ...; the decision lock makes the check safe, and
+   `UNIQUE` on `Slug` stays the last guard.
 3. Insert `org.Institutions` (B7) with `ApprovedBy/At`.
 4. Copy every `Verified` request document into `org.InstitutionDocuments`
    (`SourceRequestDocumentId`, same `FileId`: no file copy).
-5. Enable modules: every `IsCore` module of the INSTITUTION portal (`Source = 'Default'`), plus `InstitutionTypeDefaultModules`
+5. Enable modules, set-based through `IInstitutionModules`: every `IsCore` module of the INSTITUTION portal (`Source = 'Default'`), plus `InstitutionTypeDefaultModules`
    (`Default`) and `PlanModules` of the requested plan or `FREE` (`Plan`).
 6. Clone the template roles: one institution role per template (`TemplateRoleId` set, same level,
-   code and name), with the template's grants copied into `auth.RolePermissions`.
+   code and name, `IsSystem = 0`: the copy is the institution's own), with the template's grants
+   copied into `auth.RolePermissions`.
 7. Applicant → `org.InstitutionMembers` (`IsOwner = 1`, `Designation` from the request) and
    `auth.UserRoles` (the cloned `OWNER`). Bump the applicant's `Users.PermissionsVersion`, so their
    cached permissions die.
@@ -238,7 +248,8 @@ version takes no range locks at all.
 
 Tests: the whole graph exists after approval (and the new owner's `/api/me/permissions` in that
 institution equals the OWNER template); **a failure at the last step leaves nothing behind**
-(forced by a unique-index collision planted before step 9, so not a mock); two concurrent approvals
+(forced by a CHECK on `audit.AuditLogs` planted for the test, so the last save fails after
+everything else was written - not a mock); two concurrent approvals
 create one institution; an applicant cannot approve their own request, even as a platform admin
 (the DB CHECK is tested on its own too). Each step's line is mutation-tested: delete it, and a test
 must go red.
@@ -443,6 +454,22 @@ demonstrates the flow, not the tests.
       with documents, office bearers, checklist, clarifications, history.
 - [ ] `POST /{requestNo}/start-review`, `PUT /{requestNo}/documents/{code}/verification`,
       `PUT /{requestNo}/checklist`, `POST /{requestNo}/questions`, `GET .../documents/{code}/file`.
+- [x] **The approval transaction (B6)**: `ApproveRegistrationHandler`, `InstitutionSlug`,
+      `RegistrationLoading`, `IRegistrationLocks`/`SqlRegistrationLocks`,
+      `IInstitutionModules`/`SqlInstitutionModules`, and the entities and mappings it writes
+      (`InstitutionMember`, `InstitutionDocument`, `InstitutionStatusChange`, `AuditLogEntry`). The
+      first writes to `audit.AuditLogs` anywhere. `ApproveRegistrationHandlerTests` (8): the whole
+      institution (documents traced to their uploads, the three core modules, each cloned role
+      granting exactly its template's grants, the owner holding the OWNER template's permissions
+      through the view, both histories, audit, outbox without NIC or phone); a failed checklist item
+      and an unknown request create nothing; no one approves their own application, and the DB
+      CHECK refuses it alone; a failure at the last save leaves every count as it was, the
+      institution number included; two approvals of one application create one institution; two
+      same-named institutions approved at once get `-galle` and `-galle-2`; another portal's core
+      module never reaches an institution. `RegistrationLocksTests` (4) and `InstitutionSlugTests`
+      (11). **Mutations:** 21, all killed but one - the THROW on a refused applock, which cannot
+      be forced without a 30-second wait. The fixture now clears what approvals create (members,
+      institution documents and history, and the test requests' audit and outbox rows).
 - [ ] `POST /{requestNo}/approve` (B6) and `POST /{requestNo}/reject` (reason code + note), both
       answering `403 stepup_required` without a step-up.
 - [ ] Tests: B6's list, the stale-RowVersion race, own-application refusal, reviewer may not

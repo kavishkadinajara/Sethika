@@ -41,6 +41,12 @@ public interface ISethikaDbContext
     DbSet<InstitutionTypeRequiredDocument> InstitutionTypeRequiredDocuments { get; }
     DbSet<VerificationChecklistItem> VerificationChecklistItems { get; }
 
+    // What approving an application creates (plan 02, B6).
+    DbSet<InstitutionMember> InstitutionMembers { get; }
+    DbSet<InstitutionDocument> InstitutionDocuments { get; }
+    DbSet<InstitutionStatusChange> InstitutionStatusHistory { get; }
+    DbSet<AuditLogEntry> AuditLogs { get; }
+
     // The RBAC catalogue, level ceilings and role grants, for checks that must read inside the
     // command's transaction rather than trust the permission cache.
     DbSet<Permission> Permissions { get; }
@@ -56,6 +62,9 @@ public interface ISethikaDbContext
 
     /// <summary>To discard tracked entities after a failed save, before looking again.</summary>
     ChangeTracker ChangeTracker { get; }
+
+    /// <summary>For loading an aggregate's collections one query each (see <c>RegistrationLoading</c>).</summary>
+    EntityEntry<TEntity> Entry<TEntity>(TEntity entity) where TEntity : class;
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

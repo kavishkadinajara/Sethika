@@ -45,8 +45,10 @@ public static class DependencyInjection
         services.AddScoped<ISethikaDbContext>(serviceProvider =>
             serviceProvider.GetRequiredService<SethikaDbContext>());
 
-        // On the scoped context, so a number is taken inside the handler's own transaction.
+        // On the scoped context, so each runs inside the handler's own transaction.
         services.AddScoped<INumberSeries, SqlNumberSeries>();
+        services.AddScoped<IRegistrationLocks, SqlRegistrationLocks>();
+        services.AddScoped<IInstitutionModules, SqlInstitutionModules>();
 
         services.AddScoped<IDbConnectionFactory>(serviceProvider =>
             new SqlConnectionFactory(
