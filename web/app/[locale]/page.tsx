@@ -1,6 +1,6 @@
 import { NextIntlClientProvider, useMessages, useTranslations } from "next-intl";
 import { textLink } from "@/components/auth/links";
-import { ApproveDemoButton, SessionPanel } from "@/components/auth/SessionPanel";
+import { SessionPanel } from "@/components/auth/SessionPanel";
 import { Can } from "@/components/permissions/Can";
 import { PermissionDebugPanel } from "@/components/permissions/PermissionDebugPanel";
 import { pickMessages, sharedClientNamespaces } from "@/i18n/pick";
@@ -52,10 +52,6 @@ export default function Home({ params }: PageProps<"/[locale]">) {
           >
             <div className="rounded border border-hairline bg-surface p-4">
               <p className="text-sm">{t("Home.calendarPlaceholder")}</p>
-
-              <Can permission="BOOKINGS.CALENDAR.APPROVE">
-                <ApproveDemoButton label={t("Home.approveBooking")} />
-              </Can>
             </div>
           </Can>
         </section>

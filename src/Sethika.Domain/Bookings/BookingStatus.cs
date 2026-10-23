@@ -91,6 +91,9 @@ public static class BookingErrors
 
     /// <summary>Rejecting, or cancelling as the institution, says why.</summary>
     public const string ReasonRequired = "reason_required";
+
+    /// <summary>The reason is longer than <see cref="Booking.MaxReason"/>.</summary>
+    public const string ReasonTooLong = "reason_too_long";
 }
 
 /// <summary>The outcome of asking the aggregate for a change: done, or the reason it was refused.</summary>

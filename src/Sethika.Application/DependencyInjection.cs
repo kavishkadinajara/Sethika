@@ -10,6 +10,7 @@ using Sethika.Application.Access.SignIn;
 using Sethika.Application.Access.SignUp;
 using Sethika.Application.Access.StepUp;
 using Sethika.Application.Bookings.Engine;
+using Sethika.Application.Bookings.Slots;
 using Sethika.Application.Onboarding.Applying;
 using Sethika.Application.Onboarding.Approval;
 using Sethika.Application.Onboarding.Notifications;
@@ -46,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<RegistrationReviewHandler>();
         services.AddScoped<BookMealHandler>();
         services.AddScoped<BookingDecisionHandler>();
+        services.AddScoped<SlotManagementHandler>();
 
         // What the outbox processor dispatches to, by event type.
         services.AddScoped<IOutboxHandler, OnboardingSmsHandler>();

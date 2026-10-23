@@ -5,9 +5,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
-import { useToast } from "@/components/ui/toast";
 import { Link } from "@/i18n/navigation";
-import { apiFetch, session } from "@/lib/auth";
+import { session } from "@/lib/auth";
 import { useSession } from "@/lib/auth/useSession";
 
 /** The session at a glance on the home page, with the controls a walk-through needs. */
@@ -88,36 +87,5 @@ export function SessionPanel() {
         )}
       </CardContent>
     </Card>
-  );
-}
-
-/**
- * Calls the demonstration endpoint guarded by BOOKINGS.CALENDAR.APPROVE, which is RequiresMfa:
- * without a step-up the API answers 403 stepup_required, the step-up dialog opens, and the call
- * is retried after the code is verified.
- */
-export function ApproveDemoButton({ label }: { label: string }) {
-  const t = useTranslations("Session");
-  const toast = useToast();
-  const [busy, setBusy] = useState(false);
-
-  return (
-    <Button
-      variant="accent"
-      className="mt-3"
-      loading={busy}
-      onClick={async () => {
-        setBusy(true);
-        const response = await apiFetch("/api/bookings/BK-DEMO/approve", { method: "POST" }).catch(() => null);
-        setBusy(false);
-        toast(
-          response?.ok
-            ? { title: t("approved"), variant: "success" }
-            : { title: t("approveFailed"), variant: "error" },
-        );
-      }}
-    >
-      {label}
-    </Button>
   );
 }

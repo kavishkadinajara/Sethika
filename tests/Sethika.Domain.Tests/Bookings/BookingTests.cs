@@ -169,6 +169,23 @@ public class BookingTests
     public void TheInstitutionSaysWhyItCancels() =>
         Assert.Equal(BookingErrors.ReasonRequired, Approved().CancelAsInstitution("", Staff, Now).Error);
 
+    [Fact]
+    public void AReasonFitsItsColumn()
+    {
+        // Three hundred characters fit NVARCHAR(300); one more would fail the save, not the rule.
+        var longest = new string('x', Booking.MaxReason);
+        var tooLong = longest + "x";
+
+        Assert.Equal(BookingErrors.ReasonTooLong, Requested().Reject(tooLong, Staff, Now).Error);
+        Assert.Equal(BookingErrors.ReasonTooLong, Approved().CancelAsInstitution(tooLong, Staff, Now).Error);
+        Assert.Equal(BookingErrors.ReasonTooLong, Approved().CancelAsDonor(tooLong, Donor, SlotDay, SlotDay.AddDays(-5), Now).Error);
+
+        // Measured after trimming, as it is stored.
+        Assert.True(Requested().Reject("  " + longest + "  ", Staff, Now).Succeeded);
+        Assert.True(Approved().CancelAsInstitution(longest, Staff, Now).Succeeded);
+        Assert.True(Approved().CancelAsDonor(longest, Donor, SlotDay, SlotDay.AddDays(-5), Now).Succeeded);
+    }
+
     [Theory]
     [InlineData(BookingStatus.Rejected)]
     [InlineData(BookingStatus.Cancelled)]

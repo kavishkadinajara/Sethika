@@ -75,12 +75,11 @@ VALUES
     ('INSTITUTION.PROFILE.VIEW',  'INSTITUTION.PROFILE', 'VIEW',    'Institution', N'View the institution profile', 0, 0),
     ('INSTITUTION.PROFILE.EDIT',  'INSTITUTION.PROFILE', 'EDIT',    'Institution', N'Edit the institution profile', 1, 0),
     /*  Bookings (plan 03). EDIT on the calendar is completing, marking a no-show and cancelling; on
-        slots it also covers blocked dates and deactivating a slot. APPROVE is RequiresMfa only
-        while it guards plan 01's demonstration endpoint: deciding a donor's request is the day's
-        work, not worth an SMS code, and it drops to 0 when the real approval replaces the
-        demonstration (plan 03, 5.4).                                                           */
+        slots it also covers blocked dates, deactivating a slot and the public listing. APPROVE is
+        not RequiresMfa: deciding a donor's request is the day's work, not worth an SMS code
+        (plan 03, E1).                                                                          */
     ('BOOKINGS.CALENDAR.VIEW',    'BOOKINGS.CALENDAR',   'VIEW',    'Institution', N'View the booking calendar',    0, 0),
-    ('BOOKINGS.CALENDAR.APPROVE', 'BOOKINGS.CALENDAR',   'APPROVE', 'Institution', N'Approve bookings',             0, 1),
+    ('BOOKINGS.CALENDAR.APPROVE', 'BOOKINGS.CALENDAR',   'APPROVE', 'Institution', N'Approve bookings',             0, 0),
     ('BOOKINGS.CALENDAR.REJECT',  'BOOKINGS.CALENDAR',   'REJECT',  'Institution', N'Reject booking requests',      0, 0),
     ('BOOKINGS.CALENDAR.EDIT',    'BOOKINGS.CALENDAR',   'EDIT',    'Institution', N'Complete, mark no-shows and cancel bookings', 0, 0),
     ('BOOKINGS.SLOTS.VIEW',       'BOOKINGS.SLOTS',      'VIEW',    'Institution', N'View meal slots and blocked dates', 0, 0),

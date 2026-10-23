@@ -140,9 +140,9 @@ FROM booking.SlotInstances si;
 
 /* ---------------------------- RBAC ---------------------------- */
 
-/*  The seeded BOOKINGS permissions: VIEW, and APPROVE, which the catalogue marks RequiresMfa so
-    the step-up path has something real to read. The steward sits at STAFF, whose ceiling holds
-    both - a role outside its level's ceiling would grant nothing (plan A15).               */
+/*  The seeded BOOKINGS permissions: VIEW, and APPROVE, which the step-up tests mark RequiresMfa
+    while they run (SethikaTestDatabase.RequireStepUpAsync). The steward sits at STAFF, whose
+    ceiling holds both - a role outside its level's ceiling would grant nothing (plan A15).  */
 DECLARE @moduleId SMALLINT = (SELECT Id FROM auth.Modules WHERE Code = 'BOOKINGS');
 
 INSERT auth.Roles (InstitutionId, Scope, RoleLevelId, Code, Name, IsTemplate)

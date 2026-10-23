@@ -3,7 +3,7 @@
 Branch: `5-booking-engine`, cut on 2026-10-23 from `4-textlk-sms` (PR #7) and rebased on
 `origin/develop` the same day, after PR #6 and #7 were merged.
 
-Status: **5.1, 5.2 and 5.3 built (2026-10-23); 5.4 is next.** §8 lists what was decided while
+Status: **5.1-5.4 built (2026-10-23); 5.5 is next.** §8 lists what was decided while
 building them. Deadline is about **2026-11-06**, and
 Phase E (religious services) and the report still need time after this. So this plan aims at
 **~6 working days (2026-10-24 → 10-31)**. If it runs over, the cut order is in §4.
@@ -319,15 +319,19 @@ Never cut the concurrency tests.
 
 ### 5.4: Institution API (`/api/institution/...`, the active institution from the session)
 
-- [ ] `meal-slots`: GET list, POST, PUT `{publicId}` (RowVersion), POST `{publicId}/deactivate`.
-- [ ] `blocked-dates`: GET, POST, DELETE `{id}`. A block over existing bookings is allowed but
-  returns their `BookingNo`s, so the screen can warn ("3 bookings fall on these days").
-- [ ] `bookings?from=&to=&status=`: Dapper, per slot-day with counts and bookings.
+- [x] `meal-slots`: GET list, POST, PUT `{publicId}` (RowVersion, E17), POST `{publicId}/deactivate`,
+  and `/activate` (E15).
+- [x] `blocked-dates`: GET, POST, DELETE `{id}`. A block over existing bookings is allowed but
+  returns their `BookingNo`s, so the screen can warn ("3 bookings fall on these days") (E18).
+- [x] `bookings?from=&to=&status=`: Dapper, per slot-day with counts and bookings (E19).
   `POST bookings/{bookingNo}/approve | reject | complete | no-show | cancel`.
-- [ ] `PUT listing` (`IsPubliclyListed`), Owner only, through `BOOKINGS.SLOTS.EDIT`. Bump nothing:
-  it is not a permission.
-- [ ] Tests over HTTP: every endpoint's permission (STAFF refused writes), RLS (institution A never
-  sees B's bookings), RowVersion 409, release on reject/cancel.
+- [x] `GET` and `PUT listing` (`IsPubliclyListed`), through `BOOKINGS.SLOTS.EDIT` (E14). Bump
+  nothing: it is not a permission.
+- [x] Tests over HTTP (`InstitutionBookingEndpointsTests`): every endpoint's permission (STAFF
+  refused writes), one institution never reaching another's slots, blocks or bookings (RLS and E8),
+  RowVersion 409, release on reject/cancel.
+- [x] E1 done: the demonstration endpoints are gone, APPROVE is not `RequiresMfa`, and the step-up
+  tests mark it themselves (E20).
 
 ### 5.5: Donor API
 
@@ -410,3 +414,11 @@ most of them already exist, and none of them blocks this plan.
 | E11 | C7 is corrected: a rolled-back booking does **not** leave a gap | `SqlNumberSeries` holds the series row until the transaction ends, so a rollback hands the number back. The cost is that every booking on the platform takes its number one at a time, for the few milliseconds between the number and the commit. At this scale that is fine; say so in the report. |
 | E12 | The domain namespace is `Sethika.Domain.Bookings`, and `Application/Booking/` became `Application/Bookings/` | A type `Booking` inside a namespace `...Booking` makes every reference to it bind to the namespace instead. |
 | E13 | `booking.Bookings.DonorPhone` joins the columns a deployed API's login needs `UNMASK` on (`docs/LOCAL_SETUP.md`) | A masked snapshot would make `UX_Bookings_DonorPerSlot` compare `+947XXXXX567` with itself. |
+| E14 | The listing switch is whoever holds `BOOKINGS.SLOTS.EDIT`: OWNER and MANAGER by the templates, not "Owner only" as 5.4 first said | Permission decisions are never re-derived in C#. An institution that wants only its owner to list it removes SLOTS.EDIT from its managers. |
+| E15 | `POST meal-slots/{publicId}/activate` beside `/deactivate` | Without it a deactivation could not be undone, and the slot's name would stay taken (`UQ_MealSlots_Name`), so it could not even be made again. |
+| E16 | A reject or cancel reason is at most 300 characters (`reason_too_long`, 400), in the aggregate | The columns are `NVARCHAR(300)`; a longer reason was a 500 from SQL Server. |
+| E17 | A slot edit sends back the `version` (base64 `RowVersion`) its GET returned; a different one is 409 `stale`, and changes nothing. Deactivate, activate and the listing take no version | Two people editing one slot must not silently overwrite each other. A switch has one meaning whichever came first. |
+| E18 | A block is at most 366 days and must not have ended before today (Colombo). Its `{id}` is the internal id | A longer block is more often a typo than a plan. Blocked dates are tenant-internal, so C9 does not apply. |
+| E19 | The calendar reads at most 62 days (`invalid_range`), and only slot-days that have been booked. Each booking carries the donor's phone | A month view with the days either side. Slot-days exist only from their first booking (C3), so an unbooked day is simply free. The institution needs the phone to arrange the meal (E13). |
+| E20 | The step-up tests make APPROVE `RequiresMfa` themselves (`SethikaTestDatabase.RequireStepUpAsync`, which bumps every institution's `PermissionsVersion` both ways) and put it back. `RbacCatalogueTests.NoBookingDecisionNeedsAStepUp` fails first if a killed run left it set | They test the mechanism, which still guards the onboarding decisions. A real approval of BK-ALPHA replaces the demonstration endpoint. |
+| E21 | The home page's demonstration "Approve booking" button is removed | It called the demonstration endpoint. The real decisions get their screen in 5.7. |

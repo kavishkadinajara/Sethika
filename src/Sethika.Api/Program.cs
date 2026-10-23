@@ -109,13 +109,7 @@ app.MapOnboardingApplicationEndpoints();
 app.MapRegistrationReviewEndpoints();
 app.MapLegalEndpoints();
 app.MapMeEndpoints();
-
-// Demonstrates the guard, and is what the integration tests exercise.
-app.MapGet("/api/bookings/calendar", () => Results.Ok(new { ok = true }))
-   .WithMetadata(new HasPermissionAttribute("BOOKINGS.CALENDAR.VIEW"));
-
-app.MapPost("/api/bookings/{bookingNo}/approve", (string bookingNo) => Results.Ok(new { bookingNo }))
-   .WithMetadata(new HasPermissionAttribute("BOOKINGS.CALENDAR.APPROVE"));
+app.MapInstitutionBookingEndpoints();
 
 app.Run();
 

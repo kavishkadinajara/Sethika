@@ -69,6 +69,7 @@ public static class DependencyInjection
         services.AddScoped<IRoleLevelQueries, RoleLevelQueries>();
         services.AddScoped<IOnboardingApplicationQueries, OnboardingApplicationQueries>();
         services.AddScoped<IRegistrationReviewQueries, RegistrationReviewQueries>();
+        services.AddScoped<IInstitutionBookingQueries, InstitutionBookingQueries>();
 
         return services;
     }

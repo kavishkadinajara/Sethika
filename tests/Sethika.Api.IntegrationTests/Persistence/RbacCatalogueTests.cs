@@ -359,6 +359,20 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
         Assert.Equal(["ONBOARDING.REQUESTS.APPROVE", "ONBOARDING.REQUESTS.REJECT"], stepUp);
     }
 
+    [Fact]
+    public async Task NoBookingDecisionNeedsAStepUp()
+    {
+        // Plan 03, E1: approving a donor's request is the day's work, and a step-up would cost an SMS
+        // every fifteen minutes. The step-up tests mark a permission themselves and put it back
+        // (SethikaTestDatabase.RequireStepUpAsync); a run killed between the two fails here first.
+        await using var connection = new SqlConnection(database.ConnectionString);
+
+        var stepUp = await connection.QueryAsync<string>(
+            "SELECT Code FROM auth.Permissions WHERE Code LIKE 'BOOKINGS.%' AND RequiresMfa = 1 ORDER BY Code;");
+
+        Assert.Empty(stepUp);
+    }
+
     // ------------------------------------------------------------------ bookings (plan 03, 5.1)
 
     [Fact]

@@ -63,6 +63,9 @@ public class Booking
     /// <summary><c>booking.Bookings.Source</c> for a donor booking on the site.</summary>
     public const string OnlineSource = "Online";
 
+    /// <summary>The longest reject or cancel reason: <c>RejectReason</c> and <c>CancelReason</c> are <c>NVARCHAR(300)</c>.</summary>
+    public const int MaxReason = 300;
+
     /// <summary>
     /// A new booking by the signed-in donor: <see cref="BookingStatus.Requested"/>, or straight to
     /// <see cref="BookingStatus.Approved"/> when the slot needs no approval (C1).
@@ -143,6 +146,11 @@ public class Booking
             return BookingResult.Fail(BookingErrors.ReasonRequired);
         }
 
+        if (reason.Trim().Length > MaxReason)
+        {
+            return BookingResult.Fail(BookingErrors.ReasonTooLong);
+        }
+
         DecidedBy = userId;
         DecidedAt = now;
         RejectReason = reason.Trim();
@@ -175,6 +183,11 @@ public class Booking
             return BookingResult.Fail(BookingErrors.CancelWindowClosed);
         }
 
+        if (reason?.Trim().Length > MaxReason)
+        {
+            return BookingResult.Fail(BookingErrors.ReasonTooLong);
+        }
+
         Cancel(string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(), userId, now);
         return BookingResult.Ok;
     }
@@ -190,6 +203,11 @@ public class Booking
         if (string.IsNullOrWhiteSpace(reason))
         {
             return BookingResult.Fail(BookingErrors.ReasonRequired);
+        }
+
+        if (reason.Trim().Length > MaxReason)
+        {
+            return BookingResult.Fail(BookingErrors.ReasonTooLong);
         }
 
         Cancel(reason.Trim(), userId, now);

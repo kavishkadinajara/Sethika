@@ -195,7 +195,7 @@ public sealed class JwtTokenServiceEndpointTests(SethikaTestDatabase database) :
         var tokens = Service().Issue(
             new TokenSubject(SethikaTestDatabase.AlphaUserId, database.AlphaInstitutionId, IsPlatform: false));
 
-        using var response = await GetAsync("/api/bookings/calendar", tokens);
+        using var response = await GetAsync("/api/institution/bookings?from=2026-01-01&to=2026-01-31", tokens);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -206,7 +206,7 @@ public sealed class JwtTokenServiceEndpointTests(SethikaTestDatabase database) :
         var tokens = Service(signingKey: "a-different-key-also-long-enough-to-be-valid!!").Issue(
             new TokenSubject(SethikaTestDatabase.AlphaUserId, database.AlphaInstitutionId, IsPlatform: false));
 
-        using var response = await GetAsync("/api/bookings/calendar", tokens);
+        using var response = await GetAsync("/api/institution/bookings?from=2026-01-01&to=2026-01-31", tokens);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -226,7 +226,7 @@ public sealed class JwtTokenServiceEndpointTests(SethikaTestDatabase database) :
         var tokens = Service(issuedAt).Issue(
             new TokenSubject(SethikaTestDatabase.AlphaUserId, database.AlphaInstitutionId, IsPlatform: false));
 
-        using var response = await GetAsync("/api/bookings/calendar", tokens);
+        using var response = await GetAsync("/api/institution/bookings?from=2026-01-01&to=2026-01-31", tokens);
 
         Assert.Equal(expected, response.StatusCode);
     }
@@ -266,7 +266,7 @@ public sealed class JwtTokenServiceEndpointTests(SethikaTestDatabase database) :
     /// </summary>
     private async Task<Observed> SendAsDonorAsync(string path, IssuedTokens tokens, string? channel = null, string? name = null)
     {
-        var uri = channel == "query" ? $"{path}?{Uri.EscapeDataString(name!)}=true" : path;
+        var uri = channel == "query" ? $"{path}{(path.Contains('?', StringComparison.Ordinal) ? '&' : '?')}{Uri.EscapeDataString(name!)}=true" : path;
 
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens.Access.Token);
@@ -298,9 +298,9 @@ public sealed class JwtTokenServiceEndpointTests(SethikaTestDatabase database) :
     // Permission-guarded. No platform-scoped endpoint exists yet - the catalogue has only the
     // institution portal - so this stands in for one: its authorization reads the caller's
     // permissions over a stamped connection, which is where a believed flag would lift RLS.
-    [InlineData("header", "/api/bookings/calendar")]
-    [InlineData("query", "/api/bookings/calendar")]
-    [InlineData("body", "/api/bookings/calendar")]
+    [InlineData("header", "/api/institution/bookings?from=2026-01-01&to=2026-01-31")]
+    [InlineData("query", "/api/institution/bookings?from=2026-01-01&to=2026-01-31")]
+    [InlineData("body", "/api/institution/bookings?from=2026-01-01&to=2026-01-31")]
     public async Task ADonorCannotForgeThePlatformFlag(string channel, string path)
     {
         // Plan 5.8: sethika:platform is read from the validated token and nowhere else. Every request

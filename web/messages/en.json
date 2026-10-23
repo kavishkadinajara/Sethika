@@ -11,7 +11,6 @@
     "calendarHeading": "Booking calendar",
     "calendarDenied": "You do not have access to the booking calendar.",
     "calendarPlaceholder": "Calendar would render here.",
-    "approveBooking": "Approve booking",
     "apply": "Register an institution",
     "review": "Review institution applications"
   },
@@ -329,9 +328,7 @@
     "switchInstitution": "Switch institution",
     "changePassword": "Change password",
     "signOut": "Sign out",
-    "signOutEverywhere": "Sign out on all devices",
-    "approved": "Booking approved (demonstration).",
-    "approveFailed": "Could not approve the booking."
+    "signOutEverywhere": "Sign out on all devices"
   },
   "Apply": {
     "title": "Register an institution",
