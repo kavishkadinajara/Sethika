@@ -43,6 +43,21 @@ The project targets SQL Server 2022 (`Sql160`). When publishing to Azure SQL add
 ## 5. Secrets
 Keep connection strings in `dotnet user-secrets` (API) and `.env.local` (web). Never commit them.
 
+### Real SMS through Text.lk
+Development defaults to `Sms:Provider = Console`: texts, one-time codes included, go to the API
+log and to `notify.Notifications` instead of a phone. To send real ones through Text.lk (sender id
+`Sethika`, registered there), put the token in User Secrets. Never put it in `appsettings`:
+
+```bash
+dotnet user-secrets set "Sms:TextLkApiToken" "<token from the Text.lk dashboard>" --project src/Sethika.Api
+dotnet user-secrets set "Sms:Provider" "TextLk" --project src/Sethika.Api
+```
+
+Every text then costs real credit, **including every browser-test run** (each test signs people
+up). Switch back before running `npm run e2e`:
+`dotnet user-secrets remove "Sms:Provider" --project src/Sethika.Api`.
+Outside Development the API refuses to start with the console sender.
+
 ## 6. Web app and API together
 The browser only talks to the Next.js app; `/api/*` is proxied to the API (plan A3).
 `API_BASE_URL` (server-only) says where the API is and defaults to the API's `http` launch profile,

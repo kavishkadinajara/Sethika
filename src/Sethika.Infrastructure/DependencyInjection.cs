@@ -303,10 +303,18 @@ public static class DependencyInjection
             {
                 throw new InvalidOperationException(
                     "Sms:Provider is Console outside Development: no SMS would be delivered and every " +
-                    "one-time code would be written to the log. Set Sms:Provider to NotifyLk.");
+                    "one-time code would be written to the log. Set Sms:Provider to TextLk.");
             }
 
             services.AddScoped<ISmsSender, ConsoleSmsSender>();
+            return;
+        }
+
+        if (string.Equals(sms.Provider, SmsOptions.TextLkProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            // A typed factory client, for the same reasons as Notify.lk's below.
+            services.AddHttpClient<ISmsSender, TextLkSmsSender>(client =>
+                client.BaseAddress = new Uri(sms.TextLkBaseUrl));
             return;
         }
 
@@ -323,6 +331,6 @@ public static class DependencyInjection
 
         throw new InvalidOperationException(
             $"Sms:Provider '{sms.Provider}' is not recognised. Use {SmsOptions.ConsoleProvider} " +
-            $"(Development only) or {SmsOptions.NotifyLkProvider}.");
+            $"(Development only), {SmsOptions.TextLkProvider} or {SmsOptions.NotifyLkProvider}.");
     }
 }
