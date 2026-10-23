@@ -23,7 +23,7 @@ Decisions made while planning the project, with the reasoning behind each.
 | A7 | Modular monolith: 5 projects (Domain, Application, Infrastructure, Api, Database) + tests; modules are folders | Company-style splits (separate Core/Caching/DataAccess/Producer/Consumer projects) suit shared frameworks across many products, not a single app |
 | A8 | No Docker required for development | SQL Server Developer Edition + Redis in WSL2 are enough; a docker-compose file can be added later for demos |
 | A9 | Everything written from scratch | Employer code is company IP and must not be reused |
-| A10 | SMS through **Text.lk** (sender id `Sethika`, registered 2026-10-23), v3 API with a bearer token; the Notify.lk sender stays as an alternative, and the console sender is Development only | The sender id was approved on Text.lk. The v3 API keeps the token out of URLs, which `IHttpClientFactory` logs. Text.lk's two docs pages disagree on the reply shape, so both are accepted and anything else is a failure. |
+| A10 | SMS through **Text.lk** (sender id `Sethika`, registered 2026-10-23), v3 API with a bearer token; the Notify.lk sender stays as an alternative, and the console sender is Development only | The sender id was approved on Text.lk. The v3 API keeps the token out of URLs, which `IHttpClientFactory` logs. Text.lk's two docs pages disagree on the reply shape, so both are accepted and anything else is a failure. **Verified live on 2026-10-23**: an English and a Sinhala signup code reached a Dialog phone from "Sethika"; Sinhala renders correctly under `type: plain` (the docs say nothing about it). |
 
 ## Data
 | # | Decision | Why |
