@@ -83,6 +83,18 @@ maximum).
 > PayHere's notify URL is a server-to-server callback, so it cannot reach `localhost`. Local
 > development needs a tunnel (ngrok or cloudflared) or payment confirmations never arrive.
 
+## Scope revision (proposal v3, 2026-10-23)
+
+The supervisor's feedback on the submitted proposal asked for "a few more functions, like coordination
+of religious leaders and making appointments". `docs/proposal/Sethika_Project_Proposal.docx` (and its
+`.pdf`) is now v3.
+
+| # | Decision | Why |
+|---|----------|-----|
+| S4 | New **Phase E: religious services and leader coordination**: service types, a leader roster with availability and leave, appointment requests, conflict-free assignment with accept/decline, and a personal schedule. Design: `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` | Answers the feedback and stays faith-neutral (services are configuration, like meal slots). It adds a second concurrency guarantee of a different shape: interval overlap, enforced as 15-minute time blocks under a primary key. That is worth more in the report than another CRUD module. |
+| S5 | Phase E is built **after** the Phase A booking engine, and is cut before Phase A rigour is | It reuses the engine's lock, outbox and number-series patterns. If time runs out, the report states what was not built. |
+| S6 | v3 is based on the copy **submitted on 2026-10-18**, not on the repo's v2 | That copy (`Sethika_Project_Proposal_submitted_2026-10-18.docx`) was edited from v1 outside the repo and still carried v1's four contradictions and the old "beyond scope" list. v3 re-applies v2's corrections (dacpac instead of migrations, no Docker, shared slots, trilingual UI, PayHere) to it. The submitted format has no Data Model section, so v2's ERD/3NF chapter lives on in `Sethika_Project_Proposal_v2_repo.docx` for the final report. |
+
 ## Redis (local development)
 | # | Decision | Why |
 |---|----------|-----|
@@ -122,13 +134,14 @@ the row is seeded as a visibly marked draft and listed here until someone confir
 | Institution declaration | `09_LegalDocuments.sql` | `0.1-draft` in title and body | a legal reviewer |
 | Document types and the documents each institution type must upload | `12_OnboardingDrafts.sql` | `DRAFT` in every name and instruction | real institutions of each type |
 | Reviewer checklist items | `12_OnboardingDrafts.sql` | `DRAFT` in every question | the platform's reviewers |
+| Religious service suggestions per institution type (name, duration, leaders needed) — Phase E, not seeded yet | to be written | `DRAFT` in every name | real institutions of each faith |
 
 The registration reject reasons in the same seed are Sethika's own review policy, not facts about
 institutions, and are not drafts. Every row is read from the tables at run time, so a confirmed list
 is a seed edit, not a code change.
 
 ## Deliverables produced so far
-- `docs/proposal/Sethika_Project_Proposal.docx` (NIBM format)
+- `docs/proposal/Sethika_Project_Proposal.docx` + `.pdf` (NIBM format, v3); earlier versions kept beside it
 - `src/Sethika.Database/` SQL project (78 tables, idempotent seeds) and `docs/erd/*.png` (5 diagrams)
 - `branding/` logo kit (light/dark transparent SVG/PNG, favicon set)
 
@@ -141,3 +154,4 @@ tables above once the code exists and the choice has held.
 |------|--------|-------|
 | `docs/plans/01-AUTH.md` — authentication, MFA step-up, i18n foundation, design system | `2-authentication-and-i18n-foundation` | Merged into `develop` (PR #4, #5); browser walk-throughs still owed — see its status line |
 | `docs/plans/02-ONBOARDING.md` — institution onboarding and approval, outbox processor | `3-institution-onboarding` | In progress — its status line is kept current |
+| `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` — religious services, leader roster, conflict-free assignment | not cut yet | Designed (S4); build after the booking engine |
