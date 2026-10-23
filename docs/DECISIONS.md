@@ -124,6 +124,19 @@ of religious leaders and making appointments". `docs/proposal/Sethika_Project_Pr
 - Per-user Grant/Deny overrides; Deny always wins; temporary role validity windows
 - Institution modules come from type defaults + plan; disabled module removes its permissions automatically
 
+## Onboarding (plan 02) — what was cut
+
+The onboarding slice ships the core flow plus clarifications. These have tables or columns in the
+schema but were **deliberately not built**, and the report says so:
+
+- Risk scoring (`RiskScore`/`RiskFlags`: duplicate files via `IX_Files_Hash`, a reused NIC via
+  `IX_OfficeBearer_Nic`, location clashes), `SlaDueAt`, `AssignedReviewerId`
+- Evidence files on checklist items; staff invitations (`org.StaffInvitations`)
+- Plan selection (`RequestedPlanId` stays NULL → FREE); DS divisions (no seed, nullable column)
+- Virus scanning of uploads (`ScanStatus`, B4); a map picker for the location (B11)
+- Editing the institution profile after approval; re-verification (`NextReviewDue`); suspending or
+  deactivating an institution; institution reports; the public institution page (Phase B)
+
 ## Unconfirmed reference data (seeded as drafts)
 CLAUDE.md forbids inventing facts about real institutions. Where the flow cannot run without a row,
 the row is seeded as a visibly marked draft and listed here until someone confirms or replaces it.
@@ -153,5 +166,5 @@ tables above once the code exists and the choice has held.
 | Plan | Branch | State |
 |------|--------|-------|
 | `docs/plans/01-AUTH.md` — authentication, MFA step-up, i18n foundation, design system | `2-authentication-and-i18n-foundation` | Merged into `develop` (PR #4, #5); browser walk-throughs still owed — see its status line |
-| `docs/plans/02-ONBOARDING.md` — institution onboarding and approval, outbox processor | `3-institution-onboarding` | In progress — its status line is kept current |
+| `docs/plans/02-ONBOARDING.md` — institution onboarding and approval, outbox processor | `3-institution-onboarding` | Done; PR into `develop` opened 2026-10-23 |
 | `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` — religious services, leader roster, conflict-free assignment | not cut yet | Designed (S4); build after the booking engine |

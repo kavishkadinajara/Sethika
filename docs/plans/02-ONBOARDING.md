@@ -8,11 +8,17 @@ applications; number series, file storage, the application aggregate and its EF 
 applicant API; Hangfire, the outbox processor and the four onboarding texts; the review API and the
 one-transaction approval with its decision locks; the applicant and reviewer screens). **603 tests
 passing** (Domain 82, Application 71, integration 450) plus 105 web unit tests, every new one seen
-to fail under a mutation, and 21 browser tests of both sides. Next: the onboarding PR (§6), then
-the booking engine. Scope agreed on 2026-10-18: the core flow plus clarifications
+to fail under a mutation, and 21 browser tests of both sides. **§6 re-checked on 2026-10-23**: build
+and format clean, 603/603, web lint + 105 unit tests + build clean, the deploy script holds seed
+MERGEs only, DECISIONS has the cut list; browser suite 21/21 on the second run. The first run lost
+one test (the approval walk-through) to a "Unexpected end of JSON input" overlay on `/apply` right
+after sign-in. It passed 3/3 when rerun alone and 21/21 in the full rerun, and its trace was
+overwritten before it was read, so the cause is **not known** (suspect: an empty body through the
+dev server's `/api` rewrite while Turbopack compiles, reaching `adopt()` or `json()`). Next: the
+onboarding PR, then the booking engine. Scope agreed on 2026-10-18: the core flow plus clarifications
 (§4). Required documents and checklist items are seeded as clearly-marked drafts, reject reasons as
 Sethika's own policy (B9). Files go to local disk behind `IFileStorage` (B4).
-Last updated 2026-10-18 (5.6 reviewer screens). Update this line and the §5 boxes whenever either changes. A fresh session
+Last updated 2026-10-23 (§6 check before the PR). Update this line and the §5 boxes whenever either changes. A fresh session
 trusts them and will rebuild anything they claim is missing.
 
 ---
