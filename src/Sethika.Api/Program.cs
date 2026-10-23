@@ -36,12 +36,14 @@ builder.Services.AddSethikaPermissions(redisConnectionString);
 // Reads its configuration now, so a production host with the console SMS sender - or with
 // one-time codes going to the log - fails to start rather than failing its first signup.
 builder.Services.AddSethikaAccess(builder.Configuration, builder.Environment.IsDevelopment());
+builder.Services.AddSethikaFiles(builder.Configuration, builder.Environment.IsDevelopment());
+builder.Services.AddSethikaJobs(builder.Configuration, sqlConnectionString);
 builder.Services.AddSethikaApplication();
 
 // The three values that stamp the database session context for Row-Level Security are
-// read from the validated token, never from the request.
+// read from the validated token, never from the request. Background jobs run as the platform.
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
+builder.Services.AddSethikaCurrentUser<HttpCurrentUserContext>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -103,6 +105,8 @@ app.MapSessionEndpoints();
 app.MapStepUpEndpoints();
 app.MapPasswordEndpoints();
 app.MapInstitutionRoleEndpoints();
+app.MapOnboardingApplicationEndpoints();
+app.MapRegistrationReviewEndpoints();
 app.MapLegalEndpoints();
 app.MapMeEndpoints();
 

@@ -14,6 +14,10 @@ CREATE SECURITY POLICY sec.TenantIsolationPolicy
     ADD FILTER PREDICATE sec.fn_Tenant(InstitutionId) ON org.InstitutionDocuments,
     ADD FILTER PREDICATE sec.fn_Tenant(InstitutionId) ON org.InstitutionMembers,
     ADD FILTER PREDICATE sec.fn_Tenant(InstitutionId) ON org.StaffInvitations,
+    /* an application: its applicant, the platform, and once approved the institution it created (plan 02, B2) */
+    ADD FILTER PREDICATE sec.fn_TenantOrOwner(CreatedInstitutionId, ApplicantUserId) ON org.RegistrationRequests,
+    ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(CreatedInstitutionId, ApplicantUserId) ON org.RegistrationRequests AFTER INSERT,
+    ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(CreatedInstitutionId, ApplicantUserId) ON org.RegistrationRequests AFTER UPDATE,
     /* public-read data: anyone can read, only the owning tenant can write */
     ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON booking.MealSlots AFTER INSERT,
     ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON booking.MealSlots AFTER UPDATE,

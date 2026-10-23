@@ -18,6 +18,7 @@ public sealed class LegalDocumentQueries(IDbConnectionFactory connections) : ILe
                d.ContentSha256 AS ContentSha256
         FROM core.LegalDocuments AS d
         WHERE d.IsCurrent = 1
+          AND d.Code IN @codes
           AND (d.Language = @language
                OR (d.Language = 'en'
                    AND NOT EXISTS (SELECT 1 FROM core.LegalDocuments AS l
@@ -27,15 +28,22 @@ public sealed class LegalDocumentQueries(IDbConnectionFactory connections) : ILe
 
     public async Task<IReadOnlyList<CurrentLegalDocument>> GetCurrentAsync(
         string language,
+        IReadOnlyCollection<string> codes,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(language);
+        ArgumentNullException.ThrowIfNull(codes);
+
+        if (codes.Count == 0)
+        {
+            return [];
+        }
 
         await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
 
         var rows = await connection.QueryAsync<CurrentLegalDocument>(new CommandDefinition(
             CurrentSql,
-            new { language },
+            new { language, codes },
             cancellationToken: cancellationToken)).ConfigureAwait(false);
 
         return [.. rows];

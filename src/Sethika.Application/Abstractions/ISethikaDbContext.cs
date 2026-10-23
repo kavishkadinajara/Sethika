@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Sethika.Domain.Access;
 using Sethika.Domain.Core;
 using Sethika.Domain.Institutions;
+using Sethika.Domain.Onboarding;
 
 namespace Sethika.Application.Abstractions;
 
@@ -32,6 +33,20 @@ public interface ISethikaDbContext
     DbSet<LegalDocument> LegalDocuments { get; }
     DbSet<OutboxMessage> OutboxMessages { get; }
 
+    // Onboarding (plan 02). The application is one aggregate: its documents, office bearers,
+    // checklist, questions and history are reached through it, never through sets of their own.
+    DbSet<RegistrationRequest> RegistrationRequests { get; }
+    DbSet<StoredFile> StoredFiles { get; }
+    DbSet<DocumentType> DocumentTypes { get; }
+    DbSet<InstitutionTypeRequiredDocument> InstitutionTypeRequiredDocuments { get; }
+    DbSet<VerificationChecklistItem> VerificationChecklistItems { get; }
+
+    // What approving an application creates (plan 02, B6).
+    DbSet<InstitutionMember> InstitutionMembers { get; }
+    DbSet<InstitutionDocument> InstitutionDocuments { get; }
+    DbSet<InstitutionStatusChange> InstitutionStatusHistory { get; }
+    DbSet<AuditLogEntry> AuditLogs { get; }
+
     // The RBAC catalogue, level ceilings and role grants, for checks that must read inside the
     // command's transaction rather than trust the permission cache.
     DbSet<Permission> Permissions { get; }
@@ -47,6 +62,9 @@ public interface ISethikaDbContext
 
     /// <summary>To discard tracked entities after a failed save, before looking again.</summary>
     ChangeTracker ChangeTracker { get; }
+
+    /// <summary>For loading an aggregate's collections one query each (see <c>RegistrationLoading</c>).</summary>
+    EntityEntry<TEntity> Entry<TEntity>(TEntity entity) where TEntity : class;
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

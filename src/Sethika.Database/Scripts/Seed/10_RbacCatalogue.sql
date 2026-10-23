@@ -23,7 +23,10 @@ USING (
     FROM (VALUES
         ('INSTITUTION', 'INSTITUTION', N'Institution profile', 10, 1),
         ('INSTITUTION', 'BOOKINGS',    N'Bookings',            20, 1),
-        ('INSTITUTION', 'ACCESS',      N'Access control',      90, 1)
+        ('INSTITUTION', 'ACCESS',      N'Access control',      90, 1),
+        -- Not IsCore: core means "on in every institution", and these two belong to no institution.
+        ('DONOR',       'APPLY',       N'Register an institution', 10, 0),
+        ('ADMIN',       'ONBOARDING',  N'Institution onboarding',  10, 0)
     ) AS v(PortalCode, Code, Name, SortOrder, IsCore)
     JOIN auth.Portals p ON p.Code = v.PortalCode
 ) AS s
@@ -41,7 +44,9 @@ USING (
         ('INSTITUTION', 'INSTITUTION.PROFILE', N'Institution profile',   '/institution/profile', 1),
         ('BOOKINGS',    'BOOKINGS.CALENDAR',   N'Booking calendar',      '/bookings/calendar',   1),
         ('ACCESS',      'ACCESS.ROLES',        N'Roles',                 '/access/roles',        1),
-        ('ACCESS',      'ACCESS.MEMBERS',      N'Staff and their roles', '/access/members',      2)
+        ('ACCESS',      'ACCESS.MEMBERS',      N'Staff and their roles', '/access/members',      2),
+        ('APPLY',       'ONBOARDING.APPLICATION', N'Institution application', '/apply',               1),
+        ('ONBOARDING',  'ONBOARDING.REQUESTS',    N'Registration requests',   '/admin/registrations', 1)
     ) AS v(ModuleCode, Code, Name, Route, SortOrder)
     JOIN auth.Modules m ON m.Code = v.ModuleCode
 ) AS s
@@ -73,7 +78,17 @@ VALUES
     ('ACCESS.ROLES.CREATE',       'ACCESS.ROLES',        'CREATE',  'Institution', N'Create roles',                 1, 0),
     ('ACCESS.ROLES.EDIT',         'ACCESS.ROLES',        'EDIT',    'Institution', N'Change what a role can do',    1, 1),
     ('ACCESS.MEMBERS.VIEW',       'ACCESS.MEMBERS',      'VIEW',    'Institution', N'View staff and their roles',   0, 0),
-    ('ACCESS.MEMBERS.EDIT',       'ACCESS.MEMBERS',      'EDIT',    'Institution', N'Assign and revoke roles',      1, 1);
+    ('ACCESS.MEMBERS.EDIT',       'ACCESS.MEMBERS',      'EDIT',    'Institution', N'Assign and revoke roles',      1, 1),
+    /*  Onboarding (plan 02, B1). An applicant acts on their own application, so Self scope, which
+        the donor level may hold. The platform side shows applicants' NICs, hence sensitive; a
+        decision creates a tenant or ends an application for good, hence step-up.             */
+    ('ONBOARDING.APPLICATION.VIEW',   'ONBOARDING.APPLICATION', 'VIEW',    'Self',     N'See my institution applications',             0, 0),
+    ('ONBOARDING.APPLICATION.CREATE', 'ONBOARDING.APPLICATION', 'CREATE',  'Self',     N'Start an institution application',            0, 0),
+    ('ONBOARDING.APPLICATION.EDIT',   'ONBOARDING.APPLICATION', 'EDIT',    'Self',     N'Fill in, submit and withdraw my applications', 0, 0),
+    ('ONBOARDING.REQUESTS.VIEW',      'ONBOARDING.REQUESTS',    'VIEW',    'Platform', N'View registration requests',                  1, 0),
+    ('ONBOARDING.REQUESTS.EDIT',      'ONBOARDING.REQUESTS',    'EDIT',    'Platform', N'Review registration requests',                1, 0),
+    ('ONBOARDING.REQUESTS.APPROVE',   'ONBOARDING.REQUESTS',    'APPROVE', 'Platform', N'Approve registration requests',               1, 1),
+    ('ONBOARDING.REQUESTS.REJECT',    'ONBOARDING.REQUESTS',    'REJECT',  'Platform', N'Reject registration requests',                1, 1);
 
 IF EXISTS (SELECT 1 FROM @RbacPermissions WHERE Code <> ScreenCode + '.' + ActionCode)
     THROW 51001, '10_RbacCatalogue: a permission code is not <screen>.<action>.', 1;
@@ -112,7 +127,12 @@ VALUES
     ('ACCESS.ROLES.CREATE',       'ACCESS.ROLES.VIEW'),
     ('ACCESS.ROLES.EDIT',         'ACCESS.ROLES.VIEW'),
     ('ACCESS.MEMBERS.EDIT',       'ACCESS.MEMBERS.VIEW'),
-    ('ACCESS.MEMBERS.EDIT',       'ACCESS.ROLES.VIEW');
+    ('ACCESS.MEMBERS.EDIT',       'ACCESS.ROLES.VIEW'),
+    ('ONBOARDING.APPLICATION.CREATE', 'ONBOARDING.APPLICATION.VIEW'),
+    ('ONBOARDING.APPLICATION.EDIT',   'ONBOARDING.APPLICATION.VIEW'),
+    ('ONBOARDING.REQUESTS.EDIT',      'ONBOARDING.REQUESTS.VIEW'),
+    ('ONBOARDING.REQUESTS.APPROVE',   'ONBOARDING.REQUESTS.VIEW'),
+    ('ONBOARDING.REQUESTS.REJECT',    'ONBOARDING.REQUESTS.VIEW');
 
 IF EXISTS (SELECT 1 FROM @RbacDependencies d
            WHERE NOT EXISTS (SELECT 1 FROM auth.Permissions p WHERE p.Code = d.Code)
@@ -135,8 +155,10 @@ WHEN NOT MATCHED BY SOURCE THEN DELETE;
 /*  What any role at each level may ever hold (A15). OWNER and MANAGER may hold every institution
     permission - rank, not the ceiling, is what stops a manager managing managers. STAFF may see
     and do the day's work, but never manage access or change the institution's profile - nor
-    see the access screens, which list other staff and their phone numbers. The platform and
-    donor levels are empty until their screens exist.                                           */
+    see the access screens, which list other staff and their phone numbers. The donor level may
+    hold what a person does for themselves (applying for an institution). PLATFORM_ADMIN may hold
+    every platform permission; PLATFORM_STAFF may review registrations but not decide them
+    (plan 02, B1).                                                                              */
 DECLARE @RbacCeilings TABLE (LevelCode VARCHAR(30) NOT NULL, PermissionCode VARCHAR(150) NOT NULL);
 
 INSERT @RbacCeilings (LevelCode, PermissionCode)
@@ -150,6 +172,21 @@ FROM (VALUES
     ('INSTITUTION.PROFILE.VIEW'),
     ('BOOKINGS.CALENDAR.VIEW'),
     ('BOOKINGS.CALENDAR.APPROVE')
+) AS v(Code)
+UNION ALL
+SELECT 'DONOR', v.Code
+FROM (VALUES
+    ('ONBOARDING.APPLICATION.VIEW'),
+    ('ONBOARDING.APPLICATION.CREATE'),
+    ('ONBOARDING.APPLICATION.EDIT')
+) AS v(Code)
+UNION ALL
+SELECT 'PLATFORM_ADMIN', p.Code FROM @RbacPermissions p WHERE p.Scope = 'Platform'
+UNION ALL
+SELECT 'PLATFORM_STAFF', v.Code
+FROM (VALUES
+    ('ONBOARDING.REQUESTS.VIEW'),
+    ('ONBOARDING.REQUESTS.EDIT')
 ) AS v(Code);
 
 IF EXISTS (SELECT 1 FROM @RbacCeilings c
@@ -223,6 +260,54 @@ USING (
     SELECT r.Id AS RoleId, p.Id AS PermissionId
     FROM @RbacTemplateGrants g
     JOIN auth.Roles r       ON r.Code = g.RoleCode AND r.IsTemplate = 1 AND r.InstitutionId IS NULL
+    JOIN auth.Permissions p ON p.Code = g.PermissionCode
+) AS s
+ON t.RoleId = s.RoleId AND t.PermissionId = s.PermissionId
+WHEN NOT MATCHED BY TARGET THEN INSERT (RoleId, PermissionId) VALUES (s.RoleId, s.PermissionId)
+WHEN NOT MATCHED BY SOURCE THEN DELETE;
+
+/* ---------------------------------------------------------------- system role grants */
+
+/*  What the global system roles hold (08_SystemRoles.sql): the donor what every signed-up person
+    may do for themselves, the platform administrator every platform permission, the reviewer the
+    review without the decision (plan 02, B1). Synced exactly, like the template grants, and each
+    checked against its level's ceiling for the same reason.                                    */
+DECLARE @RbacSystemGrants TABLE (RoleCode VARCHAR(50) NOT NULL, PermissionCode VARCHAR(150) NOT NULL);
+
+INSERT @RbacSystemGrants (RoleCode, PermissionCode)
+SELECT 'DONOR', v.Code
+FROM (VALUES
+    ('ONBOARDING.APPLICATION.VIEW'),
+    ('ONBOARDING.APPLICATION.CREATE'),
+    ('ONBOARDING.APPLICATION.EDIT')
+) AS v(Code)
+UNION ALL
+SELECT 'PLATFORM_ADMIN', p.Code FROM @RbacPermissions p WHERE p.Scope = 'Platform'
+UNION ALL
+SELECT 'PLATFORM_REVIEWER', v.Code
+FROM (VALUES
+    ('ONBOARDING.REQUESTS.VIEW'),
+    ('ONBOARDING.REQUESTS.EDIT')
+) AS v(Code);
+
+IF EXISTS (SELECT 1 FROM @RbacSystemGrants g
+           WHERE NOT EXISTS (SELECT 1 FROM auth.Roles r
+                             JOIN auth.RoleLevels l       ON l.Id = r.RoleLevelId
+                             JOIN @RbacCeilings c         ON c.LevelCode = l.Code AND c.PermissionCode = g.PermissionCode
+                             WHERE r.Code = g.RoleCode AND r.InstitutionId IS NULL AND r.IsSystem = 1 AND r.IsTemplate = 0))
+    THROW 51006, '10_RbacCatalogue: a system role grant names an unknown role or is outside its level''s ceiling.', 1;
+
+WITH SystemGrants AS (
+    SELECT rp.RoleId, rp.PermissionId
+    FROM auth.RolePermissions rp
+    WHERE rp.RoleId IN (SELECT r.Id FROM auth.Roles r
+                        WHERE r.IsSystem = 1 AND r.IsTemplate = 0 AND r.InstitutionId IS NULL)
+)
+MERGE SystemGrants AS t
+USING (
+    SELECT r.Id AS RoleId, p.Id AS PermissionId
+    FROM @RbacSystemGrants g
+    JOIN auth.Roles r       ON r.Code = g.RoleCode AND r.IsSystem = 1 AND r.IsTemplate = 0 AND r.InstitutionId IS NULL
     JOIN auth.Permissions p ON p.Code = g.PermissionCode
 ) AS s
 ON t.RoleId = s.RoleId AND t.PermissionId = s.PermissionId

@@ -109,6 +109,9 @@ Adding the SQL project to the .sln: project type GUID `42EA0DBD-9CF1-443E-919E-B
 - **Phase B:** public pages, cross-institution search + Redis GEO + map.
 - **Phase C:** recurring bookings, **Memorial Dana Planner**, co-sponsors, SignalR live updates.
 - **Phase D:** donations, needs board, gratitude wall, dashboards & reports.
+- **Phase E (added in proposal v3 after supervisor feedback):** religious services & leader coordination —
+  service types, leader roster + leave, appointment requests, conflict-free leader assignment (accept/decline),
+  personal schedule. Build after the booking engine. Design: `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md`.
 - Designed but optional: plans/subscriptions, availability alerts, demand heatmap, impersonation, trust & safety.
 
 ## First tasks for Claude Code
@@ -120,6 +123,7 @@ Adding the SQL project to the .sln: project type GUID `42EA0DBD-9CF1-443E-919E-B
 ## Open items (never invent data for these)
 - `core.MemorialRules` per religion, required legal documents per institution type, and `core.SpecialDays`
   must be confirmed with real institutions before seeding.
+- Religious service types per faith (names, durations, leaders needed) for Phase E — seed only as `DRAFT` suggestions.
 
 ## Branding
 - Name **Sethika** (sethika.com). Colours: Estate Green `#16513D`, Offering Gold `#E0A33E`, Deep Ink `#0E2A21`, Rice Ivory `#F7F4EC`.

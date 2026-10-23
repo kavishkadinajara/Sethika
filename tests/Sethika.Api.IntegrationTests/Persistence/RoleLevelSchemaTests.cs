@@ -108,7 +108,8 @@ public sealed class RoleLevelSchemaTests(SethikaTestDatabase database) : IAsyncL
         var documents = (await connection.QueryAsync<(string Code, string Language, string Content, string ContentSha256)>(
             "SELECT Code, Language, Content, ContentSha256 FROM core.LegalDocuments;")).ToList();
 
-        Assert.Equal(6, documents.Count);
+        // Terms, privacy and the institution declaration (plan 02), each in en/si/ta.
+        Assert.Equal(9, documents.Count);
 
         foreach (var document in documents)
         {

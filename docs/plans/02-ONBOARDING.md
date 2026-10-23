@@ -1,0 +1,636 @@
+# Plan 02 — Institution onboarding and approval
+
+Branch: `3-institution-onboarding` (cut from `develop` at `481397e`, after PR #4 and #5 merged the
+auth slice).
+
+Status: **5.1-5.7 done** (schema, catalogue, draft seeds, RLS on
+applications; number series, file storage, the application aggregate and its EF mappings; the
+applicant API; Hangfire, the outbox processor and the four onboarding texts; the review API and the
+one-transaction approval with its decision locks; the applicant and reviewer screens). **603 tests
+passing** (Domain 82, Application 71, integration 450) plus 105 web unit tests, every new one seen
+to fail under a mutation, and 21 browser tests of both sides. **§6 re-checked on 2026-10-23**: build
+and format clean, 603/603, web lint + 105 unit tests + build clean, the deploy script holds seed
+MERGEs only, DECISIONS has the cut list; browser suite 21/21 on the second run. The first run lost
+one test (the approval walk-through) to a "Unexpected end of JSON input" overlay on `/apply` right
+after sign-in. It passed 3/3 when rerun alone and 21/21 in the full rerun, and its trace was
+overwritten before it was read, so the cause is **not known** (suspect: an empty body through the
+dev server's `/api` rewrite while Turbopack compiles, reaching `adopt()` or `json()`). Next: the
+onboarding PR, then the booking engine. Scope agreed on 2026-10-18: the core flow plus clarifications
+(§4). Required documents and checklist items are seeded as clearly-marked drafts, reject reasons as
+Sethika's own policy (B9). Files go to local disk behind `IFileStorage` (B4).
+Last updated 2026-10-23 (§6 check before the PR). Update this line and the §5 boxes whenever either changes. A fresh session
+trusts them and will rebuild anything they claim is missing.
+
+---
+
+## 0. How to resume this from a cold start
+
+```bash
+git checkout 3-institution-onboarding
+cat docs/plans/02-ONBOARDING.md    # this file
+cat CLAUDE.md docs/DECISIONS.md    # the rules this plan must obey
+cat docs/plans/01-AUTH.md          # §1-§2: what auth already gives you (sessions, RBAC, step-up, RLS)
+dotnet build Sethika.sln && dotnet test Sethika.sln   # 367 must pass before you add anything
+```
+
+Then read §1 (what exists), §2 (decisions), §3 (open questions) and start at the first unchecked box
+in §5.
+
+The rules from plan 01 still hold: `src/Sethika.Database` is the only place schema changes are
+made, every endpoint carries `[HasPermission]`, permission decisions are never re-derived in C#,
+anything the database enforces is tested against real SQL Server, and every test is shown to fail
+under a mutation before it counts.
+
+---
+
+## 1. What already exists (do not rebuild)
+
+### Database: in the SQL project and published, mostly unused so far
+
+| Table | What it is for | Seeded? |
+|---|---|---|
+| `org.RegistrationRequests` | The application. `RequestNo`, applicant snapshot (name, masked NIC, designation, phone), institution details, location (lat/long CHECKed to Sri Lanka), declaration (`DeclarationDocumentId`, `AcceptedAt`, `Ip`), `Status` with 7 values, decision fields, `CreatedInstitutionId`, `RowVersion`. CHECKs: declaration present once submitted, decided rows have a decider, approved has an institution, rejected has a reason, **reviewer and decider are never the applicant**. `UX_RegReq_ActiveRegNo`: one live application per `(type, OfficialRegistrationNo)`. | — |
+| `org.RegistrationRequestDocuments` | One live file per `(request, document type)` (`UX_ReqDoc_Live`, superseded rows kept). Per-document `VerificationStatus`. | — |
+| `org.RegistrationRequestOfficeBearers` | Trustees / committee members, masked NIC, `IsSignatory`. | — |
+| `org.RegistrationRequestChecklist` → `org.VerificationChecklistItems` | Reviewer's pass/fail per item. | **No items** |
+| `org.RegistrationRequestClarifications` | Reviewer question → applicant response (+ optional file). | — |
+| `org.RegistrationRequestStatusHistory` | Every transition, who and when. | — |
+| `org.DocumentTypes`, `org.InstitutionTypeRequiredDocuments` | What to upload, per type; allowed extensions, size, which fields are required. | **No rows** |
+| `org.InstitutionTypes` | 6 types. | Yes (`05`) |
+| `org.Institutions` | `InstitutionCode`, `Slug`, `RegistrationRequestId` (unique), status, `PermissionsVersion`, `ApprovedBy/At`. | — |
+| `org.InstitutionMembers` | Membership; `UX_InstMember_Owner`: one active owner. RLS filter. | — |
+| `org.InstitutionDocuments` | Verified documents copied from the request (`SourceRequestDocumentId`). RLS filter. | — |
+| `org.InstitutionModules` (temporal) | Enabled modules; `vw_EffectivePermissions` reads it. | — |
+| `org.InstitutionTypeDefaultModules`, `org.PlanModules` | Modules a type / plan switches on. | No rows |
+| `org.InstitutionStatusHistory` | Institution lifecycle. | — |
+| `core.Files` | `PublicId`, `StorageProvider` (`Local` allowed), `StorageKey`, `Sha256Hash` (`IX_Files_Hash`), `IsPrivate`, `ScanStatus`. | — |
+| `core.NumberSeries` | `(SeriesCode, ScopeKey, SeriesYear)` → `LastNumber`, `Prefix`, `PadLength`. | No rows |
+| `core.LegalDocuments` | TERMS and PRIVACY `0.1-draft` in en/si/ta. **No `INSTITUTION_DECLARATION`.** | Partly (`09`) |
+| `core.LookupTypes` | `REJECT_REASON` type exists. **No values.** | Partly (`03`) |
+| `core.OutboxMessages` | Written by signup, password change/reset, role changes. **Nothing reads it yet.** | — |
+| `audit.AuditLogs` | | — |
+| `auth.Roles` templates | `OWNER`, `MANAGER`, `STAFF` (`IsTemplate = 1`, `InstitutionId NULL`) with their grants; their comment already says onboarding clones them. | Yes (`10`) |
+
+Not covered by RLS today: `org.RegistrationRequests` and its child tables (they have no
+`InstitutionId`). B2 changes that for the parent.
+
+### Backend
+
+From plan 01: sessions, `[HasPermission]`, step-up (`RequiresMfa`), `ICurrentUserContext`
+(`UserId`, `InstitutionId`, `IsPlatform`), the session-context interceptor and Dapper factory,
+`ISethikaDbContext`, the rate limiter, `IPhoneNumberNormalizer`, `ILegalDocumentQueries`, consent by
+`ContentSha256`, the A18 client address, the `bootstrap` platform admin, institution switching.
+`Domain/Institutions/Institution.cs` is mapped (read side of the session).
+
+**Not there:** file storage, number series, the outbox processor, Hangfire, any `Onboarding` code
+(`Application/Onboarding/` is an empty folder).
+
+---
+
+## 2. Decisions, with the reasoning
+
+### B1 — Who may do what: two permission sets, one per portal
+
+The applicant is an ordinary signed-up user (`DONOR` role), as CLAUDE.md's flow says: sign up with a
+phone OTP, then apply. CLAUDE.md requires a permission on every endpoint, so the applicant's
+endpoints get real permissions rather than "any signed-in user":
+
+| Portal / module / screen | Permission | Scope | MFA | Held by |
+|---|---|---|---|---|
+| DONOR / `APPLY` / `ONBOARDING.APPLICATION` | `ONBOARDING.APPLICATION.VIEW` | Self | 0 | `DONOR` |
+| | `ONBOARDING.APPLICATION.CREATE` | Self | 0 | `DONOR` |
+| | `ONBOARDING.APPLICATION.EDIT` (edit, upload, submit, withdraw, answer) | Self | 0 | `DONOR` |
+| ADMIN / `ONBOARDING` / `ONBOARDING.REQUESTS` | `ONBOARDING.REQUESTS.VIEW` | Platform | 0 | `PLATFORM_ADMIN`, `PLATFORM_REVIEWER` |
+| | `ONBOARDING.REQUESTS.EDIT` (start review, verify documents, checklist, ask) | Platform | 0 | `PLATFORM_ADMIN`, `PLATFORM_REVIEWER` |
+| | `ONBOARDING.REQUESTS.APPROVE` | Platform | **1** | `PLATFORM_ADMIN` |
+| | `ONBOARDING.REQUESTS.REJECT` | Platform | **1** | `PLATFORM_ADMIN` |
+
+- The applicant's permissions are `Self` scope. `auth.Permissions.Scope` has no `Donor` value, and
+  `CK_RoleLevelPermissions_Scope` lets any level hold a `Self` permission. That fits: applying is
+  something a person does for themselves.
+- The `DONOR` role is global (`InstitutionId NULL`), and `PermissionService` reads only the grants
+  for the session's own institution, or the global ones when none is selected. So **the applicant's
+  endpoints answer only in a personal session**. An owner who switched into an institution and then
+  wants to apply for a second one switches back first. The web `/apply` page does that switch
+  itself (5.5).
+- The new modules `APPLY` (DONOR portal) and `ONBOARDING` (ADMIN portal) are not `IsCore`. Core
+  means "on in every institution", and neither belongs to an institution.
+- A new system role `PLATFORM_REVIEWER` at the existing `PLATFORM_STAFF` level: it reviews but does
+  not decide. That is maker-checker at the level ceiling, and it costs one seed row. Only the
+  `bootstrap` admin exists in the demo, so the admin can do every step.
+- `10_RbacCatalogue.sql` gains these rows, the `DONOR` and `PLATFORM_*` ceilings (empty until now),
+  and a fourth synced set: **grants to system roles** (`DONOR`, `PLATFORM_ADMIN`,
+  `PLATFORM_REVIEWER`), checked against their ceilings by the same THROW pattern as template grants.
+- Approve and reject are `RequiresMfa`. An approval creates a tenant with an owner, and a rejection
+  can't be undone, so both deserve the step-up that `BOOKINGS.CALENDAR.APPROVE` already has.
+- The DB CHECKs `CK_RegReq_ReviewerNotApplicant` and `CK_RegReq_DeciderNotApplicant` stay the last
+  line. The handlers check first and answer `403 own_application`.
+
+### B2 — The applicant's rows are protected by RLS, not only by `WHERE ApplicantUserId = @me`
+
+Add `sec.fn_TenantOrOwner(CreatedInstitutionId, ApplicantUserId)` to `sec.TenantIsolationPolicy` on
+`org.RegistrationRequests` (FILTER + BLOCK AFTER INSERT + BLOCK AFTER UPDATE). The function already
+exists and needs no change:
+
+- a platform session (`IsPlatform = 1`) sees every request (the reviewer queue);
+- an applicant sees only their own;
+- after approval, the new institution's sessions see the request that created it.
+
+The child tables have no owner column. Every query and command reaches them through a join to the
+parent, so the parent's filter covers them, and a test proves it: applicant B asking for A's
+document by request number gets `404`, not the file. Adding a predicate recreates the policy on
+publish, so D10's convergence check (`/Action:Script` shows only seed MERGEs on the second publish)
+is part of the slice.
+
+`UX_RegReq_ActiveRegNo` is enforced outside RLS, which is correct. The answer it produces
+(`409 registration_no_in_use`) reveals that *some* live application uses that registration number.
+That number is public record, so this is accepted.
+
+### B3 — The request is a domain aggregate with an explicit state machine
+
+`Domain/Onboarding/RegistrationRequest` owns the transitions. Each one returns a status-history
+entry, and a transition that isn't allowed is a domain error, never a silent no-op:
+
+```
+Draft ──submit──▶ Submitted ──start review──▶ UnderReview ──approve──▶ Approved
+  │                  │                          │  ▲      └──reject───▶ Rejected
+  │                  │                  ask info│  │answer
+  │                  │                          ▼  │
+  │                  │                      InfoRequested
+  └──withdraw──▶ Withdrawn ◀──withdraw──────────┘ (from Draft, Submitted or InfoRequested)
+```
+
+- The applicant may edit details, office bearers and documents only in `Draft` and
+  `InfoRequested`. Replacing a document supersedes the old row (kept for history) and resets
+  verification to `Pending`.
+- **Submit** requires every mandatory document type for the institution type to have a live file,
+  at least one office bearer, at least one signatory, and the current `INSTITUTION_DECLARATION` in
+  the request's language, accepted by `ContentSha256`, the same way signup accepts its terms. It
+  stamps `DeclarationIp` from the A18 client address.
+- **Answer** needs every open question answered, then returns the request to `UnderReview`.
+- Every write uses `RowVersion`. Two reviewers acting on one request: one wins, the other gets
+  `409 stale` and reloads. This is tested by forcing the race (UPDLOCK pattern, plan 01 habits),
+  not by hoping for it.
+- At most 3 non-terminal applications per applicant, and creation is rate-limited per user and per
+  client. One person may legitimately be a trustee of two temples, so 1 would be too strict.
+
+Every transition is unit-tested in `Sethika.Domain.Tests`, each allowed pair and each refused one.
+
+### B4 — Files: `IFileStorage` with a local-disk implementation
+
+- `IFileStorage` (Application): `SaveAsync(stream) → (storageKey, sha256, size)`,
+  `OpenReadAsync(key)`, `DeleteAsync(key)`. `LocalFileStorage` (Infrastructure) writes under
+  `Files:LocalRoot`, outside the content root. Keys are `yyyy/MM/{guid}`, so the uploaded name never
+  reaches a path. Azure Blob is a second implementation before deployment, the same arrangement as
+  the SMS sender (plan 01, A14).
+- Upload checks, in order: the document type is required or allowed for this institution type; the
+  extension is in `DocumentTypes.AllowedExtensions`; the size is at most `MaxSizeMb` (and
+  Kestrel's request limit is set per endpoint); **the first bytes match the claimed type** (PDF
+  `%PDF-`, JPEG `FF D8 FF`, PNG `89 50 4E 47`); the SHA-256 is computed while the file is written.
+- Order of work: write the file, then one transaction inserts `core.Files` and the request-document
+  row (superseding the old one). If the transaction fails, the file is deleted in `catch`. A crash
+  between the two leaves an unreferenced file on disk: harmless, and a cleanup job can sweep it
+  later.
+- Download goes only through a permission-checked endpoint: `Content-Disposition: attachment` with
+  a sanitised name, the stored `ContentType`, `X-Content-Type-Options: nosniff`. Files are never
+  served statically.
+- **Virus scanning is cut.** `ScanStatus` stays `Pending` and the reviewer screen says so. In
+  production this would be Defender for Storage on the Blob container. The report states it.
+
+### B5 — Request and institution numbers come from `core.NumberSeries` inside the caller's transaction
+
+`INumberSeries.NextAsync(series, scope, year)` runs one batch on the EF transaction's connection,
+and refuses to run without a transaction:
+
+1. insert the series row at 0 if it is missing (`WHERE NOT EXISTS`). Two callers that both find it
+   missing both insert; the second waits on the first's key lock and then fails on the primary key
+   (2627), which a T-SQL `CATCH` swallows;
+2. `UPDATE ... SET LastNumber = LastNumber + 1 OUTPUT ...`, whose row lock is held to the end of the
+   caller's transaction.
+
+A rolled-back transaction rolls the number back too (and a new row with it), so the series stays
+gap-free. **The first version was a single `MERGE ... WITH (HOLDLOCK)`, and it deadlocked** (1205)
+when callers raced to create a new series - the first number ever, or the first of each year - on
+their key-range locks, with `UPDLOCK` added as well (found by a stress test, 5.2). The two-step
+version takes no range locks at all.
+
+- `REQUEST` / `PLATFORM` → `REQ-2026-000123`, taken when the draft is created (`RequestNo` is NOT
+  NULL). A draft that is abandoned keeps its number. Gap-free matters for receipts (Phase D), not
+  for applications.
+- `INSTITUTION` / `PLATFORM` → `INS-2026-000045`, taken inside the approval transaction.
+- Tested with the forced-race pattern (6 callers queued behind a held lock, on a new series and on
+  an existing one), a stress test (40 rounds of 8 callers released together on a new series), and a
+  rolled-back caller's number reused. The receipts in Phase D reuse this service unchanged.
+
+### B6 — Approval is one transaction, and it is the slice's centrepiece
+
+`ApproveRegistrationHandler`, one `ISethikaDbContext` transaction. It first takes the decision
+locks (`IRegistrationLocks`): one `sp_getapplock` that every approval and rejection takes, so
+decisions happen one at a time (they are rare, and this makes the code, slug and owner race-free
+with no range to deadlock on), and an `UPDLOCK` on the application's row, so a reviewer's change
+waits for the decision instead of being lost under it. A second approval of the same application
+then reads it as `Approved` and gets `invalid_transition`; nothing depends on a unique-key
+violation being caught and translated.
+
+1. Load the request (its five collections one query each - `RegistrationLoading`; split queries
+   are relational-only and Application depends on EF Core alone): `UnderReview`, decider ≠ applicant, every mandatory document `Verified`, every
+   mandatory checklist item passed. Otherwise `409` with which ones are missing.
+2. `InstitutionCode` from B5. `Slug` from `ProposedName` + `City`, lower-case ASCII with `-`. A name
+   with no Latin letters falls back to the code (a slug of the city alone would name no
+   institution). A taken slug gets `-2`, `-3`, ...; the decision lock makes the check safe, and
+   `UNIQUE` on `Slug` stays the last guard.
+3. Insert `org.Institutions` (B7) with `ApprovedBy/At`.
+4. Copy every `Verified` request document into `org.InstitutionDocuments`
+   (`SourceRequestDocumentId`, same `FileId`: no file copy).
+5. Enable modules, set-based through `IInstitutionModules`: every `IsCore` module of the INSTITUTION portal (`Source = 'Default'`), plus `InstitutionTypeDefaultModules`
+   (`Default`) and `PlanModules` of the requested plan or `FREE` (`Plan`).
+6. Clone the template roles: one institution role per template (`TemplateRoleId` set, same level,
+   code and name, `IsSystem = 0`: the copy is the institution's own), with the template's grants
+   copied into `auth.RolePermissions`.
+7. Applicant → `org.InstitutionMembers` (`IsOwner = 1`, `Designation` from the request) and
+   `auth.UserRoles` (the cloned `OWNER`). Bump the applicant's `Users.PermissionsVersion`, so their
+   cached permissions die.
+8. Request → `Approved`, `DecidedBy/At`, `CreatedInstitutionId`. Write a row to each status history
+   (request and institution).
+9. `audit.AuditLogs` row, and an outbox `InstitutionApproved` row.
+
+Tests: the whole graph exists after approval (and the new owner's `/api/me/permissions` in that
+institution equals the OWNER template); **a failure at the last step leaves nothing behind**
+(forced by a CHECK on `audit.AuditLogs` planted for the test, so the last save fails after
+everything else was written - not a mock); two concurrent approvals
+create one institution; an applicant cannot approve their own request, even as a platform admin
+(the DB CHECK is tested on its own too). Each step's line is mutation-tested: delete it, and a test
+must go red.
+
+### B7 — An approved institution starts `Active` and unlisted
+
+`Status = 'Active'`, `IsPubliclyListed = 0`, `VerifiedBadgeLevel = 1`. `Onboarding` is left unused:
+it would need a go-live checklist (slots set up, profile complete) that nothing defines yet.
+Listing publicly is Phase B's public pages. The view already treats `Onboarding` and `Active`
+alike, so this choice is cheap to revisit.
+
+### B8 — The approved owner gets into their institution with the existing switch
+
+No new session mechanics. The applicant's token has no institution. After approval the status page
+offers "Open <institution>", which calls the existing institution switch (plan 01, A7: the list
+comes from `auth.UserRoles`, which step 7 just wrote). The SMS telling them about it goes through
+the outbox (5.7).
+
+### B9 — Reference data that isn't confirmed is seeded as a marked draft *(decided 2026-10-18)*
+
+CLAUDE.md lists required documents per institution type as an open item ("never invent data"). The
+user chose the same answer as for the legal texts (plan 01, Q4): seed a small, generic set in
+`12_OnboardingDrafts.sql`, where **every row's name or instructions begins with `DRAFT`** and
+`docs/DECISIONS.md` records it as unconfirmed:
+
+- `org.DocumentTypes`: registration certificate, applicant's NIC copy, proof of address, letter of
+  authorisation from the governing body. All `DRAFT`.
+- `org.InstitutionTypeRequiredDocuments`: the same mandatory set for all six types, for now.
+- `org.VerificationChecklistItems`: registration number matches the certificate; applicant appears
+  on the documents; the location pin matches the address; the office phone was answered.
+- `core.LookupValues` for `REJECT_REASON`: documents incomplete, registration could not be
+  verified, duplicate application, not an eligible institution, other (note required). These are
+  Sethika's own review policy, not facts about institutions, so they are **not** marked DRAFT.
+- `core.LegalDocuments`: `INSTITUTION_DECLARATION` `0.1-draft` in en/si/ta, si/ta added to
+  `docs/translations-to-review.md`.
+
+The flow reads all of this from the tables, so the confirmed list is a seed edit, not a code change.
+
+### B10 — Side effects go through the outbox, and this plan builds the processor
+
+Onboarding is the first feature that needs its outbox rows *sent* (SMS to the applicant on submit,
+info requested, approved, rejected). The processor is shared with booking, so it is built once,
+here:
+
+- **Hangfire** (`Hangfire.NetCore`, `Hangfire.SqlServer` 1.8.25: already in CLAUDE.md's stack, so
+  no new architectural piece) in the API process, with SQL Server storage in the same database
+  under Hangfire's own `HangFire` schema. The publish profile has `DropObjectsNotInSource = False`,
+  so a dacpac publish leaves that schema alone. Checked on 2026-10-18: with Hangfire's 11 tables in
+  `Sethika_Test`, `SqlPackage /Action:Script` mentions `HangFire` nowhere and drops nothing.
+  `Newtonsoft.Json` is pinned to 13.0.4: Hangfire.Core would resolve 11.0.1 (CVE-2024-21907).
+  `Jobs:Enabled` (default true) turns the server off; the integration tests do, through one
+  environment variable, so a test host does not start a job server on the shared database.
+- **No dashboard (changed 2026-10-18).** The access token lives in the web app's memory and is
+  sent as a header, so a browser opening `/jobs` carries no credentials, and making it carry some
+  means a cookie scheme or a token hand-off: a new way in, for an operator's convenience. The
+  outbox itself is the operational view (`Attempts`, `LastError`, `ProcessedAt`). Hence
+  `Hangfire.NetCore`, not `Hangfire.AspNetCore`.
+- `OutboxJob` (recurring, every minute) runs `OutboxProcessor`: `SELECT TOP (50) ... WITH
+  (UPDLOCK, READPAST, ROWLOCK) WHERE ProcessedAt IS NULL AND Attempts < 5 ORDER BY OccurredAt`,
+  dispatch by `EventType` to an `IOutboxHandler`, set `ProcessedAt`; on failure `Attempts + 1` and
+  `LastError`, and the batch goes on. A run keeps taking full batches but stops at the first
+  failure, so five attempts are five runs, not five batches in one second. Two workers never take
+  the same row (READPAST, tested by forcing it). A crash mid-batch rolls the batch back and hands
+  it over again, so every handler is idempotent.
+- It runs with `IsPlatform = 1`: the job opens its own scope with `JobScopes.CreatePlatformScope`,
+  where `ICurrentUserContext` is `PlatformJobUser` (`AddSethikaCurrentUser<T>` binds the request's
+  user everywhere else). This is the first thing that makes CLAUDE.md's "background jobs use
+  `IsPlatform = 1`" true.
+- An event type with no handler (`DonorSignedUp`, `PasswordReset`, ... already in the table) is
+  marked processed and logged, so it never blocks the queue.
+- Each SMS writes `notify.Notifications` with a `DedupKey`
+  `ONBOARD_INFO_REQUESTED:REQ-2026-000123:{outbox id}` (changed 2026-10-18 from the request alone: a
+  reviewer can ask more than once, and each question is its own text). `UX_Notifications_Dedup`
+  makes a re-run of one message harmless. Only a confirmed phone is texted.
+- `notify.Templates` for the four messages in en/si/ta, sent in the applicant's
+  `PreferredLanguage` (as the OTP SMS is), English when the language has none, a failure when
+  English is missing too. `{requestNo}` is the only placeholder.
+
+### B11 — The location is entered as coordinates, with "use my location"
+
+`Latitude`/`Longitude` are NOT NULL and CHECKed to Sri Lanka's bounding box. A Leaflet map picker
+belongs with Phase B's map, so this slice uses two number fields, the browser's geolocation button,
+and a link that opens OpenStreetMap at the pin for the reviewer to compare. No new web package.
+
+### B12 — Masked columns and the API's own database login
+
+`ApplicantNic` and `OfficeBearers.NicNumber` are masked. Locally the API connects with Integrated
+Security as a sysadmin, so masking never applies, and a reviewer sees the NIC because of that
+accident. Before deployment the API's login needs `GRANT UNMASK` (SQL Server 2022 allows it per
+column) on the columns its screens show, and nothing else. Report-reading users keep the mask.
+The outbox job reads `auth.Users.PhoneNumber` (masked) to text applicants, so that column needs it
+too. Hangfire creates its `HangFire` schema on first start, which a restricted login cannot: either
+the first start runs once with DDL rights or the schema is installed from Hangfire's script.
+This is written in `docs/LOCAL_SETUP.md` and the deploy checklist. It is not built here, because
+there is no deployment login yet.
+
+---
+
+## 3. Open questions
+
+| # | Question | Blocks | Default if you say nothing |
+|---|---|---|---|
+| Q1 | The real required documents per institution type, and the checklist. | Nothing (B9 seeds drafts) | Drafts stay, marked, until confirmed with real institutions. |
+| Q2 | Should approving also need a second admin (four eyes), not only step-up? | Nothing | No: one admin with step-up. `PLATFORM_REVIEWER` exists if the report wants maker-checker shown. |
+
+---
+
+## 4. Scope, and the honest warning
+
+**In:** apply (draft → details → office bearers → documents → declaration → submit), withdraw,
+the reviewer queue and detail, document verification, the checklist, clarifications (ask → answer),
+approve (B6) and reject with a reason, the outbox processor and the four SMS, and the screens for
+all of it in en/si/ta.
+
+**Cut, and the report says so:** `RiskScore`/`RiskFlags` (duplicate files via `IX_Files_Hash`, a
+reused NIC via `IX_OfficeBearer_Nic`, location clashes), `SlaDueAt`, `AssignedReviewerId`, evidence
+files on checklist items, staff invitations (`org.StaffInvitations`), plan selection
+(`RequestedPlanId` stays NULL → FREE), DS divisions (no seed; the column is nullable), virus
+scanning (B4), a map picker (B11), editing the institution profile after approval.
+
+| Slice | Effort |
+|---|---|
+| 5.1 schema, catalogue and draft seeds | ~0.5 day |
+| 5.2 number series, file storage, the domain aggregate | ~0.5 day |
+| 5.3 applicant API | ~0.75 day |
+| 5.4 review and approval API | ~1 day |
+| 5.5 applicant screens | ~0.75 day |
+| 5.6 reviewer screens | ~0.75 day |
+| 5.7 outbox processor, Hangfire, onboarding SMS | ~0.75 day |
+
+**About 5 days.** With the submission in late October, that leaves very little for the booking
+engine, which Phase A also needs, and for the report, which is the grade. Recommended order:
+**5.1 → 5.2 → 5.4's approval transaction first** (the part the report's design chapter rests on),
+then 5.3, 5.7, and the screens last. If time runs out, cut the screens to the minimum that
+demonstrates the flow, not the tests.
+
+---
+
+## 5. Work breakdown
+
+### 5.1 — Schema, catalogue and draft seeds
+
+- [x] RLS predicate on `org.RegistrationRequests` (B2): FILTER + BLOCK AFTER INSERT/UPDATE with the
+      existing `sec.fn_TenantOrOwner`. A second publish (`/Action:Script`) shows no schema statements.
+- [x] `10_RbacCatalogue.sql`: the `APPLY` and `ONBOARDING` modules (not `IsCore`), both screens,
+      7 permissions (applicant ones `Self` scope, see B1), 5 dependencies, the
+      `DONOR`/`PLATFORM_ADMIN`/`PLATFORM_STAFF` ceilings, and a fourth synced set, the system-role
+      grants, guarded by `THROW 51006`. `08_SystemRoles.sql`: `PLATFORM_REVIEWER`.
+- [x] `12_OnboardingDrafts.sql` (B9) and `INSTITUTION_DECLARATION` `0.1-draft` in
+      `09_LegalDocuments.sql` (each row now carries its own `EffectiveFrom`), run from
+      `PostDeployment.sql`. Published to `Sethika` and `Sethika_Test`. `docs/DECISIONS.md` lists the
+      drafts; the declaration's si/ta are in `docs/translations-to-review.md`.
+- [x] `RbacCatalogueTests`: every template and system-role grant inside its ceiling; each system role
+      holds exactly its grants, read back through the view; only approve and reject need step-up; a
+      reviewer granted APPROVE in the seed stops the deploy (51006), as does an unknown role; a grant
+      taken out of the seed is removed.
+- [x] `RegistrationRequestSecurityTests` (7): an applicant sees only their own; the platform sees all;
+      the institution sees only the request that created it, and only once linked; nobody else, and
+      an unstamped connection, sees none; another applicant's UPDATE changes 0 rows; filing in
+      someone else's name and handing one's application to someone else are refused (33504).
+      The fixture reset now switches `FK_RegReq_Institution` off around its two deletes and back on
+      `WITH CHECK`: a request and the institution it created point at each other.
+      **Mutations, all killed:** each of the three predicates dropped; a donor grant deleted; REJECT
+      without step-up; the reviewer granted APPROVE; the PLATFORM_STAFF ceiling narrowed; the 51006
+      guard removed from the seed; the system-grant MERGE without its delete.
+- [x] **Found by the full suite:** `GET /api/legal/current` returned every current document, so the
+      declaration would have appeared on the donor signup screen as a third thing to accept. The
+      query now takes the codes it wants (`LegalDocumentCodes.Signup` for that endpoint, shared with
+      `SignUpDonorHandler`); `ADonorSignsUpWithAPhoneAndMakesAnAuthenticatedCall` asserts exactly
+      `PRIVACY` and `TERMS`, and goes red with the code filter removed.
+- [x] `System.Security.Cryptography.Pkcs` pinned to 10.0.13 in Infrastructure, and the 10.0.12
+      packages moved to 10.0.13: two .NET DoS advisories published 2026-10-13 made restore fail
+      (NuGet audit warnings are errors). Remove the pin once `Microsoft.Data.SqlClient` depends on a
+      patched version.
+
+### 5.2 — Building blocks
+
+- [x] `INumberSeries` + `SqlNumberSeries` on the EF transaction's connection (B5), registered
+      scoped. `NumberSeriesTests` (7): counting and format, a new year starting at 1, a rollback
+      handing its number back (on insert and on increment), no transaction refused, two forced
+      races and the stress test. **Mutations:** the CATCH removed, a new row starting at 1, no
+      increment, the year left out of the UPDATE, the transaction check removed - all killed. The
+      `NOT EXISTS` removed survives, as it should: the CATCH is the guarantee, `NOT EXISTS` only
+      spares the ordinary call an error.
+- [x] `IFileStorage` + `LocalFileStorage` (B4) under `Infrastructure/Files`, `Files:LocalRoot`
+      required outside Development (`AddSethikaFiles`, the host refuses to start without it), and
+      `UploadedFileRules` in `Application/Files` (extension against the document type's list, size,
+      first bytes; the content type is decided there, never taken from the client). 17 unit tests,
+      12 against the real file system (hash, exact limit, an oversize body that never says its
+      length, a copy failing half way, six keys the storage could not have issued), 2 startup
+      tests. **Mutations:** 10, all killed but one: the root guard after the key-shape check
+      survives, as it should (the shape already rules out escaping the root; the guard holds if the
+      shape is ever loosened).
+- [x] `Domain/Onboarding/RegistrationRequest` and its children (B3), and the reference entities
+      (`DocumentType`, `InstitutionTypeRequiredDocument`, `VerificationChecklistItem`) and
+      `Domain/Core/StoredFile`. 81 unit tests, among them every transition from every status (49).
+      EF configurations for all of them, the aggregate's five collections cascading, and five
+      `DbSet`s on `ISethikaDbContext`. `RegistrationRequestPersistenceTests` (4) under RLS: a draft
+      to answered questions with every row written, a replacement superseding in one save, office
+      bearers replaced naming the same person, two reviewers verifying at once (one gets
+      `DbUpdateConcurrencyException`). **Found:** a change at the same millisecond as the last one
+      left `UpdatedAt` equal, so EF did not write the application row and its `RowVersion` went
+      unchecked; `Touch` now always moves `UpdatedAt` on, by a millisecond if it must.
+      **Mutations:** 14 on the aggregate, all killed; RowVersion and the monotonic `Touch` killed
+      in EF. Dropping the two unique-index declarations survives: EF already orders those writes,
+      and the comments say so.
+
+### 5.3 — Applicant API (`/api/onboarding/applications`)
+
+- [x] `GET /lookups`: types, districts, required documents per type, current declaration (Dapper,
+      `OnboardingApplicationQueries`; `DateOnlyTypeHandler` because Dapper has no `DateOnly`).
+- [x] `POST /` create draft → `{ requestNo }`; `GET /` mine; `GET /{requestNo}`. Create locks the
+      applicant's `auth.Users` row (`IRegistrationLocks.LockApplicantAsync`) before counting open
+      applications, so the limit of 3 holds under concurrent creates.
+- [x] `PUT /{requestNo}` details; `PUT /{requestNo}/office-bearers` replaces the set (no internal ids
+      exposed). `ApplicationInput` checks and tidies every field to its column's limits and names
+      each bad one (`{ code: "invalid_details", fields: [...] }`).
+- [x] `PUT /{requestNo}/documents/{documentTypeCode}` multipart upload / replace; `GET .../file`
+      (attachment, `nosniff`, `no-store`). Extension and magic bytes checked (`UploadedFileRules`);
+      the bytes are stored before the transaction and deleted again if the save fails.
+- [x] `POST /{requestNo}/submit` (declaration hash), `POST /{requestNo}/withdraw`,
+      `POST /{requestNo}/answers`. A live registration number clash is seen only by
+      `UX_RegReq_ActiveRegNo`: `SethikaDbContext` turns 2601/2627 into `DuplicateKeyException`
+      with the index name, and the handler answers `409 registration_no_in_use`.
+- [x] Tests over HTTP: the happy path, each submit refusal, edit refused outside Draft/InfoRequested,
+      another applicant gets 404 everywhere, the limit of 3, rate limits, `409 registration_no_in_use`.
+      `ApplicationEndpointsTests` (14): also the download's own bytes and headers, a renamed
+      executable refused with nothing kept, a document type the institution type does not take,
+      the stored file deleted when a planted CHECK fails the save, 403 in an institution session,
+      and the limit of 3 forced (three creates queued on the applicant's row, released together).
+      `ApplicationInputTests` (28). **Mutations:** 6 on the input rules, all killed; 15 on the
+      handler and endpoints, all killed but two that are expected to survive: the applicant check
+      in `ChangeAsync` (RLS already hides other applicants' rows) and the early editable check on
+      upload (the aggregate refuses the same, only after the file is stored). A broken type check
+      first left its test's document type behind and failed later runs for the wrong reason; the
+      test now clears its own leftovers before and after.
+
+### 5.4 — Review and approval API (`/api/admin/registrations`)
+
+- [x] `GET /?status=&page=` queue (Dapper, paged, oldest submitted first; open = Submitted,
+      UnderReview, InfoRequested); `GET /{requestNo}` detail with documents, office bearers,
+      checklist, clarifications, history, plus the required documents, the checklist items that
+      apply to the type and the reject reasons. A draft is never shown to a reviewer: the
+      applicant read and the reviewer read share one query, `@applicantId IS NULL` meaning
+      "reviewer, not a draft".
+- [x] `POST /{requestNo}/start-review`, `PUT /{requestNo}/documents/{code}/verification` (refusal needs
+      remarks), `PUT /{requestNo}/checklist` (all items or none; unknown, duplicate and other-type
+      items refused), `POST /{requestNo}/questions` (1-10, outbox `RegistrationInfoRequested`),
+      `GET .../documents/{code}/file`. `RegistrationReviewHandler`, `IRegistrationReviewQueries`.
+- [x] **The approval transaction (B6)**: `ApproveRegistrationHandler`, `InstitutionSlug`,
+      `RegistrationLoading`, `IRegistrationLocks`/`SqlRegistrationLocks`,
+      `IInstitutionModules`/`SqlInstitutionModules`, and the entities and mappings it writes
+      (`InstitutionMember`, `InstitutionDocument`, `InstitutionStatusChange`, `AuditLogEntry`). The
+      first writes to `audit.AuditLogs` anywhere. `ApproveRegistrationHandlerTests` (8): the whole
+      institution (documents traced to their uploads, the three core modules, each cloned role
+      granting exactly its template's grants, the owner holding the OWNER template's permissions
+      through the view, both histories, audit, outbox without NIC or phone); a failed checklist item
+      and an unknown request create nothing; no one approves their own application, and the DB
+      CHECK refuses it alone; a failure at the last save leaves every count as it was, the
+      institution number included; two approvals of one application create one institution; two
+      same-named institutions approved at once get `-galle` and `-galle-2`; another portal's core
+      module never reaches an institution. `RegistrationLocksTests` (4) and `InstitutionSlugTests`
+      (11). **Mutations:** 21, all killed but one - the THROW on a refused applock, which cannot
+      be forced without a 30-second wait. The fixture now clears what approvals create (members,
+      institution documents and history, and the test requests' audit and outbox rows).
+- [x] `POST /{requestNo}/approve` (B6) and `POST /{requestNo}/reject` (reason code + note; takes the
+      same decision lock as approval), both answering `403 stepup_required` without a step-up.
+- [x] Tests: `RegistrationReviewEndpointsTests` (11) - the queue's order and no drafts; a full
+      review and a stepped-up approval; a reviewer cannot decide, even stepped up; remarks and
+      checklist rules; questions with their outbox row; rejection audited, texted and final; a
+      rejection waiting for a decision in progress; own application 403; two reviewers at once, one
+      told `stale`; a reviewer downloads an upload but not a draft's. **Mutations:** 22, killed
+      but three: R2 and R7 (a second layer refuses drafts too) and R9 (upper-casing the document
+      code: the lookup runs in SQL under a case-insensitive collation; a lowercase request now pins
+      that). The checklist test left its children's-home item behind when R12 let an answer
+      reference it; it now clears the answers and the item before and after.
+
+### 5.5 — Applicant screens
+
+- [x] `/apply` (the applicant's list) and `/apply/new`: type → details (B11 location, with "use my
+      location" and an OpenStreetMap link to the pin) → office bearers → documents → declaration →
+      submit. Draft saved per step, resumable: `/apply/[requestNo]` opens a draft at the first step
+      with something left to do (`resumeStep`).
+- [x] `/apply/[requestNo]`: status, history, open questions with answers and document replacement,
+      withdraw (a draft too: it counts towards the three); after approval, "Open <institution>"
+      (B8) through `session.switchInstitution`. **Known gap (found by the browser tests):**
+      sign-in and every refresh pick the only institution a user holds, so after approval any
+      reload puts the owner in their institution, and there is no switch back to a personal
+      session: an owner can no longer see their applications or apply for a second institution.
+      The screen says so plainly. "Open the institution" is the path while Sethika is still open
+      from before the decision. A switch back is future work (an auth-session change).
+- [x] en/si/ta strings, si/ta drafts in `docs/translations-to-review.md` (the `Apply` namespace,
+      169 strings each); Vitest for the step logic (`lib/onboarding/progress.test.ts`, 13).
+- [x] **Browser tests (Playwright, `web/e2e`, skill `.claude/skills/browser-test`)** against the
+      real API, SQL Server and Redis, on a desktop window and a 320 px phone, failing on any
+      console error or 5xx: signup by texted code (a wrong code, a weak password refused by the API
+      and fixed); the whole application from a blank form to submitted, every refusal on the way
+      (empty form, no signatory, missing documents, a .txt file, the declaration unticked); a draft
+      reopening at office bearers and withdrawn; another's number not found; a reviewer's question
+      answered after changing the details (three steps, no declaration); the list and form in all
+      three languages with nothing wider than the window and nothing clipped. 14 runs, all
+      passing. Found and fixed: at 320 px the theme switcher left "Dark" alone on a second line,
+      and in Sinhala and Tamil its icons pushed the words out of their pills (the clipping check
+      fails on the old version). Next's dev server races on its prerender manifest when two
+      routes first compile at once (500 "Unexpected end of JSON input"); the setup warms every
+      route up one at a time.
+
+### 5.6 — Reviewer screens
+
+- [x] `/admin/registrations` queue with status filter: "to do" by default, the filter and page in
+      the address (`?status=&page=`); type and district by name through a new
+      `GET /api/admin/registrations/lookups` under the reviewer's own VIEW permission (a reviewer
+      holds none of the applicant's) - the applicant endpoint's handler, mapped twice.
+      `AReviewerReadsTheNamesBehindTheCodes_UnderTheirOwnPermission`; mutation (the applicant's
+      permission on the route) killed.
+- [x] `/admin/registrations/[requestNo]`: what the applicant said (the applicant form's labels,
+      a blank answer shown as "Not given"), OSM link, documents (download; accept, or "Do not
+      accept" with remarks; "files are not checked for viruses yet" in place of `ScanStatus`, B4),
+      checklist (yes / no / not checked, saved together), questions (one to ten), and the decision:
+      what approval still waits for, listed; approve and "do not approve" (a reason, an optional
+      note) each confirmed once, then the step-up dialog. A reviewer sees the decision as an
+      administrator's. The status reads from the reviewer's side ("Waiting for answers", not the
+      applicant's "Questions for you"). `lib/onboarding/review.ts` + `review.test.ts` (8);
+      **mutations** 6, all killed (one after a test was added: unanswered checklist items were
+      not proved left out).
+- [x] Browser tests (`e2e/review`, 7 runs): a reviewer's whole pass - the queue and its filter,
+      start, a refusal needing remarks, the checklist kept across a reload, no decision for a
+      reviewer, two questions; an administrator approving with a texted code once everything is
+      checked, and the applicant - Sethika still open - opening their institution; a "do not
+      approve" with reason and note read by the applicant; an applicant kept out; Sinhala and
+      Tamil at 320 px with nothing clipped. Accounts made through the API now each come from an
+      address of their own (`X-Forwarded-For`, believed from loopback), as different people's
+      phones would: a full run makes more than the 20 signup codes one client may ask for.
+
+### 5.7 — Outbox processor and onboarding SMS (B10)
+
+- [x] Hangfire in-process with SQL storage; the second dacpac publish leaves `HangFire.*` untouched
+      (checked, B10). No `/jobs` dashboard (B10, changed). `HangfireJobsTests` (2): the host's own
+      server runs the recurring job - registered by that host, which the test proves by removing it
+      afterwards, since Hangfire keeps recurring jobs in the database - as the platform (a probe
+      handler reads both tenants' applications), and the applicant is texted; a test host runs no
+      jobs. `JobScopeTests` (3): a request's scope is its user and sees its own application, a job's
+      is the platform and sees both, and the mark does not leak into the next scope.
+- [x] `OutboxJob` / `OutboxProcessor`: READPAST batch, retries, unknown events marked processed;
+      forced two-worker test. `OutboxProcessorTests` (5): oldest first and unhandled types
+      processed; a failure counted, the batch going on, and the message left alone after the fifth;
+      full batches in one run but a stop at a failure; the second worker skips the first's locked
+      rows without waiting; two handlers for one type refused.
+- [x] Four onboarding SMS with `DedupKey`, templates in en/si/ta; a re-run sends nothing twice.
+      `OnboardingSmsTests` (11): each event its template in the applicant's language; a repeated
+      run texts nobody twice; two questions are two texts; no text to an unconfirmed phone; English
+      when the language has none, a failure when no language has it; a payload without the request
+      or the applicant is a failure. The template seed test covers the twelve new rows and the
+      zero-width joiner. **Mutations:** 23, all killed. The recurring-job one first survived: an
+      earlier run's job, still in Hangfire's tables, answered the trigger.
+
+---
+
+## 6. Definition of done
+
+1. `dotnet build Sethika.sln` clean (warnings are errors); `dotnet format --verify-no-changes` clean.
+2. `dotnet test Sethika.sln` green; every new test was seen to fail under a mutation, and the commit
+   says which.
+3. `cd web && npm run lint && npm test && npm run build` clean.
+4. A second `SqlPackage /Action:Script` shows seed MERGEs only.
+5. A live walk-through: a new user signs up, applies, uploads, submits; the admin asks a question;
+   the applicant answers; the admin verifies, steps up, approves; the applicant gets the SMS (console
+   sender), opens the institution and sees the OWNER's screens.
+6. `docs/DECISIONS.md` records B9's drafts and the cut list from §4.
+7. PR into `develop`, Conventional Commits title, `## What` / `## Why` / `## How to verify`.
+
+## 7. What this plan deliberately does not do
+
+Everything in §4's cut list; re-verification (`NextReviewDue`); suspension and deactivation of an
+institution; institution reports (`org.InstitutionReports`); the public institution page (Phase B).
+All have tables already; none block the booking engine.

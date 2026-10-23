@@ -14,6 +14,10 @@ internal sealed class TestCurrentUserContext : ICurrentUserContext
     internal static TestCurrentUserContext ForInstitution(int institutionId) =>
         new() { UserId = Guid.NewGuid(), InstitutionId = institutionId };
 
+    /// <summary>A signed-in person with no institution selected: sees only what they own.</summary>
+    internal static TestCurrentUserContext ForUser(Guid userId) =>
+        new() { UserId = userId };
+
     /// <summary>Platform staff or a background job: sees across tenants.</summary>
     internal static TestCurrentUserContext Platform() =>
         new() { IsPlatform = true };

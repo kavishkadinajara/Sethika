@@ -11,6 +11,7 @@ using Sethika.Api.IntegrationTests.Persistence;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Access;
 using Sethika.Domain.Access;
+using Sethika.Infrastructure.Files;
 using Sethika.Infrastructure.Notifications;
 using Sethika.Infrastructure.Security;
 
@@ -37,6 +38,10 @@ public sealed class AccessServiceRegistrationTests(SethikaTestDatabase database)
             builder.UseSetting("ConnectionStrings:Sql", database.ConnectionString);
             builder.UseSetting("ConnectionStrings:Redis", database.RedisConnectionString);
             builder.UseSetting("Jwt:SigningKey", SigningKey);
+
+            // Required outside Development (plan 02, B4). Set here so each refusal test fails for its
+            // own reason; the test of this one setting overrides it with an empty value.
+            builder.UseSetting("Files:LocalRoot", Path.Combine(Path.GetTempPath(), "sethika-registration-files"));
 
             foreach (var (key, value) in settings)
             {
@@ -136,6 +141,25 @@ public sealed class AccessServiceRegistrationTests(SethikaTestDatabase database)
         var client = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(ISmsSender));
 
         Assert.Equal(new Uri(new SmsOptions().NotifyLkBaseUrl), client.BaseAddress);
+    }
+
+    [Fact]
+    public void RefusesToStartWithoutAFileRootOutsideDevelopment()
+    {
+        using var host = Host(
+            Environments.Production,
+            ("Sms:Provider", SmsOptions.NotifyLkProvider),
+            ("Files:LocalRoot", ""));
+
+        Assert.Contains("Files:LocalRoot is not set", StartupFailure(host), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void KeepsFilesOnLocalDiskWithADefaultRootInDevelopment()
+    {
+        using var host = Host(Environments.Development, ("Files:LocalRoot", ""));
+
+        Assert.Equal(LocalFileStorage.Provider, Assert.IsType<LocalFileStorage>(host.Services.GetRequiredService<IFileStorage>()).ProviderName);
     }
 
     [Fact]

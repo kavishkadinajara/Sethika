@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Reflection;
+using System.Security.Cryptography;
 using Dapper;
 using Microsoft.Data.SqlClient;
 
@@ -173,7 +175,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
             var after = await connection.QuerySingleAsync(Snapshot, transaction: transaction);
 
             Assert.Equal((IDictionary<string, object>)before, (IDictionary<string, object>)after);
-            Assert.Equal(9, (int)after.Permissions);
+            Assert.Equal(16, (int)after.Permissions);
         }
     }
 
@@ -207,6 +209,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
     [InlineData("SELECT 'STAFF', v.Code", "SELECT 'STAF', v.Code", 51004)]
     [InlineData("('BOOKINGS.CALENDAR.VIEW')) AS v(Code);", "('BOOKINGS.CALENDAR.VIEW'), ('ACCESS.ROLES.CREATE')) AS v(Code);", 51005)]
     [InlineData("('ACCESS.ROLES.EDIT',         'ACCESS.ROLES.VIEW'),", "('ACCESS.ROLES.EDITT',        'ACCESS.ROLES.VIEW'),", 51003)]
+    [InlineData("SELECT 'PLATFORM_REVIEWER', v.Code", "SELECT 'PLATFORM_REVIEWR', v.Code", 51006)]
     public async Task AMistakeInTheSeedStopsTheDeploy(string original, string mistake, int expectedError)
     {
         // A JOIN on a misspelt code would drop the row without a word; the seed checks instead. The
@@ -225,9 +228,70 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
         }
     }
 
-    [Fact]
-    public async Task EveryTemplateGrantIsInsideItsLevelsCeiling()
+    /// <summary>
+    /// The reviewer's grants and PLATFORM_STAFF's ceiling are written alike, so a change meant for the
+    /// grants is made in the grants section only.
+    /// </summary>
+    private static string WithReviewerGrants(string replacement)
     {
+        const string Section = "system role grants */";
+        const string ReviewerGrants = "    ('ONBOARDING.REQUESTS.VIEW'),\n    ('ONBOARDING.REQUESTS.EDIT')\n) AS v(Code);";
+        var seed = CatalogueSeed().ReplaceLineEndings("\n");
+        var at = seed.IndexOf(Section, StringComparison.Ordinal);
+        Assert.True(at > 0, "the system role grants section is not in the seed");
+        Assert.Contains(ReviewerGrants, seed[at..], StringComparison.Ordinal);
+
+        return seed[..at] + seed[at..].Replace(ReviewerGrants, replacement, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ASystemRoleGrantOutsideItsCeilingStopsTheDeploy()
+    {
+        // The reviewer given the decision its level never allows.
+        var mistaken = WithReviewerGrants(
+            "    ('ONBOARDING.REQUESTS.VIEW'),\n    ('ONBOARDING.REQUESTS.EDIT'),\n    ('ONBOARDING.REQUESTS.APPROVE')\n) AS v(Code);");
+
+        var (connection, transaction) = await BeginAsync();
+        await using (connection)
+        await using (transaction)
+        {
+            var error = await Assert.ThrowsAsync<SqlException>(() =>
+                connection.ExecuteAsync(mistaken, transaction: transaction));
+
+            Assert.Equal(51006, error.Number);
+        }
+    }
+
+    [Fact]
+    public async Task TakingAGrantFromASystemRoleInTheSeedRemovesItsRow()
+    {
+        // Synced exactly, like the ceilings: a grant taken out of the seed is gone after the next publish.
+        var narrowed = WithReviewerGrants("    ('ONBOARDING.REQUESTS.VIEW')\n) AS v(Code);");
+
+        var (connection, transaction) = await BeginAsync();
+        await using (connection)
+        await using (transaction)
+        {
+            await connection.ExecuteAsync(narrowed, transaction: transaction);
+
+            var reviewer = await connection.QueryAsync<string>(
+                """
+                SELECT p.Code FROM auth.RolePermissions rp
+                JOIN auth.Roles r       ON r.Id = rp.RoleId
+                JOIN auth.Permissions p ON p.Id = rp.PermissionId
+                WHERE r.Code = 'PLATFORM_REVIEWER' AND r.InstitutionId IS NULL;
+                """,
+                transaction: transaction);
+
+            Assert.Equal(["ONBOARDING.REQUESTS.VIEW"], reviewer);
+        }
+    }
+
+    [Fact]
+    public async Task EveryTemplateAndSystemRoleGrantIsInsideItsLevelsCeiling()
+    {
+        // The view drops a grant outside its ceiling without a word, so a seed that wrote one would
+        // look applied and grant nothing. This is the check that it never does.
         await using var connection = new SqlConnection(database.ConnectionString);
 
         var outside = await connection.QueryAsync<string>(
@@ -236,11 +300,62 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
             FROM auth.Roles r
             JOIN auth.RolePermissions rp ON rp.RoleId = r.Id
             JOIN auth.Permissions p      ON p.Id = rp.PermissionId
-            WHERE r.IsTemplate = 1
+            WHERE (r.IsTemplate = 1 OR (r.IsSystem = 1 AND r.InstitutionId IS NULL))
               AND NOT EXISTS (SELECT 1 FROM auth.RoleLevelPermissions c
                               WHERE c.RoleLevelId = r.RoleLevelId AND c.PermissionId = rp.PermissionId);
             """);
 
         Assert.Empty(outside);
+    }
+
+    // ------------------------------------------------------------------ system role grants (plan 02, B1)
+
+    [Theory]
+    [InlineData("DONOR", "ONBOARDING.APPLICATION.CREATE,ONBOARDING.APPLICATION.EDIT,ONBOARDING.APPLICATION.VIEW")]
+    [InlineData("PLATFORM_ADMIN", "ONBOARDING.REQUESTS.APPROVE,ONBOARDING.REQUESTS.EDIT,ONBOARDING.REQUESTS.REJECT,ONBOARDING.REQUESTS.VIEW")]
+    [InlineData("PLATFORM_REVIEWER", "ONBOARDING.REQUESTS.EDIT,ONBOARDING.REQUESTS.VIEW")]
+    public async Task EachSystemRoleHoldsExactlyItsGrants(string roleCode, string expected)
+    {
+        // Read back through the view, as /api/me/permissions reads it: a person holding only this role,
+        // with no institution selected. The reviewer reviews but never decides.
+        var (connection, transaction) = await BeginAsync();
+        await using (connection)
+        await using (transaction)
+        {
+            var userId = Guid.CreateVersion7();
+            await connection.ExecuteAsync(
+                """
+                INSERT auth.Users (Id, UserType, FullName, PhoneNumber, PreferredLanguage, Status)
+                VALUES (@userId, 'Donor', N'Catalogue Test', @phone, 'en', 'Active');
+                INSERT auth.UserRoles (UserId, RoleId, InstitutionId, IsActive)
+                SELECT @userId, r.Id, NULL, 1 FROM auth.Roles r WHERE r.Code = @roleCode AND r.InstitutionId IS NULL;
+                """,
+                new { userId, roleCode, phone = "+9477" + RandomNumberGenerator.GetInt32(0, 10_000_000).ToString("D7", CultureInfo.InvariantCulture) },
+                transaction);
+
+            var codes = await connection.QueryAsync<string>(
+                """
+                SELECT PermissionCode FROM auth.vw_EffectivePermissions
+                WHERE UserId = @userId AND InstitutionId IS NULL
+                ORDER BY PermissionCode;
+                """,
+                new { userId },
+                transaction);
+
+            Assert.Equal(expected.Split(','), codes);
+        }
+    }
+
+    [Fact]
+    public async Task OnlyAnOnboardingDecisionNeedsAStepUp()
+    {
+        // Approving creates a tenant with an owner and rejecting ends an application for good; nothing
+        // else in onboarding is worth an SMS code.
+        await using var connection = new SqlConnection(database.ConnectionString);
+
+        var stepUp = await connection.QueryAsync<string>(
+            "SELECT Code FROM auth.Permissions WHERE Code LIKE 'ONBOARDING.%' AND RequiresMfa = 1 ORDER BY Code;");
+
+        Assert.Equal(["ONBOARDING.REQUESTS.APPROVE", "ONBOARDING.REQUESTS.REJECT"], stepUp);
     }
 }
