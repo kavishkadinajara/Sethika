@@ -12,8 +12,12 @@ public sealed class SmsOptions
     /// <summary>Sends through Notify.lk.</summary>
     public const string NotifyLkProvider = "NotifyLk";
 
+    /// <summary>Sends through Text.lk, where the <c>Sethika</c> sender id is registered.</summary>
+    public const string TextLkProvider = "TextLk";
+
     /// <summary>
-    /// Which sender to register. <see cref="ConsoleProvider"/> or <see cref="NotifyLkProvider"/>.
+    /// Which sender to register: <see cref="ConsoleProvider"/>, <see cref="TextLkProvider"/> or
+    /// <see cref="NotifyLkProvider"/>.
     /// </summary>
     /// <remarks>
     /// The host refuses to start with <see cref="ConsoleProvider"/> outside Development. A silent
@@ -58,4 +62,17 @@ public sealed class SmsOptions
     /// takes days. Until then only the gateway's own demo sender works.
     /// </remarks>
     public string NotifyLkSenderId { get; set; } = "SethikaLK";
+
+    /// <summary>Text.lk OAuth API base address (the "v3" API).</summary>
+    public string TextLkBaseUrl { get; set; } = "https://app.text.lk/api/v3/";
+
+    /// <summary>Text.lk API token. Comes from User Secrets, never appsettings.</summary>
+    public string? TextLkApiToken { get; set; }
+
+    /// <summary>The sender id registered with Text.lk, shown to the recipient.</summary>
+    /// <remarks>
+    /// Registered and approved for this project as <c>Sethika</c>. The gateway's own demo id is
+    /// not allowed for one-time codes, so there is no fallback to it.
+    /// </remarks>
+    public string TextLkSenderId { get; set; } = "Sethika";
 }

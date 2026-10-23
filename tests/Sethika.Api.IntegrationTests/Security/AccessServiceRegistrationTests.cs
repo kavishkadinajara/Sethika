@@ -144,6 +144,19 @@ public sealed class AccessServiceRegistrationTests(SethikaTestDatabase database)
     }
 
     [Fact]
+    public void UsesTextLkWhenConfigured_ThroughAFactoryClientPointedAtTheGateway()
+    {
+        using var host = Host(Environments.Production, ("Sms:Provider", SmsOptions.TextLkProvider));
+        using var scope = host.Services.CreateScope();
+
+        Assert.IsType<TextLkSmsSender>(scope.ServiceProvider.GetRequiredService<ISmsSender>());
+
+        var client = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(ISmsSender));
+
+        Assert.Equal(new Uri(new SmsOptions().TextLkBaseUrl), client.BaseAddress);
+    }
+
+    [Fact]
     public void RefusesToStartWithoutAFileRootOutsideDevelopment()
     {
         using var host = Host(
