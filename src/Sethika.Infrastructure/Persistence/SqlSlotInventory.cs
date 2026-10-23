@@ -69,13 +69,15 @@ public sealed class SqlSlotInventory(SethikaDbContext context) : ISlotInventory
                     BookedHeadcount = BookedHeadcount + {headcount},
                     Status = CASE WHEN BookedSponsors + 1 = MaxSponsors THEN 'Full' ELSE 'Open' END
                 WHERE Id = {slotInstanceId}
-                  AND Status = 'Open';
+                  AND Status = 'Open'
+                  AND BookedSponsors < MaxSponsors
+                  AND BookedHeadcount + {headcount} <= MaxHeadcount;
                 """,
                 cancellationToken).ConfigureAwait(false);
 
             return taken == 1;
         }
-        catch (SqlException ex) when (ex.Number == -1)
+        catch (SqlException ex) when (ex.Number == CheckConstraintViolation)
         {
             return false;
         }
