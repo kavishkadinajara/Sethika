@@ -22,7 +22,7 @@ Sethika/
 ├─ src/
 │  ├─ Sethika.Domain/             # entities, value objects, domain rules — no dependencies
 │  ├─ Sethika.Application/        # use cases (commands/queries), interfaces, validation (FluentValidation)
-│  │   └─ Access/ Onboarding/ Institutions/ Booking/ Giving/ Notifications/   (one folder per module)
+│  │   └─ Access/ Onboarding/ Institutions/ Bookings/ Giving/ Notifications/   (one folder per module)
 │  ├─ Sethika.Infrastructure/     # EF Core, Dapper, Redis, SMS/email, files, Hangfire jobs, outbox
 │  │   └─ Persistence/ Queries/ Caching/ Messaging/ Security/
 │  ├─ Sethika.Api/                # host: endpoints, auth, SignalR hubs, Hangfire dashboard, DI wiring

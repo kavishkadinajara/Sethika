@@ -24,6 +24,18 @@
     most four of these go to an application, so the second segment is accepted rather than cutting
     the wording to a code.
 
+    Booking texts (plan 03, C11), sent to the donor through the outbox: requested, confirmed (no
+    approval needed), approved, rejected, cancelled by the institution, and the day-before reminder.
+    Every one starts with the same line - {bookingNo}: {institution}, {date} {time} - so a donor with
+    several bookings can tell them apart, and so no placeholder sits inside a sentence where Sinhala
+    or Tamil would have to inflect it. {time} is when the meal starts. The slot's name is left out on
+    purpose: the institution types it freely, and free text sent from the Sethika sender id could be
+    made to read as Sethika's own (a link, a payment request). The institution's name was reviewed at
+    onboarding, and is given in the donor's language where the institution has one. With a
+    14-character booking number, a 20-character institution, 2026-11-14 and 11:00: en 101-123 (one
+    segment), si 96-119 and ta 97-128 (two). A long institution name can push Sinhala and Tamil to
+    three.
+
     Matched on (Code, Channel, Language), never on Id: notify.Notifications.TemplateId points at
     these rows, so they are updated in place, and rows another seed owns are never deleted.
 
@@ -55,7 +67,25 @@ USING (VALUES
  ('ONBOARD_APPROVED',       'SMS', 'ta', N'Sethika: விண்ணப்பம் {requestNo} அங்கீகரிக்கப்பட்டது. நிறுவனத்தைத் திறக்க உள்நுழையவும்.'),
  ('ONBOARD_REJECTED',       'SMS', 'en', N'Sethika: application {requestNo} was not approved. Sign in to see why.'),
  ('ONBOARD_REJECTED',       'SMS', 'si', N'Sethika: අයදුම්පත {requestNo} අනුමත නොවීය. හේතුව බැලීමට පිවිසෙන්න.'),
- ('ONBOARD_REJECTED',       'SMS', 'ta', N'Sethika: விண்ணப்பம் {requestNo} அங்கீகரிக்கப்படவில்லை. காரணத்தைப் பார்க்க உள்நுழையவும்.')
+ ('ONBOARD_REJECTED',       'SMS', 'ta', N'Sethika: விண்ணப்பம் {requestNo} அங்கீகரிக்கப்படவில்லை. காரணத்தைப் பார்க்க உள்நுழையவும்.'),
+ ('BOOKING_REQUESTED', 'SMS', 'en', N'Sethika {bookingNo}: {institution}, {date} {time}. Your request was sent. We will text you when they reply.'),
+ ('BOOKING_REQUESTED', 'SMS', 'si', N'Sethika {bookingNo}: {institution}, {date} {time}. ඔබගේ ඉල්ලීම යැවුණා. පිළිතුර ලැබුණු විට දන්වන්නෙමු.'),
+ ('BOOKING_REQUESTED', 'SMS', 'ta', N'Sethika {bookingNo}: {institution}, {date} {time}. உங்கள் கோரிக்கை அனுப்பப்பட்டது. பதில் வந்ததும் அறிவிப்போம்.'),
+ ('BOOKING_CONFIRMED', 'SMS', 'en', N'Sethika {bookingNo}: {institution}, {date} {time}. Your booking is confirmed. Thank you.'),
+ ('BOOKING_CONFIRMED', 'SMS', 'si', N'Sethika {bookingNo}: {institution}, {date} {time}. ඔබගේ වෙන්කිරීම තහවුරුයි. ස්තූතියි.'),
+ ('BOOKING_CONFIRMED', 'SMS', 'ta', N'Sethika {bookingNo}: {institution}, {date} {time}. உங்கள் முன்பதிவு உறுதியானது. நன்றி.'),
+ ('BOOKING_APPROVED', 'SMS', 'en', N'Sethika {bookingNo}: {institution}, {date} {time}. Your request was accepted. Thank you.'),
+ ('BOOKING_APPROVED', 'SMS', 'si', N'Sethika {bookingNo}: {institution}, {date} {time}. ඔබගේ ඉල්ලීම පිළිගත්තා. ස්තූතියි.'),
+ ('BOOKING_APPROVED', 'SMS', 'ta', N'Sethika {bookingNo}: {institution}, {date} {time}. உங்கள் கோரிக்கை ஏற்கப்பட்டது. நன்றி.'),
+ ('BOOKING_REJECTED', 'SMS', 'en', N'Sethika {bookingNo}: {institution}, {date} {time}. Your request was not accepted. Sign in to see why.'),
+ ('BOOKING_REJECTED', 'SMS', 'si', N'Sethika {bookingNo}: {institution}, {date} {time}. ඔබගේ ඉල්ලීම පිළිගත්තේ නැත. හේතුව බැලීමට පිවිසෙන්න.'),
+ ('BOOKING_REJECTED', 'SMS', 'ta', N'Sethika {bookingNo}: {institution}, {date} {time}. உங்கள் கோரிக்கை ஏற்கப்படவில்லை. காரணத்தைப் பார்க்க உள்நுழையவும்.'),
+ ('BOOKING_CANCELLED', 'SMS', 'en', N'Sethika {bookingNo}: {institution}, {date} {time}. The institution cancelled this booking. Sign in to see why.'),
+ ('BOOKING_CANCELLED', 'SMS', 'si', N'Sethika {bookingNo}: {institution}, {date} {time}. ආයතනය මෙම වෙන්කිරීම අවලංගු කළා. හේතුව බැලීමට පිවිසෙන්න.'),
+ ('BOOKING_CANCELLED', 'SMS', 'ta', N'Sethika {bookingNo}: {institution}, {date} {time}. நிறுவனம் இதை ரத்து செய்தது. காரணத்தைப் பார்க்க உள்நுழையவும்.'),
+ ('BOOKING_REMINDER', 'SMS', 'en', N'Sethika {bookingNo}: {institution}, {date} {time}. A reminder: this booking is tomorrow.'),
+ ('BOOKING_REMINDER', 'SMS', 'si', N'Sethika {bookingNo}: {institution}, {date} {time}. මතක් කිරීමක්: මෙම වෙන්කිරීම හෙටයි.'),
+ ('BOOKING_REMINDER', 'SMS', 'ta', N'Sethika {bookingNo}: {institution}, {date} {time}. நினைவூட்டல்: இந்த முன்பதிவு நாளை.')
 ) AS s(Code, Channel, Language, Body)
 ON t.Code = s.Code AND t.Channel = s.Channel AND t.Language = s.Language
 -- Compared as binary: under the database's case-insensitive collation a case-only edit would never

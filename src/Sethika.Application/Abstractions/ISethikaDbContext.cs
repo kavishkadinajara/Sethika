@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Sethika.Domain.Access;
+using Sethika.Domain.Bookings;
 using Sethika.Domain.Core;
 using Sethika.Domain.Institutions;
 using Sethika.Domain.Onboarding;
@@ -56,6 +57,14 @@ public interface ISethikaDbContext
 
     /// <summary><c>auth.vw_EffectivePermissions</c>, read-only.</summary>
     DbSet<EffectivePermission> EffectivePermissions { get; }
+
+    // Meal slots and bookings (plan 03). A slot's seasons and a booking's history are reached
+    // through their aggregate. Slot instances have a set of their own: the engine reads and creates
+    // them, but changes their counters only with a conditional UPDATE (C2).
+    DbSet<MealSlot> MealSlots { get; }
+    DbSet<BlockedDate> BlockedDates { get; }
+    DbSet<SlotInstance> SlotInstances { get; }
+    DbSet<Booking> Bookings { get; }
 
     /// <summary>For transactions that span a set-based update and tracked inserts.</summary>
     DatabaseFacade Database { get; }

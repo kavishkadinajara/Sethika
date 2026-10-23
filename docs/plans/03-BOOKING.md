@@ -1,11 +1,10 @@
 # Plan 03 — Meal slots and the booking engine
 
-Branch: `5-booking-engine`, cut on 2026-10-23 from `4-textlk-sms` (PR #7), which itself sits on
-`3-institution-onboarding` (PR #6). Neither PR was merged when this was written. Once both are in
-`develop`, run `git fetch && git rebase origin/develop`: the only commit of this branch is this
-plan, so the rebase is trivial.
+Branch: `5-booking-engine`, cut on 2026-10-23 from `4-textlk-sms` (PR #7) and rebased on
+`origin/develop` the same day, after PR #6 and #7 were merged.
 
-Status: **Planned, not started.** Nothing in §5 is built. Deadline is about **2026-11-06**, and
+Status: **5.1, 5.2 and 5.3 built (2026-10-23); 5.4 is next.** §8 lists what was decided while
+building them. Deadline is about **2026-11-06**, and
 Phase E (religious services) and the report still need time after this. So this plan aims at
 **~6 working days (2026-10-24 → 10-31)**. If it runs over, the cut order is in §4.
 Last updated 2026-10-23. Update this line and the §5 boxes whenever either changes. A fresh session
@@ -263,43 +262,46 @@ Never cut the concurrency tests.
 
 ### 5.1: Schema, seeds and catalogue
 
-- [ ] `MealSlots.PublicId` + `UX_MealSlots_PublicId` (C9). EF mapping.
-- [ ] `10_RbacCatalogue.sql`, INSTITUTION portal:
+- [x] `MealSlots.PublicId` + `UX_MealSlots_PublicId` (C9). EF mapping. The column is last in the
+  table, not after `Id` (§8, E5).
+- [x] `10_RbacCatalogue.sql`, INSTITUTION portal:
   - screen `BOOKINGS.SLOTS` (`/bookings/slots`): VIEW, CREATE, EDIT
   - `BOOKINGS.CALENDAR`: add REJECT and EDIT
   - dependencies: every action requires VIEW, and CALENDAR.* requires SLOTS.VIEW
   - grants: OWNER and MANAGER get all; STAFF keeps CALENDAR.VIEW and gets SLOTS.VIEW
-- [ ] DONOR portal: module `BOOK`, screen `MYBOOKINGS.BOOKINGS` (`/bookings/mine`) with VIEW, CREATE
+- [x] DONOR portal: module `BOOK`, screen `MYBOOKINGS.BOOKINGS` (`/bookings/mine`) with VIEW, CREATE
   and EDIT (cancel own), scope `Self`, granted the way `APPLY` is. Extend `RbacCatalogueTests`
   (ceilings) for the new rows.
-- [ ] Number series `BOOKING` (`BK`, pad 6) in `NumberSeriesDefinition`.
-- [ ] `11_NotifyTemplates.sql`: `BOOKING_REQUESTED`, `_CONFIRMED`, `_APPROVED`, `_REJECTED`,
+- [x] Number series `BOOKING` (`BK`, pad 6) in `NumberSeriesDefinition`.
+- [x] `11_NotifyTemplates.sql`: `BOOKING_REQUESTED`, `_CONFIRMED`, `_APPROVED`, `_REJECTED`,
   `_CANCELLED`, `_REMINDER` × en/si/ta. Add si/ta to `translations-to-review.md`.
-- [ ] Publish. A second `SqlPackage /Action:Script` shows seed MERGEs only (D10).
+- [x] Publish. A second `SqlPackage /Action:Script` shows seed MERGEs only (D10): 0 schema
+  statements, 23 MERGEs, on 2026-10-23.
 
 ### 5.2: Domain
 
-- [ ] `Domain/Booking/MealSlot`, `SlotInstance`, `Booking` (aggregate with the C5 transitions),
+- [x] `Domain/Bookings/MealSlot`, `SlotInstance`, `Booking` (aggregate with the C5 transitions),
   `BlockedDate`, `MealSlotSeason`. EF configurations matching the tables, `RowVersion`.
-- [ ] `MealSlotRules.CanBook` (C4). Unit tests cover every reason. The day-of-week mask is tested on
+  `EfMappingSchemaTests` checks every mapped column against the published schema (§8, E4).
+- [x] `MealSlotRules.CanBook` (C4). Unit tests cover every reason. The day-of-week mask is tested on
   a Colombo date that is a different UTC date.
-- [ ] Transition tests: each legal move, each illegal one refused, and only Rejected and Cancelled
+- [x] Transition tests: each legal move, each illegal one refused, and only Rejected and Cancelled
   release.
 
 ### 5.3: The engine (the centrepiece)
 
-- [ ] `ISlotLocks` (Application) with `RedisSlotLocks` (Infrastructure): SET NX PX plus a token, and
+- [x] `ISlotLocks` (Application) with `RedisSlotLocks` (Infrastructure): SET NX PX plus a token, and
   Lua release. On a Redis failure it reports "no lock" and the caller proceeds (C2).
-- [ ] `BookMealHandler`, in this order:
+- [x] `BookMealHandler`, in this order:
   1. lock
   2. one transaction: read the slot, its seasons and blocks fresh → `CanBook` → get-or-create the
      instance (C3) → conditional UPDATE (C2) → `BookingNo` → insert booking + history + outbox
   3. commit, then release the lock
 
   Map 547 (CHECK), 2601 (`UX_Bookings_DonorPerSlot`) and 2627 to 409s with codes.
-- [ ] Release on reject and cancel: `BookedSponsors - 1`, `BookedHeadcount - h`,
+- [x] Release on reject and cancel (`BookingDecisionHandler`, after the booking's save: §8, E7): `BookedSponsors - 1`, `BookedHeadcount - h`,
   `Status = 'Open'`, in the decision's transaction.
-- [ ] **Concurrency tests, real SQL and Redis, race forced, not hoped for.** Use the
+- [x] **Concurrency tests, real SQL and Redis, race forced, not hoped for.** `BookingEngineTests`. Use the
   verification-habits pattern: hold `UPDLOCK` on the instance from another connection, wait for N
   waiters in `sys.dm_tran_locks`, then release.
   - Exclusive slot, 20 parallel bookings: exactly 1.
@@ -308,7 +310,7 @@ Never cut the concurrency tests.
   - **The same tests with the Redis lock bypassed** (C2): still exactly 1 and 4.
   - Two donors and the first slot-day insert: one instance row (C3).
   - Cancel, then book again: the place is reused.
-- [ ] **Mutations, expected results written down first.**
+- [x] **Mutations, expected results written down first.** Results in the 5.3 commit message.
   - Removing the `WHERE` cap alone is expected to *survive*, because the CHECK still refuses
     (C2 layer 3), and the commit says so.
   - Removing both the `WHERE` cap and the 547 mapping must fail.
@@ -390,3 +392,21 @@ Everything in §4's cut list. Also Phase B (search, Redis GEO, map), Phase C (re
 Memorial Dana Planner, co-sponsors, SignalR), Phase D (donations, needs board, reports) and Phase E
 (religious services; `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md`, built after this). The tables for
 most of them already exist, and none of them blocks this plan.
+
+## 8. Decided while building (2026-10-23)
+
+| # | Decision | Why |
+|---|---|---|
+| E1 | `BOOKINGS.CALENDAR.APPROVE` stops being `RequiresMfa`, **in 5.4**, not 5.1 (asked and agreed 2026-10-23) | Approving a donor's request is the day's work; a step-up costs an SMS every 15 minutes. It drops when 5.4 replaces plan 01's demonstration endpoints (`/api/bookings/calendar`, `/api/bookings/{no}/approve`), and the step-up tests move off it then: they test the mechanism, so they can mark a permission `RequiresMfa` themselves and put it back. |
+| E2 | The SMS opening line is `{bookingNo}: {institution}, {date} {time}`; the slot's name is not sent | The institution types slot names freely, and `IUserTextMessages` never sends typed text from the Sethika sender id: a "slot" called "Pay at bit.ly/..." would read as Sethika's. The institution's name was reviewed at onboarding. |
+| E3 | The booking form has no occasion | `core.LookupValues` has no `OCCASION` values, and inventing them is what CLAUDE.md forbids. "In memory of" and notes stay. |
+| E4 | `EfMappingSchemaTests`: every mapped column exists, with the type its configuration names | No migrations means nothing else notices a mapping that drifted from the SQL project. It covers every module, not only bookings. |
+| E5 | `PublicId` is the last column of `MealSlots` | A column added mid-table makes DacFx rebuild the table, which it refuses on a table under RLS (SR0111). Even appended, the change drops and recreates `sec.TenantIsolationPolicy` for the deploy (it is schema-bound), so RLS is off for those seconds: say so in the report, and deploy schema changes outside opening hours. |
+| E6 | The slot-day lock waits (up to 5 s, retrying every 20 ms) before it answers `slot_busy` | Answering 409 at once would hand a 4-place shared slot to fewer than 4 of 10 simultaneous donors. The wait keeps the lock an optimisation: the queue forms in Redis instead of on the row. |
+| E7 | A decision saves the booking before it releases the place | The save's `RowVersion` check is what tells the second of two simultaneous cancellations that it lost. Released first, the second would take the place back twice and hit `CK_SlotInst_Sponsors`. |
+| E8 | An institution's decision also checks `booking.InstitutionId` is the institution the caller acts for | RLS's owner branch shows a staff member their own donor bookings at *other* institutions; with only RLS, they could approve their own booking somewhere else. |
+| E9 | Day mask: one bit per `DayOfWeek`, Sunday 1 to Saturday 64 | .NET's own numbering, so no table maps between them. Written in the column's comment. |
+| E10 | A same-day slot (`MinAdvanceDays = 0`) closes when the meal starts, in Colombo time | Otherwise a donor could book a lunch at 15:00 that day. |
+| E11 | C7 is corrected: a rolled-back booking does **not** leave a gap | `SqlNumberSeries` holds the series row until the transaction ends, so a rollback hands the number back. The cost is that every booking on the platform takes its number one at a time, for the few milliseconds between the number and the commit. At this scale that is fine; say so in the report. |
+| E12 | The domain namespace is `Sethika.Domain.Bookings`, and `Application/Booking/` became `Application/Bookings/` | A type `Booking` inside a namespace `...Booking` makes every reference to it bind to the namespace instead. |
+| E13 | `booking.Bookings.DonorPhone` joins the columns a deployed API's login needs `UNMASK` on (`docs/LOCAL_SETUP.md`) | A masked snapshot would make `UX_Bookings_DonorPerSlot` compare `+947XXXXX567` with itself. |

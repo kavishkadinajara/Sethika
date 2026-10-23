@@ -175,7 +175,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
             var after = await connection.QuerySingleAsync(Snapshot, transaction: transaction);
 
             Assert.Equal((IDictionary<string, object>)before, (IDictionary<string, object>)after);
-            Assert.Equal(16, (int)after.Permissions);
+            Assert.Equal(24, (int)after.Permissions);
         }
     }
 
@@ -184,7 +184,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
     {
         // The ceilings are synced exactly, deletions included, so taking a permission out of the
         // seed takes it out of the database on the next publish.
-        const string StaffApprove = "    ('BOOKINGS.CALENDAR.VIEW'),\n    ('BOOKINGS.CALENDAR.APPROVE')\n)";
+        const string StaffApprove = "    ('BOOKINGS.CALENDAR.VIEW'),\n    ('BOOKINGS.CALENDAR.APPROVE'),\n";
         var seed = CatalogueSeed().ReplaceLineEndings("\n");
         Assert.Contains(StaffApprove, seed, StringComparison.Ordinal);
 
@@ -193,10 +193,10 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
         await using (transaction)
         {
             await connection.ExecuteAsync(
-                seed.Replace(StaffApprove, "    ('BOOKINGS.CALENDAR.VIEW')\n)", StringComparison.Ordinal), transaction: transaction);
+                seed.Replace(StaffApprove, "    ('BOOKINGS.CALENDAR.VIEW'),\n", StringComparison.Ordinal), transaction: transaction);
 
             Assert.DoesNotContain("BOOKINGS.CALENDAR.APPROVE", await AlphaCodesAsync(connection, transaction, database.AlphaInstitutionId));
-            Assert.Equal(2, await connection.ExecuteScalarAsync<int>(
+            Assert.Equal(5, await connection.ExecuteScalarAsync<int>(
                 """
                 SELECT COUNT(*) FROM auth.RoleLevelPermissions c JOIN auth.RoleLevels l ON l.Id = c.RoleLevelId
                 WHERE l.Code = 'STAFF';
@@ -311,7 +311,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
     // ------------------------------------------------------------------ system role grants (plan 02, B1)
 
     [Theory]
-    [InlineData("DONOR", "ONBOARDING.APPLICATION.CREATE,ONBOARDING.APPLICATION.EDIT,ONBOARDING.APPLICATION.VIEW")]
+    [InlineData("DONOR", "MYBOOKINGS.BOOKINGS.CREATE,MYBOOKINGS.BOOKINGS.EDIT,MYBOOKINGS.BOOKINGS.VIEW,ONBOARDING.APPLICATION.CREATE,ONBOARDING.APPLICATION.EDIT,ONBOARDING.APPLICATION.VIEW")]
     [InlineData("PLATFORM_ADMIN", "ONBOARDING.REQUESTS.APPROVE,ONBOARDING.REQUESTS.EDIT,ONBOARDING.REQUESTS.REJECT,ONBOARDING.REQUESTS.VIEW")]
     [InlineData("PLATFORM_REVIEWER", "ONBOARDING.REQUESTS.EDIT,ONBOARDING.REQUESTS.VIEW")]
     public async Task EachSystemRoleHoldsExactlyItsGrants(string roleCode, string expected)
@@ -357,5 +357,60 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
             "SELECT Code FROM auth.Permissions WHERE Code LIKE 'ONBOARDING.%' AND RequiresMfa = 1 ORDER BY Code;");
 
         Assert.Equal(["ONBOARDING.REQUESTS.APPROVE", "ONBOARDING.REQUESTS.REJECT"], stepUp);
+    }
+
+    // ------------------------------------------------------------------ bookings (plan 03, 5.1)
+
+    [Fact]
+    public async Task StaffMayDecideBookingsButNeverSetUpTheSlots()
+    {
+        // Deciding, completing and cancelling a booking is the day's work; what is offered, and when,
+        // is the institution's to set. A new staff member starts able to read, not to decide.
+        await using var connection = new SqlConnection(database.ConnectionString);
+
+        var ceiling = await connection.QueryAsync<string>(
+            """
+            SELECT p.Code FROM auth.RoleLevelPermissions c
+            JOIN auth.RoleLevels l  ON l.Id = c.RoleLevelId
+            JOIN auth.Permissions p ON p.Id = c.PermissionId
+            WHERE l.Code = 'STAFF' AND p.Code LIKE 'BOOKINGS.%'
+            ORDER BY p.Code;
+            """);
+
+        var template = await connection.QueryAsync<string>(
+            """
+            SELECT p.Code FROM auth.Roles r
+            JOIN auth.RolePermissions rp ON rp.RoleId = r.Id
+            JOIN auth.Permissions p      ON p.Id = rp.PermissionId
+            WHERE r.Code = 'STAFF' AND r.IsTemplate = 1 AND r.InstitutionId IS NULL
+            ORDER BY p.Code;
+            """);
+
+        Assert.Equal(
+            ["BOOKINGS.CALENDAR.APPROVE", "BOOKINGS.CALENDAR.EDIT", "BOOKINGS.CALENDAR.REJECT", "BOOKINGS.CALENDAR.VIEW", "BOOKINGS.SLOTS.VIEW"],
+            ceiling);
+        Assert.Equal(["BOOKINGS.CALENDAR.VIEW", "BOOKINGS.SLOTS.VIEW", "INSTITUTION.PROFILE.VIEW"], template);
+    }
+
+    [Fact]
+    public async Task ADonorsBookingsAreTheirOwnAndNeverAnInstitutionsGrant()
+    {
+        // Self scope, and only the donor level's ceiling. CK_RoleLevelPermissions_Scope lets a Self
+        // permission sit at any level, so it is the seed alone that keeps "book a meal" out of an
+        // institution role: staff holding it there would still book as themselves, not the donor.
+        await using var connection = new SqlConnection(database.ConnectionString);
+
+        var scopes = await connection.QueryAsync<string>(
+            "SELECT Code + ' ' + Scope FROM auth.Permissions WHERE Code LIKE 'MYBOOKINGS.%' ORDER BY Code;");
+
+        var institutionLevels = await connection.ExecuteScalarAsync<int>(
+            """
+            SELECT COUNT(*) FROM auth.RoleLevelPermissions c
+            JOIN auth.Permissions p ON p.Id = c.PermissionId
+            WHERE p.Code LIKE 'MYBOOKINGS.%' AND c.LevelScope <> 'Donor';
+            """);
+
+        Assert.Equal(["MYBOOKINGS.BOOKINGS.CREATE Self", "MYBOOKINGS.BOOKINGS.EDIT Self", "MYBOOKINGS.BOOKINGS.VIEW Self"], scopes);
+        Assert.Equal(0, institutionLevels);
     }
 }

@@ -6,7 +6,7 @@ CREATE TABLE booking.MealSlots (
     NameTa               NVARCHAR(100) NULL,
     StartTime            TIME(0)       NOT NULL,
     EndTime              TIME(0)       NOT NULL,
-    DaysOfWeekMask       TINYINT       NOT NULL DEFAULT 127
+    DaysOfWeekMask       TINYINT       NOT NULL DEFAULT 127      -- a bit per day: Sunday 1, Monday 2 ... Saturday 64
         CONSTRAINT CK_MealSlots_DaysOfWeekMask CHECK (DaysOfWeekMask >= 1 AND DaysOfWeekMask <= 127),
     BookingMode          VARCHAR(10)   NOT NULL DEFAULT 'Exclusive'
         CONSTRAINT CK_MealSlots_BookingMode CHECK (BookingMode = 'Exclusive' OR BookingMode = 'Shared'),
@@ -25,6 +25,9 @@ CREATE TABLE booking.MealSlots (
     UpdatedAt            DATETIME2(3)  NULL,
     UpdatedBy            UNIQUEIDENTIFIER NULL REFERENCES auth.Users(Id),
     RowVersion           ROWVERSION,
+    -- The slot's address in URLs and APIs (plan 03, C9; v7, set in C#). Last, not after Id: adding a
+    -- column mid-table makes the deploy rebuild the table, which Row-Level Security does not allow.
+    PublicId             UNIQUEIDENTIFIER NOT NULL,
     CONSTRAINT CK_MealSlots_Time      CHECK (EndTime > StartTime),
     CONSTRAINT CK_MealSlots_Headcount CHECK (MaxHeadcount >= MinHeadcount AND MinHeadcount > 0),
     CONSTRAINT CK_MealSlots_Advance   CHECK (MaxAdvanceDays >= MinAdvanceDays AND MinAdvanceDays >= 0),
@@ -32,4 +35,7 @@ CREATE TABLE booking.MealSlots (
     CONSTRAINT UQ_MealSlots_Name   UNIQUE (InstitutionId, Name),
     CONSTRAINT UQ_MealSlots_Tenant UNIQUE (Id, InstitutionId)
 );
+GO
+
+CREATE UNIQUE INDEX UX_MealSlots_PublicId ON booking.MealSlots(PublicId);
 GO

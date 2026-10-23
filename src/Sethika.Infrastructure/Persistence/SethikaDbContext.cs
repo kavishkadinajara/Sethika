@@ -3,6 +3,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Sethika.Application.Abstractions;
 using Sethika.Domain.Access;
+using Sethika.Domain.Bookings;
 using Sethika.Domain.Core;
 using Sethika.Domain.Institutions;
 using Sethika.Domain.Onboarding;
@@ -47,6 +48,10 @@ public partial class SethikaDbContext(DbContextOptions<SethikaDbContext> options
     public DbSet<RoleLevelPermission> RoleLevelPermissions => Set<RoleLevelPermission>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<EffectivePermission> EffectivePermissions => Set<EffectivePermission>();
+    public DbSet<MealSlot> MealSlots => Set<MealSlot>();
+    public DbSet<BlockedDate> BlockedDates => Set<BlockedDate>();
+    public DbSet<SlotInstance> SlotInstances => Set<SlotInstance>();
+    public DbSet<Booking> Bookings => Set<Booking>();
 
     /// <summary>Saves, naming the unique index or constraint when one refuses (see <see cref="DuplicateKeyException"/>).</summary>
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)

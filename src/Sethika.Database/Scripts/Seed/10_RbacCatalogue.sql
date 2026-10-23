@@ -2,9 +2,8 @@
     institution template roles, and every level's ceiling.
 
     Only what a built screen or endpoint uses. The catalogue grows with the screens (CLAUDE.md):
-    each new screen adds its rows here. BOOKINGS is a placeholder for the booking plan, holding the
-    two codes the demonstration endpoints guard; its APPROVE is RequiresMfa so step-up has a real
-    permission to protect.
+    each new screen adds its rows here. BOOKINGS and the donor's BOOK are the booking plan's
+    (plan 03, 5.1): the institution's meal slots and calendar, and a donor's own bookings.
 
     Rows are matched on Code, never on Id: Ids are IDENTITY values and differ between databases.
     A code that matches nothing stops the deploy (THROW) rather than being skipped by a JOIN, so a
@@ -26,6 +25,7 @@ USING (
         ('INSTITUTION', 'ACCESS',      N'Access control',      90, 1),
         -- Not IsCore: core means "on in every institution", and these two belong to no institution.
         ('DONOR',       'APPLY',       N'Register an institution', 10, 0),
+        ('DONOR',       'BOOK',        N'Book a meal',             20, 0),
         ('ADMIN',       'ONBOARDING',  N'Institution onboarding',  10, 0)
     ) AS v(PortalCode, Code, Name, SortOrder, IsCore)
     JOIN auth.Portals p ON p.Code = v.PortalCode
@@ -43,9 +43,11 @@ USING (
     FROM (VALUES
         ('INSTITUTION', 'INSTITUTION.PROFILE', N'Institution profile',   '/institution/profile', 1),
         ('BOOKINGS',    'BOOKINGS.CALENDAR',   N'Booking calendar',      '/bookings/calendar',   1),
+        ('BOOKINGS',    'BOOKINGS.SLOTS',      N'Meal slots',            '/bookings/slots',      2),
         ('ACCESS',      'ACCESS.ROLES',        N'Roles',                 '/access/roles',        1),
         ('ACCESS',      'ACCESS.MEMBERS',      N'Staff and their roles', '/access/members',      2),
         ('APPLY',       'ONBOARDING.APPLICATION', N'Institution application', '/apply',               1),
+        ('BOOK',        'MYBOOKINGS.BOOKINGS',    N'My bookings',             '/bookings/mine',       1),
         ('ONBOARDING',  'ONBOARDING.REQUESTS',    N'Registration requests',   '/admin/registrations', 1)
     ) AS v(ModuleCode, Code, Name, Route, SortOrder)
     JOIN auth.Modules m ON m.Code = v.ModuleCode
@@ -72,8 +74,18 @@ INSERT @RbacPermissions (Code, ScreenCode, ActionCode, Scope, Name, IsSensitive,
 VALUES
     ('INSTITUTION.PROFILE.VIEW',  'INSTITUTION.PROFILE', 'VIEW',    'Institution', N'View the institution profile', 0, 0),
     ('INSTITUTION.PROFILE.EDIT',  'INSTITUTION.PROFILE', 'EDIT',    'Institution', N'Edit the institution profile', 1, 0),
+    /*  Bookings (plan 03). EDIT on the calendar is completing, marking a no-show and cancelling; on
+        slots it also covers blocked dates and deactivating a slot. APPROVE is RequiresMfa only
+        while it guards plan 01's demonstration endpoint: deciding a donor's request is the day's
+        work, not worth an SMS code, and it drops to 0 when the real approval replaces the
+        demonstration (plan 03, 5.4).                                                           */
     ('BOOKINGS.CALENDAR.VIEW',    'BOOKINGS.CALENDAR',   'VIEW',    'Institution', N'View the booking calendar',    0, 0),
     ('BOOKINGS.CALENDAR.APPROVE', 'BOOKINGS.CALENDAR',   'APPROVE', 'Institution', N'Approve bookings',             0, 1),
+    ('BOOKINGS.CALENDAR.REJECT',  'BOOKINGS.CALENDAR',   'REJECT',  'Institution', N'Reject booking requests',      0, 0),
+    ('BOOKINGS.CALENDAR.EDIT',    'BOOKINGS.CALENDAR',   'EDIT',    'Institution', N'Complete, mark no-shows and cancel bookings', 0, 0),
+    ('BOOKINGS.SLOTS.VIEW',       'BOOKINGS.SLOTS',      'VIEW',    'Institution', N'View meal slots and blocked dates', 0, 0),
+    ('BOOKINGS.SLOTS.CREATE',     'BOOKINGS.SLOTS',      'CREATE',  'Institution', N'Create meal slots',            0, 0),
+    ('BOOKINGS.SLOTS.EDIT',       'BOOKINGS.SLOTS',      'EDIT',    'Institution', N'Change meal slots and blocked dates', 0, 0),
     ('ACCESS.ROLES.VIEW',         'ACCESS.ROLES',        'VIEW',    'Institution', N'View roles',                   0, 0),
     ('ACCESS.ROLES.CREATE',       'ACCESS.ROLES',        'CREATE',  'Institution', N'Create roles',                 1, 0),
     ('ACCESS.ROLES.EDIT',         'ACCESS.ROLES',        'EDIT',    'Institution', N'Change what a role can do',    1, 1),
@@ -88,7 +100,11 @@ VALUES
     ('ONBOARDING.REQUESTS.VIEW',      'ONBOARDING.REQUESTS',    'VIEW',    'Platform', N'View registration requests',                  1, 0),
     ('ONBOARDING.REQUESTS.EDIT',      'ONBOARDING.REQUESTS',    'EDIT',    'Platform', N'Review registration requests',                1, 0),
     ('ONBOARDING.REQUESTS.APPROVE',   'ONBOARDING.REQUESTS',    'APPROVE', 'Platform', N'Approve registration requests',               1, 1),
-    ('ONBOARDING.REQUESTS.REJECT',    'ONBOARDING.REQUESTS',    'REJECT',  'Platform', N'Reject registration requests',                1, 1);
+    ('ONBOARDING.REQUESTS.REJECT',    'ONBOARDING.REQUESTS',    'REJECT',  'Platform', N'Reject registration requests',                1, 1),
+    /*  A donor's own bookings (plan 03): Self scope, like applying. EDIT is cancelling one.       */
+    ('MYBOOKINGS.BOOKINGS.VIEW',      'MYBOOKINGS.BOOKINGS',    'VIEW',    'Self',     N'See my bookings',                             0, 0),
+    ('MYBOOKINGS.BOOKINGS.CREATE',    'MYBOOKINGS.BOOKINGS',    'CREATE',  'Self',     N'Book a meal slot',                            0, 0),
+    ('MYBOOKINGS.BOOKINGS.EDIT',      'MYBOOKINGS.BOOKINGS',    'EDIT',    'Self',     N'Cancel my bookings',                          0, 0);
 
 IF EXISTS (SELECT 1 FROM @RbacPermissions WHERE Code <> ScreenCode + '.' + ActionCode)
     THROW 51001, '10_RbacCatalogue: a permission code is not <screen>.<action>.', 1;
@@ -124,6 +140,11 @@ INSERT @RbacDependencies (Code, RequiresCode)
 VALUES
     ('INSTITUTION.PROFILE.EDIT',  'INSTITUTION.PROFILE.VIEW'),
     ('BOOKINGS.CALENDAR.APPROVE', 'BOOKINGS.CALENDAR.VIEW'),
+    ('BOOKINGS.CALENDAR.REJECT',  'BOOKINGS.CALENDAR.VIEW'),
+    ('BOOKINGS.CALENDAR.EDIT',    'BOOKINGS.CALENDAR.VIEW'),
+    ('BOOKINGS.CALENDAR.VIEW',    'BOOKINGS.SLOTS.VIEW'),      -- a booking is read beside its slot
+    ('BOOKINGS.SLOTS.CREATE',     'BOOKINGS.SLOTS.VIEW'),
+    ('BOOKINGS.SLOTS.EDIT',       'BOOKINGS.SLOTS.VIEW'),
     ('ACCESS.ROLES.CREATE',       'ACCESS.ROLES.VIEW'),
     ('ACCESS.ROLES.EDIT',         'ACCESS.ROLES.VIEW'),
     ('ACCESS.MEMBERS.EDIT',       'ACCESS.MEMBERS.VIEW'),
@@ -132,7 +153,9 @@ VALUES
     ('ONBOARDING.APPLICATION.EDIT',   'ONBOARDING.APPLICATION.VIEW'),
     ('ONBOARDING.REQUESTS.EDIT',      'ONBOARDING.REQUESTS.VIEW'),
     ('ONBOARDING.REQUESTS.APPROVE',   'ONBOARDING.REQUESTS.VIEW'),
-    ('ONBOARDING.REQUESTS.REJECT',    'ONBOARDING.REQUESTS.VIEW');
+    ('ONBOARDING.REQUESTS.REJECT',    'ONBOARDING.REQUESTS.VIEW'),
+    ('MYBOOKINGS.BOOKINGS.CREATE',    'MYBOOKINGS.BOOKINGS.VIEW'),
+    ('MYBOOKINGS.BOOKINGS.EDIT',      'MYBOOKINGS.BOOKINGS.VIEW');
 
 IF EXISTS (SELECT 1 FROM @RbacDependencies d
            WHERE NOT EXISTS (SELECT 1 FROM auth.Permissions p WHERE p.Code = d.Code)
@@ -155,8 +178,9 @@ WHEN NOT MATCHED BY SOURCE THEN DELETE;
 /*  What any role at each level may ever hold (A15). OWNER and MANAGER may hold every institution
     permission - rank, not the ceiling, is what stops a manager managing managers. STAFF may see
     and do the day's work, but never manage access or change the institution's profile - nor
-    see the access screens, which list other staff and their phone numbers. The donor level may
-    hold what a person does for themselves (applying for an institution). PLATFORM_ADMIN may hold
+    see the access screens, which list other staff and their phone numbers. Deciding and closing
+    bookings is the day's work; setting up the slots is not. The donor level may hold what a person
+    does for themselves (applying for an institution, booking a meal). PLATFORM_ADMIN may hold
     every platform permission; PLATFORM_STAFF may review registrations but not decide them
     (plan 02, B1).                                                                              */
 DECLARE @RbacCeilings TABLE (LevelCode VARCHAR(30) NOT NULL, PermissionCode VARCHAR(150) NOT NULL);
@@ -170,15 +194,21 @@ UNION ALL
 SELECT 'STAFF', v.Code
 FROM (VALUES
     ('INSTITUTION.PROFILE.VIEW'),
+    ('BOOKINGS.SLOTS.VIEW'),
     ('BOOKINGS.CALENDAR.VIEW'),
-    ('BOOKINGS.CALENDAR.APPROVE')
+    ('BOOKINGS.CALENDAR.APPROVE'),
+    ('BOOKINGS.CALENDAR.REJECT'),
+    ('BOOKINGS.CALENDAR.EDIT')
 ) AS v(Code)
 UNION ALL
 SELECT 'DONOR', v.Code
 FROM (VALUES
     ('ONBOARDING.APPLICATION.VIEW'),
     ('ONBOARDING.APPLICATION.CREATE'),
-    ('ONBOARDING.APPLICATION.EDIT')
+    ('ONBOARDING.APPLICATION.EDIT'),
+    ('MYBOOKINGS.BOOKINGS.VIEW'),
+    ('MYBOOKINGS.BOOKINGS.CREATE'),
+    ('MYBOOKINGS.BOOKINGS.EDIT')
 ) AS v(Code)
 UNION ALL
 SELECT 'PLATFORM_ADMIN', p.Code FROM @RbacPermissions p WHERE p.Scope = 'Platform'
@@ -235,7 +265,7 @@ WHEN NOT MATCHED THEN
     VALUES (NULL, 'Institution', s.RoleLevelId, s.Code, s.Name, 1, 1, 1);
 
 /*  What each template grants by default: the owner everything, the manager everything but the
-    profile, staff the calendar and the profile to read. Each must be inside its level's
+    profile, staff the calendar, the slots and the profile to read. Each must be inside its level's
     ceiling, or the view would drop it without a word - so that is checked, not trusted.       */
 DECLARE @RbacTemplateGrants TABLE (RoleCode VARCHAR(50) NOT NULL, PermissionCode VARCHAR(150) NOT NULL);
 
@@ -244,7 +274,7 @@ SELECT 'OWNER', p.Code FROM @RbacPermissions p WHERE p.Scope = 'Institution'
 UNION ALL
 SELECT 'MANAGER', p.Code FROM @RbacPermissions p WHERE p.Scope = 'Institution' AND p.Code <> 'INSTITUTION.PROFILE.EDIT'
 UNION ALL
-SELECT 'STAFF', v.Code FROM (VALUES ('INSTITUTION.PROFILE.VIEW'), ('BOOKINGS.CALENDAR.VIEW')) AS v(Code);
+SELECT 'STAFF', v.Code FROM (VALUES ('INSTITUTION.PROFILE.VIEW'), ('BOOKINGS.SLOTS.VIEW'), ('BOOKINGS.CALENDAR.VIEW')) AS v(Code);
 
 IF EXISTS (SELECT 1 FROM @RbacTemplateGrants g
            WHERE NOT EXISTS (SELECT 1 FROM @RbacCeilings c WHERE c.LevelCode = g.RoleCode AND c.PermissionCode = g.PermissionCode))
@@ -279,7 +309,10 @@ SELECT 'DONOR', v.Code
 FROM (VALUES
     ('ONBOARDING.APPLICATION.VIEW'),
     ('ONBOARDING.APPLICATION.CREATE'),
-    ('ONBOARDING.APPLICATION.EDIT')
+    ('ONBOARDING.APPLICATION.EDIT'),
+    ('MYBOOKINGS.BOOKINGS.VIEW'),
+    ('MYBOOKINGS.BOOKINGS.CREATE'),
+    ('MYBOOKINGS.BOOKINGS.EDIT')
 ) AS v(Code)
 UNION ALL
 SELECT 'PLATFORM_ADMIN', p.Code FROM @RbacPermissions p WHERE p.Scope = 'Platform'
