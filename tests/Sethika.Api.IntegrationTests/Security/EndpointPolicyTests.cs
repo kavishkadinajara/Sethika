@@ -36,6 +36,16 @@ public sealed class EndpointPolicyTests(SethikaTestDatabase database)
         "POST /api/auth/session/refresh",
         "POST /api/auth/session/switch-institution",
 
+        // The mobile app's twins of the above (Phase F): the refresh token travels in the body,
+        // since an app has no cookie jar, and is the credential the same way.
+        "POST /api/auth/mobile/login",
+        "POST /api/auth/mobile/otp/sign-in",
+        "POST /api/auth/mobile/session/logout",
+        "POST /api/auth/mobile/session/logout-all",
+        "POST /api/auth/mobile/session/refresh",
+        "POST /api/auth/mobile/session/switch-institution",
+        "POST /api/auth/mobile/signup",
+
         // Public text, read before signing up.
         "GET /api/legal/current",
 
