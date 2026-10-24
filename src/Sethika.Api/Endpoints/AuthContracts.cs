@@ -88,3 +88,36 @@ public sealed record SessionResponse(
     DateTimeOffset AccessTokenExpiresAt,
     IReadOnlyList<InstitutionChoice> Institutions,
     string? ActiveInstitution);
+
+/// <summary>
+/// What a new mobile session returns (plan F3): the web's <see cref="SessionResponse"/> plus the
+/// refresh token, which the app keeps in the platform's secure store.
+/// </summary>
+public sealed record MobileSessionResponse(
+    string AccessToken,
+    DateTimeOffset AccessTokenExpiresAt,
+    string RefreshToken,
+    DateTimeOffset RefreshTokenExpiresAt,
+    IReadOnlyList<InstitutionChoice> Institutions,
+    string? ActiveInstitution);
+
+/// <summary>A mobile session's refresh token, for refresh and logout.</summary>
+public sealed record MobileRefreshBody(string? RefreshToken)
+{
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append("RefreshToken = ").Append(RefreshToken is null ? "null" : "(redacted)");
+        return true;
+    }
+}
+
+/// <summary>Moves a mobile session onto another institution, by slug.</summary>
+public sealed record MobileSwitchInstitutionBody(string? RefreshToken, string? Institution)
+{
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append("RefreshToken = ").Append(RefreshToken is null ? "null" : "(redacted)")
+            .Append(", Institution = ").Append(Institution);
+        return true;
+    }
+}

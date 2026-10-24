@@ -102,6 +102,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapAuthEndpoints();
 app.MapSessionEndpoints();
+app.MapMobileSessionEndpoints();
 app.MapStepUpEndpoints();
 app.MapPasswordEndpoints();
 app.MapInstitutionRoleEndpoints();

@@ -44,7 +44,13 @@ internal static class SessionEndpoints
         SessionHandler sessions,
         IHostEnvironment environment,
         CancellationToken cancellationToken) =>
-        RotateAsync(httpContext, switchTo: null, sessions, environment, cancellationToken);
+        RotateAsync(
+            httpContext,
+            httpContext.Request.Cookies[AuthCookies.RefreshCookieName],
+            switchTo: null,
+            sessions,
+            environment,
+            cancellationToken);
 
     private static Task<IResult> SwitchInstitutionAsync(
         [FromBody] SwitchInstitutionBody body,
@@ -54,10 +60,22 @@ internal static class SessionEndpoints
         CancellationToken cancellationToken) =>
         string.IsNullOrWhiteSpace(body.Institution)
             ? Task.FromResult(ApiErrors.Error(StatusCodes.Status400BadRequest, "institution_required"))
-            : RotateAsync(httpContext, body.Institution.Trim(), sessions, environment, cancellationToken);
+            : RotateAsync(
+                httpContext,
+                httpContext.Request.Cookies[AuthCookies.RefreshCookieName],
+                body.Institution.Trim(),
+                sessions,
+                environment,
+                cancellationToken);
 
-    private static async Task<IResult> RotateAsync(
+    /// <summary>
+    /// Exchanges a refresh token for a new pair, switching institution on the way when
+    /// <paramref name="switchTo"/> names one. Shared with <see cref="MobileSessionEndpoints"/>, which
+    /// passes the token from the body; everything else - the answers, the codes - is the same.
+    /// </summary>
+    internal static async Task<IResult> RotateAsync(
         HttpContext httpContext,
+        string? refreshToken,
         string? switchTo,
         SessionHandler sessions,
         IHostEnvironment environment,
@@ -65,7 +83,7 @@ internal static class SessionEndpoints
     {
         var result = await sessions.RefreshAsync(
             new RefreshCommand(
-                httpContext.Request.Cookies[AuthCookies.RefreshCookieName],
+                refreshToken,
                 switchTo,
                 ClientAddress.Of(httpContext),
                 UserAgent(httpContext)),
@@ -91,7 +109,12 @@ internal static class SessionEndpoints
             default:
                 // One answer for every dead session - expired, revoked, replayed, stamp changed - so
                 // a replayed copy learns nothing about why. The cookies go, and the client signs in.
-                AuthCookies.Clear(httpContext, secure: !environment.IsDevelopment());
+                // A mobile client has none to clear; it drops the token from its store itself.
+                if (!MobileSessionEndpoints.IsMobile(httpContext))
+                {
+                    AuthCookies.Clear(httpContext, secure: !environment.IsDevelopment());
+                }
+
                 return ApiErrors.Error(StatusCodes.Status401Unauthorized, "session_expired");
         }
     }
