@@ -1,9 +1,9 @@
 # Plan F — Mobile app (donors first)
 
-Status: **Designed, not started.** Added to scope on 2026-10-24 after the supervisor suggested that a
+Status: **F.1 and F.2 built** (branch `ccr-79f10240-uk4n3v`); F.3 onward wait for plan 03. Added to scope on 2026-10-24 after the supervisor suggested that a
 mobile application part would strengthen the project. It is built **in parallel** with the backend
 phases: the slices that need no new API start now, and each later slice starts when the API it calls
-has merged into `develop` (§7). It gets a number and a branch when work starts.
+has merged into `develop` (§7).
 Last updated 2026-10-24. Update this line and the §8 boxes whenever either changes.
 
 ---
@@ -60,8 +60,8 @@ New `notify.Templates` rows with `Channel = 'Push'` for the plan 03 booking even
 
 | Endpoint | Rule |
 |---|---|
-| `POST /api/auth/mobile/sign-in`, `.../otp/verify`, `.../signup/complete` | Same handlers as the web endpoints; the response carries the refresh token in the body instead of `Set-Cookie`. Same rate limits. |
-| `POST /api/auth/mobile/session/refresh`, `.../logout`, `.../logout-all`, `.../switch-institution` | Refresh token in the body. Same `SessionHandler`, same `409 session_superseded` / `401 session_expired`. |
+| `POST /api/auth/mobile/login`, `.../otp/sign-in`, `.../signup` | **Built (F.2).** The same handlers as `/api/auth/login`, `/otp/sign-in`, `/signup`, mapped a second time by `AuthEndpoints.MapSessionStarters`; the response is `MobileSessionResponse` (the web's body plus `refreshToken`, `refreshTokenExpiresAt`) and no `Set-Cookie`. Same rate-limit rules, so the same budgets. Code requests, code checks and password reset start no session, so the app calls the ordinary `/api/auth/otp/request`, `/otp/verify`, `/password/reset`. |
+| `POST /api/auth/mobile/session/refresh`, `.../logout`, `.../logout-all`, `.../switch-institution` | **Built (F.2).** `{ refreshToken }` in the body. `SessionEndpoints.RotateAsync` is shared; same `409 session_superseded` / `401 session_expired`, with no cookie cleared. These routes never read a cookie, which is why they need no CSRF token (`MobileSessionEndpointsTests.TheMobileRoutesNeverReadTheWebCookie`). |
 | `PUT /api/me/devices` | Register or refresh the current device's push token (upsert on `ExpoPushToken`, moving it to the caller if another user had it). Signed-in only. |
 | `DELETE /api/me/devices/{token}` | Called on logout; also done server-side on logout-all. |
 | Everything else | The app calls the existing endpoints (`/api/institutions`, `/api/bookings/...`, `/api/institution/...`) unchanged. |
@@ -71,7 +71,7 @@ New `notify.Templates` rows with `Channel = 'Push'` for the plan 03 booking even
 Tabs: **Explore** (institutions, later "near me"), **My bookings**, **Profile** (language, notifications,
 sign out). Stack screens: institution page → month availability → book; booking detail with cancel.
 Staff with the right permission see a **Today** tab: today's bookings for the active institution and a
-"served" button. Sinhala and Tamil use Noto Sans Sinhala / Noto Sans Tamil next to Outfit.
+"served" button. English uses Outfit; Sinhala and Tamil use the phone's own font (Noto Sans Sinhala / Tamil on Android, the system faces on iOS) rather than bundling more fonts.
 
 ## 6. Out of scope
 
@@ -84,8 +84,8 @@ phone) is a natural follow-up but not promised.
 
 | Slice | Needs | Can start |
 |---|---|---|
-| F.1 Scaffold `mobile/`: Expo Router, theme tokens, i18n en/si/ta, API client with base URL from config, lint + type-check + Jest | nothing | **now** |
-| F.2 Mobile sessions: §4 auth endpoints + tests over HTTP; sign-in / OTP / signup screens; secure store; single-flight silent refresh (same rules as `web/lib/auth/session-client.ts`) | auth (merged) | **now** |
+| F.1 Scaffold `mobile/`: Expo Router, theme tokens, i18n en/si/ta, API client with base URL from config, lint + type-check + Jest | nothing | **Done** |
+| F.2 Mobile sessions: §4 auth endpoints + tests over HTTP; sign-in / OTP / signup screens; secure store; single-flight silent refresh (same rules as `web/lib/auth/session-client.ts`) | auth (merged) | **Done** |
 | F.3 Explore + institution page + month availability | plan 03 §5.5 GET endpoints | when plan 03 merges |
 | F.4 Book, my bookings, cancel | plan 03 §5.5 booking endpoints | when plan 03 merges |
 | F.5 Push: `notify.MobileDevices`, device endpoints, outbox push sender, push templates, dedup tests | plan 03 §5.6 notifications | when plan 03 merges |
@@ -101,6 +101,12 @@ parallel:
 - Local testing from a phone: the API must listen on the LAN address (or a tunnel), not `localhost`.
 
 ## 8. Definition of done (per slice)
+
+F.1 + F.2, 2026-10-24: lint, typecheck and Jest clean (25 tests); `MobileSessionEndpointsTests` 13
+over HTTP, three mutations all killed, full backend suite green (628); `npx expo export --platform
+android` bundles; the session client was driven end to end against a running API (signup, cold-start
+refresh, spent token refused, logout). **Still owed:** the walk-through on a real Android phone (no
+device in the build environment), and a native review of the `App.*` Sinhala and Tamil.
 
 - [ ] `cd mobile && npm run lint && npm run typecheck && npm test` clean
 - [ ] Backend part (if any): `dotnet build` with no warnings, tests green

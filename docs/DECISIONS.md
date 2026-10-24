@@ -178,4 +178,4 @@ tables above once the code exists and the choice has held.
 | `docs/plans/01-AUTH.md` — authentication, MFA step-up, i18n foundation, design system | `2-authentication-and-i18n-foundation` | Merged into `develop` (PR #4, #5); browser walk-throughs still owed — see its status line |
 | `docs/plans/02-ONBOARDING.md` — institution onboarding and approval, outbox processor | `3-institution-onboarding` | Done; PR into `develop` opened 2026-10-23 |
 | `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` — religious services, leader roster, conflict-free assignment | not cut yet | Designed (S4); build after the booking engine |
-| `docs/plans/PHASE-F-MOBILE.md` — donor mobile app (Expo), mobile sessions, push notifications | not cut yet | Designed (S7); F.1–F.2 can start now, the rest follows the API (S8) |
+| `docs/plans/PHASE-F-MOBILE.md` — donor mobile app (Expo), mobile sessions, push notifications | `ccr-79f10240-uk4n3v` | F.1–F.2 built (app scaffold, mobile sessions); phone walk-through owed; F.3+ follow the API (S8) |

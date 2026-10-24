@@ -69,3 +69,17 @@ dotnet run --project src/Sethika.Api --launch-profile http   # API on :5182
 cd web && npm run dev                                         # web on :3000, /api/* -> :5182
 cd web && npm test                                            # unit tests (Vitest)
 ```
+
+## 7. Mobile app (Phase F)
+The app in `mobile/` calls the API directly, so the API must be reachable from the phone or
+emulator. See `mobile/README.md` for the full steps; in short:
+
+```bash
+dotnet run --project src/Sethika.Api --launch-profile http --urls http://0.0.0.0:5182   # listen on the LAN
+cd mobile && npm install
+echo "EXPO_PUBLIC_API_BASE_URL=http://<this-pc-LAN-IP>:5182" > .env.local              # real phone only
+cd mobile && npx expo start                                                             # then press a (Android)
+cd mobile && npm test && npm run typecheck && npm run lint
+```
+
+Allow port 5182 through Windows Firewall for private networks, or the phone's requests time out.

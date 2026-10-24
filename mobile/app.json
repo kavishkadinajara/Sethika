@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "Sethika",
+    "slug": "sethika",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "sethika",
+    "userInterfaceStyle": "automatic",
+    "platforms": ["android", "ios"],
+    "ios": {
+      "bundleIdentifier": "com.sethika.app",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.sethika.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#F7F4EC",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F7F4EC",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 120,
+          "dark": {
+            "backgroundColor": "#0E2A21",
+            "image": "./assets/images/splash-icon-dark.png"
+          }
+        }
+      ],
+      "expo-secure-store",
+      "expo-localization"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

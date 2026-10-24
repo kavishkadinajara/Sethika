@@ -32,7 +32,7 @@ Sethika/
 │  ├─ Sethika.Application.Tests/
 │  └─ Sethika.Api.IntegrationTests/
 ├─ web/                           # Next.js frontend
-├─ mobile/                        # React Native + Expo app (Phase F, not created yet)
+├─ mobile/                        # React Native + Expo donor app (Phase F) — see mobile/README.md
 ├─ docs/  branding/
 ```
 Dependency rule: `Api → Infrastructure → Application → Domain`. Domain references nothing.
