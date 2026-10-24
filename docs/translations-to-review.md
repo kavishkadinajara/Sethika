@@ -436,6 +436,29 @@ Questions for the reviewers:
 |---|---|---|---|
 | `Review`, `Home.review`, `Apply.institutionSession` | | | |
 
+## Mobile app (`mobile/src/i18n/messages`, `App` namespace)
+
+The mobile app copies its shared sections (`Brand`, `Login`, `LoginOtp`, `Common`,
+`LanguageSwitcher`, `Errors`, `Password`, `Signup`, and four `Session` keys) from `web/messages`, so
+those rows above cover both. A correction there is copied into `mobile/src/i18n/messages` in the
+same commit. Only the `App.*` keys below are the app's own.
+
+Question for the reviewers: the Explore title says "a place to give" (`දායක විය හැකි ස්ථානයක්`,
+`பங்களிக்க ஓர் இடம்`) to stay faith-neutral. Does it read as a meal *and* a donation, not only money?
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) | Reviewer | Status |
+|---|---|---|---|---|---|
+| `App.tabs.explore` | Explore | සොයන්න | தேடு | | |
+| `App.tabs.bookings` | My bookings | මගේ වෙන්කිරීම් | எனது முன்பதிவுகள் | | |
+| `App.tabs.profile` | Profile | පැතිකඩ | சுயவிவரம் | | |
+| `App.explore.title` | Find a place to give | දායක විය හැකි ස්ථානයක් සොයන්න | பங்களிக்க ஓர் இடத்தைத் தேடுங்கள் | | |
+| `App.explore.comingSoon` | Temples, kovils, mosques, churches and care homes will appear here soon. | පන්සල්, කෝවිල්, මුස්ලිම් පල්ලි, කිතුනු දේවස්ථාන සහ සත්කාර නිවාස ඉක්මනින් මෙහි පෙන්වනු ඇත. | விகாரைகள், கோவில்கள், பள்ளிவாசல்கள், தேவாலயங்கள் மற்றும் பராமரிப்பு இல்லங்கள் விரைவில் இங்கே தோன்றும். | | |
+| `App.bookings.title` | My bookings | මගේ වෙන්කිරීම් | எனது முன்பதிவுகள் | | |
+| `App.bookings.comingSoon` | Your bookings will appear here once booking opens. | වෙන්කිරීම් ආරම්භ වූ පසු ඔබගේ වෙන්කිරීම් මෙහි පෙන්වනු ඇත. | முன்பதிவு தொடங்கியதும் உங்கள் முன்பதிவுகள் இங்கே தோன்றும். | | |
+| `App.profile.title` | Profile | පැතිකඩ | சுயவிவரம் | | |
+| `App.profile.greeting` | Hello, {name} | ආයුබෝවන්, {name} | வணக்கம், {name} | | |
+| `App.profile.signOutEverywhereHelp` | Ends your session on this phone and in every browser where you are signed in. | මෙම දුරකථනයේ සහ ඔබ පිවිසී ඇති සෑම බ්‍රව්සරයකම ඔබගේ සැසිය අවසන් කරයි. | இந்தத் தொலைபேசியிலும் நீங்கள் உள்நுழைந்துள்ள எல்லா உலாவிகளிலும் உங்கள் அமர்வை முடிக்கும். | | |
+
 ## Legal texts (`core.LegalDocuments`)
 
 Seeded by `src/Sethika.Database/Scripts/Seed/09_LegalDocuments.sql`. These are `0.1-draft`
