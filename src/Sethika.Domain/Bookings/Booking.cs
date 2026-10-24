@@ -178,7 +178,7 @@ public class Booking
             return BookingResult.Fail(BookingErrors.InvalidTransition);
         }
 
-        if (today >= slotDate)
+        if (!DonorMayStillCancel(slotDate, today))
         {
             return BookingResult.Fail(BookingErrors.CancelWindowClosed);
         }
@@ -191,6 +191,18 @@ public class Booking
         Cancel(string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(), userId, now);
         return BookingResult.Ok;
     }
+
+    /// <summary>
+    /// Whether the donor's own booking in <paramref name="status"/> on <paramref name="slotDate"/>
+    /// may still be cancelled by them: what <see cref="CancelAsDonor"/> allows, for the screen's
+    /// cancel button.
+    /// </summary>
+    /// <param name="today">Today in Sri Lanka (<see cref="SriLankaTime"/>).</param>
+    public static bool DonorMayCancel(string status, DateOnly slotDate, DateOnly today) =>
+        status is BookingStatus.Requested or BookingStatus.Approved && DonorMayStillCancel(slotDate, today);
+
+    /// <summary>Q1: until the end of the day before the meal.</summary>
+    private static bool DonorMayStillCancel(DateOnly slotDate, DateOnly today) => today < slotDate;
 
     /// <summary>Requested or Approved → Cancelled, by the institution, at any time and with a reason. Gives the place back.</summary>
     public BookingResult CancelAsInstitution(string reason, Guid userId, DateTime now)

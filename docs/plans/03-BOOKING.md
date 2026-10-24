@@ -3,11 +3,11 @@
 Branch: `5-booking-engine`, cut on 2026-10-23 from `4-textlk-sms` (PR #7) and rebased on
 `origin/develop` the same day, after PR #6 and #7 were merged.
 
-Status: **5.1-5.4 built (2026-10-23); 5.5 is next.** §8 lists what was decided while
+Status: **5.1-5.5 built (5.5 on 2026-10-24); 5.6 is next.** §8 lists what was decided while
 building them. Deadline is about **2026-11-06**, and
 Phase E (religious services) and the report still need time after this. So this plan aims at
 **~6 working days (2026-10-24 → 10-31)**. If it runs over, the cut order is in §4.
-Last updated 2026-10-23. Update this line and the §5 boxes whenever either changes. A fresh session
+Last updated 2026-10-24. Update this line and the §5 boxes whenever either changes. A fresh session
 trusts them and will rebuild anything they claim is missing.
 
 ---
@@ -335,16 +335,17 @@ Never cut the concurrency tests.
 
 ### 5.5: Donor API
 
-- [ ] `GET /api/institutions` (anonymous, listed + Active only).
-- [ ] `GET /api/institutions/{slug}` (anonymous): profile and active slots, by `PublicId`.
-- [ ] `GET /api/institutions/{slug}/availability?month=2026-11` (anonymous). Dapper. For each slot
-  and day: bookable or the reason, and remaining sponsors and headcount. Computed from slots ×
-  dates, `CanBook`'s data and instance counters.
-- [ ] `POST /api/bookings` (`MYBOOKINGS.BOOKINGS.CREATE`), `GET /api/bookings/mine`,
-  `POST /api/bookings/{bookingNo}/cancel`.
-- [ ] Tests: anonymous reads work and show nothing private; an unlisted institution is absent from
-  the list but reachable by slug; each `CanBook` refusal over HTTP; `already_booked`; a donor sees
-  only their own bookings (RLS); cancel window (Q1).
+- [x] `GET /api/institutions` (anonymous, listed + Active only).
+- [x] `GET /api/institutions/{slug}` (anonymous): profile and active slots, by `PublicId`. Only an
+  `Active` institution (E22); no phone, email or registration number (E23).
+- [x] `GET /api/institutions/{slug}/availability?month=2026-11` (anonymous). Dapper reads the
+  slots, seasons, blocks and slot-days; `MealSlotRules.Openings` judges each day (E24).
+- [x] `POST /api/bookings` (`MYBOOKINGS.BOOKINGS.CREATE`), `GET /api/bookings/mine`,
+  `POST /api/bookings/{bookingNo}/cancel`. Status codes E25, rate limits E26.
+- [x] Tests (`DonorBookingEndpointsTests`): anonymous reads work and name exactly the fields they
+  return; an unlisted institution is absent from the list but reachable by slug; each `CanBook`
+  refusal over HTTP; `already_booked`; a donor sees only their own bookings; cancel window (Q1);
+  both rate limits. `EndpointPolicyTests` (E28).
 
 ### 5.6: Notifications and reminders
 
@@ -397,7 +398,7 @@ Memorial Dana Planner, co-sponsors, SignalR), Phase D (donations, needs board, r
 (religious services; `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md`, built after this). The tables for
 most of them already exist, and none of them blocks this plan.
 
-## 8. Decided while building (2026-10-23)
+## 8. Decided while building (2026-10-23 and 24)
 
 | # | Decision | Why |
 |---|---|---|
@@ -422,3 +423,10 @@ most of them already exist, and none of them blocks this plan.
 | E19 | The calendar reads at most 62 days (`invalid_range`), and only slot-days that have been booked. Each booking carries the donor's phone | A month view with the days either side. Slot-days exist only from their first booking (C3), so an unbooked day is simply free. The institution needs the phone to arrange the meal (E13). |
 | E20 | The step-up tests make APPROVE `RequiresMfa` themselves (`SethikaTestDatabase.RequireStepUpAsync`, which bumps every institution's `PermissionsVersion` both ways) and put it back. `RbacCatalogueTests.NoBookingDecisionNeedsAStepUp` fails first if a killed run left it set | They test the mechanism, which still guards the onboarding decisions. A real approval of BK-ALPHA replaces the demonstration endpoint. |
 | E21 | The home page's demonstration "Approve booking" button is removed | It called the demonstration endpoint. The real decisions get their screen in 5.7. |
+| E22 | An institution that is not `Active` (or is deleted) answers 404 `institution_not_found` on its page and its availability, listed or not | A suspended institution takes no bookings and must not be advertised. Answering exactly as for a slug that does not exist says nothing about why. |
+| E23 | The public page shows name, type, district, city, address, coordinates, description and dietary notes. It leaves out the phone, email, registration number and institution code | Those were given to the reviewer, not published. The donor does not need them to book: the institution has the donor's phone (E19) and arranges the meal. Revisit if institutions ask to show a phone. |
+| E24 | Availability is judged in C# by `MealSlotRules.Openings`, which asks `CanBookOn` (the engine's own rule) and then the slot-day's counters. A day is `slot_full` when the conditional UPDATE would refuse every booking: no sponsor place, the slot-day not `Open`, or fewer people left than the slot's smallest booking | One rule for the engine and the calendar, so they disagree only about a booking made in between. The headcount case is easy to miss: two places left but 5 of 60 people and a minimum of 10 would look open and refuse everyone. A slot-day's capacity is its snapshot (C3), capped by what the slot now allows one booking. |
+| E25 | 400 for what the donor fixes by changing the request (`invalid_details` with `fields`, `headcount_out_of_range`, `fulfilment_not_offered`, `reason_too_long`); 404 for an unknown slot, booking or institution; 409 for everything about the slot-day or the account (`slot_full`, `already_booked`, `slot_busy`, `phone_required`, the date rules) | The onboarding endpoints' rule, so the web maps both the same way. A second booking of an *exclusive* slot by the donor who holds it answers `slot_full`, not `already_booked`: the UPDATE runs before the insert. `already_booked` is what a shared slot answers. |
+| E26 | Public reads: 600 per 15 minutes per client address. Booking: 20 per hour per account | Reads are loose because a temple's donors may share one carrier address and each month paged is a request; they bound scraping and load. Each booking takes a number under the series' row lock (E11) and will send an SMS (5.6). |
+| E27 | `bookings/mine` names the donor as well as relying on RLS, and returns the newest 200 by slot date; there is no paging | RLS's owner branch is the guarantee: the endpoint holds only in a personal session (B1), where RLS shows nothing else, so the mutation that drops the donor filter survives (as expected). The filter stays as defence in depth. Paging is cut. |
+| E28 | `EndpointPolicyTests`: every `/api` endpoint carries `[HasPermission]`, `RequireAuthorization` or `AllowAnonymous`, and the anonymous ones are a fixed list in the test | The host has no fallback authorization policy, so an endpoint mapped without any of them would be open to anyone and nothing would notice. The 14 anonymous endpoints (sign-in, the cookie session, legal text, the three institution reads) are now a reviewed list. |

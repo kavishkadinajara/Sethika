@@ -108,4 +108,49 @@ public static class MealSlotRules
 
         return slot.Offers(fulfilment) ? null : BookingErrors.FulfilmentNotOffered;
     }
+
+    /// <summary>
+    /// What a donor finds on <paramref name="date"/> before choosing a headcount: why it cannot be
+    /// booked, or the places and people left. The availability calendar's answer (plan 03, 5.5).
+    /// </summary>
+    /// <remarks>
+    /// The calendar is a forecast; the engine still decides with <see cref="CanBook"/> and the
+    /// conditional UPDATE, so a day shown open can be taken a moment later. A day is shown full when
+    /// the UPDATE would refuse every booking: no sponsor place left, the slot-day closed, or fewer
+    /// people left than the slot's smallest booking.
+    /// </remarks>
+    /// <param name="instance">The slot-day, or <see langword="null"/> if nobody has booked it yet (C3).</param>
+    public static SlotDayOpenings Openings(
+        MealSlot slot,
+        string institutionStatus,
+        IEnumerable<MealSlotSeason> seasons,
+        IEnumerable<BlockedDate> blocks,
+        DateOnly date,
+        DateTime utcNow,
+        SlotInstance? instance)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+
+        // An existing slot-day keeps the capacity it was created with, whatever the slot says now (C3).
+        var sponsors = Math.Max(0, instance?.RemainingSponsors ?? slot.MaxSponsors);
+        var headcount = Math.Max(0, Math.Min(slot.MaxHeadcount, instance?.RemainingHeadcount ?? slot.MaxHeadcount));
+
+        var refused = CanBookOn(slot, institutionStatus, seasons, blocks, date, utcNow);
+        if (refused is null
+            && (instance is { Status: not SlotInstanceStatus.Open } || sponsors == 0 || headcount < slot.MinHeadcount))
+        {
+            refused = BookingErrors.SlotFull;
+        }
+
+        return new SlotDayOpenings(refused, sponsors, headcount);
+    }
+}
+
+/// <summary>A slot-day as the availability calendar shows it.</summary>
+/// <param name="Refused">Why it cannot be booked (a <see cref="BookingErrors"/> code), or <see langword="null"/>.</param>
+/// <param name="Sponsors">Sponsor places left.</param>
+/// <param name="Headcount">The most people one booking may bring now: the slot's limit, or what is left if less.</param>
+public readonly record struct SlotDayOpenings(string? Refused, int Sponsors, int Headcount)
+{
+    public bool Bookable => Refused is null;
 }

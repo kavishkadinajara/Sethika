@@ -231,4 +231,98 @@ public class MealSlotRulesTests
             BookingErrors.DateBlocked,
             MealSlotRules.CanBook(Slot(), MealSlotRules.ActiveInstitution, [], [Block(Friday, Friday)], Friday, ThursdayMorningUtc, 1, "Caterer"));
     }
+
+    // ------------------------------------------------------------------ the availability calendar (5.5)
+
+    /// <summary>
+    /// A slot-day with these counters. The setters are private so no booking code can change a counter
+    /// in memory (C2); a test sets them the way Dapper does, by reflection.
+    /// </summary>
+    private static SlotInstance SlotDay(MealSlot slot, byte bookedSponsors, short bookedHeadcount, string status = SlotInstanceStatus.Open, short? maxHeadcount = null)
+    {
+        var day = SlotInstance.Open(slot, Friday);
+        Set(day, nameof(SlotInstance.BookedSponsors), bookedSponsors);
+        Set(day, nameof(SlotInstance.BookedHeadcount), bookedHeadcount);
+        Set(day, nameof(SlotInstance.Status), status);
+        if (maxHeadcount is { } max)
+        {
+            Set(day, nameof(SlotInstance.MaxHeadcount), max);
+        }
+
+        return day;
+
+        static void Set(SlotInstance day, string property, object value) =>
+            typeof(SlotInstance).GetProperty(property)!.SetValue(day, value);
+    }
+
+    private static SlotDayOpenings Openings(MealSlot slot, SlotInstance? day, BlockedDate[]? blocks = null) =>
+        MealSlotRules.Openings(slot, MealSlotRules.ActiveInstitution, [], blocks ?? [], Friday, ThursdayMorningUtc, day);
+
+    [Fact]
+    public void ADayNobodyHasBookedOffersTheWholeSlot()
+    {
+        var slot = Slot(s => (s.BookingMode, s.MaxSponsors) = (BookingMode.Shared, 4));
+
+        Assert.Equal(new SlotDayOpenings(null, 4, 60), Openings(slot, day: null));
+    }
+
+    [Fact]
+    public void ADayShowsWhatItsCountersLeave()
+    {
+        var slot = Slot(s => (s.BookingMode, s.MaxSponsors) = (BookingMode.Shared, 4));
+
+        var openings = Openings(slot, SlotDay(slot, bookedSponsors: 3, bookedHeadcount: 35));
+
+        Assert.True(openings.Bookable);
+        Assert.Equal((1, 25), (openings.Sponsors, openings.Headcount));
+    }
+
+    [Fact]
+    public void ADayWithEverySponsorPlaceTakenIsFull() =>
+        Assert.Equal(new SlotDayOpenings(BookingErrors.SlotFull, 0, 50), Openings(Slot(), SlotDay(Slot(), bookedSponsors: 1, bookedHeadcount: 10)));
+
+    [Fact]
+    public void ADayWithFewerPeopleLeftThanTheSmallestBookingIsFull()
+    {
+        // Two places left, but 55 of 60 people taken and a booking brings at least 10: the UPDATE
+        // would refuse every one, so the calendar must not offer the day.
+        var slot = Slot(s => (s.BookingMode, s.MaxSponsors) = (BookingMode.Shared, 4));
+
+        Assert.Equal(new SlotDayOpenings(BookingErrors.SlotFull, 2, 5), Openings(slot, SlotDay(slot, bookedSponsors: 2, bookedHeadcount: 55)));
+        Assert.Equal(new SlotDayOpenings(null, 2, 10), Openings(slot, SlotDay(slot, bookedSponsors: 2, bookedHeadcount: 50)));
+    }
+
+    [Theory]
+    [InlineData(SlotInstanceStatus.Full)]
+    [InlineData(SlotInstanceStatus.Blocked)]
+    [InlineData(SlotInstanceStatus.Closed)]
+    public void ADayThatIsNotOpenIsFull(string status)
+    {
+        var slot = Slot(s => (s.BookingMode, s.MaxSponsors) = (BookingMode.Shared, 4));
+
+        Assert.Equal(BookingErrors.SlotFull, Openings(slot, SlotDay(slot, bookedSponsors: 1, bookedHeadcount: 10, status)).Refused);
+    }
+
+    [Fact]
+    public void ADayKeepsTheCapacityItWasCreatedWith()
+    {
+        // Created at 60 people; the slot was edited down to 30 since. A booking may bring at most 30
+        // (the slot's rule now), and the day still has its 60 to fill (C3).
+        var slot = Slot(s => s.MaxHeadcount = 30);
+        Assert.Equal(new SlotDayOpenings(null, 1, 30), Openings(slot, SlotDay(slot, bookedSponsors: 0, bookedHeadcount: 0, maxHeadcount: 60)));
+
+        // Edited up to 100 since a day was created at 40: the day's 40 bound it.
+        var bigger = Slot(s => (s.MaxHeadcount, s.BookingMode, s.MaxSponsors) = (100, BookingMode.Shared, 3));
+        Assert.Equal(new SlotDayOpenings(null, 2, 25), Openings(bigger, SlotDay(bigger, bookedSponsors: 1, bookedHeadcount: 15, maxHeadcount: 40)));
+    }
+
+    [Fact]
+    public void TheCalendarGivesTheEnginesReasonBeforeFullness()
+    {
+        // Blocked and full: the block is the reason, as CanBook would say.
+        var slot = Slot();
+
+        Assert.Equal(BookingErrors.DateBlocked, Openings(slot, SlotDay(slot, bookedSponsors: 1, bookedHeadcount: 10), [Block(Friday, Friday)]).Refused);
+        Assert.Equal(BookingErrors.TooSoon, MealSlotRules.Openings(slot, MealSlotRules.ActiveInstitution, [], [], Friday, Friday.ToDateTime(new TimeOnly(10, 0), DateTimeKind.Utc), null).Refused);
+    }
 }

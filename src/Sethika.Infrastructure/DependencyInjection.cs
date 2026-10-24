@@ -70,6 +70,7 @@ public static class DependencyInjection
         services.AddScoped<IOnboardingApplicationQueries, OnboardingApplicationQueries>();
         services.AddScoped<IRegistrationReviewQueries, RegistrationReviewQueries>();
         services.AddScoped<IInstitutionBookingQueries, InstitutionBookingQueries>();
+        services.AddScoped<IDonorBookingQueries, DonorBookingQueries>();
 
         return services;
     }

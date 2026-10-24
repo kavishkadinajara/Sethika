@@ -110,6 +110,7 @@ app.MapRegistrationReviewEndpoints();
 app.MapLegalEndpoints();
 app.MapMeEndpoints();
 app.MapInstitutionBookingEndpoints();
+app.MapDonorBookingEndpoints();
 
 app.Run();
 

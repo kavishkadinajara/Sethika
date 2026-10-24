@@ -156,6 +156,27 @@ public class BookingTests
         Assert.Equal("The donor phoned in sick", booking.CancelReason);
     }
 
+    /// <summary>The cancel button on "my bookings" is shown exactly when the donor's cancel would succeed.</summary>
+    [Theory]
+    [InlineData(BookingStatus.Requested)]
+    [InlineData(BookingStatus.Approved)]
+    [InlineData(BookingStatus.Rejected)]
+    [InlineData(BookingStatus.Cancelled)]
+    [InlineData(BookingStatus.Completed)]
+    [InlineData(BookingStatus.NoShow)]
+    public void TheCancelButtonAgreesWithTheCancel(string status)
+    {
+        foreach (var daysBefore in new[] { 30, 1, 0, -1 })
+        {
+            var today = SlotDay.AddDays(-daysBefore);
+            var cancelled = InStatus(status).CancelAsDonor(null, Donor, SlotDay, today, Now).Succeeded;
+
+            Assert.Equal(cancelled, Booking.DonorMayCancel(status, SlotDay, today));
+        }
+
+        Assert.Equal(status is BookingStatus.Requested or BookingStatus.Approved, Booking.DonorMayCancel(status, SlotDay, SlotDay.AddDays(-1)));
+    }
+
     [Fact]
     public void NobodyButTheDonorCancelsAsTheDonor()
     {
