@@ -3,7 +3,7 @@
 Branch: `5-booking-engine`, cut on 2026-10-23 from `4-textlk-sms` (PR #7) and rebased on
 `origin/develop` the same day, after PR #6 and #7 were merged.
 
-Status: **5.1-5.5 built (5.5 on 2026-10-24); 5.6 is next.** §8 lists what was decided while
+Status: **5.1-5.6 built (5.5 and 5.6 on 2026-10-24); 5.7 is next.** §8 lists what was decided while
 building them. Deadline is about **2026-11-06**, and
 Phase E (religious services) and the report still need time after this. So this plan aims at
 **~6 working days (2026-10-24 → 10-31)**. If it runs over, the cut order is in §4.
@@ -349,11 +349,13 @@ Never cut the concurrency tests.
 
 ### 5.6: Notifications and reminders
 
-- [ ] Outbox handlers for the six events (C11), the donor's language, `DedupKey`.
-- [ ] `BookingReminderJob`, a Hangfire recurring job at 18:00 Colombo, running as the platform. It
-  covers tomorrow's Approved bookings. A re-run texts nobody twice.
-- [ ] Tests like `OnboardingSmsTests`: each event's template in each language, dedup, and the
-  reminder for tomorrow only.
+- [x] `BookingSmsHandler` for the five outbox events (C11), the donor's language, `DedupKey`
+  `{template}:{bookingNo}` (E29). A donor's own cancellation is not texted back (E30).
+- [x] `BookingReminderJob`, a Hangfire recurring job at 18:00 Colombo, running as the platform. It
+  covers tomorrow's Approved bookings. A re-run texts nobody twice (E31).
+- [x] Tests (`BookingSmsTests`): each event's template, en/si/ta with the institution's name in that
+  language, no reason in any text, dedup on a re-run, the reminder for tomorrow's Approved bookings
+  only, and the job's platform scope. `HangfireJobsTests` checks both recurring jobs.
 
 ### 5.7: Screens (en/si/ta, desktop + 320 px)
 
@@ -430,3 +432,6 @@ most of them already exist, and none of them blocks this plan.
 | E26 | Public reads: 600 per 15 minutes per client address. Booking: 20 per hour per account | Reads are loose because a temple's donors may share one carrier address and each month paged is a request; they bound scraping and load. Each booking takes a number under the series' row lock (E11) and will send an SMS (5.6). |
 | E27 | `bookings/mine` names the donor as well as relying on RLS, and returns the newest 200 by slot date; there is no paging | RLS's owner branch is the guarantee: the endpoint holds only in a personal session (B1), where RLS shows nothing else, so the mutation that drops the donor filter survives (as expected). The filter stays as defence in depth. Paging is cut. |
 | E28 | `EndpointPolicyTests`: every `/api` endpoint carries `[HasPermission]`, `RequireAuthorization` or `AllowAnonymous`, and the anonymous ones are a fixed list in the test | The host has no fallback authorization policy, so an endpoint mapped without any of them would be open to anyone and nothing would notice. The 14 anonymous endpoints (sign-in, the cookie session, legal text, the three institution reads) are now a reviewed list. |
+| E29 | A booking text's dedup key is `{template}:{bookingNo}`, not the outbox message's id | Each move happens to a booking at most once, so the key also stops a second outbox row for the same move, not only a re-run of one row. The onboarding texts key by message because a reviewer may ask twice. |
+| E30 | Five texts, not six events: a cancellation by the donor is not texted back to them. The text carries the institution's name in the donor's language when it has one, and the date as `yyyy-MM-dd` | The donor just did it on the screen. The ISO date reads the same in all three languages and is never month-first. Reasons are never sent (E2): "sign in to see why". |
+| E31 | The reminder sends directly with its dedup key (`booking-reminder:{BookingNo}`), not through the outbox. A failed send stops the run; Hangfire retries three times within about 20 minutes | The key makes a repeat safe, so the outbox adds nothing. The retries stay short because the run works out "tomorrow" when it starts: a retry after midnight would remind the wrong day's donors. Only `Approved` bookings: a request the institution never answered is not a meal to remind anyone of. |

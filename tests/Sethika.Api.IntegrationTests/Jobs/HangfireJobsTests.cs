@@ -121,8 +121,17 @@ public sealed class HangfireJobsTests(SethikaTestDatabase database) : IAsyncLife
             // the end of this test removes it - otherwise an earlier run's would answer the trigger.
             using (var storage = host.Services.GetRequiredService<JobStorage>().GetConnection())
             {
-                var job = Assert.Single(storage.GetRecurringJobs());
-                Assert.Equal((OutboxJob.RecurringJobId, Cron.Minutely(), typeof(OutboxJob)), (job.Id, job.Cron, job.Job?.Type));
+                var jobs = storage.GetRecurringJobs().OrderBy(j => j.Id, StringComparer.Ordinal).ToList();
+                Assert.Equal(2, jobs.Count);
+
+                var reminders = jobs[0];
+                Assert.Equal((BookingReminderJob.RecurringJobId, "0 18 * * *", typeof(BookingReminderJob)), (reminders.Id, reminders.Cron, reminders.Job?.Type));
+
+                // 18:00 in Colombo (plan 03, Q3), whatever zone the server is in.
+                Assert.Equal(TimeSpan.FromHours(5.5), TimeZoneInfo.FindSystemTimeZoneById(reminders.TimeZoneId).BaseUtcOffset);
+
+                var outbox = jobs[1];
+                Assert.Equal((OutboxJob.RecurringJobId, Cron.Minutely(), typeof(OutboxJob)), (outbox.Id, outbox.Cron, outbox.Job?.Type));
             }
 
             recurring.Trigger(OutboxJob.RecurringJobId);
