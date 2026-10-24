@@ -96,6 +96,15 @@ of religious leaders and making appointments". `docs/proposal/Sethika_Project_Pr
 | S5 | Phase E is built **after** the Phase A booking engine, and is cut before Phase A rigour is | It reuses the engine's lock, outbox and number-series patterns. If time runs out, the report states what was not built. |
 | S6 | v3 is based on the copy **submitted on 2026-10-18**, not on the repo's v2 | That copy (`Sethika_Project_Proposal_submitted_2026-10-18.docx`) was edited from v1 outside the repo and still carried v1's four contradictions and the old "beyond scope" list. v3 re-applies v2's corrections (dacpac instead of migrations, no Docker, shared slots, trilingual UI, PayHere) to it. The submitted format has no Data Model section, so v2's ERD/3NF chapter lives on in `Sethika_Project_Proposal_v2_repo.docx` for the final report. |
 
+## Scope revision (mobile app, 2026-10-24)
+
+The supervisor suggested that a mobile application part would strengthen the project.
+
+| # | Decision | Why |
+|---|----------|-----|
+| S7 | New **Phase F: a donor-first mobile app** (React Native + Expo, TypeScript) in `mobile/`, calling the same API. Staff get only a "today's sponsors / mark served" view; all other institution work stays on the web. Design: `docs/plans/PHASE-F-MOBILE.md` | One codebase for Android and iOS in the language `web/` already uses. Donors are the phone users; the API stays the single place for business rules, so the app adds a client, not a second backend. |
+| S8 | Phase F runs **in parallel** with the backend phases: scaffolding and mobile sign-in start now, each later slice starts when the API it calls has merged | The booking engine is being built on another machine. The app never changes another module's API from its own branch, so the two lines of work don't collide. |
+
 ## Redis (local development)
 | # | Decision | Why |
 |---|----------|-----|
@@ -169,3 +178,4 @@ tables above once the code exists and the choice has held.
 | `docs/plans/01-AUTH.md` — authentication, MFA step-up, i18n foundation, design system | `2-authentication-and-i18n-foundation` | Merged into `develop` (PR #4, #5); browser walk-throughs still owed — see its status line |
 | `docs/plans/02-ONBOARDING.md` — institution onboarding and approval, outbox processor | `3-institution-onboarding` | Done; PR into `develop` opened 2026-10-23 |
 | `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` — religious services, leader roster, conflict-free assignment | not cut yet | Designed (S4); build after the booking engine |
+| `docs/plans/PHASE-F-MOBILE.md` — donor mobile app (Expo), mobile sessions, push notifications | not cut yet | Designed (S7); F.1–F.2 can start now, the rest follows the API (S8) |

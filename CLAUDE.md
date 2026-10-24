@@ -32,6 +32,7 @@ Sethika/
 │  ├─ Sethika.Application.Tests/
 │  └─ Sethika.Api.IntegrationTests/
 ├─ web/                           # Next.js frontend
+├─ mobile/                        # React Native + Expo app (Phase F, not created yet)
 ├─ docs/  branding/
 ```
 Dependency rule: `Api → Infrastructure → Application → Domain`. Domain references nothing.
@@ -41,6 +42,7 @@ Adding the SQL project to the .sln: project type GUID `42EA0DBD-9CF1-443E-919E-B
 
 ## Tech stack
 - Frontend: Next.js (App Router) + TypeScript (strict) + Tailwind + shadcn/ui, FullCalendar, Leaflet + OpenStreetMap
+- Mobile (Phase F): React Native + Expo (TypeScript strict, Expo Router), push via Expo Push Service
 - Backend: ASP.NET Core Web API on .NET 10
 - Data: SQL Server 2022 locally, Azure SQL in production
 - Redis (mandatory course requirement): booking locks, permission cache, caching, GEO search, OTP, rate limiting, SignalR backplane
@@ -112,6 +114,10 @@ Adding the SQL project to the .sln: project type GUID `42EA0DBD-9CF1-443E-919E-B
 - **Phase E (added in proposal v3 after supervisor feedback):** religious services & leader coordination —
   service types, leader roster + leave, appointment requests, conflict-free leader assignment (accept/decline),
   personal schedule. Build after the booking engine. Design: `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md`.
+- **Phase F (added 2026-10-24, runs in parallel):** donor-first mobile app in `mobile/` (React Native + Expo,
+  TypeScript) on the same API — browse, book, my bookings, push notifications, near me; staff get only
+  "today's sponsors / mark served". Mobile sessions carry the refresh token in the body (secure store), not a cookie.
+  Design: `docs/plans/PHASE-F-MOBILE.md`.
 - Designed but optional: plans/subscriptions, availability alerts, demand heatmap, impersonation, trust & safety.
 
 ## First tasks for Claude Code
