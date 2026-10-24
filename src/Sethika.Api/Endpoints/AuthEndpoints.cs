@@ -17,7 +17,8 @@ namespace Sethika.Api.Endpoints;
 /// <remarks>
 /// These are the endpoints CLAUDE.md's every-endpoint-has-a-permission rule cannot apply to - there
 /// is no user yet - so each is rate-limited instead, per client address and, where the request names
-/// one, per identity. The handlers hold the logic; this file maps outcomes to HTTP and sets cookies.
+/// one, per identity. The handlers hold the logic; this file maps outcomes to HTTP, and
+/// <see cref="SessionResponses"/> hands a new session over as cookies or, to the mobile app, in the body.
 /// </remarks>
 internal static class AuthEndpoints
 {
@@ -48,21 +49,34 @@ internal static class AuthEndpoints
         auth.MapPost("/password/reset", ResetPasswordAsync)
             .RateLimitPerClient(AuthRateLimits.PasswordResetPerClient);
 
+        MapSessionStarters(auth);
+
+        return app;
+    }
+
+    /// <summary>
+    /// The three endpoints that start a session: code sign-in, signup and password login.
+    /// </summary>
+    /// <remarks>
+    /// Mapped twice - here, and under <c>/api/auth/mobile</c> by <see cref="MobileSessionEndpoints"/> - with
+    /// the same handlers and the same rules. The rules are keyed by name and subject, not by path, so
+    /// the mobile copy spends the same budgets and is not a way to double them.
+    /// </remarks>
+    internal static void MapSessionStarters(RouteGroupBuilder group)
+    {
         // Anonymous like the rest of this group - signing in is how a caller gets an identity to check
         // a permission against - and limited per number as well as per client, as /otp/verify is.
-        auth.MapPost("/otp/sign-in", SignInWithOtpAsync)
+        group.MapPost("/otp/sign-in", SignInWithOtpAsync)
             .RateLimitPerClient(AuthRateLimits.OtpSignInPerClient)
             .RateLimitBy<OtpSignInBody>(AuthRateLimits.OtpSignInPerPhone, (body, services) => NormalizedPhone(body.PhoneNumber, services));
 
-        auth.MapPost("/signup", SignUpAsync)
+        group.MapPost("/signup", SignUpAsync)
             .RateLimitPerClient(AuthRateLimits.SignUpPerClient);
 
-        auth.MapPost("/login", LogInAsync)
+        group.MapPost("/login", LogInAsync)
             .RateLimitPerClient(AuthRateLimits.LoginPerClient)
             .RateLimitBy<LoginBody>(AuthRateLimits.LoginPerName, (body, services) =>
                 LoginName.Normalize(body.Login, services.GetRequiredService<IPhoneNumberNormalizer>()).Value);
-
-        return app;
     }
 
     /// <summary>Sends a signup, password-reset or sign-in code.</summary>
