@@ -24,7 +24,7 @@ public sealed class BookingNotificationQueries(IDbConnectionFactory connections)
     private const string OneSql = Select + "\nWHERE b.BookingNo = @bookingNo;";
 
     private const string ApprovedOnSql =
-        Select + "\nWHERE si.SlotDate = @date AND b.Status = 'Approved' AND b.DonorUserId IS NOT NULL\nORDER BY b.Id;";
+        Select + "\nWHERE si.SlotDate = @slotDate AND b.Status = 'Approved' AND b.DonorUserId IS NOT NULL\nORDER BY b.Id;";
 
     public async Task<BookingTextDetails?> GetAsync(string bookingNo, CancellationToken cancellationToken = default)
     {
@@ -37,12 +37,12 @@ public sealed class BookingNotificationQueries(IDbConnectionFactory connections)
         return row?.ToDetails();
     }
 
-    public async Task<IReadOnlyList<BookingTextDetails>> ListApprovedOnAsync(DateOnly date, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<BookingTextDetails>> ListApprovedOnAsync(DateOnly slotDate, CancellationToken cancellationToken = default)
     {
         await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         var rows = await connection.QueryAsync<Row>(new CommandDefinition(
             ApprovedOnSql,
-            new { date },
+            new { slotDate },
             cancellationToken: cancellationToken)).ConfigureAwait(false);
 
         return [.. rows.Select(r => r.ToDetails())];

@@ -314,6 +314,28 @@ public sealed class BookingSmsTests(SethikaTestDatabase database) : IAsyncLifeti
         Assert.Equal(0, await UnprocessedAsync());
     }
 
+    [Fact]
+    public async Task ASecondMessageForTheSameMoveTextsNobodyTwice()
+    {
+        // Two rows for one approval - a retried request that wrote its outbox row twice, say. The
+        // key is the move, not the row (E29).
+        var (donor, phone) = await DonorAsync();
+        var bookingNo = await BookAsync(donor, await SlotAsync(), Today.AddDays(11));
+        await DecideAsync(bookingNo, InstitutionDecision.Approve);
+        await ExecuteAsync(
+            """
+            INSERT core.OutboxMessages (EventType, AggregateType, AggregateId, Payload)
+            SELECT m.EventType, m.AggregateType, m.AggregateId, m.Payload
+            FROM core.OutboxMessages m WHERE m.AggregateId = @bookingNo AND m.EventType = @approved;
+            """,
+            new { bookingNo, approved = BookingDecisionHandler.ApprovedEvent });
+
+        await Processor().RunAsync();
+
+        Assert.Equal([$"BOOKING_REQUESTED:{bookingNo}", $"BOOKING_APPROVED:{bookingNo}"], (await SentToAsync(phone)).Select(s => s.DedupKey));
+        Assert.Equal(0, await UnprocessedAsync());
+    }
+
     // ------------------------------------------------------------------ the evening reminder
 
     [Fact]

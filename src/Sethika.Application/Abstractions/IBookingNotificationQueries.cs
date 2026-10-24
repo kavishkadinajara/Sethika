@@ -24,6 +24,6 @@ public interface IBookingNotificationQueries
     /// <summary>The booking <paramref name="bookingNo"/>, or <see langword="null"/> if there is none.</summary>
     Task<BookingTextDetails?> GetAsync(string bookingNo, CancellationToken cancellationToken = default);
 
-    /// <summary>Approved bookings with a donor account on <paramref name="date"/>, in the order they were made.</summary>
-    Task<IReadOnlyList<BookingTextDetails>> ListApprovedOnAsync(DateOnly date, CancellationToken cancellationToken = default);
+    /// <summary>Approved bookings with a donor account on <paramref name="slotDate"/>, in the order they were made.</summary>
+    Task<IReadOnlyList<BookingTextDetails>> ListApprovedOnAsync(DateOnly slotDate, CancellationToken cancellationToken = default);
 }
