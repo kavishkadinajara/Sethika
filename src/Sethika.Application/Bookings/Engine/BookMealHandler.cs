@@ -91,7 +91,7 @@ public sealed class BookMealHandler(
         }
 
         await using var slotLock = await locks.AcquireAsync(id, command.Date, cancellationToken).ConfigureAwait(false);
-        if (slotLock.Outcome == SlotLockOutcome.Busy)
+        if (slotLock.Outcome == LockOutcome.Busy)
         {
             return BookMealResult.Failed(BookMealResult.SlotBusy);
         }

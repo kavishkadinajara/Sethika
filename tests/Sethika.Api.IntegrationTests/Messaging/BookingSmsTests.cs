@@ -183,12 +183,12 @@ public sealed class BookingSmsTests(SethikaTestDatabase database) : IAsyncLifeti
 
     private sealed class NoLocks : ISlotLocks
     {
-        public Task<ISlotLock> AcquireAsync(int mealSlotId, DateOnly slotDate, CancellationToken cancellationToken = default) =>
-            Task.FromResult<ISlotLock>(new Unlocked());
+        public Task<ILockLease> AcquireAsync(int mealSlotId, DateOnly slotDate, CancellationToken cancellationToken = default) =>
+            Task.FromResult<ILockLease>(new Unlocked());
 
-        private sealed class Unlocked : ISlotLock
+        private sealed class Unlocked : ILockLease
         {
-            public SlotLockOutcome Outcome => SlotLockOutcome.Unavailable;
+            public LockOutcome Outcome => LockOutcome.Unavailable;
 
             public ValueTask DisposeAsync() => ValueTask.CompletedTask;
         }

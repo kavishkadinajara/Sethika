@@ -12,7 +12,7 @@ refuses when it would be wrong, outbox, number series).
 Deadline is about **2026-11-06** and the report needs the last week, so this plan aims at
 **~4 working days (2026-10-25 → 10-29)**. Plan 03 was estimated at 6.25 days and took three; this
 one is estimated the same way. If it runs over, the cut order is in §8.
-Last updated 2026-10-25. Update this line and the §8 boxes whenever either changes. A fresh session
+Last updated 2026-10-25 (8.1-8.3 and 8.6 built; the picker query moves to 8.4). Update this line and the §8 boxes whenever either changes. A fresh session
 trusts them and will rebuild anything they claim is missing.
 
 The mobile app's F.3/F.4 (`docs/plans/PHASE-F-MOBILE.md`) are being built at the same time on the
@@ -212,10 +212,11 @@ active service types, shown on `/i/{slug}` beside its meals.
 - [x] **8.1 Schema** (§3) + RLS predicates (V9); `dotnet build` of the SQL project; publish to
       `Sethika` and `Sethika_Test`; a second `/Action:Script` shows seed MERGEs only (D10).
       (EF mappings move to 8.3, with the entities they map.) ~0.5 day
-- [ ] **8.2 Seeds**: module, screens, permissions, dependencies, ceilings, `LEADER` template role;
-      `APPOINTMENT` number series; `InstitutionTypeDefaultModules`; text templates en/si/ta (si/ta
-      drafts into `docs/translations-to-review.md`). ~0.25 day
-- [ ] **8.3 Domain**: `TimeBlocks.For` (alignment, buffers, the midnight crossing, a week of leave);
+- [x] **8.2 Seeds**: module, screens, permissions, dependencies, ceilings, `LEADER` template role;
+      `InstitutionTypeDefaultModules`. (The `APPOINTMENT` series needs no seed: a series is defined
+      in code, `NumberSeriesDefinition`, and its row made on first use. Text templates move to 8.8.)
+      ~0.25 day
+- [x] **8.3 Domain**: `TimeBlocks.For` (alignment, buffers, the midnight crossing, a week of leave);
       `ServiceRules.CanRequest`; the `ServiceAppointment` aggregate's transitions and the
       donor-cancel window. Unit tests + mutations. ~0.5 day
 - [ ] **8.4 Roster and types API**: leaders (list, create, edit, deactivate, weekly hours), time off
@@ -223,7 +224,7 @@ active service types, shown on `/i/{slug}` beside its meals.
       commands. ~0.5 day
 - [ ] **8.5 Donor**: public service types on `/api/institutions/{slug}`; request; my appointments;
       cancel. ~0.5 day
-- [ ] **8.6 Assign engine**: `ILeaderLocks` on the extracted Redis lease; assign / remove; the
+- [x] **8.6 Assign engine**: `ILeaderLocks` on the extracted Redis lease; assign / remove; the
       picker query (free + normally available). **Concurrency tests against real SQL Server and
       Redis, race forced with `UPDLOCK`** (the plan 03 pattern): two parallel assignments of one
       leader to overlapping times, exactly one succeeds; again with the lock bypassed, the PK still

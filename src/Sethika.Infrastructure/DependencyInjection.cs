@@ -116,6 +116,10 @@ public static class DependencyInjection
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<ISlotLocks, RedisSlotLocks>();
 
+        // Leader assignment's lock (Phase E, V3), on the same store. Timings from LeaderLocks.
+        services.AddOptions<LeaderLockOptions>().BindConfiguration(LeaderLockOptions.SectionName);
+        services.AddSingleton<ILeaderLocks, RedisLeaderLocks>();
+
         return services;
     }
 
