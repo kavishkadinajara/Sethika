@@ -1,5 +1,7 @@
 import { IntlMessageFormat } from "intl-messageformat";
 
+import { installPluralRules } from "./plural-rules";
+
 import en from "./messages/en.json";
 import si from "./messages/si.json";
 import ta from "./messages/ta.json";
@@ -14,6 +16,9 @@ export type Language = (typeof LANGUAGES)[number];
 export type Messages = typeof en;
 
 const catalogues: Record<Language, Messages> = { en, si, ta };
+
+// Before any message is formatted: Hermes has no Intl.PluralRules (plural-rules.ts).
+installPluralRules();
 
 /** Every dotted path to a string in the English catalogue, e.g. "Login.title". */
 type Leaves<T, Prefix extends string = ""> = {
