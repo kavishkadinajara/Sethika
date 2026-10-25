@@ -12,7 +12,7 @@ refuses when it would be wrong, outbox, number series).
 Deadline is about **2026-11-06** and the report needs the last week, so this plan aims at
 **~4 working days (2026-10-25 → 10-29)**. Plan 03 was estimated at 6.25 days and took three; this
 one is estimated the same way. If it runs over, the cut order is in §8.
-Last updated 2026-10-25 (8.1-8.3 and 8.6 built; the picker query moves to 8.4). Update this line and the §8 boxes whenever either changes. A fresh session
+Last updated 2026-10-25 (8.1-8.4 and 8.6 built; 8.6's remove and the assign endpoint move to 8.7). Update this line and the §8 boxes whenever either changes. A fresh session
 trusts them and will rebuild anything they claim is missing.
 
 The mobile app's F.3/F.4 (`docs/plans/PHASE-F-MOBILE.md`) are being built at the same time on the
@@ -219,18 +219,20 @@ active service types, shown on `/i/{slug}` beside its meals.
 - [x] **8.3 Domain**: `TimeBlocks.For` (alignment, buffers, the midnight crossing, a week of leave);
       `ServiceRules.CanRequest`; the `ServiceAppointment` aggregate's transitions and the
       donor-cancel window. Unit tests + mutations. ~0.5 day
-- [ ] **8.4 Roster and types API**: leaders (list, create, edit, deactivate, weekly hours), time off
+- [x] **8.4 Roster and types API**: leaders (list, create, edit, deactivate, weekly hours), time off
       (add with clash 409, remove), service types (list, create, edit, deactivate); Dapper lists, EF
-      commands. ~0.5 day
+      commands; the leader picker (`GET /api/institution/appointments/{no}/candidates`). ~0.5 day
 - [ ] **8.5 Donor**: public service types on `/api/institutions/{slug}`; request; my appointments;
       cancel. ~0.5 day
-- [x] **8.6 Assign engine**: `ILeaderLocks` on the extracted Redis lease; assign / remove; the
-      picker query (free + normally available). **Concurrency tests against real SQL Server and
+- [x] **8.6 Assign engine**: `ILeaderLocks` on the extracted Redis lease; `AssignLeadersHandler`.
+      (Built without an HTTP endpoint, and **remove is not built**: only the domain's
+      `ServiceAppointment.Remove`. Both move to 8.7. The picker query was built in 8.4.) **Concurrency tests against real SQL Server and
       Redis, race forced with `UPDLOCK`** (the plan 03 pattern): two parallel assignments of one
       leader to overlapping times, exactly one succeeds; again with the lock bypassed, the PK still
       stops it; two admins assigning `{A,B}` and `{B,A}` do not deadlock. Mutations: drop the PK ⇒
       must fail; drop the 2627 mapping; lock order reversed. ~0.75 day
-- [ ] **8.7 Respond, reject, cancel, complete**, time-off clashes. ~0.5 day
+- [ ] **8.7 Assign / remove endpoints** (remove = `Removed` + delete that leader's blocks), **respond,
+      reject, cancel, complete**. (Time-off clashes were built in 8.4.) ~0.5 day
 - [ ] **8.8 Texts and the reminder job** with `DedupKey` (V14, V15). ~0.25 day
 - [ ] **8.9 Screens**: `/services/types`, `/services/leaders`, `/services/appointments` (agenda +
       assign sheet), `/services/schedule`, the request sheet on `/i/[slug]`, `/services/mine`.
@@ -260,4 +262,13 @@ Never cut the overlap guarantee or its concurrency tests.
 
 ## 10. Decided while building
 
-(empty)
+| # | Decision | Why |
+|---|----------|-----|
+| V17 | Leave writes blocks **from the current 15-minute block on**, not from a start already past; the `LeaderTimeOff` row keeps the start as typed. | Leave that began yesterday is a normal entry. Past blocks hold nothing assignable, and would only clash with appointments already over. |
+| V18 | One leave period is **at most 31 days** (2,976 blocks). Longer is several periods, or the leader taken off the roster. | Bounds one insert; a longer absence is better shown as "not on the roster". |
+| V19 | Adding leave takes the leader's Redis lock, like an assignment. Leave over an appointment answers 409 `time_off_clashes` **naming the appointments**; over other leave, 409 `time_off_overlaps`. A 2627 without the lock is still `time_off_clashes` (unnamed). | The lock lets the clash be named before the insert; the key stays the guarantee. Two codes, because the admin's next step differs (reassign vs. nothing to do). |
+| V20 | The picker shows, per active leader: assigned, busy (`TimeOff` before `Appointment`), and normally available, which is **`null` when no week is recorded** and is judged on the service's own time, **without travel**. Gated by `SERVICES.APPOINTMENTS.APPROVE`. | Weekly hours are cut item 1; an institution that never records them must not see everyone as "unavailable". Travel is about where the leader comes from, not when they work. |
+| V21 | A leader account is linked by **phone number** on the roster form (`linkAccount`); none found is 409 `account_not_found`. | §6's linking rule. It tells vetted institution staff whether a number has an account; accepted, as staff invitations already work by phone. |
+| V22 | Weekly hours are replaced whole (`PUT .../weekly-hours`), with no version: last write wins. Overlapping spans on one day are refused. | Only a filter (V2): a lost edit never lets a leader be double-booked. |
+| V23 | Taking a leader off the roster names their upcoming live assignments and changes none. | The same rule as deactivating a meal slot (plan 03): the institution decides. |
+| V24 | The test reseed (`RlsTestData.sql`) clears every Phase E table first. | A leader left by a failed test would otherwise block `DELETE FROM org.Institutions` for every later test. |
