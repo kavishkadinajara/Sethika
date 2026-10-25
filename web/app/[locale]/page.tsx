@@ -23,6 +23,27 @@ export default function Home({ params }: PageProps<"/[locale]">) {
 
         <SessionPanel />
 
+        <p className="mb-8 flex flex-wrap gap-x-6">
+          <Link href="/institutions" className={cn(textLink, focusRing)}>
+            {t("Home.find")}
+          </Link>
+          <Can permission="MYBOOKINGS.BOOKINGS.VIEW">
+            <Link href="/bookings/mine" className={cn(textLink, focusRing)}>
+              {t("Home.mine")}
+            </Link>
+          </Can>
+          <Can permission="BOOKINGS.CALENDAR.VIEW">
+            <Link href="/bookings/calendar" className={cn(textLink, focusRing)}>
+              {t("Home.calendar")}
+            </Link>
+          </Can>
+          <Can permission="BOOKINGS.SLOTS.VIEW">
+            <Link href="/bookings/slots" className={cn(textLink, focusRing)}>
+              {t("Home.slots")}
+            </Link>
+          </Can>
+        </p>
+
         <Can permission="ONBOARDING.APPLICATION.CREATE">
           <p className="mb-8">
             <Link href="/apply" className={cn(textLink, focusRing)}>
@@ -38,23 +59,6 @@ export default function Home({ params }: PageProps<"/[locale]">) {
             </Link>
           </p>
         </Can>
-
-        <section className="space-y-4">
-          <h2 className="text-lg font-medium text-brand">{t("Home.calendarHeading")}</h2>
-
-          <Can
-            permission="BOOKINGS.CALENDAR.VIEW"
-            fallback={
-              <p className="rounded border border-hairline bg-surface p-4 text-sm text-muted">
-                {t("Home.calendarDenied")}
-              </p>
-            }
-          >
-            <div className="rounded border border-hairline bg-surface p-4">
-              <p className="text-sm">{t("Home.calendarPlaceholder")}</p>
-            </div>
-          </Can>
-        </section>
 
         <PermissionDebugPanel />
       </main>

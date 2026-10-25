@@ -41,7 +41,8 @@ Adding the SQL project to the .sln: project type GUID `42EA0DBD-9CF1-443E-919E-B
 (or `dotnet sln add src/Sethika.Database/Sethika.Database.sqlproj`).
 
 ## Tech stack
-- Frontend: Next.js (App Router) + TypeScript (strict) + Tailwind + shadcn/ui, FullCalendar, Leaflet + OpenStreetMap
+- Frontend: Next.js (App Router) + TypeScript (strict) + Tailwind + shadcn/ui, our own month calendar
+  (`web/components/bookings/BowlCalendar.tsx`, not FullCalendar: plan 03, E32), Leaflet + OpenStreetMap
 - Mobile (Phase F): React Native + Expo (TypeScript strict, Expo Router), push via Expo Push Service
 - Backend: ASP.NET Core Web API on .NET 10
 - Data: SQL Server 2022 locally, Azure SQL in production

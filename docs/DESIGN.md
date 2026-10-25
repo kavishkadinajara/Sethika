@@ -38,6 +38,9 @@ Sethika follows the device's light or dark setting by default. The `ThemeSwitche
    - `rounded-cup`: inputs and OTP cells, with a faint inner shadow (`shadow-well`) that
      says "put something in here".
    - Buttons stay full pills. Do not bowl a button.
+   - On a calendar the bowl is a gauge (`components/bookings/Bowl.tsx`): an empty bowl is a day
+     waiting for a sponsor, and it fills as sponsors book it, until it is full. The words beside it
+     (or its cell's label) always say the same thing, so it is never the only signal.
 2. **The offering glow.** One focus style everywhere (`focusRing` in `lib/utils.ts`): an
    Estate Green outline carries the contrast, a soft gold halo carries the brand. Never
    remove it and never invent another.

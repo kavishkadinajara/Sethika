@@ -3,7 +3,7 @@
 Branch: `5-booking-engine`, cut on 2026-10-23 from `4-textlk-sms` (PR #7) and rebased on
 `origin/develop` the same day, after PR #6 and #7 were merged.
 
-Status: **5.1-5.6 built (5.5 and 5.6 on 2026-10-24); 5.7 is next.** §8 lists what was decided while
+Status: **5.1-5.7 built (5.5-5.7 on 2026-10-24); left: §6's walk-through, DECISIONS.md and the PR.** §8 lists what was decided while
 building them. Deadline is about **2026-11-06**, and
 Phase E (religious services) and the report still need time after this. So this plan aims at
 **~6 working days (2026-10-24 → 10-31)**. If it runs over, the cut order is in §4.
@@ -195,10 +195,9 @@ seeded in en/si/ta, with the si/ta drafts added to `docs/translations-to-review.
 
 ### C12: Calendar UI
 
-FullCalendar, already named in CLAUDE.md's stack, so this is not a new technology. Use the MIT
-packages only (`@fullcalendar/react`, `daygrid`, `interaction`). Resource and timeline views are a
-paid plugin and are not used. The institution gets a month view of slot-days and their bookings.
-The donor gets a month grid of availability for one institution.
+**Superseded by E32 (2026-10-24): Sethika's own month grid, not FullCalendar.** The institution
+gets a month view of slot-days and their bookings. The donor gets a month grid of availability for
+one institution. (The first plan was FullCalendar's MIT packages; see E32 for why not.)
 
 ---
 
@@ -359,19 +358,19 @@ Never cut the concurrency tests.
 
 ### 5.7: Screens (en/si/ta, desktop + 320 px)
 
-- [ ] `npm i @fullcalendar/react @fullcalendar/daygrid @fullcalendar/interaction` (C12).
-- [ ] Institution:
+- [x] ~~FullCalendar~~ Our own `BowlCalendar` (E32): a CSS grid, Intl names, keyboard-navigable.
+- [x] Institution:
   - `/bookings/slots`: list and form (mode, capacity, days, advance window, approval, fulfilment)
     and the listing toggle
   - blocked dates
   - `/bookings/calendar`: month view, a day panel with its bookings and the decision buttons
     (reject needs a reason)
-- [ ] Donor:
+- [x] Donor:
   - `/institutions` list
   - `/i/[slug]`: profile and month availability; picking a slot-day opens the booking form
     (headcount, fulfilment, occasion, in memory of, notes)
   - `/bookings/mine`: status and cancel
-- [ ] Browser tests (`e2e/booking`):
+- [x] Browser tests (`e2e/booking/booking.spec.ts`):
   - an Owner creates a slot, a donor books it, the Owner approves, and the donor sees it approved
   - an exclusive slot shows "Full" to a second donor
   - a reject with a reason, read by the donor
@@ -435,3 +434,7 @@ most of them already exist, and none of them blocks this plan.
 | E29 | A booking text's dedup key is `{template}:{bookingNo}`, not the outbox message's id | Each move happens to a booking at most once, so the key also stops a second outbox row for the same move, not only a re-run of one row. The onboarding texts key by message because a reviewer may ask twice. |
 | E30 | Five texts, not six events: a cancellation by the donor is not texted back to them. The text carries the institution's name in the donor's language when it has one, and the date as `yyyy-MM-dd` | The donor just did it on the screen. The ISO date reads the same in all three languages and is never month-first. Reasons are never sent (E2): "sign in to see why". |
 | E31 | The reminder sends directly with its dedup key (`booking-reminder:{BookingNo}`), not through the outbox. A failed send stops the run; Hangfire retries three times within about 20 minutes | The key makes a repeat safe, so the outbox adds nothing. The retries stay short because the run works out "tomorrow" when it starts: a retry after midnight would remind the wrong day's donors. Only `Approved` bookings: a request the institution never answered is not a meal to remind anyone of. |
+| E32 | The calendars are Sethika's own (`BowlCalendar`), not FullCalendar (C12). Asked and agreed 2026-10-24 | DESIGN.md's budget is 160 KB of JavaScript before interaction; FullCalendar's packages are about 80 KB gzip on top. The grid is a few lines of CSS and the day and month names come from Intl in the page's language. A day's cell had to be our own anyway: on the donor's calendar it is a bowl that fills as sponsors book the day (DESIGN.md, the bowl), on the institution's a bowl as full as the day's places with a gold dot for a waiting request. At 320 px the grid runs edge to edge so each day is a 44 px target. Keyboard: arrows, Home/End, Page Up/Down. |
+| E33 | Booking asks for a sign-in only when the donor picks a day, in the booking sheet, and the sign-in returns to the same meal and day (`/i/{slug}?slot=&date=`) | Anyone can look at an institution's page; the account is needed only to book. Losing the chosen day to a sign-in is the moment a donor gives up. |
+| E34 | The institution's calendar opens on a "To decide" tray: the requests of the next 62 days, each with Accept and Do not accept where it is | Q4 makes the waiting count the institution's only signal of a new request, so it comes first and can be cleared without finding each day. A rejection or cancellation asks for the reason in place, and the submit stays disabled until there is one. |
+| E35 | Fulfilment is labelled "The sponsor brings the meal" / "The institution prepares it", the same words on both sides | The labels show on the donor's form and on the institution's slot cards; "I bring the meal" would read wrong on the second. |

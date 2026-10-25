@@ -508,3 +508,24 @@ text.
 Question for the reviewers: the declaration says `ආයතනය ඔබට බලය දී ඇති බව` / `நிறுவனம் உங்களுக்கு
 அதிகாரம் அளித்துள்ளது` for "the institution has authorised you". Is that how a trustee or a home's
 manager would put it?
+
+## Booking screens (`Booking`, `Discover`, `MyBookings`, `Slots`, `Calendar` namespaces)
+
+The donor's and the institution's booking screens (plan 03, 5.7): about 290 strings in five
+namespaces, and four `Home` links (`find`, `mine`, `calendar`, `slots`). Drafts, as above: review
+them in the JSON files side by side with `en.json`. The words are faith-neutral on purpose: "meal"
+and "sponsor", never one religion's word for an offering.
+
+Questions for the reviewers:
+
+1. `අනුග්‍රාහකයා` / `அனுசரணையாளர்` for "sponsor" and `පරිත්‍යාගශීලියා` / `நன்கொடையாளர்` for
+   "donor": two words where English uses them almost alike. One word for both reads better?
+2. `ආහාර වේල` / `உணவு வேளை` for a "meal" an institution offers (Lunch, Evening meal).
+3. `සිහිවීම පිණිස` / `நினைவாக` for "in memory of": right for every faith's remembrance?
+4. `පාත්‍රය` / `கிண்ணம்` for the "bowl" that fills on the calendar.
+5. `සපයා අවසන්` / `வழங்கப்பட்டது` ("served") and `සිදු නොවීය` / `நடைபெறவில்லை` ("did not happen")
+   for a meal's outcome.
+
+| Namespace | Reviewer (si) | Reviewer (ta) | Status |
+|---|---|---|---|
+| `Booking`, `Discover`, `MyBookings`, `Slots`, `Calendar`, `Home.find/mine/calendar/slots` | | | |
