@@ -29,24 +29,29 @@ namespace Sethika.Api.IntegrationTests.Access;
 /// proves again that they hold their phone, against real SQL Server and Redis.
 /// </summary>
 /// <remarks>
-/// The users here hold the test data's Alpha Steward role, whose <c>BOOKINGS.CALENDAR.APPROVE</c>
-/// is <c>RequiresMfa</c> and whose <c>BOOKINGS.CALENDAR.VIEW</c> is not.
+/// The users here hold the test data's Alpha Steward role: <c>BOOKINGS.CALENDAR.VIEW</c>, and
+/// <c>BOOKINGS.CALENDAR.APPROVE</c>, which these tests mark <c>RequiresMfa</c> while they run. No
+/// booking permission needs a step-up in the catalogue (plan 03, E1); the mechanism is what is
+/// tested here, so it is given one, and each approval is a real one, of the test data's BK-ALPHA.
 /// </remarks>
 [Collection(SethikaDatabaseCollection.Name)]
 public sealed partial class StepUpEndpointsTests(SethikaTestDatabase database) : IAsyncLifetime
 {
     private const string SigningKey = "step-up-endpoint-test-signing-key-at-least-32-bytes!!";
     private const string Password = "Dana!2026Sethika";
-    private const string Approve = "/api/bookings/BK-ALPHA/approve";
+    private const string Approve = "/api/institution/bookings/BK-ALPHA/approve";
+    private const string Calendar = "/api/institution/bookings?from=2026-01-01&to=2026-01-31";
 
     private readonly List<string> _phones = [];
     private readonly ConcurrentQueue<(string Phone, string Message)> _sms = new();
     private WebApplicationFactory<Program> _host = null!;
     private ConnectionMultiplexer _redis = null!;
+    private IAsyncDisposable _approveNeedsStepUp = null!;
 
     public async Task InitializeAsync()
     {
         await database.SeedAsync();
+        _approveNeedsStepUp = await database.RequireStepUpAsync("BOOKINGS.CALENDAR.APPROVE");
         _redis = await ConnectionMultiplexer.ConnectAsync(database.RedisConnectionString);
 
         _host = NewHost();
@@ -68,6 +73,11 @@ public sealed partial class StepUpEndpointsTests(SethikaTestDatabase database) :
 
     public async Task DisposeAsync()
     {
+        await _approveNeedsStepUp.DisposeAsync();
+
+        // The approvals name these users as their decider; the reseed clears them first.
+        await database.SeedAsync();
+
         await using (var connection = new SqlConnection(database.ConnectionString))
         {
             await connection.ExecuteAsync(
@@ -235,10 +245,21 @@ public sealed partial class StepUpEndpointsTests(SethikaTestDatabase database) :
         Assert.Equal("stepup_required", await CodeOf(response));
     }
 
+    /// <summary>Approves BK-ALPHA, put back to Requested first so that every call has something to approve.</summary>
     private async Task AssertApprovedAsync(Session session)
     {
+        await using (var connection = new SqlConnection(database.ConnectionString))
+        {
+            await connection.ExecuteAsync(
+                """
+                EXEC sys.sp_set_session_context @key = N'IsPlatform', @value = 1, @read_only = 1;
+                UPDATE booking.Bookings SET Status = 'Requested', DecidedBy = NULL, DecidedAt = NULL WHERE BookingNo = 'BK-ALPHA';
+                """);
+        }
+
         using var response = await PostAsync(session, Approve);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Approved", JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("status").GetString());
     }
 
     private async Task ExecuteAsync(string sql, object parameters)
@@ -261,7 +282,7 @@ public sealed partial class StepUpEndpointsTests(SethikaTestDatabase database) :
 
         // VIEW is not RequiresMfa, and needs nothing more than the permission.
         using (var client = NewClient(session.AccessToken))
-        using (var view = await client.GetAsync("/api/bookings/calendar"))
+        using (var view = await client.GetAsync(Calendar))
         {
             Assert.Equal(HttpStatusCode.OK, view.StatusCode);
         }

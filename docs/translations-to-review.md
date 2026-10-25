@@ -397,6 +397,36 @@ Questions for the reviewers:
 | `ONBOARD_APPROVED / SMS` | Sethika: application {requestNo} is approved. Sign in to open your institution. (83) | Sethika: අයදුම්පත {requestNo} අනුමතයි. ආයතනය විවෘත කිරීමට පිවිසෙන්න. (72) | Sethika: விண்ணப்பம் {requestNo} அங்கீகரிக்கப்பட்டது. நிறுவனத்தைத் திறக்க உள்நுழையவும். (90) | | |
 | `ONBOARD_REJECTED / SMS` | Sethika: application {requestNo} was not approved. Sign in to see why. (74) | Sethika: අයදුම්පත {requestNo} අනුමත නොවීය. හේතුව බැලීමට පිවිසෙන්න. (70) | Sethika: விண்ணப்பம் {requestNo} அங்கீகரிக்கப்படவில்லை. காரணத்தைப் பார்க்க உள்நுழையவும். (91) | | |
 
+### Booking texts
+
+Sent to a donor about one meal booking. Every text starts with the same line,
+`Sethika {bookingNo}: {institution}, {date} {time}.`, and the sentence after it is what needs
+review. The placeholders are kept out of the sentences on purpose, so no name has to take a
+Sinhala or Tamil case ending. `{time}` is when the meal starts; the slot's own name is left out
+because the institution types it freely, and nothing typed freely is sent from the Sethika sender id. The counts are with `BK-2026-000123`, a 20-character institution
+name, `2026-11-14` and `11:00` in place. Two segments (134) are allowed; one is not reachable with
+the opening line.
+
+Questions for the reviewers:
+
+1. `වෙන්කිරීම` / `முன்பதிவு` for "booking", and `ඉල්ලීම` / `கோரிக்கை` for "request": do donors
+   use these words for reserving a meal at a temple, kovil, mosque, church or home?
+2. `පිළිගත්තා` / `ஏற்கப்பட்டது` ("accepted") rather than `අනුමත` ("approved"): is it warmer, and is
+   it clear that the meal is now theirs?
+3. `ආයතනය` / `நிறுவனம்` ("the institution") in the cancellation: would a donor say the temple's
+   or home's own kind of name instead? The text cannot know which one it is.
+4. The reminder is sent at 18:00 the evening before. Is `හෙටයි` / `நாளை` enough, or should it
+   name the time of the meal?
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) | Reviewer | Status |
+|---|---|---|---|---|---|
+| `BOOKING_REQUESTED / SMS` | Your request was sent. We will text you when they reply. (120) | ඔබගේ ඉල්ලීම යැවුණා. පිළිතුර ලැබුණු විට දන්වන්නෙමු. (114) | உங்கள் கோரிக்கை அனுப்பப்பட்டது. பதில் வந்ததும் அறிவிப்போம். (123) | | |
+| `BOOKING_CONFIRMED / SMS` | Your booking is confirmed. Thank you. (101) | ඔබගේ වෙන්කිරීම තහවුරුයි. ස්තූතියි. (98) | உங்கள் முன்பதிவு உறுதியானது. நன்றி. (99) | | |
+| `BOOKING_APPROVED / SMS` | Your request was accepted. Thank you. (101) | ඔබගේ ඉල්ලීම පිළිගත්තා. ස්තූතියි. (96) | உங்கள் கோரிக்கை ஏற்கப்பட்டது. நன்றி. (100) | | |
+| `BOOKING_REJECTED / SMS` | Your request was not accepted. Sign in to see why. (114) | ඔබගේ ඉල්ලීම පිළිගත්තේ නැත. හේතුව බැලීමට පිවිසෙන්න. (114) | உங்கள் கோரிக்கை ஏற்கப்படவில்லை. காரணத்தைப் பார்க்க உள்நுழையவும். (128) | | |
+| `BOOKING_CANCELLED / SMS` | The institution cancelled this booking. Sign in to see why. (123) | ආයතනය මෙම වෙන්කිරීම අවලංගු කළා. හේතුව බැලීමට පිවිසෙන්න. (119) | நிறுவனம் இதை ரத்து செய்தது. காரணத்தைப் பார்க்க உள்நுழையவும். (124) | | |
+| `BOOKING_REMINDER / SMS` | A reminder: this booking is tomorrow. (101) | මතක් කිරීමක්: මෙම වෙන්කිරීම හෙටයි. (98) | நினைவூட்டல்: இந்த முன்பதிவு நாளை. (97) | | |
+
 ## Institution application screens (`Apply` namespace)
 
 The applicant's screens (plan 02, 5.5): `web/messages/si.json` and `ta.json`, namespace `Apply`,
@@ -478,3 +508,24 @@ text.
 Question for the reviewers: the declaration says `ආයතනය ඔබට බලය දී ඇති බව` / `நிறுவனம் உங்களுக்கு
 அதிகாரம் அளித்துள்ளது` for "the institution has authorised you". Is that how a trustee or a home's
 manager would put it?
+
+## Booking screens (`Booking`, `Discover`, `MyBookings`, `Slots`, `Calendar` namespaces)
+
+The donor's and the institution's booking screens (plan 03, 5.7): about 290 strings in five
+namespaces, and four `Home` links (`find`, `mine`, `calendar`, `slots`). Drafts, as above: review
+them in the JSON files side by side with `en.json`. The words are faith-neutral on purpose: "meal"
+and "sponsor", never one religion's word for an offering.
+
+Questions for the reviewers:
+
+1. `අනුග්‍රාහකයා` / `அனுசரணையாளர்` for "sponsor" and `පරිත්‍යාගශීලියා` / `நன்கொடையாளர்` for
+   "donor": two words where English uses them almost alike. One word for both reads better?
+2. `ආහාර වේල` / `உணவு வேளை` for a "meal" an institution offers (Lunch, Evening meal).
+3. `සිහිවීම පිණිස` / `நினைவாக` for "in memory of": right for every faith's remembrance?
+4. `පාත්‍රය` / `கிண்ணம்` for the "bowl" that fills on the calendar.
+5. `සපයා අවසන්` / `வழங்கப்பட்டது` ("served") and `සිදු නොවීය` / `நடைபெறவில்லை` ("did not happen")
+   for a meal's outcome.
+
+| Namespace | Reviewer (si) | Reviewer (ta) | Status |
+|---|---|---|---|
+| `Booking`, `Discover`, `MyBookings`, `Slots`, `Calendar`, `Home.find/mine/calendar/slots` | | | |

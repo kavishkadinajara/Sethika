@@ -124,6 +124,8 @@ public sealed class PermissionEngineTests(SethikaTestDatabase database)
     [Fact]
     public async Task Carries_the_requires_mfa_flag_through_the_cache()
     {
+        await using var approveNeedsStepUp = await database.RequireStepUpAsync(Approve);
+
         await PermissionsForAlphaAsync();          // populate
         var cached = await PermissionsForAlphaAsync();  // read back out of Redis
 

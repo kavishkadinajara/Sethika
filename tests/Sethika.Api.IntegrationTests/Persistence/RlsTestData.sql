@@ -55,9 +55,15 @@ DELETE FROM auth.Roles WHERE IsSystem = 0;   -- system roles (DONOR) are referen
 DELETE FROM auth.RolesHistory;
 DELETE FROM org.InstitutionModules;
 DELETE FROM org.InstitutionModulesHistory;
+-- What the booking engine's tests leave (plan 03): history before its booking, blocks and seasons
+-- before their slot, and the outbox trail of every booking.
+DELETE FROM booking.BookingStatusHistory;
 DELETE FROM booking.Bookings;
 DELETE FROM booking.SlotInstances;
+DELETE FROM booking.BlockedDates;
+DELETE FROM booking.MealSlotSeasons;
 DELETE FROM booking.MealSlots;
+DELETE FROM core.OutboxMessages WHERE AggregateType = 'Booking';
 -- What an approval creates beside the institution (plan 02, B6); its roles went with IsSystem = 0.
 DELETE FROM org.InstitutionMembers;
 DELETE FROM org.InstitutionDocuments;
@@ -114,9 +120,9 @@ FROM org.RegistrationRequests r WHERE r.RequestNo = 'REQ-BETA';
 DECLARE @alphaId INT = (SELECT Id FROM org.Institutions WHERE InstitutionCode = 'ALPHA');
 DECLARE @betaId  INT = (SELECT Id FROM org.Institutions WHERE InstitutionCode = 'BETA');
 
-INSERT booking.MealSlots (InstitutionId, Name, StartTime, EndTime, MaxHeadcount, CreatedBy)
-VALUES (@alphaId, N'Alpha Dana', '11:00', '12:00', 50, @alphaUser),
-       (@betaId,  N'Beta Dana',  '11:00', '12:00', 50, @betaUser);
+INSERT booking.MealSlots (PublicId, InstitutionId, Name, StartTime, EndTime, MaxHeadcount, CreatedBy)
+VALUES (NEWID(), @alphaId, N'Alpha Dana', '11:00', '12:00', 50, @alphaUser),
+       (NEWID(), @betaId,  N'Beta Dana',  '11:00', '12:00', 50, @betaUser);
 
 INSERT booking.SlotInstances (InstitutionId, MealSlotId, SlotDate, MaxSponsors, MaxHeadcount)
 SELECT s.InstitutionId, s.Id, '2026-01-01', s.MaxSponsors, s.MaxHeadcount
@@ -134,9 +140,9 @@ FROM booking.SlotInstances si;
 
 /* ---------------------------- RBAC ---------------------------- */
 
-/*  The seeded BOOKINGS permissions: VIEW, and APPROVE, which the catalogue marks RequiresMfa so
-    the step-up path has something real to read. The steward sits at STAFF, whose ceiling holds
-    both - a role outside its level's ceiling would grant nothing (plan A15).               */
+/*  The seeded BOOKINGS permissions: VIEW, and APPROVE, which the step-up tests mark RequiresMfa
+    while they run (SethikaTestDatabase.RequireStepUpAsync). The steward sits at STAFF, whose
+    ceiling holds both - a role outside its level's ceiling would grant nothing (plan A15).  */
 DECLARE @moduleId SMALLINT = (SELECT Id FROM auth.Modules WHERE Code = 'BOOKINGS');
 
 INSERT auth.Roles (InstitutionId, Scope, RoleLevelId, Code, Name, IsTemplate)

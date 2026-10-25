@@ -40,6 +40,19 @@ To see what a publish would change without applying it: `/Action:Script` (writes
 The project targets SQL Server 2022 (`Sql160`). When publishing to Azure SQL add
 `/p:AllowIncompatiblePlatform=true`, or switch the project `DSP` to `SqlAzureV12DatabaseSchemaProvider` for the release build.
 
+**The API's own login and masked columns (plan 02, B12).** Locally the API connects as a sysadmin, so
+dynamic data masking never applies. A deployed API must use a restricted login, and that login needs
+`GRANT UNMASK` on exactly the masked columns it reads to do its work, and on nothing else:
+
+| Column | Why the API reads it unmasked |
+|---|---|
+| `auth.Users.PhoneNumber` | the outbox job texts users; a booking snapshots the donor's phone |
+| `booking.Bookings.DonorPhone` | `UX_Bookings_DonorPerSlot` compares it; a masked snapshot would make every donor look alike |
+| `org.RegistrationRequests.ApplicantNic`, `org.RegistrationRequestOfficeBearers.NicNumber` | the reviewer checks them |
+
+Hangfire creates its `HangFire` schema on first start, which a restricted login cannot: run the first
+start once with DDL rights, or install the schema from Hangfire's script.
+
 ## 5. Secrets
 Keep connection strings in `dotnet user-secrets` (API) and `.env.local` (web). Never commit them.
 

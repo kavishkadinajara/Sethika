@@ -54,6 +54,7 @@ public static class DependencyInjection
         services.AddScoped<INumberSeries, SqlNumberSeries>();
         services.AddScoped<IRegistrationLocks, SqlRegistrationLocks>();
         services.AddScoped<IInstitutionModules, SqlInstitutionModules>();
+        services.AddScoped<ISlotInventory, SqlSlotInventory>();
 
         services.AddScoped<IDbConnectionFactory>(serviceProvider =>
             new SqlConnectionFactory(
@@ -68,12 +69,15 @@ public static class DependencyInjection
         services.AddScoped<IRoleLevelQueries, RoleLevelQueries>();
         services.AddScoped<IOnboardingApplicationQueries, OnboardingApplicationQueries>();
         services.AddScoped<IRegistrationReviewQueries, RegistrationReviewQueries>();
+        services.AddScoped<IInstitutionBookingQueries, InstitutionBookingQueries>();
+        services.AddScoped<IDonorBookingQueries, DonorBookingQueries>();
+        services.AddScoped<IBookingNotificationQueries, BookingNotificationQueries>();
 
         return services;
     }
 
     /// <summary>
-    /// Registers Redis, the permission service and the rate limiter.
+    /// Registers Redis, the permission service, the rate limiter and the slot-day lock.
     /// </summary>
     /// <remarks>
     /// The multiplexer is a singleton because it is designed to be: it multiplexes every
@@ -106,6 +110,11 @@ public static class DependencyInjection
 
         // Read by the permission handler on every RequiresMfa check, so it lives with it here.
         services.AddSingleton<IStepUpGrants, RedisStepUpGrants>();
+
+        // The booking engine's slot-day lock (plan 03, C2). Timings from SlotLocks, defaults otherwise.
+        services.AddOptions<SlotLockOptions>().BindConfiguration(SlotLockOptions.SectionName);
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<ISlotLocks, RedisSlotLocks>();
 
         return services;
     }
@@ -272,6 +281,7 @@ public static class DependencyInjection
         services.AddScoped<OutboxProcessor>();
         services.AddScoped<IUserTextMessages, UserTextMessages>();
         services.AddTransient<OutboxJob>();
+        services.AddTransient<BookingReminderJob>();
 
         var jobs = configuration.GetSection(JobsOptions.SectionName).Get<JobsOptions>() ?? new JobsOptions();
         if (!jobs.Enabled)

@@ -170,6 +170,50 @@ public sealed class SethikaTestDatabase : IAsyncLifetime
         }
     }
 
+    /// <summary>
+    /// Makes <paramref name="permissionCode"/> need a step-up until the result is disposed, which puts
+    /// back what the catalogue said.
+    /// </summary>
+    /// <remarks>
+    /// No institution permission needs a step-up since plan 03 (E1), so the tests of the step-up
+    /// mechanism make one that does. Both changes bump every institution's <c>PermissionsVersion</c>,
+    /// as a real catalogue change must, so no permission set cached in Redis outlives either.
+    /// </remarks>
+    public async Task<IAsyncDisposable> RequireStepUpAsync(string permissionCode)
+    {
+        var original = await SetRequiresMfaAsync(permissionCode, requiresMfa: true).ConfigureAwait(false);
+        return new RequiresMfaRestore(this, permissionCode, original);
+    }
+
+    private async Task<bool> SetRequiresMfaAsync(string permissionCode, bool requiresMfa)
+    {
+        await using var connection = new SqlConnection(ConnectionString);
+        await connection.OpenAsync().ConfigureAwait(false);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SET XACT_ABORT ON;
+            BEGIN TRANSACTION;
+            DECLARE @was BIT = (SELECT RequiresMfa FROM auth.Permissions WHERE Code = @code);
+            IF @was IS NULL THROW 50000, 'No such permission.', 1;
+            UPDATE auth.Permissions SET RequiresMfa = @requiresMfa WHERE Code = @code;
+            UPDATE org.Institutions SET PermissionsVersion = PermissionsVersion + 1;
+            COMMIT;
+            SELECT @was;
+            """;
+        command.Parameters.AddWithValue("@code", permissionCode);
+        command.Parameters.AddWithValue("@requiresMfa", requiresMfa);
+
+        return (bool)(await command.ExecuteScalarAsync().ConfigureAwait(false))!;
+    }
+
+    private sealed class RequiresMfaRestore(SethikaTestDatabase database, string permissionCode, bool original) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync() =>
+            await database.SetRequiresMfaAsync(permissionCode, original).ConfigureAwait(false);
+    }
+
     private static async Task ExecuteAsync(SqlConnection connection, SqlTransaction transaction, string sql)
     {
         await using var command = connection.CreateCommand();

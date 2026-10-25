@@ -114,6 +114,30 @@ public sealed class NotifyTemplatesSeedTests(SethikaTestDatabase database)
     }
 
     [Fact]
+    public async Task EveryBookingTextHasOneActiveSmsTemplateInEachLanguage_OpeningWithTheSameLine()
+    {
+        // Plan 03, C11. The opening line names the booking, so a donor with several can tell which
+        // one a text is about; it is identical in every language, so no placeholder is inflected.
+        await using var connection = new SqlConnection(database.ConnectionString);
+
+        var rows = (await connection.QueryAsync<(string Code, string Language, string Body)>(
+            """
+            SELECT t.Code AS Code, t.Language AS Language, t.Body AS Body
+            FROM notify.Templates AS t
+            WHERE t.Channel = 'SMS' AND t.IsActive = 1 AND t.Code LIKE 'BOOKING[_]%'
+            ORDER BY t.Code, t.Language;
+            """)).ToList();
+
+        string[] codes = ["APPROVED", "CANCELLED", "CONFIRMED", "REJECTED", "REMINDER", "REQUESTED"];
+        string[] languages = ["en", "si", "ta"];
+        Assert.Equal(
+            codes.SelectMany(c => languages.Select(l => $"BOOKING_{c} {l}")),
+            rows.Select(r => $"{r.Code} {r.Language}"));
+
+        Assert.All(rows, r => Assert.StartsWith("Sethika {bookingNo}: {institution}, {date} {time}. ", r.Body, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task ABodyEditedInTheDatabaseIsPutBack_ButASwitchedOffTemplateStaysOff()
     {
         // The seed owns the wording. Whether a template is in use is an operator's call.

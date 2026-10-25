@@ -53,3 +53,24 @@ export const pdf = (name = "certificate.pdf") => ({
 export async function scrollsSideways(page: Page): Promise<boolean> {
   return page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
 }
+
+/**
+ * Boxes that cut their own content off at the side: a card with `overflow-hidden` hides a badge
+ * that does not fit, and the page itself never scrolls, so `scrollsSideways` cannot see it.
+ * Deliberate clipping (an ellipsis, the 1 px screen-reader-only copies) is left out.
+ */
+export async function clipsSideways(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    Array.from(document.body.querySelectorAll<HTMLElement>("*"))
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        return (
+          style.overflowX !== "visible" &&
+          style.textOverflow !== "ellipsis" &&
+          element.clientWidth > 1 &&
+          element.scrollWidth > element.clientWidth + 1
+        );
+      })
+      .map((element) => `<${element.tagName.toLowerCase()}> "${(element.textContent ?? "").trim().slice(0, 60)}"`),
+  );
+}
