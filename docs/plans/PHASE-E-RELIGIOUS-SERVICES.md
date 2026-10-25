@@ -104,6 +104,7 @@ just the code.
 | V13 | A donor may cancel **until the end of the day before** (Colombo); after that only the institution can | The same rule as meals (plan 03 Q1), so donors learn one rule. |
 | V14 | A leader is texted on assignment and reminded the day before, if the leader has a phone. Language: the leader's account language if they have one, else `ReligiousLeaders.Language` (default `si`). | Promise 4 and 5. A leader without an account still has to hear about it. |
 | V15 | Reminders run at **18:00 Colombo the day before**, the same daily Hangfire job pattern as meals, `DedupKey` `appt-reminder:{AppointmentNo}:{recipient}` | One reminder rule for the whole product; the first draft's "24 hours before" would need a job every 15 minutes for no visible gain. |
+| V16 | When the **donor** cancels, the appointment's leader blocks are released by the outbox handler (platform session), not in the donor's transaction. When the institution cancels or rejects, they go in its own transaction. | The donor works in a personal session, and RLS (V9) hides leaders, assignments and blocks from it, so its DELETE would match nothing. Opening RLS for donors would expose the roster. Until the outbox runs (seconds), the leader looks busy: a stale block can only refuse an assignment, never allow a double one, so the delay errs on the safe side. The handler's delete is idempotent. |
 
 ---
 
@@ -208,9 +209,9 @@ active service types, shown on `/i/{slug}` beside its meals.
 
 ## 8. Work breakdown, effort and cut order
 
-- [ ] **8.1 Schema** (§3) + RLS predicates (V9); `dotnet build` of the SQL project; publish to
+- [x] **8.1 Schema** (§3) + RLS predicates (V9); `dotnet build` of the SQL project; publish to
       `Sethika` and `Sethika_Test`; a second `/Action:Script` shows seed MERGEs only (D10).
-      EF mappings for the new tables and `EfMappingSchemaTests` green. ~0.5 day
+      (EF mappings move to 8.3, with the entities they map.) ~0.5 day
 - [ ] **8.2 Seeds**: module, screens, permissions, dependencies, ceilings, `LEADER` template role;
       `APPOINTMENT` number series; `InstitutionTypeDefaultModules`; text templates en/si/ta (si/ta
       drafts into `docs/translations-to-review.md`). ~0.25 day
