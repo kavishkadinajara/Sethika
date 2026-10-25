@@ -226,6 +226,25 @@ export async function loadAccountLanguage(): Promise<string | null> {
   return accountLanguage;
 }
 
+export type Profile = { fullName: string; displayName: string | null };
+
+/**
+ * The signed-in user's name for the shell's greeting and account menu (GET /api/me). Null when
+ * signed out or on any failure: a missing name never stops a page, the shell just greets less.
+ */
+export async function loadProfile(): Promise<Profile | null> {
+  if (session.getState().status !== "authenticated") return null;
+  const result = await call(apiFetch("/api/me", { method: "GET", cache: "no-store" }));
+  if (!result.ok) return null;
+  try {
+    const body = (await result.value.json()) as { fullName?: unknown; displayName?: unknown };
+    if (typeof body.fullName !== "string") return null;
+    return { fullName: body.fullName, displayName: typeof body.displayName === "string" ? body.displayName : null };
+  } catch {
+    return null;
+  }
+}
+
 // ---- signed in: own account ---------------------------------------------------------------------
 
 /**

@@ -358,6 +358,18 @@ describe("logout and switching institution", () => {
     expect(h.client.getState()).toMatchObject({ accessToken: "token-switched" });
   });
 
+  it("switching to the personal account rotates through its own endpoint, with the CSRF header", async () => {
+    const h = harness();
+    await signedIn(h, "token-1");
+    h.serve((call) =>
+      call.path.endsWith("/switch-personal") ? sessionBody("token-personal", h.clock.now) : json(404, {}),
+    );
+
+    expect(await h.client.switchToPersonal()).toEqual({ ok: true });
+    expect(h.calls.map((c) => [c.path, c.csrf])).toEqual([["/api/auth/session/switch-personal", "csrf-1"]]);
+    expect(h.client.getState()).toMatchObject({ accessToken: "token-personal" });
+  });
+
   it("a refused switch keeps the session", async () => {
     const h = harness();
     await signedIn(h, "token-1");

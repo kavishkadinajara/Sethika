@@ -11,3 +11,6 @@ public sealed record RoleMemberBody(Guid? User);
 
 /// <summary>The role as created.</summary>
 public sealed record RoleResponse(string Code, string Name, string Level, IReadOnlyList<string> Permissions);
+
+/// <summary>An invitation onto the staff (plan 04, X1): an existing account's phone number and a role code.</summary>
+public sealed record InviteBody(string? Phone, string? Role);

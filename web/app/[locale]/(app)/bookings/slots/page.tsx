@@ -25,7 +25,7 @@ export default function Page({ params }: PageProps<"/[locale]/bookings/slots">) 
     <NextIntlClientProvider messages={pickMessages(messages, [...sharedClientNamespaces, "Slots", "Booking", "Discover"])}>
       <header className="mb-8 grid gap-2">
         <h1 className="text-3xl font-semibold text-brand">{t("title")}</h1>
-        <p className="text-muted">{t("intro")}</p>
+        <p className="max-w-3xl text-muted">{t("intro")}</p>
       </header>
       <InstitutionGate permission="BOOKINGS.SLOTS.VIEW">
         <SlotsScreen />

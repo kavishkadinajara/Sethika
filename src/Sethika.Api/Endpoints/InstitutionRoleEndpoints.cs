@@ -23,6 +23,26 @@ internal static class InstitutionRoleEndpoints
         institution.MapGet("/role-levels", GetRoleLevelsAsync)
             .WithMetadata(new HasPermissionAttribute("ACCESS.ROLES.VIEW"));
 
+        // The access screens' reads (plan 04, X6).
+        institution.MapGet("/roles", GetRolesAsync)
+            .WithMetadata(new HasPermissionAttribute("ACCESS.ROLES.VIEW"));
+
+        institution.MapGet("/permission-catalogue", GetCatalogueAsync)
+            .WithMetadata(new HasPermissionAttribute("ACCESS.ROLES.VIEW"));
+
+        institution.MapGet("/members", GetMembersAsync)
+            .WithMetadata(new HasPermissionAttribute("ACCESS.MEMBERS.VIEW"));
+
+        institution.MapGet("/invitations", GetInvitationsAsync)
+            .WithMetadata(new HasPermissionAttribute("ACCESS.MEMBERS.VIEW"));
+
+        // Staff invitations (plan 04, X1-X5): the same permission as handing out a role.
+        institution.MapPost("/invitations", InviteAsync)
+            .WithMetadata(new HasPermissionAttribute("ACCESS.MEMBERS.EDIT"));
+
+        institution.MapPost("/invitations/{id:guid}/cancel", CancelInvitationAsync)
+            .WithMetadata(new HasPermissionAttribute("ACCESS.MEMBERS.EDIT"));
+
         institution.MapPost("/roles", CreateAsync)
             .WithMetadata(new HasPermissionAttribute("ACCESS.ROLES.CREATE"));
 
@@ -50,6 +70,70 @@ internal static class InstitutionRoleEndpoints
 
         var levels = await queries.GetGrantableAsync(actor.UserId, actor.InstitutionId, cancellationToken);
         return Results.Ok(levels.Select(l => new { level = l.Level, name = l.Name, rank = l.Rank, permissions = l.Permissions }));
+    }
+
+    private static async Task<IResult> GetRolesAsync(
+        ICurrentUserContext currentUser,
+        IAccessQueries queries,
+        CancellationToken cancellationToken) =>
+        Actor(currentUser) is { } actor
+            ? Results.Ok(await queries.GetRolesAsync(actor.UserId, actor.InstitutionId, cancellationToken))
+            : NoInstitution();
+
+    private static async Task<IResult> GetCatalogueAsync(
+        ICurrentUserContext currentUser,
+        IAccessQueries queries,
+        CancellationToken cancellationToken) =>
+        Actor(currentUser) is { } actor
+            ? Results.Ok(await queries.GetCatalogueAsync(actor.InstitutionId, cancellationToken))
+            : NoInstitution();
+
+    private static async Task<IResult> GetMembersAsync(
+        ICurrentUserContext currentUser,
+        IAccessQueries queries,
+        CancellationToken cancellationToken) =>
+        Actor(currentUser) is { } actor
+            ? Results.Ok(await queries.GetMembersAsync(actor.InstitutionId, cancellationToken))
+            : NoInstitution();
+
+    private static async Task<IResult> GetInvitationsAsync(
+        ICurrentUserContext currentUser,
+        IAccessQueries queries,
+        CancellationToken cancellationToken) =>
+        Actor(currentUser) is { } actor
+            ? Results.Ok(await queries.GetPendingInvitationsAsync(actor.InstitutionId, cancellationToken))
+            : NoInstitution();
+
+    private static async Task<IResult> InviteAsync(
+        [FromBody] InviteBody body,
+        ICurrentUserContext currentUser,
+        RoleManagementHandler roles,
+        CancellationToken cancellationToken)
+    {
+        if (Actor(currentUser) is not { } actor)
+        {
+            return NoInstitution();
+        }
+
+        var result = await roles.InviteAsync(actor, new InviteCommand(body.Phone, body.Role), cancellationToken);
+        return result.Succeeded
+            ? Results.Json(new { id = result.Invitation }, statusCode: StatusCodes.Status201Created)
+            : Refused(result);
+    }
+
+    private static async Task<IResult> CancelInvitationAsync(
+        Guid id,
+        ICurrentUserContext currentUser,
+        RoleManagementHandler roles,
+        CancellationToken cancellationToken)
+    {
+        if (Actor(currentUser) is not { } actor)
+        {
+            return NoInstitution();
+        }
+
+        var result = await roles.CancelInvitationAsync(actor, id, cancellationToken);
+        return result.Succeeded ? Results.NoContent() : Refused(result);
     }
 
     private static async Task<IResult> CreateAsync(
@@ -144,7 +228,8 @@ internal static class InstitutionRoleEndpoints
     /// </summary>
     private static IResult NoInstitution() => ApiErrors.Error(StatusCodes.Status403Forbidden, "no_institution");
 
-    private static IResult Refused(RoleChangeResult result) => result.Failure switch
+    /// <summary>A refused role change as the API answers it; also used by the invitee's endpoints in <see cref="MeEndpoints"/>.</summary>
+    internal static IResult Refused(RoleChangeResult result) => result.Failure switch
     {
         RoleChangeFailure.InvalidCode => ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_role_code"),
         RoleChangeFailure.InvalidName => ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_role_name"),
@@ -159,6 +244,13 @@ internal static class InstitutionRoleEndpoints
         RoleChangeFailure.OutsideCeiling => WithPermissions(StatusCodes.Status403Forbidden, "outside_ceiling", result),
         RoleChangeFailure.NotHeld => WithPermissions(StatusCodes.Status403Forbidden, "not_held", result),
         RoleChangeFailure.OwnRoles => ApiErrors.Error(StatusCodes.Status403Forbidden, "own_roles"),
+        RoleChangeFailure.InvalidPhone => ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_phone_number"),
+        RoleChangeFailure.AccountNotFound => ApiErrors.Error(StatusCodes.Status409Conflict, "account_not_found"),
+        RoleChangeFailure.AlreadyMember => ApiErrors.Error(StatusCodes.Status409Conflict, "already_member"),
+        RoleChangeFailure.InvitationPending => ApiErrors.Error(StatusCodes.Status409Conflict, "invitation_pending"),
+        RoleChangeFailure.InvitationNotFound => ApiErrors.Error(StatusCodes.Status404NotFound, "invitation_not_found"),
+        RoleChangeFailure.InvitationClosed => ApiErrors.Error(StatusCodes.Status409Conflict, "invitation_closed"),
+        RoleChangeFailure.InvitationExpired => ApiErrors.Error(StatusCodes.Status409Conflict, "invitation_expired"),
         _ => ApiErrors.Error(StatusCodes.Status400BadRequest, "role_change_refused"),
     };
 

@@ -4,6 +4,7 @@ using Sethika.Application.Access.Bootstrap;
 using Sethika.Application.Access.Language;
 using Sethika.Application.Access.PasswordChange;
 using Sethika.Application.Access.PasswordReset;
+using Sethika.Application.Access.Platform;
 using Sethika.Application.Access.Roles;
 using Sethika.Application.Access.Session;
 using Sethika.Application.Access.SignIn;
@@ -45,6 +46,7 @@ public static class DependencyInjection
         services.AddScoped<PasswordResetHandler>();
         services.AddScoped<BootstrapPlatformAdminHandler>();
         services.AddScoped<RoleManagementHandler>();
+        services.AddScoped<PlatformAdminHandler>();
         services.AddScoped<PreferredLanguageHandler>();
         services.AddScoped<ApplicationHandler>();
         services.AddScoped<ApproveRegistrationHandler>();

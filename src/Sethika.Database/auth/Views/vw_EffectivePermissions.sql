@@ -16,10 +16,32 @@ Overrides AS (
     FROM auth.UserPermissionOverrides
     WHERE ValidTo IS NULL OR ValidTo > SYSUTCDATETIME()
 ),
-Candidates AS (
+Granted AS (
     SELECT UserId, InstitutionId, PermissionId FROM RoleGrants
     UNION
     SELECT UserId, InstitutionId, PermissionId FROM Overrides WHERE Effect = 'Grant'
+),
+/*  Plan 04, Y1-Y2: platform support. A platform user who holds PLATFORM.INSTITUTIONS.EXECUTE
+    globally, and is not denied it, holds in every live institution every Institution-scope
+    permission; the module filter below still drops what the institution has switched off. Read
+    here, so the permission cache, the role rules ("held by the actor") and every other reader
+    see it without C# deciding anything.                                                       */
+Support AS (
+    SELECT g.UserId, i.Id AS InstitutionId, p.Id AS PermissionId
+    FROM Granted g
+    JOIN auth.Permissions sp ON sp.Id = g.PermissionId AND sp.Code = 'PLATFORM.INSTITUTIONS.EXECUTE' AND sp.IsActive = 1
+    JOIN auth.Users u        ON u.Id = g.UserId AND u.UserType = 'PlatformStaff'
+    CROSS JOIN org.Institutions i
+    JOIN auth.Permissions p  ON p.Scope = 'Institution' AND p.IsActive = 1
+    WHERE g.InstitutionId IS NULL
+      AND i.IsDeleted = 0 AND i.Status IN ('Onboarding', 'Active')
+      AND NOT EXISTS (SELECT 1 FROM Overrides o
+                      WHERE o.UserId = g.UserId AND o.PermissionId = sp.Id AND o.Effect = 'Deny' AND o.InstitutionId IS NULL)
+),
+Candidates AS (
+    SELECT UserId, InstitutionId, PermissionId FROM Granted
+    UNION
+    SELECT UserId, InstitutionId, PermissionId FROM Support
 )
 SELECT c.UserId, c.InstitutionId, p.Id AS PermissionId, p.Code AS PermissionCode, p.RequiresMfa
 FROM Candidates c

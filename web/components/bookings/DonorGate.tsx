@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { textLink } from "@/components/auth/links";
 import { Notice } from "@/components/onboarding/ApplyGate";
+import { PersonalSwitch } from "@/components/shell/PersonalSwitch";
 import { Spinner } from "@/components/ui/spinner";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useSession } from "@/lib/auth/useSession";
@@ -45,7 +46,13 @@ export function DonorGate({ permission, children }: { permission: string; childr
     );
   }
 
-  if (session.activeInstitution) return <Notice>{t("institutionSession")}</Notice>;
+  if (session.activeInstitution)
+    return (
+      <Notice>
+        <p>{t("institutionSession")}</p>
+        <PersonalSwitch className="mt-4" />
+      </Notice>
+    );
   if (!can(permission)) return <Notice>{t("notAllowed")}</Notice>;
 
   return <>{children}</>;

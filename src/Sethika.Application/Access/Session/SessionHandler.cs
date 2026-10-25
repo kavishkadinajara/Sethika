@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Sethika.Application.Abstractions;
+using Sethika.Application.Access.Platform;
 
 namespace Sethika.Application.Access.Session;
 
@@ -23,7 +24,7 @@ namespace Sethika.Application.Access.Session;
 /// requests presenting the same token at once, exactly one finds it still unrevoked. It needs no
 /// lock hint, so the handler does not know it runs on SQL Server (plan A16).
 /// </remarks>
-public sealed class SessionHandler(ISethikaDbContext db, ITokenService tokens, TimeProvider timeProvider)
+public sealed class SessionHandler(ISethikaDbContext db, ITokenService tokens, TimeProvider timeProvider, ISupportTickets supportTickets)
 {
     /// <summary>How long after a rotation the spent token is treated as a race, not a theft.</summary>
     public static readonly TimeSpan RotationGracePeriod = TimeSpan.FromSeconds(10);
@@ -111,20 +112,37 @@ public sealed class SessionHandler(ISethikaDbContext db, ITokenService tokens, T
         var institutions = await UserInstitutions.LoadAsync(db, presented.UserId, now, cancellationToken).ConfigureAwait(false);
 
         InstitutionAccess? active;
-        if (command.SwitchToInstitution is { } requested)
+        if (command.SwitchToPersonal)
         {
-            active = institutions.FirstOrDefault(i => string.Equals(i.Slug, requested, StringComparison.OrdinalIgnoreCase));
+            active = null;
+        }
+        else if (command.SwitchToInstitution is { } requested)
+        {
+            active = institutions.FirstOrDefault(i => string.Equals(i.Slug, requested, StringComparison.OrdinalIgnoreCase))
+                     // Plan 04, Y1a: platform support into an institution they do not belong to, by
+                     // spending the ticket a stepped-up request just issued.
+                     ?? await SupportTargetAsync(user.UserType, presented.UserId, requested, null, spendTicket: true, cancellationToken).ConfigureAwait(false);
             if (active is null)
             {
                 return SessionResult.Failed(SessionFailure.InstitutionNotAvailable);
             }
         }
-        else
+        else if (presented.ActiveInstitutionId is { } current)
         {
             // Re-checked, not carried over: a role revoked since the last refresh drops its
-            // institution from the new token.
-            active = institutions.FirstOrDefault(i => i.Id == presented.ActiveInstitutionId)
+            // institution from the new token, and the only one left, if any, takes its place.
+            active = institutions.FirstOrDefault(i => i.Id == current)
+                     // Still platform support there: the permission is read again, no ticket needed.
+                     ?? await SupportTargetAsync(user.UserType, presented.UserId, null, current, spendTicket: false, cancellationToken).ConfigureAwait(false)
                      ?? (institutions.Count == 1 ? institutions[0] : null);
+        }
+        else
+        {
+            // A personal session stays personal (plan 04, P1). Sign-in picks the only institution
+            // for the person (SessionStarter); once they have left it for their own account, a
+            // refresh must not put them back - that is what made a donor's screens unreachable
+            // for anyone who belongs to exactly one institution.
+            active = null;
         }
 
         var issued = tokens.Issue(new TokenSubject(
@@ -170,7 +188,48 @@ public sealed class SessionHandler(ISethikaDbContext db, ITokenService tokens, T
 
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
+        // A support session's institution is not among the user's own; listed so the client can name it.
+        if (active is not null && !institutions.Any(i => i.Id == active.Id))
+        {
+            institutions.Add(active);
+        }
+
         return SessionResult.Success(issued, institutions, active);
+    }
+
+    /// <summary>
+    /// The live institution a platform user may act in as support (plan 04, Y1): platform staff,
+    /// holding the support permission now, and - when entering - spending a ticket. Null otherwise.
+    /// </summary>
+    private async Task<InstitutionAccess?> SupportTargetAsync(
+        string userType,
+        Guid userId,
+        string? slug,
+        int? id,
+        bool spendTicket,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(userType, PlatformStaffUserType, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var target = await db.Institutions
+            .AsNoTracking()
+            .Where(i => !i.IsDeleted && (i.Status == "Active" || i.Status == "Onboarding"))
+            .Where(i => slug != null ? i.Slug == slug : i.Id == id)
+            .Select(i => new InstitutionAccess(i.Id, i.Slug, i.Name))
+            .SingleOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (target is null || !await PlatformSupport.HoldsAsync(db, userId, cancellationToken).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        return !spendTicket || await supportTickets.SpendAsync(userId, target.Id, cancellationToken).ConfigureAwait(false)
+            ? target
+            : null;
     }
 
     /// <summary>Ends the session the token belongs to - its whole family. Unknown tokens are ignored.</summary>
@@ -222,22 +281,6 @@ public sealed class SessionHandler(ISethikaDbContext db, ITokenService tokens, T
         return true;
     }
 
-    /// <summary>
-    /// Answers a spent token presented within the grace period: <see cref="SessionFailure.Superseded"/>
-    /// while the session that won the race is still alive, <see cref="SessionFailure.Invalid"/> once
-    /// it has ended.
-    /// </summary>
-    /// <remarks>
-    /// Superseded tells the client "your cookies already hold the successor, retry with them" and is
-    /// answered without clearing the cookies. After a logout, a logout everywhere, a stamp change or
-    /// the successor's expiry that is false, and the client must hear what every ended session hears.
-    ///
-    /// "Alive" is the test a refresh applies - not revoked, not expired, stamp unchanged - asked of
-    /// the family rather than of the direct successor alone. A family is one chain and only its newest
-    /// token is unrevoked, so this is the successor's successor when the winning tab has already
-    /// rotated again inside the grace period; asking the direct successor would call that session
-    /// ended and have the late tab clear the cookie the winner now holds.
-    /// </remarks>
     private async Task<SessionResult> SupersededOrEndedAsync(Presented presented, DateTime at, CancellationToken cancellationToken)
     {
         var sessionIsAlive = await db.RefreshTokens

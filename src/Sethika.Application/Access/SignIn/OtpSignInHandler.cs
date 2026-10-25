@@ -37,6 +37,7 @@ public sealed class OtpSignInHandler(
     TimeProvider timeProvider)
 {
     private const string ActiveStatus = "Active";
+    private const string PendingVerificationStatus = "PendingVerification";
 
     private static class FailureReasons
     {
@@ -56,7 +57,17 @@ public sealed class OtpSignInHandler(
         string UserType,
         string SecurityStamp,
         string PreferredLanguage,
-        bool MfaRequired);
+        bool MfaRequired,
+        bool HasPassword)
+    {
+        /// <summary>
+        /// Made by the platform for someone who cannot sign up (plan 04, Y6) and not yet signed in:
+        /// pending, unconfirmed, no password. A code is the only way in, and the first right one
+        /// proves the phone.
+        /// </summary>
+        public bool AwaitsFirstSignIn =>
+            !PhoneConfirmed && !HasPassword && string.Equals(Status, PendingVerificationStatus, StringComparison.Ordinal);
+    }
 
     /// <summary>
     /// Sends a sign-in code to <paramref name="phoneNumber"/> if it belongs to an account that may
@@ -73,8 +84,8 @@ public sealed class OtpSignInHandler(
 
         // A locked account is not sent a code it would be refused with: the lockout lasts longer than
         // the code, and the SMS is paid for.
-        var mayReceive = account is { PhoneConfirmed: true, MfaRequired: false }
-            && string.Equals(account.Status, ActiveStatus, StringComparison.Ordinal)
+        var mayReceive = account is { MfaRequired: false }
+            && ((account.PhoneConfirmed && string.Equals(account.Status, ActiveStatus, StringComparison.Ordinal)) || account.AwaitsFirstSignIn)
             && !IsLocked(account, now);
 
         // In the account's own language, not the page's: the SMS is read on the phone, maybe hours
@@ -112,10 +123,10 @@ public sealed class OtpSignInHandler(
         {
             (null, _) => FailureReasons.UnknownLogin,
             ({ MfaRequired: true }, _) => FailureReasons.MfaRequired,
-            ({ PhoneConfirmed: false }, _) => FailureReasons.PhoneNotConfirmed,
+            ({ PhoneConfirmed: false, AwaitsFirstSignIn: false }, _) => FailureReasons.PhoneNotConfirmed,
             (_, false) => FailureReasons.InvalidCode,
             _ when IsLocked(account, now) => FailureReasons.LockedOut,
-            _ when !string.Equals(account.Status, ActiveStatus, StringComparison.Ordinal) => FailureReasons.AccountNotActive,
+            _ when !string.Equals(account.Status, ActiveStatus, StringComparison.Ordinal) && !account.AwaitsFirstSignIn => FailureReasons.AccountNotActive,
             _ => null,
         };
 
@@ -143,6 +154,19 @@ public sealed class OtpSignInHandler(
             .ExecuteUpdateAsync(setters => setters.SetProperty(u => u.LastLoginAt, now.UtcDateTime), cancellationToken)
             .ConfigureAwait(false);
 
+        // Plan 04, Y6: the code just proved the phone, so the account the platform made is confirmed
+        // and active from here on. Conditional, so a suspension in between is never undone by it.
+        if (account!.AwaitsFirstSignIn)
+        {
+            await db.Users
+                .Where(u => u.Id == account.Id && u.Status == PendingVerificationStatus && !u.PhoneConfirmed)
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(u => u.PhoneConfirmed, true).SetProperty(u => u.Status, ActiveStatus),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            account = account with { Status = ActiveStatus, PhoneConfirmed = true };
+        }
+
         var session = await sessions
             .StartAsync(
                 new PasswordAccount(account!.Id, PasswordHash: null, account.LockoutEnd, account.Status, account.UserType, account.SecurityStamp),
@@ -164,7 +188,7 @@ public sealed class OtpSignInHandler(
         db.Users
           .AsNoTracking()
           .Where(u => u.PhoneNumber == phoneNumber && !u.IsDeleted)
-          .Select(u => new Account(u.Id, u.Status, u.PhoneConfirmed, u.LockoutEnd, u.UserType, u.SecurityStamp, u.PreferredLanguage, u.MfaRequired))
+          .Select(u => new Account(u.Id, u.Status, u.PhoneConfirmed, u.LockoutEnd, u.UserType, u.SecurityStamp, u.PreferredLanguage, u.MfaRequired, u.PasswordHash != null))
           .SingleOrDefaultAsync(cancellationToken);
 
     private static bool IsLocked(Account account, DateTimeOffset now) =>

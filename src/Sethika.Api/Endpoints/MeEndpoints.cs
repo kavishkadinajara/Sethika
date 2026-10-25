@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Access.Language;
+using Sethika.Application.Access.Roles;
 
 namespace Sethika.Api.Endpoints;
 
@@ -19,6 +20,11 @@ internal static class MeEndpoints
         me.MapGet(string.Empty, GetProfileAsync);
         me.MapGet("/permissions", GetPermissionsAsync);
         me.MapPut("/language", SetLanguageAsync);
+
+        // Invitations onto an institution's staff, addressed to this account (plan 04, X1-X4).
+        me.MapGet("/invitations", GetInvitationsAsync);
+        me.MapPost("/invitations/{id:guid}/accept", AcceptInvitationAsync);
+        me.MapPost("/invitations/{id:guid}/decline", DeclineInvitationAsync);
 
         return app;
     }
@@ -83,6 +89,52 @@ internal static class MeEndpoints
             isPlatform = currentUser.IsPlatform,
             permissions = effective.Codes.OrderBy(c => c, StringComparer.Ordinal),
         });
+    }
+
+    /// <summary>The caller's invitations still waiting for an answer.</summary>
+    /// <remarks>Their own only: the user is the token's, and RLS shows an invitation to its invitee.</remarks>
+    private static async Task<IResult> GetInvitationsAsync(
+        ICurrentUserContext currentUser,
+        IAccessQueries queries,
+        CancellationToken cancellationToken) =>
+        currentUser.UserId is { } userId
+            ? Results.Ok(await queries.GetMyInvitationsAsync(userId, cancellationToken))
+            : Results.Unauthorized();
+
+    /// <summary>
+    /// Accepts an invitation addressed to the caller: the role is theirs at once. Not
+    /// permission-gated, like the rest of /api/me: answering one's own invitation is one's own
+    /// business, and before accepting the caller holds nothing in that institution to gate it by.
+    /// </summary>
+    private static async Task<IResult> AcceptInvitationAsync(
+        Guid id,
+        ICurrentUserContext currentUser,
+        RoleManagementHandler roles,
+        CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        var result = await roles.AcceptInvitationAsync(userId, id, cancellationToken);
+        return result.Succeeded ? Results.NoContent() : InstitutionRoleEndpoints.Refused(result);
+    }
+
+    /// <summary>Declines an invitation addressed to the caller.</summary>
+    private static async Task<IResult> DeclineInvitationAsync(
+        Guid id,
+        ICurrentUserContext currentUser,
+        RoleManagementHandler roles,
+        CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        var result = await roles.DeclineInvitationAsync(userId, id, cancellationToken);
+        return result.Succeeded ? Results.NoContent() : InstitutionRoleEndpoints.Refused(result);
     }
 
     /// <summary>

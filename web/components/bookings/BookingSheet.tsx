@@ -3,6 +3,7 @@
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { FormError } from "@/components/auth/FormError";
+import { PersonalSwitch } from "@/components/shell/PersonalSwitch";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { CheckCircleIcon } from "@/components/ui/icons";
@@ -113,7 +114,13 @@ function Gate({ institution, slot, date, children }: { institution: PublicInstit
     );
   }
 
-  if (session.activeInstitution) return <SheetBody className="text-fg">{t("institutionSession")}</SheetBody>;
+  if (session.activeInstitution)
+    return (
+      <SheetBody className="text-fg">
+        <p>{t("institutionSession")}</p>
+        <PersonalSwitch className="mt-4" />
+      </SheetBody>
+    );
   if (!can("MYBOOKINGS.BOOKINGS.CREATE")) return <SheetBody className="text-fg">{t("notAllowed")}</SheetBody>;
 
   return <>{children}</>;

@@ -19,7 +19,6 @@ export const sharedClientNamespaces = [
   "Toast",
   "LanguageSwitcher",
   "ThemeSwitcher",
-  "PermissionDebug",
   // The step-up dialog can open on any page (StepUpHost in the root layout).
   "Errors",
   "StepUp",

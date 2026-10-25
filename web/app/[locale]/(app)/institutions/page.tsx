@@ -24,7 +24,7 @@ export default function Page({ params }: PageProps<"/[locale]/institutions">) {
     <NextIntlClientProvider messages={pickMessages(messages, [...sharedClientNamespaces, "Discover"])}>
       <header className="mb-8 grid gap-2">
         <h1 className="text-3xl font-semibold text-brand">{t("directoryTitle")}</h1>
-        <p className="text-muted">{t("directoryIntro")}</p>
+        <p className="max-w-3xl text-muted">{t("directoryIntro")}</p>
       </header>
       <InstitutionDirectory />
     </NextIntlClientProvider>

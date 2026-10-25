@@ -139,7 +139,11 @@ export async function send(path: string, init: RequestInit): Promise<OnboardingR
   return { ok: false, failure: await readOnboardingFailure(response) };
 }
 
-/** The API's `{ code, fields? }`, with the usual status, Retry-After and code. */
+/**
+ * The API's `{ code, fields? }`, with the usual status, Retry-After and code. A role refusal names
+ * permissions instead of fields (`{ code, permissions }`, InstitutionRoleEndpoints.cs); those come
+ * back in `fields` too, so the role editor can mark them.
+ */
 export async function readOnboardingFailure(response: Response): Promise<OnboardingFailure> {
   const fields = await readFields(response.clone());
   return { ...(await readFailure(response)), fields };
@@ -148,8 +152,9 @@ export async function readOnboardingFailure(response: Response): Promise<Onboard
 async function readFields(response: Response): Promise<string[]> {
   if (!(response.headers.get("content-type") ?? "").includes("json")) return [];
   try {
-    const body = (await response.json()) as { fields?: unknown };
-    return Array.isArray(body.fields) ? body.fields.filter((f): f is string => typeof f === "string") : [];
+    const body = (await response.json()) as { fields?: unknown; permissions?: unknown };
+    const list = Array.isArray(body.fields) ? body.fields : Array.isArray(body.permissions) ? body.permissions : [];
+    return list.filter((f): f is string => typeof f === "string");
   } catch {
     return [];
   }

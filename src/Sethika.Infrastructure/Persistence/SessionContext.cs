@@ -5,20 +5,6 @@ using Sethika.Application.Abstractions;
 
 namespace Sethika.Infrastructure.Persistence;
 
-/// <summary>
-/// Stamps a freshly opened connection with the three values the Row-Level Security
-/// predicates in the sec schema read.
-/// </summary>
-/// <remarks>
-/// Deliberately the single copy of this logic: the EF Core interceptor and the Dapper
-/// connection factory both call it. Two copies would eventually drift, and a drifted
-/// copy is a cross-tenant data leak.
-///
-/// Every key is written with @read_only = 1, so nothing later in the request - including
-/// injected SQL - can raise its own privileges by re-stamping the connection. Absent
-/// values are written as NULL rather than skipped, because a key that is never written
-/// is left unlocked and could be set by someone else.
-/// </remarks>
 internal static class SessionContext
 {
     private const string StampSql =

@@ -112,7 +112,7 @@ export function ReviewQueue() {
           {queue.items.length === 0 ? (
             <p className="text-muted">{t("none")}</p>
           ) : (
-            <ul className="grid gap-3">
+            <ul className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
               {queue.items.map((item) => (
                 <li key={item.requestNo} className="rounded-cup border border-hairline bg-surface p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">

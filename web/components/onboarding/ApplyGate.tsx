@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { textLink } from "@/components/auth/links";
+import { PersonalSwitch } from "@/components/shell/PersonalSwitch";
 import { Spinner } from "@/components/ui/spinner";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useSession } from "@/lib/auth/useSession";
@@ -45,9 +46,15 @@ export function ApplyGate({ children }: { children: ReactNode }) {
     );
   }
 
-  // The API has no way back from an institution's session to a personal one yet: signing in
-  // again without choosing an institution is the way (plan 02, 5.5).
-  if (session.activeInstitution) return <Notice>{t("institutionSession")}</Notice>;
+  // Applying is the person's own business, so it happens in their own account (plan 02, B1);
+  // the switch back to it is one click (plan 04, P1).
+  if (session.activeInstitution)
+    return (
+      <Notice>
+        <p>{t("institutionSession")}</p>
+        <PersonalSwitch className="mt-4" />
+      </Notice>
+    );
 
   if (!can("ONBOARDING.APPLICATION.VIEW")) return <Notice>{t("notAllowed")}</Notice>;
 

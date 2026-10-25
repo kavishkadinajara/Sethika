@@ -67,6 +67,8 @@ public static class DependencyInjection
         services.AddScoped<IAccountQueries, AccountQueries>();
         services.AddScoped<ILegalDocumentQueries, LegalDocumentQueries>();
         services.AddScoped<IRoleLevelQueries, RoleLevelQueries>();
+        services.AddScoped<IAccessQueries, AccessQueries>();
+        services.AddScoped<IAdminQueries, AdminQueries>();
         services.AddScoped<IOnboardingApplicationQueries, OnboardingApplicationQueries>();
         services.AddScoped<IRegistrationReviewQueries, RegistrationReviewQueries>();
         services.AddScoped<IInstitutionBookingQueries, InstitutionBookingQueries>();
@@ -111,6 +113,7 @@ public static class DependencyInjection
 
         // Read by the permission handler on every RequiresMfa check, so it lives with it here.
         services.AddSingleton<IStepUpGrants, RedisStepUpGrants>();
+        services.AddSingleton<ISupportTickets, RedisSupportTickets>();
 
         // The booking engine's slot-day lock (plan 03, C2). Timings from SlotLocks, defaults otherwise.
         services.AddOptions<SlotLockOptions>().BindConfiguration(SlotLockOptions.SectionName);

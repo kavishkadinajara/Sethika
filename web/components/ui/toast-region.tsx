@@ -30,9 +30,12 @@ export default function ToastRegion({
       <ToastPrimitive.Viewport
         // Radix fills in {hotkey} itself; next-intl must leave the placeholder alone.
         label={t("region", { hotkey: "{hotkey}" })}
+        // Top right, under the app shell's bar (plan 04): at the bottom a toast covered the save
+        // bars and primary buttons that sit where the thumb reaches, and a person had to wait for
+        // it to go before they could press them.
         className={cn(
-          "fixed inset-x-0 bottom-0 z-[100] mx-auto flex w-full max-w-md flex-col gap-2 p-4 outline-none",
-          "pb-[max(1rem,env(safe-area-inset-bottom))] sm:right-0 sm:left-auto sm:mx-0",
+          "fixed inset-x-0 top-16 z-[100] mx-auto flex w-full max-w-md flex-col gap-2 p-4 outline-none",
+          "sm:right-0 sm:left-auto sm:mx-0",
         )}
       />
     </ToastPrimitive.Provider>

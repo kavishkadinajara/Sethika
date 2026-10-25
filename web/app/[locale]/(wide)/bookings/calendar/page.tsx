@@ -25,7 +25,7 @@ export default function Page({ params }: PageProps<"/[locale]/bookings/calendar"
     <NextIntlClientProvider messages={pickMessages(messages, [...sharedClientNamespaces, "Calendar", "Booking"])}>
       <header className="mb-8 grid gap-2">
         <h1 className="text-3xl font-semibold text-brand">{t("title")}</h1>
-        <p className="text-muted">{t("intro")}</p>
+        <p className="max-w-3xl text-muted">{t("intro")}</p>
       </header>
       <InstitutionGate permission="BOOKINGS.CALENDAR.VIEW">
         <CalendarScreen />

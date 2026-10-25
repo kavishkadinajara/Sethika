@@ -294,6 +294,18 @@ export function createSessionClient(options: SessionClientOptions) {
   }
 
   /**
+   * Leaves the institution for the user's own account (POST .../switch-personal, plan 04 P1): the
+   * donor's screens hold only there (plan 02, B1). Same single slot as every rotation.
+   */
+  async function switchToPersonal(): Promise<SwitchInstitutionResult> {
+    while (rotation) await rotation;
+    const outcome = await claimRotation(() => rotate("switch-personal"));
+    if (outcome === "rotated") return { ok: true };
+    if (outcome === "signed_out") return { ok: false, reason: outcome };
+    return { ok: false, reason: "unavailable" };
+  }
+
+  /**
    * Takes over a session that login or signup just started: their 200/201 body is the same
    * SessionResponse a refresh returns, and the refresh cookie came with it. Marks the boot as
    * done, so a later start() does not spend a refresh on a session it already holds.
@@ -311,6 +323,7 @@ export function createSessionClient(options: SessionClientOptions) {
     logout,
     logoutAll,
     switchInstitution,
+    switchToPersonal,
     getState: () => state,
     subscribe(listener: () => void) {
       listeners.add(listener);

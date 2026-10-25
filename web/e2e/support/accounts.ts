@@ -128,8 +128,9 @@ export function lastTextId(phone: string): number {
 
 /** Answers the step-up dialog with the code texted to <account> after text <after>. */
 export async function stepUp(page: Page, account: Account, after: number) {
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.getByRole("heading", { name: "Confirm it's you" })).toBeVisible();
+  // By its heading: the step-up can open over another dialog (a sheet whose save needs it).
+  const dialog = page.getByRole("dialog").filter({ has: page.getByRole("heading", { name: "Confirm it's you" }) });
+  await expect(dialog).toBeVisible();
   const { code } = await latestCode(account.phone, after);
   await dialog.getByLabel("6-digit code").fill(code);
   await expect(dialog).toBeHidden();
