@@ -104,8 +104,9 @@ public sealed class ApproveRegistrationHandlerTests(SethikaTestDatabase database
             WHERE d.InstitutionId = @id AND d.Status = 'Valid';
             """, new { id = institution.Id }));
 
-        // Modules: the institution portal's three core modules.
-        Assert.Equal(["ACCESS", "BOOKINGS", "INSTITUTION"], await connection.QueryAsync<string>(
+        // Modules: the institution portal's three core modules, and religious services, which a
+        // temple has by default (Phase E, V12).
+        Assert.Equal(["ACCESS", "BOOKINGS", "INSTITUTION", "SERVICES"], await connection.QueryAsync<string>(
             """
             SELECT m.Code FROM org.InstitutionModules im JOIN auth.Modules m ON m.Id = im.ModuleId
             WHERE im.InstitutionId = @id AND im.IsEnabled = 1 AND im.Source = 'Default' ORDER BY m.Code;
@@ -123,7 +124,7 @@ public sealed class ApproveRegistrationHandlerTests(SethikaTestDatabase database
             SELECT COALESCE(c.Code, t.Code) FROM Clone c FULL JOIN Template t ON t.Code = c.Code AND t.PermissionId = c.PermissionId
             WHERE c.Code IS NULL OR t.Code IS NULL;
             """, new { id = institution.Id }));
-        Assert.Equal(["MANAGER", "OWNER", "STAFF"], await connection.QueryAsync<string>(
+        Assert.Equal(["LEADER", "MANAGER", "OWNER", "STAFF"], await connection.QueryAsync<string>(
             "SELECT Code FROM auth.Roles WHERE InstitutionId = @id AND TemplateRoleId IS NOT NULL ORDER BY Code;", new { id = institution.Id }));
 
         // The owner, who now holds the owner's permissions there - read through the view, as the API does.
