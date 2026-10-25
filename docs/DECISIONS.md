@@ -147,6 +147,37 @@ schema but were **deliberately not built**, and the report says so:
 - Editing the institution profile after approval; re-verification (`NextReviewDue`); suspending or
   deactivating an institution; institution reports; the public institution page (Phase B)
 
+## Booking (plan 03)
+
+Full reasoning in `docs/plans/03-BOOKING.md` §2; choices made while building are its §8 (E1-E35).
+
+| # | Decision | Why |
+|---|----------|-----|
+| C1 | `BookedSponsors` counts `Requested` **and** `Approved` bookings; reject and cancel give the place back in the same transaction | If only approved bookings counted, two donors could both hold "requested" on an exclusive slot and the institution would have to choose: double booking moved one step later |
+| C2 | Three layers: a Redis lock `lock:slot:{mealSlotId}:{yyyy-MM-dd}` (SET NX PX, Lua compare-and-delete), a conditional `UPDATE ... WHERE BookedSponsors < MaxSponsors`, and CHECK constraints. If Redis is down, booking goes on without the lock | **The lock is an optimisation, the database is the guarantee.** The lock gives a fast, clean 409 and serialises get-or-create; the UPDATE and the CHECKs are correct on their own, so a Redis outage degrades rather than denies |
+| C3 | A slot instance is created on first booking, under the lock, copying the slot's capacity; `UQ_SlotInst_SlotDate` is the backstop | Instances are snapshots: editing a slot's capacity later does not break a promise already made |
+| C4 | Bookability is one pure domain function, `MealSlotRules.CanBook`, returning the first failing reason; dates count in Asia/Colombo | Unit-testable without a database, and called inside the lock on fresh data |
+| C5 | Status transitions live on the `Booking` aggregate; each writes `BookingStatusHistory` and an outbox message; concurrent decisions are caught by `RowVersion` (409) | One place for the state machine; the donor may cancel until the day before, the institution after |
+| C6 | The donor is the signed-in user; name and phone are snapshots; one active booking per phone per slot-day (`UX_Bookings_DonorPerSlot`) | Booking on someone's behalf and the donor CRM are cut |
+| C7 | `BookingNo` is platform-wide per year (`BK-2026-000123`), drawn inside the booking transaction | A rolled-back booking leaves a gap, as with registration numbers (B5) |
+| C8 | `booking.SlotInstances` has **no** RLS | See the exposure below |
+| C9 | `booking.MealSlots.PublicId` (UUID v7, unique) | A slot is addressed from the donor's side, and URLs never carry `Id` |
+| C10 | Discovery is a shared link `/i/{slug}` plus a plain `/institutions` list of `Active` and `IsPubliclyListed` institutions; both anonymous and rate-limited | Search, GEO and the map are Phase B. An institution is listed only once its Owner turns it on |
+| C11 | SMS to the donor through the outbox, in their language, with `DedupKey`: received/confirmed, approved, rejected, cancelled, and a reminder at 18:00 Colombo the day before | The institution gets no SMS (cost); its calendar shows the waiting requests |
+| C12 / E32 | Sethika's own month grid (`BowlCalendar`), not FullCalendar | A CSS grid with Intl names and keyboard navigation did what was needed without a dependency |
+
+**The C8 exposure, stated plainly.** A donor's connection has to update another tenant's
+availability counters, and availability is public, so `SlotInstances` sits outside RLS. The
+consequence is that any signed-in connection *could* change any slot's counters. The only code that
+does so is the booking handler, and the CHECK constraints bound what it can store
+(`CK_SlotInst_Sponsors`, `CK_SlotInst_Headcount`: never above the maximum, never below zero). This is a known, deliberate trade-off, and the report
+says so.
+
+**Cut from plan 03, and the report says so:** the waitlist; co-sponsors (`BookingContributors`);
+recurring bookings and the Memorial Dana Planner (Phase C); staff booking on behalf of a donor; the
+donor CRM (`InstitutionDonors`); a seasons screen (the rule is enforced, seasons have no UI); caterer
+fulfilment; SignalR live updates (Phase C); availability alerts; search, GEO and the map (Phase B).
+
 ## Unconfirmed reference data (seeded as drafts)
 CLAUDE.md forbids inventing facts about real institutions. Where the flow cannot run without a row,
 the row is seeded as a visibly marked draft and listed here until someone confirms or replaces it.
@@ -177,6 +208,6 @@ tables above once the code exists and the choice has held.
 |------|--------|-------|
 | `docs/plans/01-AUTH.md` — authentication, MFA step-up, i18n foundation, design system | `2-authentication-and-i18n-foundation` | Merged into `develop` (PR #4, #5); browser walk-throughs still owed — see its status line |
 | `docs/plans/02-ONBOARDING.md` — institution onboarding and approval, outbox processor | `3-institution-onboarding` | Merged into `develop` (PR #6, #7 Text.lk) on 2026-10-23 |
-| `docs/plans/03-BOOKING.md` — meal slots, the booking engine (Redis lock + conditional UPDATE + CHECKs), donor booking, reminders | `5-booking-engine` | 5.1-5.3 (schema, domain, engine) built 2026-10-23; 5.4 next. Decisions made while building are in its §8 |
+| `docs/plans/03-BOOKING.md` — meal slots, the booking engine (Redis lock + conditional UPDATE + CHECKs), donor booking, reminders | `5-booking-engine` | 5.1-5.7 built (engine, institution and donor APIs, SMS and reminders, screens); decisions summarised above under "Booking (plan 03)", the rest in its §8 |
 | `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` — religious services, leader roster, conflict-free assignment | not cut yet | Designed (S4); build after the booking engine |
 | `docs/plans/PHASE-F-MOBILE.md` — donor mobile app (Expo), mobile sessions, push notifications | `ccr-79f10240-uk4n3v` | F.1–F.2 built (app scaffold, mobile sessions); phone walk-through owed; F.3+ follow the API (S8) |
