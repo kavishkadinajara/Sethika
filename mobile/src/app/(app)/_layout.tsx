@@ -1,7 +1,7 @@
 import { NativeTabs } from "expo-router/native-tabs";
 import { useEffect } from "react";
 
-import { useSessionClient } from "@/auth/session-provider";
+import { useSession, useSessionClient } from "@/auth/session-provider";
 import { useI18n } from "@/i18n/i18n-provider";
 import { isLanguage } from "@/i18n/translate";
 import { usePalette } from "@/theme/use-theme";
@@ -33,12 +33,17 @@ export default function AppLayout() {
   );
 }
 
-/** After sign-in the account's PreferredLanguage wins over this phone's, as on the web. */
+/**
+ * After sign-in the account's PreferredLanguage wins over this phone's, as on the web. The tabs
+ * are open to visitors too, so this waits for a session (and runs again after a sign-in).
+ */
 function useAccountLanguage() {
   const client = useSessionClient();
+  const signedIn = useSession().status === "authenticated";
   const { setLanguage } = useI18n();
 
   useEffect(() => {
+    if (!signedIn) return;
     let cancelled = false;
     client
       .fetch("/api/me")
@@ -51,5 +56,5 @@ function useAccountLanguage() {
     return () => {
       cancelled = true;
     };
-  }, [client, setLanguage]);
+  }, [client, setLanguage, signedIn]);
 }

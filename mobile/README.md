@@ -4,11 +4,15 @@ The donor app: React Native + Expo (SDK 58), TypeScript strict, Expo Router. It 
 the same ASP.NET Core API as `web/` and holds **no business logic** — every rule lives in the API.
 Design and scope: [`docs/plans/PHASE-F-MOBILE.md`](../docs/plans/PHASE-F-MOBILE.md).
 
-## What is built (F.1 + F.2)
+## What is built (F.1 to F.4)
 
 - Sign in with a password or a texted code; donor signup (number → code → details → consent).
-- Tabs: Explore, My bookings (placeholders until the booking API merges), Profile (language,
-  sign out, sign out on all devices).
+- Tabs, open to anyone: Explore (the listed institutions, with a filter), My bookings (asks a
+  visitor to sign in), Profile (language; sign in, or sign out and sign out on all devices).
+- An institution's page at `/i/{slug}`: its meals and a month of each meal's days as bowls
+  (empty, filling, full), with the reason for every day that is not open.
+- Booking from a chosen day, asking for a sign-in only then and coming back to the same day;
+  My bookings (coming up, earlier) with cancel where the API allows it.
 - English, Sinhala and Tamil; light and dark, in the web's colours.
 - Sessions through `/api/auth/mobile/*`: the refresh token is kept in the iOS Keychain / Android
   Keystore (`expo-secure-store`) and sent in the request body, never as a cookie
@@ -35,7 +39,7 @@ With the API in Development the SMS codes are printed in the API's console (`Sms
 ```bash
 npm run lint        # ESLint (eslint-config-expo)
 npm run typecheck   # tsc --noEmit
-npm test            # Jest (jest-expo): the session client and i18n
+npm test            # Jest (jest-expo): the session client, i18n, the booking logic and screens
 ```
 
 CI runs all three (`.github/workflows/ci.yml`, job `mobile`).
@@ -50,8 +54,14 @@ development`). That is why Dependabot does not watch this folder — an SDK upgr
 ## Strings
 
 `src/i18n/messages/{en,si,ta}.json` are ICU messages, formatted with `intl-messageformat` like the
-web. The sections shared with the web (`Login`, `Signup`, `Errors`, …) are **copied from
-`web/messages`**: change a shared string there first, then copy it here. `App.*` is the app's own.
+web. The sections shared with the web (`Login`, `Signup`, `Errors`, `Booking`, `Discover`,
+`MyBookings`, …) are **copied from `web/messages`**: change a shared string there first, then copy
+it here. `App.*` is the app's own. Month and weekday names always come from `Booking.dates`, never
+from `Intl` (`src/bookings/dates.ts` says why).
+
+Component tests render with `test-renderer` (already installed by jest-expo) through
+`src/test-utils/render.tsx`, and stub the API at the app's own boundary
+(`src/test-utils/api-stub.ts`).
 Every Sinhala and Tamil string is a draft until reviewed (`docs/translations-to-review.md`).
 
 ## Building an APK for testers

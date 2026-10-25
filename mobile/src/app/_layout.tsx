@@ -44,9 +44,14 @@ export default function RootLayout() {
 }
 
 /*  The splash stays up until the fonts are in and the stored session has been tried, so the
-    first screen a donor sees is the right one - never a flash of sign-in before their tabs.
-    Signed-in and signed-out screens are separate route groups behind Stack.Protected: a
-    signed-out user cannot be routed into (app), and signing out drops them back to sign-in.  */
+    first screen shows the right state: the donor's own, or the prompts to sign in.
+
+    Anyone may look (plan 03, C10): the tabs and institution pages are open to a visitor who
+    never signed in, and each screen that needs an account says so where it is needed (the
+    booking sheet, My bookings, Profile). The sign-in screens are pushed on top of whatever the
+    visitor was doing and take themselves away when they succeed (auth/leave-sign-in.ts), so a
+    donor who signs in to book lands back on the same day. Signing out leaves the donor where
+    they are, signed out.                                                                     */
 function Routes() {
   const session = useSession();
   const [fontsLoaded, fontError] = useFonts({ Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold });
@@ -59,15 +64,11 @@ function Routes() {
   if (!ready) return null;
   if (session.status === "unavailable") return <Unavailable />;
 
-  const signedIn = session.status === "authenticated";
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={signedIn} redirectTo="/sign-in">
-        <Stack.Screen name="(app)" />
-      </Stack.Protected>
-      <Stack.Protected guard={!signedIn} redirectTo="/">
-        <Stack.Screen name="(auth)" />
-      </Stack.Protected>
+      <Stack.Screen name="(app)" />
+      <Stack.Screen name="i/[slug]" options={{ headerShown: true, title: "" }} />
+      <Stack.Screen name="(auth)" />
     </Stack>
   );
 }

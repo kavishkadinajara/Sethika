@@ -1,8 +1,9 @@
-import { Card, Screen } from "@/components/screen";
+import { MyBookings } from "@/components/bookings/my-bookings";
+import { Screen } from "@/components/screen";
 import { Text } from "@/components/text";
 import { useI18n } from "@/i18n/i18n-provider";
 
-/** My bookings. Filled from GET /api/bookings/mine once plan 03 merges (Phase F slice F.4). */
+/** My bookings: GET /api/bookings/mine, with cancel (Phase F slice F.4). Asks a visitor to sign in. */
 export default function BookingsScreen() {
   const { t } = useI18n();
   return (
@@ -10,9 +11,7 @@ export default function BookingsScreen() {
       <Text variant="title" accessibilityRole="header">
         {t("App.bookings.title")}
       </Text>
-      <Card>
-        <Text variant="muted">{t("App.bookings.comingSoon")}</Text>
-      </Card>
+      <MyBookings />
     </Screen>
   );
 }

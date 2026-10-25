@@ -529,3 +529,27 @@ Questions for the reviewers:
 | Namespace | Reviewer (si) | Reviewer (ta) | Status |
 |---|---|---|---|
 | `Booking`, `Discover`, `MyBookings`, `Slots`, `Calendar`, `Home.find/mine/calendar/slots` | | | |
+
+## Phase F: mobile booking screens (`mobile/src/i18n/messages`, slices F.3 and F.4)
+
+The app's Explore, institution page, booking sheet and My bookings use the web's `Booking`,
+`Discover` and `MyBookings` sections, **copied unchanged** from `web/messages` (the "Booking
+screens" row above covers them for both). Two `App.*` placeholders are gone: `App.explore.comingSoon`
+and `App.bookings.comingSoon`. The keys below are the app's own and are drafts.
+
+`App.dates.*` are not sentences but the **order** of a date's parts: the app never asks the phone's
+`Intl` for names (Hermes takes them from the phone's own ICU, which differs between phones), so
+the names come from `Booking.dates` and the order from these. The Sinhala order is the web's
+(`2026 නොවැම්බර් 1, ඉරිදා`); the Tamil one is CLDR's (`ஞாயிறு, 1 நவம்பர், 2026`).
+
+Question for the reviewers: `තට්ටු කරන්න` / `தட்டவும்` for "tap" a day on the screen. Is that what
+people say, or is there a more usual word?
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) | Reviewer | Status |
+|---|---|---|---|---|---|
+| `App.dates.monthYear` | {month} {year} | {year} {month} | {month} {year} | | |
+| `App.dates.full` | {weekday}, {day} {month} {year} | {year} {month} {day}, {weekday} | {weekday}, {day} {month}, {year} | | |
+| `App.dates.dayMonth` | {weekday}, {day} {month} | {weekday}, {month} {day} | {weekday}, {day} {month} | | |
+| `App.calendar.dayStatus` | {date}: {status} | {date}: {status} | {date}: {status} | | |
+| `App.calendar.tapHint` | Tap an open day to book it. Tap any other day to see why it is not open. | වෙන් කිරීමට විවෘත දිනයක් තට්ටු කරන්න. වෙනත් දිනයක් විවෘත නැත්තේ ඇයිදැයි දැනගැනීමට එය තට්ටු කරන්න. | முன்பதிவு செய்யத் திறந்துள்ள நாளைத் தட்டவும். மற்ற நாள் ஏன் திறக்கப்படவில்லை என்பதைப் பார்க்க அதைத் தட்டவும். | | |
+| `App.profile.signedOut` | Sign in to book a meal and see your bookings. | ආහාර වේලක් වෙන් කිරීමට සහ ඔබගේ වෙන්කිරීම් බැලීමට පුරනය වන්න. | உணவு வேளையை முன்பதிவு செய்யவும் உங்கள் முன்பதிவுகளைப் பார்க்கவும் உள்நுழையுங்கள். | | |

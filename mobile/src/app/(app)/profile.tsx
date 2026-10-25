@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
@@ -14,10 +15,12 @@ export default function ProfileScreen() {
   const { t } = useI18n();
   const session = useSession();
   const client = useSessionClient();
+  const signedIn = session.status === "authenticated";
   const [name, setName] = useState<string | null>(null);
   const [busy, setBusy] = useState<"logout" | "logout-all" | null>(null);
 
   useEffect(() => {
+    if (!signedIn) return;
     let cancelled = false;
     client
       .fetch("/api/me")
@@ -30,7 +33,7 @@ export default function ProfileScreen() {
     return () => {
       cancelled = true;
     };
-  }, [client]);
+  }, [client, signedIn]);
 
   const active =
     session.status === "authenticated"
@@ -39,8 +42,10 @@ export default function ProfileScreen() {
 
   async function end(kind: "logout" | "logout-all") {
     setBusy(kind);
-    // Signing out flips the session to anonymous, and Stack.Protected takes the user to sign-in.
+    // Signing out flips the session to anonymous; this screen then shows the sign-in prompts.
     await (kind === "logout" ? client.logout() : client.logoutAll());
+    setName(null);
+    setBusy(null);
   }
 
   return (
@@ -48,36 +53,44 @@ export default function ProfileScreen() {
       <Text variant="title" accessibilityRole="header">
         {t("App.profile.title")}
       </Text>
-      {name && <Text variant="heading">{t("App.profile.greeting", { name })}</Text>}
+      {signedIn && name && <Text variant="heading">{t("App.profile.greeting", { name })}</Text>}
       {active && <Text variant="muted">{t("Session.actingFor", { name: active.name })}</Text>}
 
       <Card>
-        <LanguagePicker />
+        <LanguagePicker signedIn={signedIn} />
       </Card>
 
-      <Card>
-        <Button
-          label={t("Session.signOut")}
-          variant="secondary"
-          busy={busy === "logout"}
-          disabled={busy !== null}
-          onPress={() => void end("logout")}
-        />
-        <Text variant="muted">{t("App.profile.signOutEverywhereHelp")}</Text>
-        <Button
-          label={t("Session.signOutEverywhere")}
-          variant="secondary"
-          busy={busy === "logout-all"}
-          disabled={busy !== null}
-          onPress={() => void end("logout-all")}
-        />
-      </Card>
+      {!signedIn ? (
+        <Card>
+          <Text>{t("App.profile.signedOut")}</Text>
+          <Button label={t("Login.submit")} onPress={() => router.push("/sign-in")} />
+          <Button label={t("Login.createAccount")} variant="secondary" onPress={() => router.push("/sign-up")} />
+        </Card>
+      ) : (
+        <Card>
+          <Button
+            label={t("Session.signOut")}
+            variant="secondary"
+            busy={busy === "logout"}
+            disabled={busy !== null}
+            onPress={() => void end("logout")}
+          />
+          <Text variant="muted">{t("App.profile.signOutEverywhereHelp")}</Text>
+          <Button
+            label={t("Session.signOutEverywhere")}
+            variant="secondary"
+            busy={busy === "logout-all"}
+            disabled={busy !== null}
+            onPress={() => void end("logout-all")}
+          />
+        </Card>
+      )}
     </Screen>
   );
 }
 
-/** Changes the app's language at once, and the account's, so SMS follow it too. */
-function LanguagePicker() {
+/** Changes the app's language at once, and a signed-in account's, so SMS follow it too. */
+function LanguagePicker({ signedIn }: { signedIn: boolean }) {
   const { t, language, setLanguage } = useI18n();
   const client = useSessionClient();
   const palette = usePalette();
@@ -85,6 +98,7 @@ function LanguagePicker() {
   function choose(next: Language) {
     if (next === language) return;
     setLanguage(next);
+    if (!signedIn) return;
     void client
       .fetch("/api/me/language", {
         method: "PUT",

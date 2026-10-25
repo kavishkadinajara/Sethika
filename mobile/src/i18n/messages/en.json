@@ -137,6 +137,222 @@
     "signOut": "Sign out",
     "signOutEverywhere": "Sign out on all devices"
   },
+  "Booking": {
+    "calendar": {
+      "previous": "Previous month",
+      "next": "Next month"
+    },
+    "status": {
+      "Requested": "Waiting for reply",
+      "Approved": "Confirmed",
+      "Rejected": "Not accepted",
+      "Cancelled": "Cancelled",
+      "Completed": "Served",
+      "NoShow": "Did not happen"
+    },
+    "fulfilment": {
+      "DonorBrings": "The sponsor brings the meal",
+      "InstitutionPrepares": "The institution prepares it"
+    },
+    "errors": {
+      "slot_inactive": "This meal is not being offered any more.",
+      "institution_not_active": "This place is not taking bookings right now.",
+      "not_on_this_day": "This meal is not served on that day of the week.",
+      "out_of_season": "This meal is only offered in its season.",
+      "date_blocked": "This day is closed for bookings.",
+      "too_soon": "That day is too soon to book. Please choose a later day.",
+      "too_far": "That day is too far ahead to book yet.",
+      "slot_full": "Someone has just taken this day. Please choose another.",
+      "headcount_out_of_range": "That number of people is outside what this meal allows.",
+      "fulfilment_not_offered": "That way of providing the meal is not offered here.",
+      "already_booked": "You have already booked this meal on this day.",
+      "slot_busy": "Several people are booking this day right now. Please try again in a moment.",
+      "phone_required": "Your account needs a confirmed phone number before you can book.",
+      "slot_not_found": "This meal could not be found. It may have been removed.",
+      "institution_not_found": "This place could not be found.",
+      "booking_not_found": "This booking could not be found.",
+      "invalid_transition": "This booking has already moved on. The list has been refreshed.",
+      "cancel_window_closed": "It is too late to cancel this booking yourself. Please call the institution.",
+      "too_early": "This can only be marked on or after the day of the meal.",
+      "reason_required": "Please give a reason.",
+      "reason_too_long": "Please keep the reason under 300 characters.",
+      "stale": "Someone else changed this just now. It has been refreshed; please check and try again.",
+      "slot_name_taken": "You already have a meal with this name.",
+      "blocked_date_not_found": "This closed day has already been removed.",
+      "no_active_slot": "Add a meal first: a place is listed once there is something to book.",
+      "invalid_range": "That range of days cannot be shown.",
+      "invalid_details": "Some details need fixing."
+    },
+    "gate": {
+      "signInFirst": "Sign in with the account you use for your institution.",
+      "signIn": "Sign in",
+      "chooseInstitution": "Choose the institution you are working for first.",
+      "choose": "Choose an institution",
+      "notAllowed": "Your role in this institution does not include this page.",
+      "donorSignIn": "Sign in to see your bookings. New to Sethika? Create an account.",
+      "createAccount": "Create an account",
+      "institutionSession": "You are signed in for an institution. Your own bookings are under your personal account: sign out, then sign in again without choosing an institution."
+    },
+    "dates": {
+      "months": [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      ],
+      "monthsShort": [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec"
+      ],
+      "weekdays": [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday"
+      ],
+      "weekdaysShort": [
+        "Sun",
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat"
+      ],
+      "weekdaysNarrow": [
+        "S",
+        "M",
+        "T",
+        "W",
+        "T",
+        "F",
+        "S"
+      ]
+    }
+  },
+  "Discover": {
+    "directoryTitle": "Find a place to give",
+    "directoryIntro": "Temples, kovils, mosques, churches and care homes that welcome meal sponsors. Choose one to see its meals and open days.",
+    "filter": "Search",
+    "filterHint": "By name, type, town or district, in any language.",
+    "noneListed": "No places are listed yet. Soon, they will be.",
+    "noneMatch": "Nothing matches that search.",
+    "loadFailed": "Could not load this.",
+    "retry": "Try again",
+    "notFound": "We could not find this place. The link may be old.",
+    "noSlots": "This place has no meals open for booking yet.",
+    "monthFailed": "Could not load this month.",
+    "chooseMeal": "Choose a meal",
+    "chooseDay": "Choose a day",
+    "chooseDayHint": "Open days for {meal}. Each bowl fills as sponsors book the day.",
+    "everyDay": "Every day",
+    "exclusive": "One sponsor gives the whole meal",
+    "shared": "Shared by up to {count} sponsors",
+    "people": "{min}–{max} people",
+    "costPerHead": "About {cost} a person",
+    "dietary": "Food notes:",
+    "placesLeft": "{count, plural, one {# place left} other {# places left}}",
+    "open": "Open",
+    "reason": {
+      "slot_inactive": "Not offered",
+      "institution_not_active": "Not taking bookings",
+      "not_on_this_day": "Not served this day",
+      "out_of_season": "Out of season",
+      "date_blocked": "Closed this day",
+      "too_soon": "Too soon to book",
+      "too_far": "Too far ahead",
+      "slot_full": "Full"
+    },
+    "legend": {
+      "open": "Open",
+      "filling": "Some places taken",
+      "full": "Full",
+      "notOffered": "A plain date is not open"
+    },
+    "sheet": {
+      "title": "Sponsor {meal}",
+      "signInFirst": "Sign in to book this day. It takes a minute, and we will bring you straight back here.",
+      "signIn": "Sign in",
+      "createAccount": "Create an account",
+      "institutionSession": "You are signed in for an institution. To book as yourself, sign out and sign in again without choosing an institution.",
+      "notAllowed": "This account cannot make bookings.",
+      "headcount": "How many people will be fed?",
+      "headcountHint": "Between {min} and {max}.",
+      "headcountRange": "Please enter a number from {min} to {max}.",
+      "fewer": "One fewer",
+      "more": "One more",
+      "estimate": "Estimated cost: about {cost}",
+      "whoBrings": "Who provides the meal?",
+      "fulfilmentHint": {
+        "DonorBrings": "You cook or buy the meal and bring it on the day.",
+        "InstitutionPrepares": "Their kitchen prepares it; you settle the cost with them."
+      },
+      "inMemoryOf": "In memory of (optional)",
+      "inMemoryOfHint": "If this meal remembers someone, their name.",
+      "notes": "A note for them (optional)",
+      "notesHint": "Dietary needs, arrival time, anything they should know.",
+      "approvalNote": "They confirm each booking. We will text you their reply.",
+      "instantNote": "This meal is confirmed as soon as you book it.",
+      "request": "Send request",
+      "confirm": "Book this day",
+      "doneRequested": "Request sent",
+      "doneConfirmed": "Booked",
+      "bookingNo": "Your booking number",
+      "doneRequestedNext": "We will text you when they reply. The day is held for you meanwhile.",
+      "doneConfirmedNext": "We have texted you the details, and will remind you the evening before.",
+      "thanks": "Thank you for feeding others.",
+      "seeMine": "See my bookings",
+      "close": "Close"
+    }
+  },
+  "MyBookings": {
+    "title": "My bookings",
+    "intro": "The meals you have sponsored, and those still to come.",
+    "loadFailed": "Could not load your bookings.",
+    "retry": "Try again",
+    "none": "You have not sponsored a meal yet.",
+    "find": "Find a place to give",
+    "upcoming": "Coming up",
+    "noneUpcoming": "Nothing coming up.",
+    "past": "Earlier",
+    "when": "{days, plural, =0 {Today} =1 {Tomorrow} other {In # days}}",
+    "people": "{count, plural, one {# person} other {# people}}",
+    "inMemoryOf": "In memory of {name}",
+    "rejectedBecause": "Not accepted: {reason}",
+    "cancelledBecause": "Cancelled: {reason}",
+    "waiting": "Waiting for their reply. We will text you.",
+    "cancel": "Cancel booking",
+    "cancelSheet": {
+      "title": "Cancel this booking?",
+      "description": "{bookingNo}. The day becomes free for someone else.",
+      "reason": "Reason (optional)",
+      "reasonHint": "The institution will see it.",
+      "keep": "Keep booking",
+      "confirm": "Cancel booking",
+      "done": "{bookingNo} is cancelled."
+    }
+  },
   "App": {
     "tabs": {
       "explore": "Explore",
@@ -144,17 +360,25 @@
       "profile": "Profile"
     },
     "explore": {
-      "title": "Find a place to give",
-      "comingSoon": "Temples, kovils, mosques, churches and care homes will appear here soon."
+      "title": "Find a place to give"
     },
     "bookings": {
-      "title": "My bookings",
-      "comingSoon": "Your bookings will appear here once booking opens."
+      "title": "My bookings"
     },
     "profile": {
       "title": "Profile",
       "greeting": "Hello, {name}",
-      "signOutEverywhereHelp": "Ends your session on this phone and in every browser where you are signed in."
+      "signOutEverywhereHelp": "Ends your session on this phone and in every browser where you are signed in.",
+      "signedOut": "Sign in to book a meal and see your bookings."
+    },
+    "dates": {
+      "monthYear": "{month} {year}",
+      "full": "{weekday}, {day} {month} {year}",
+      "dayMonth": "{weekday}, {day} {month}"
+    },
+    "calendar": {
+      "dayStatus": "{date}: {status}",
+      "tapHint": "Tap an open day to book it. Tap any other day to see why it is not open."
     }
   }
 }
