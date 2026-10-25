@@ -55,6 +55,17 @@ DELETE FROM auth.Roles WHERE IsSystem = 0;   -- system roles (DONOR) are referen
 DELETE FROM auth.RolesHistory;
 DELETE FROM org.InstitutionModules;
 DELETE FROM org.InstitutionModulesHistory;
+-- What Phase E's tests leave: time blocks before the assignments and leave they name, those before
+-- their appointments and leaders, and the leaders before the users who made them.
+DELETE FROM booking.LeaderTimeBlocks;
+DELETE FROM booking.AppointmentLeaders;
+DELETE FROM booking.AppointmentStatusHistory;
+DELETE FROM booking.ServiceAppointments;
+DELETE FROM core.OutboxMessages WHERE AggregateType = 'ServiceAppointment';
+DELETE FROM org.LeaderTimeOff;
+DELETE FROM org.LeaderWeeklyHours;
+DELETE FROM org.ReligiousLeaders;
+DELETE FROM booking.ServiceTypes;
 -- What the booking engine's tests leave (plan 03): history before its booking, blocks and seasons
 -- before their slot, and the outbox trail of every booking.
 DELETE FROM booking.BookingStatusHistory;

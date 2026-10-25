@@ -175,7 +175,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
             var after = await connection.QuerySingleAsync(Snapshot, transaction: transaction);
 
             Assert.Equal((IDictionary<string, object>)before, (IDictionary<string, object>)after);
-            Assert.Equal(24, (int)after.Permissions);
+            Assert.Equal(39, (int)after.Permissions);
         }
     }
 
@@ -196,7 +196,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
                 seed.Replace(StaffApprove, "    ('BOOKINGS.CALENDAR.VIEW'),\n", StringComparison.Ordinal), transaction: transaction);
 
             Assert.DoesNotContain("BOOKINGS.CALENDAR.APPROVE", await AlphaCodesAsync(connection, transaction, database.AlphaInstitutionId));
-            Assert.Equal(5, await connection.ExecuteScalarAsync<int>(
+            Assert.Equal(10, await connection.ExecuteScalarAsync<int>(
                 """
                 SELECT COUNT(*) FROM auth.RoleLevelPermissions c JOIN auth.RoleLevels l ON l.Id = c.RoleLevelId
                 WHERE l.Code = 'STAFF';
@@ -207,7 +207,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
 
     [Theory]
     [InlineData("SELECT 'STAFF', v.Code", "SELECT 'STAF', v.Code", 51004)]
-    [InlineData("('BOOKINGS.CALENDAR.VIEW')) AS v(Code);", "('BOOKINGS.CALENDAR.VIEW'), ('ACCESS.ROLES.CREATE')) AS v(Code);", 51005)]
+    [InlineData("('SERVICES.MYSCHEDULE.EDIT')) AS v(Code);", "('SERVICES.MYSCHEDULE.EDIT'), ('SERVICES.APPOINTMENTS.APPROVE')) AS v(Code);", 51005)]
     [InlineData("('ACCESS.ROLES.EDIT',         'ACCESS.ROLES.VIEW'),", "('ACCESS.ROLES.EDITT',        'ACCESS.ROLES.VIEW'),", 51003)]
     [InlineData("SELECT 'PLATFORM_REVIEWER', v.Code", "SELECT 'PLATFORM_REVIEWR', v.Code", 51006)]
     public async Task AMistakeInTheSeedStopsTheDeploy(string original, string mistake, int expectedError)
@@ -311,7 +311,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
     // ------------------------------------------------------------------ system role grants (plan 02, B1)
 
     [Theory]
-    [InlineData("DONOR", "MYBOOKINGS.BOOKINGS.CREATE,MYBOOKINGS.BOOKINGS.EDIT,MYBOOKINGS.BOOKINGS.VIEW,ONBOARDING.APPLICATION.CREATE,ONBOARDING.APPLICATION.EDIT,ONBOARDING.APPLICATION.VIEW")]
+    [InlineData("DONOR", "MYBOOKINGS.BOOKINGS.CREATE,MYBOOKINGS.BOOKINGS.EDIT,MYBOOKINGS.BOOKINGS.VIEW,MYSERVICES.APPOINTMENTS.CREATE,MYSERVICES.APPOINTMENTS.EDIT,MYSERVICES.APPOINTMENTS.VIEW,ONBOARDING.APPLICATION.CREATE,ONBOARDING.APPLICATION.EDIT,ONBOARDING.APPLICATION.VIEW")]
     [InlineData("PLATFORM_ADMIN", "ONBOARDING.REQUESTS.APPROVE,ONBOARDING.REQUESTS.EDIT,ONBOARDING.REQUESTS.REJECT,ONBOARDING.REQUESTS.VIEW")]
     [InlineData("PLATFORM_REVIEWER", "ONBOARDING.REQUESTS.EDIT,ONBOARDING.REQUESTS.VIEW")]
     public async Task EachSystemRoleHoldsExactlyItsGrants(string roleCode, string expected)
@@ -403,7 +403,10 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
         Assert.Equal(
             ["BOOKINGS.CALENDAR.APPROVE", "BOOKINGS.CALENDAR.EDIT", "BOOKINGS.CALENDAR.REJECT", "BOOKINGS.CALENDAR.VIEW", "BOOKINGS.SLOTS.VIEW"],
             ceiling);
-        Assert.Equal(["BOOKINGS.CALENDAR.VIEW", "BOOKINGS.SLOTS.VIEW", "INSTITUTION.PROFILE.VIEW"], template);
+        Assert.Equal(
+            ["BOOKINGS.CALENDAR.VIEW", "BOOKINGS.SLOTS.VIEW", "INSTITUTION.PROFILE.VIEW",
+             "SERVICES.APPOINTMENTS.VIEW", "SERVICES.LEADERS.VIEW", "SERVICES.TYPES.VIEW"],
+            template);
     }
 
     [Fact]
@@ -426,5 +429,49 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
 
         Assert.Equal(["MYBOOKINGS.BOOKINGS.CREATE Self", "MYBOOKINGS.BOOKINGS.EDIT Self", "MYBOOKINGS.BOOKINGS.VIEW Self"], scopes);
         Assert.Equal(0, institutionLevels);
+    }
+
+    // ------------------------------------------------------------------ religious services (Phase E)
+
+    [Fact]
+    public async Task ALeaderHoldsOnlyTheirOwnScheduleAndNobodyElseIsGivenIt()
+    {
+        // A leader's schedule is theirs: the LEADER template grants it and nothing else, and the
+        // owner and manager templates leave it out (an owner who also leads is given LEADER too).
+        await using var connection = new SqlConnection(database.ConnectionString);
+
+        var grants = (await connection.QueryAsync<(string Role, string Permission)>(
+            """
+            SELECT r.Code AS Role, p.Code AS Permission FROM auth.Roles r
+            JOIN auth.RolePermissions rp ON rp.RoleId = r.Id
+            JOIN auth.Permissions p      ON p.Id = rp.PermissionId
+            WHERE r.IsTemplate = 1 AND r.InstitutionId IS NULL
+              AND (r.Code = 'LEADER' OR p.Code LIKE 'SERVICES.MYSCHEDULE.%')
+            ORDER BY r.Code, p.Code;
+            """)).ToList();
+
+        Assert.Equal([("LEADER", "SERVICES.MYSCHEDULE.EDIT"), ("LEADER", "SERVICES.MYSCHEDULE.VIEW")], grants);
+        Assert.Equal("STAFF", await connection.ExecuteScalarAsync<string>(
+            "SELECT l.Code FROM auth.Roles r JOIN auth.RoleLevels l ON l.Id = r.RoleLevelId WHERE r.Code = 'LEADER' AND r.IsTemplate = 1;"));
+    }
+
+    [Fact]
+    public async Task ReligiousServicesAreOnByDefaultForReligiousInstitutionsOnly()
+    {
+        // V12: not core, so a care home does not get it; the religious types do, by Category.
+        await using var connection = new SqlConnection(database.ConnectionString);
+
+        var byType = await connection.QueryAsync<string>(
+            """
+            SELECT t.Code + ' ' + t.Category + ' ' + CASE WHEN d.ModuleId IS NULL THEN 'off' ELSE 'on' END
+            FROM org.InstitutionTypes t
+            LEFT JOIN org.InstitutionTypeDefaultModules d
+                   ON d.InstitutionTypeId = t.Id AND d.ModuleId = (SELECT Id FROM auth.Modules WHERE Code = 'SERVICES')
+            ORDER BY t.Code;
+            """);
+
+        Assert.All(byType, row => Assert.EndsWith(row.Contains(" Religious ", StringComparison.Ordinal) ? " on" : " off", row, StringComparison.Ordinal));
+        Assert.Contains(byType, row => row.EndsWith(" off", StringComparison.Ordinal));
+        Assert.Equal(0, await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM auth.Modules WHERE Code = 'SERVICES' AND IsCore = 1;"));
     }
 }

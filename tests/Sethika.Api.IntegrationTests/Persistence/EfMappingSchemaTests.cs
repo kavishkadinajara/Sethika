@@ -110,4 +110,20 @@ public sealed class EfMappingSchemaTests(SethikaTestDatabase database)
             },
             tables);
     }
+
+    [Fact]
+    public void TheReligiousServiceTablesAreMapped()
+    {
+        // Phase E's eight tables, for the same reason.
+        var tables = Model().GetEntityTypes().Select(e => $"{e.GetSchema()}.{e.GetTableName()}").ToHashSet();
+
+        Assert.Superset(
+            new HashSet<string>
+            {
+                "org.ReligiousLeaders", "org.LeaderWeeklyHours", "org.LeaderTimeOff",
+                "booking.ServiceTypes", "booking.ServiceAppointments", "booking.AppointmentLeaders",
+                "booking.LeaderTimeBlocks", "booking.AppointmentStatusHistory",
+            },
+            tables);
+    }
 }

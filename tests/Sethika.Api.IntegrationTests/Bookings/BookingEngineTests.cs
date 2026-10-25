@@ -84,12 +84,12 @@ public sealed class BookingEngineTests(SethikaTestDatabase database) : IAsyncLif
     /// <summary>What the engine sees when Redis is down: every attempt goes on without the lock.</summary>
     private sealed class NoLocks : ISlotLocks
     {
-        public Task<ISlotLock> AcquireAsync(int mealSlotId, DateOnly slotDate, CancellationToken cancellationToken = default) =>
-            Task.FromResult<ISlotLock>(new Unlocked());
+        public Task<ILockLease> AcquireAsync(int mealSlotId, DateOnly slotDate, CancellationToken cancellationToken = default) =>
+            Task.FromResult<ILockLease>(new Unlocked());
 
-        private sealed class Unlocked : ISlotLock
+        private sealed class Unlocked : ILockLease
         {
-            public SlotLockOutcome Outcome => SlotLockOutcome.Unavailable;
+            public LockOutcome Outcome => LockOutcome.Unavailable;
 
             public ValueTask DisposeAsync() => ValueTask.CompletedTask;
         }
@@ -489,10 +489,10 @@ public sealed class BookingEngineTests(SethikaTestDatabase database) : IAsyncLif
         var key = RedisSlotLocks.KeyFor(slotId, SlotDay);
 
         var slow = await shortLived.AcquireAsync(slotId, SlotDay);
-        Assert.Equal(SlotLockOutcome.Acquired, slow.Outcome);
+        Assert.Equal(LockOutcome.Acquired, slow.Outcome);
 
         await using var next = await RedisLocks().AcquireAsync(slotId, SlotDay);   // waits out the 300 ms
-        Assert.Equal(SlotLockOutcome.Acquired, next.Outcome);
+        Assert.Equal(LockOutcome.Acquired, next.Outcome);
 
         await slow.DisposeAsync();
 
@@ -507,13 +507,13 @@ public sealed class BookingEngineTests(SethikaTestDatabase database) : IAsyncLif
 
         await using (var held = await locks.AcquireAsync(slotId, SlotDay))
         {
-            Assert.Equal(SlotLockOutcome.Acquired, held.Outcome);
+            Assert.Equal(LockOutcome.Acquired, held.Outcome);
             await using var blocked = await locks.AcquireAsync(slotId, SlotDay);
-            Assert.Equal(SlotLockOutcome.Busy, blocked.Outcome);
+            Assert.Equal(LockOutcome.Busy, blocked.Outcome);
         }
 
         await using var after = await locks.AcquireAsync(slotId, SlotDay);
-        Assert.Equal(SlotLockOutcome.Acquired, after.Outcome);
+        Assert.Equal(LockOutcome.Acquired, after.Outcome);
     }
 
     [Fact]
@@ -525,7 +525,7 @@ public sealed class BookingEngineTests(SethikaTestDatabase database) : IAsyncLif
 
         await using (var attempt = await locks.AcquireAsync(1, SlotDay))
         {
-            Assert.Equal(SlotLockOutcome.Unavailable, attempt.Outcome);
+            Assert.Equal(LockOutcome.Unavailable, attempt.Outcome);
         }
 
         var (slotId, slot) = await SlotAsync();

@@ -72,6 +72,7 @@ public static class DependencyInjection
         services.AddScoped<IInstitutionBookingQueries, InstitutionBookingQueries>();
         services.AddScoped<IDonorBookingQueries, DonorBookingQueries>();
         services.AddScoped<IBookingNotificationQueries, BookingNotificationQueries>();
+        services.AddScoped<IServiceSetupQueries, ServiceSetupQueries>();
 
         return services;
     }
@@ -115,6 +116,10 @@ public static class DependencyInjection
         services.AddOptions<SlotLockOptions>().BindConfiguration(SlotLockOptions.SectionName);
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<ISlotLocks, RedisSlotLocks>();
+
+        // Leader assignment's lock (Phase E, V3), on the same store. Timings from LeaderLocks.
+        services.AddOptions<LeaderLockOptions>().BindConfiguration(LeaderLockOptions.SectionName);
+        services.AddSingleton<ILeaderLocks, RedisLeaderLocks>();
 
         return services;
     }

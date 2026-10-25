@@ -17,6 +17,8 @@ using Sethika.Application.Onboarding.Applying;
 using Sethika.Application.Onboarding.Approval;
 using Sethika.Application.Onboarding.Notifications;
 using Sethika.Application.Onboarding.Review;
+using Sethika.Application.Services.Appointments;
+using Sethika.Application.Services.Setup;
 
 namespace Sethika.Application;
 
@@ -52,6 +54,8 @@ public static class DependencyInjection
         services.AddScoped<SlotManagementHandler>();
         services.AddScoped<AvailabilityCalendar>();
         services.AddScoped<BookingReminders>();
+        services.AddScoped<AssignLeadersHandler>();
+        services.AddScoped<ServiceSetupHandler>();
 
         // What the outbox processor dispatches to, by event type.
         services.AddScoped<IOutboxHandler, OnboardingSmsHandler>();
