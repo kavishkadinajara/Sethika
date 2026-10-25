@@ -1,7 +1,8 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 
 import { describeFailure, networkFailure, postJson } from "@/api/http";
+import { leaveSignIn, passNext } from "@/auth/leave-sign-in";
 import { useSessionClient } from "@/auth/session-provider";
 import { Button } from "@/components/button";
 import { BrandHeader, FormError, Screen } from "@/components/screen";
@@ -12,6 +13,8 @@ import { useI18n } from "@/i18n/i18n-provider";
 export default function SignInScreen() {
   const { t } = useI18n();
   const client = useSessionClient();
+  // Set by the booking sheet: the institution page to come back to (auth/leave-sign-in.ts).
+  const { next } = useLocalSearchParams<{ next?: string }>();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ login?: string; password?: string }>({});
@@ -31,8 +34,8 @@ export default function SignInScreen() {
     try {
       const response = await postJson("/api/auth/mobile/login", { login: login.trim(), password });
       if (response.ok) {
-        // Stack.Protected moves to the tabs as soon as the session is authenticated.
         await client.establish(response);
+        leaveSignIn(next);
         return;
       }
       setFailure((await describeFailure(response, t)).message);
@@ -78,10 +81,18 @@ export default function SignInScreen() {
       />
 
       <Button label={t("Login.submit")} busy={busy} onPress={() => void submit()} />
-      <Button label={t("Login.useCode")} variant="link" onPress={() => router.push("/sign-in-code")} />
+      <Button
+        label={t("Login.useCode")}
+        variant="link"
+        onPress={() => router.push({ pathname: "/sign-in-code", params: passNext(next) })}
+      />
 
       <Text variant="muted">{t("Login.noAccount")}</Text>
-      <Button label={t("Login.createAccount")} variant="secondary" onPress={() => router.push("/sign-up")} />
+      <Button
+        label={t("Login.createAccount")}
+        variant="secondary"
+        onPress={() => router.push({ pathname: "/sign-up", params: passNext(next) })}
+      />
     </Screen>
   );
 }

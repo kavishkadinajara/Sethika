@@ -10,6 +10,7 @@ import { Button } from "@/components/button";
 import { BrandHeader, Screen } from "@/components/screen";
 import { Text } from "@/components/text";
 import { I18nProvider, useI18n } from "@/i18n/i18n-provider";
+import { ThemePreferenceProvider } from "@/theme/appearance";
 import { colors, spacing } from "@/theme/colors";
 
 SplashScreen.preventAutoHideAsync();
@@ -33,23 +34,39 @@ export default function RootLayout() {
         },
       }}
     >
-      <I18nProvider>
-        <SessionProvider>
-          <StatusBar style="auto" />
-          <Routes />
-        </SessionProvider>
-      </I18nProvider>
+      <ThemePreferenceProvider>
+        <I18nProvider>
+          <SessionProvider>
+            <StatusBar style="auto" />
+            <Routes />
+          </SessionProvider>
+        </I18nProvider>
+      </ThemePreferenceProvider>
     </ThemeProvider>
   );
 }
 
 /*  The splash stays up until the fonts are in and the stored session has been tried, so the
-    first screen a donor sees is the right one - never a flash of sign-in before their tabs.
-    Signed-in and signed-out screens are separate route groups behind Stack.Protected: a
-    signed-out user cannot be routed into (app), and signing out drops them back to sign-in.  */
+    first screen shows the right state: the donor's own, or the prompts to sign in.
+
+    Anyone may look (plan 03, C10): the tabs and institution pages are open to a visitor who
+    never signed in, and each screen that needs an account says so where it is needed (the
+    booking sheet, My bookings, Profile). The sign-in screens are pushed on top of whatever the
+    visitor was doing and take themselves away when they succeed (auth/leave-sign-in.ts), so a
+    donor who signs in to book lands back on the same day. Signing out leaves the donor where
+    they are, signed out.                                                                     */
 function Routes() {
   const session = useSession();
-  const [fontsLoaded, fontError] = useFonts({ Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold });
+  const scheme = useColorScheme();
+  const palette = scheme === "dark" ? colors.dark : colors.light;
+  const [fontsLoaded, fontError] = useFonts({
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    // Fraunces italic, the human voice (DESIGN.md), from the OFL font in assets/fonts: one static
+    // face, copied in rather than installed as a package (PHASE-F-MOBILE.md, F16).
+    Fraunces_400Regular_Italic: require("@/assets/fonts/Fraunces_400Regular_Italic.ttf"),
+  });
   const ready = (fontsLoaded || fontError !== null) && session.status !== "loading";
 
   useEffect(() => {
@@ -59,15 +76,20 @@ function Routes() {
   if (!ready) return null;
   if (session.status === "unavailable") return <Unavailable />;
 
-  const signedIn = session.status === "authenticated";
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={signedIn} redirectTo="/sign-in">
-        <Stack.Screen name="(app)" />
-      </Stack.Protected>
-      <Stack.Protected guard={!signedIn} redirectTo="/">
-        <Stack.Screen name="(auth)" />
-      </Stack.Protected>
+      <Stack.Screen name="(app)" />
+      <Stack.Screen
+        name="i/[slug]"
+        options={{
+          headerShown: true,
+          title: "",
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: palette.canvas },
+          headerTintColor: palette.primary,
+        }}
+      />
+      <Stack.Screen name="(auth)" />
     </Stack>
   );
 }

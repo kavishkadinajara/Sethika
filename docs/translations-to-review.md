@@ -529,3 +529,51 @@ Questions for the reviewers:
 | Namespace | Reviewer (si) | Reviewer (ta) | Status |
 |---|---|---|---|
 | `Booking`, `Discover`, `MyBookings`, `Slots`, `Calendar`, `Home.find/mine/calendar/slots` | | | |
+
+## Phase F: mobile booking screens (`mobile/src/i18n/messages`, slices F.3 and F.4)
+
+The app's Explore, institution page, booking sheet and My bookings use the web's `Booking`,
+`Discover` and `MyBookings` sections, **copied unchanged** from `web/messages` (the "Booking
+screens" row above covers them for both). Two `App.*` placeholders are gone: `App.explore.comingSoon`
+and `App.bookings.comingSoon`. The keys below are the app's own and are drafts.
+
+`App.dates.*` are not sentences but the **order** of a date's parts: the app never asks the phone's
+`Intl` for names (Hermes takes them from the phone's own ICU, which differs between phones), so
+the names come from `Booking.dates` and the order from these. The Sinhala order is the web's
+(`2026 නොවැම්බර් 1, ඉරිදා`); the Tamil one is CLDR's (`ஞாயிறு, 1 நவம்பர், 2026`).
+
+Question for the reviewers: `තට්ටු කරන්න` / `தட்டவும்` for "tap" a day on the screen. Is that what
+people say, or is there a more usual word?
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) | Reviewer | Status |
+|---|---|---|---|---|---|
+| `App.dates.monthYear` | {month} {year} | {year} {month} | {month} {year} | | |
+| `App.dates.full` | {weekday}, {day} {month} {year} | {year} {month} {day}, {weekday} | {weekday}, {day} {month}, {year} | | |
+| `App.dates.dayMonth` | {weekday}, {day} {month} | {weekday}, {month} {day} | {weekday}, {day} {month} | | |
+| `App.calendar.dayStatus` | {date}: {status} | {date}: {status} | {date}: {status} | | |
+| `App.calendar.tapHint` | Tap an open day to book it. Tap any other day to see why it is not open. | වෙන් කිරීමට විවෘත දිනයක් තට්ටු කරන්න. වෙනත් දිනයක් විවෘත නැත්තේ ඇයිදැයි දැනගැනීමට එය තට්ටු කරන්න. | முன்பதிவு செய்யத் திறந்துள்ள நாளைத் தட்டவும். மற்ற நாள் ஏன் திறக்கப்படவில்லை என்பதைப் பார்க்க அதைத் தட்டவும். | | |
+| `App.profile.signedOut` | Sign in to book a meal and see your bookings. | ආහාර වේලක් වෙන් කිරීමට සහ ඔබගේ වෙන්කිරීම් බැලීමට පුරනය වන්න. | உணவு வேளையை முன்பதிவு செய்யவும் உங்கள் முன்பதிவுகளைப் பார்க்கவும் உள்நுழையுங்கள். | | |
+| `App.explore.greeting.morning` | Good morning | සුබ උදෑසනක් | காலை வணக்கம் | | |
+| `App.explore.greeting.afternoon` | Good afternoon | සුබ දහවලක් | மதிய வணக்கம் | | |
+| `App.explore.greeting.evening` | Good evening | සුබ සන්ධ්‍යාවක් | மாலை வணக்கம் | | |
+| `App.explore.voice` | One meal can brighten someone's whole day. | එක් ආහාර වේලකින් කෙනෙකුගේ මුළු දවසම එළිය කළ හැකිය. | ஒரு வேளை உணவு ஒருவரின் முழு நாளையும் ஒளிரச் செய்யும். | | |
+| `App.explore.kinds` | Kind of place | ස්ථාන වර්ගය | இட வகை | | |
+| `App.explore.allKinds` | All | සියල්ල | அனைத்தும் | | |
+| `App.explore.count` | {count, plural, one {# place} other {# places}} | {count, plural, one {ස්ථානයක්} other {ස්ථාන #}} | {count, plural, one {# இடம்} other {# இடங்கள்}} | | |
+| `App.institution.directions` | Directions | මාර්ග උපදෙස් | வழிகாட்டல் | | |
+| `App.profile.thanks` | Thank you for every meal you share. | ඔබ බෙදාගන්නා සෑම ආහාර වේලකටම ස්තූතියි. | நீங்கள் பகிரும் ஒவ்வொரு உணவுக்கும் நன்றி. | | |
+| `App.profile.stats.upcoming` | Coming up | ඉදිරියට | வரவிருப்பவை | | |
+| `App.profile.stats.given` | Meals given | දුන් ආහාර වේල් | வழங்கிய உணவுகள் | | |
+| `App.profile.stats.fed` | People fed | ආහාර ලැබූ අය | உணவு பெற்றோர் | | |
+| `App.profile.next` | Your next meal | ඔබගේ ඊළඟ ආහාර වේල | உங்கள் அடுத்த உணவு வேளை | | |
+| `App.profile.preferences` | Preferences | මනාපයන් | விருப்பத்தேர்வுகள் | | |
+| `App.profile.account` | Account | ගිණුම | கணக்கு | | |
+| `App.profile.appearance` | Appearance | පෙනුම | தோற்றம் | | |
+| `App.profile.theme.auto` | Auto | ස්වයංක්‍රීය | தானியங்கு | | |
+| `App.profile.theme.light` | Light | ආලෝක | வெளிர் | | |
+| `App.profile.theme.dark` | Dark | අඳුරු | இருண்ட | | |
+| `App.profile.joinTitle` | Give a meal, from wherever you are | ඔබ කොහේ සිටියත්, ආහාර වේලක් දෙන්න | நீங்கள் எங்கிருந்தாலும், ஒரு வேளை உணவு வழங்குங்கள் | | |
+| `App.profile.benefits.find` | Find places across Sri Lanka that welcome meal sponsors. | ආහාර අනුග්‍රාහකයන් පිළිගන්නා ස්ථාන ශ්‍රී ලංකාව පුරා සොයන්න. | உணவு அனுசரணையாளர்களை வரவேற்கும் இடங்களை இலங்கை முழுவதும் தேடுங்கள். | | |
+| `App.profile.benefits.book` | Book a day in a few taps, and see every booking in one place. | තට්ටු කිහිපයකින් දිනයක් වෙන් කර, සෑම වෙන්කිරීමක්ම එක තැනකින් බලන්න. | சில தட்டல்களில் ஒரு நாளை முன்பதிவு செய்து, ஒவ்வொரு முன்பதிவையும் ஒரே இடத்தில் பாருங்கள். | | |
+| `App.profile.benefits.remind` | Get texts and reminders in your own language. | ඔබේම භාෂාවෙන් කෙටි පණිවිඩ සහ සිහිකැඳවීම් ලබාගන්න. | உங்கள் சொந்த மொழியில் குறுஞ்செய்திகளும் நினைவூட்டல்களும் பெறுங்கள். | | |
+| `App.profile.version` | Version {version} | අනුවාදය {version} | பதிப்பு {version} | | |

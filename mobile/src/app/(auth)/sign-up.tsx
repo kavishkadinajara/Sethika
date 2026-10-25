@@ -1,8 +1,9 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, Switch, View } from "react-native";
 
 import { describeFailure, getJson, networkFailure, postJson } from "@/api/http";
+import { leaveSignIn, passNext } from "@/auth/leave-sign-in";
 import { useSessionClient } from "@/auth/session-provider";
 import { Button } from "@/components/button";
 import { CodeStep, PhoneStep } from "@/components/code-steps";
@@ -27,6 +28,7 @@ const STEPS: Step[] = ["phone", "code", "details", "consent"];
 export default function SignUpScreen() {
   const { t, language } = useI18n();
   const client = useSessionClient();
+  const { next } = useLocalSearchParams<{ next?: string }>();
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
   const [ticket, setTicket] = useState<string | null>(null);
@@ -83,11 +85,12 @@ export default function SignUpScreen() {
 
       if (response.status === 201 && response.headers.get("content-type")?.includes("json")) {
         await client.establish(response);
+        leaveSignIn(next);
         return;
       }
       if (response.status === 201) {
         // The account exists but the first sign-in did not happen (AuthEndpoints.SignUpAsync).
-        router.replace("/sign-in");
+        router.replace({ pathname: "/sign-in", params: passNext(next) });
         return;
       }
 
@@ -129,7 +132,12 @@ export default function SignUpScreen() {
             onSubmit={(number) => void requestCode(number)}
           />
           <Text variant="muted">{t("Signup.haveAccount")}</Text>
-          <Button label={t("Signup.signIn")} variant="secondary" onPress={() => router.back()} />
+          {/* Signup may have been opened straight from the booking sheet, with no sign-in below it. */}
+          <Button
+            label={t("Signup.signIn")}
+            variant="secondary"
+            onPress={() => router.dismissTo({ pathname: "/sign-in", params: passNext(next) })}
+          />
         </>
       )}
 

@@ -1,7 +1,8 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 
 import { describeFailure, networkFailure, postJson } from "@/api/http";
+import { leaveSignIn } from "@/auth/leave-sign-in";
 import { useSessionClient } from "@/auth/session-provider";
 import { Button } from "@/components/button";
 import { CodeStep, PhoneStep } from "@/components/code-steps";
@@ -13,6 +14,7 @@ import { useI18n } from "@/i18n/i18n-provider";
 export default function SignInWithCodeScreen() {
   const { t } = useI18n();
   const client = useSessionClient();
+  const { next } = useLocalSearchParams<{ next?: string }>();
   const [phone, setPhone] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -40,8 +42,12 @@ export default function SignInWithCodeScreen() {
   const signIn = (code: string) =>
     run(async () => {
       const response = await postJson("/api/auth/mobile/otp/sign-in", { phoneNumber: phone, code });
-      if (response.ok) await client.establish(response);
-      else setFailure((await describeFailure(response, t)).message);
+      if (response.ok) {
+        await client.establish(response);
+        leaveSignIn(next);
+      } else {
+        setFailure((await describeFailure(response, t)).message);
+      }
     });
 
   return (
