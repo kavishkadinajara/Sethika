@@ -33,6 +33,34 @@
       }
     },
     {
+      // The API on every interface, so a phone on the same Wi-Fi can reach it. No browser.
+      "name": "API (phone on Wi-Fi)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: api",
+      "program": "${workspaceFolder}/src/Sethika.Api/bin/Debug/net10.0/Sethika.Api.dll",
+      // Command-line --urls wins over launchSettings' applicationUrl.
+      "args": ["--urls", "http://0.0.0.0:5182"],
+      "cwd": "${workspaceFolder}/src/Sethika.Api",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    {
+      // Metro for Expo Go. The QR code and the a/r/j keys are in the terminal it opens.
+      "name": "Mobile: Expo",
+      "type": "node",
+      "request": "launch",
+      "preLaunchTask": "mobile: point at this computer",
+      "cwd": "${workspaceFolder}/mobile",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["expo", "start", "--lan"],
+      "skipFiles": ["<node_internals>/**"],
+      "console": "integratedTerminal"
+    },
+    {
       "name": "API (attach)",
       "type": "coreclr",
       "request": "attach",
@@ -89,6 +117,15 @@
       "presentation": {
         "group": "00-fullstack",
         "order": 1
+      }
+    },
+    {
+      "name": "Mobile on phone (API + Expo)",
+      "configurations": ["API (phone on Wi-Fi)", "Mobile: Expo"],
+      "stopAll": true,
+      "presentation": {
+        "group": "00-fullstack",
+        "order": 2
       }
     }
   ]

@@ -99,6 +99,26 @@
       "problemMatcher": []
     },
     {
+      "label": "mobile: point at this computer",
+      "detail": "Writes this computer's Wi-Fi address into mobile/.env.local (git-ignored), so the app on a phone finds the API",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile", "-Command",
+        "$ip = (Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq 'Up' } | Select-Object -First 1).IPv4Address.IPAddress; if (-not $ip) { Write-Error 'No connected network found.'; exit 1 }; Set-Content -Path mobile/.env.local -Value \"EXPO_PUBLIC_API_BASE_URL=http://${ip}:5182\" -Encoding ascii; Write-Output \"API for the phone: http://${ip}:5182\""
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "mobile: install",
+      "type": "shell",
+      "command": "npm",
+      "args": ["install"],
+      "options": { "cwd": "${workspaceFolder}/mobile" },
+      "problemMatcher": []
+    },
+    {
       "label": "verify: everything",
       "detail": "What CI runs. Use before opening a PR.",
       "dependsOrder": "sequence",
