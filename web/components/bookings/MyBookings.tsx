@@ -121,7 +121,7 @@ function Section({
       {bookings.length === 0 ? (
         <p className="text-muted">{empty}</p>
       ) : (
-        <ul className="grid gap-3">
+        <ul className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
           {bookings.map((booking) => (
             <li key={booking.bookingNo}>
               <BookingCard booking={booking} today={today} onCancel={() => onCancel(booking)} />

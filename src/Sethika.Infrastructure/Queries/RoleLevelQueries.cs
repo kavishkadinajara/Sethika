@@ -14,7 +14,9 @@ public sealed class RoleLevelQueries(IDbConnectionFactory connections) : IRoleLe
     private const string GrantableSql =
         """
         WITH ActorRank AS (
-            SELECT MIN(l.Rank) AS Rank
+            SELECT MIN(x.Rank) AS Rank
+            FROM (
+            SELECT l.Rank
             FROM auth.UserRoles ur
             JOIN auth.Roles r      ON r.Id = ur.RoleId AND r.IsActive = 1
             JOIN auth.RoleLevels l ON l.Id = r.RoleLevelId
@@ -23,6 +25,13 @@ public sealed class RoleLevelQueries(IDbConnectionFactory connections) : IRoleLe
               AND ur.IsActive = 1
               AND (ur.ValidFrom IS NULL OR ur.ValidFrom <= SYSUTCDATETIME())
               AND (ur.ValidTo   IS NULL OR ur.ValidTo   >  SYSUTCDATETIME())
+            UNION ALL
+            -- Plan 04, Y3: platform support outranks every institution level.
+            SELECT CAST(0 AS TINYINT)
+            FROM auth.vw_EffectivePermissions ep
+            JOIN auth.Users u ON u.Id = ep.UserId AND u.UserType = 'PlatformStaff' AND u.IsDeleted = 0
+            WHERE ep.UserId = @userId AND ep.InstitutionId IS NULL AND ep.PermissionCode = 'PLATFORM.INSTITUTIONS.EXECUTE'
+            ) x
         ),
         Grantable AS (
             SELECT c.RoleLevelId, p.Code

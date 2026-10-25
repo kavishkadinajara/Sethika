@@ -11,6 +11,8 @@ export interface PermissionContextValue {
   canAny: (codes: PermissionCode[]) => boolean;
   isPlatform: boolean;
   institutionId: number | null;
+  /** The signed-in user's id (the token's sub), or null; screens use it to recognise "you". */
+  userId: string | null;
   isAuthenticated: boolean;
   /** True until the session and its permissions are known. Every gate is closed meanwhile. */
   isLoading: boolean;
@@ -66,6 +68,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
       canAny: (codes) => codes.some(can),
       isPlatform: effective?.isPlatform ?? false,
       institutionId: effective?.institutionId ?? null,
+      userId: effective?.userId ?? null,
       isAuthenticated: effective !== null,
       isLoading,
     };

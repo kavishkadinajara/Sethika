@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Sethika.Application.Abstractions;
+using Sethika.Application.Access.Platform;
 using Sethika.Domain.Access;
 using Sethika.Domain.Core;
 
@@ -24,7 +25,7 @@ namespace Sethika.Application.Access.Roles;
 /// can be up to a version behind. A refusal names the offending permissions and changes nothing;
 /// nothing is ever silently dropped from a request.
 /// </remarks>
-public sealed partial class RoleManagementHandler(ISethikaDbContext db, TimeProvider timeProvider)
+public sealed partial class RoleManagementHandler(ISethikaDbContext db, TimeProvider timeProvider, IPhoneNumberNormalizer phoneNumbers)
 {
     private const string InstitutionScope = "Institution";
     private const string ChangedEvent = "RolePermissionsChanged";
@@ -341,6 +342,12 @@ public sealed partial class RoleManagementHandler(ISethikaDbContext db, TimeProv
             .Join(db.RoleLevels, ur => ur.Role.RoleLevelId, l => l.Id, (ur, l) => (byte?)l.Rank)
             .MinAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        // Plan 04, Y3: platform support holds no role here and outranks every level.
+        if (actorRank is null && await PlatformSupport.HoldsAsync(db, actor.UserId, cancellationToken).ConfigureAwait(false))
+        {
+            actorRank = 0;
+        }
 
         if (actorRank is null)
         {

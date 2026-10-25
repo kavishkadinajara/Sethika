@@ -109,7 +109,7 @@ export function SlotsScreen() {
         {slots.length === 0 ? (
           <EmptyState>{t("noSlots")}</EmptyState>
         ) : (
-          <ul className="grid gap-3">
+          <ul className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
             {slots.map((slot) => (
               <li key={slot.publicId}>
                 <SlotCard

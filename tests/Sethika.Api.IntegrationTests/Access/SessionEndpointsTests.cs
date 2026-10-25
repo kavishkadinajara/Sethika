@@ -653,6 +653,69 @@ public sealed class SessionEndpointsTests(SethikaTestDatabase database) : IAsync
     }
 
     [Fact]
+    public async Task SwitchingToPersonalLeavesTheInstitutionAndARefreshKeepsItThere()
+    {
+        // Plan 04, P1: sign-in puts someone with exactly one institution into it. Before the switch
+        // existed, and before a refresh stopped re-picking that institution, such a person could
+        // never reach their own (donor) grants at all.
+        var phone = await CreateUserAsync();
+        await AssignRoleAsync(phone, database.AlphaInstitutionId);
+        var session = await LogInAsync(phone);
+        Assert.Equal("alpha-temple", session.Body.GetProperty("activeInstitution").GetString());
+
+        using var response = await PostAsync("switch-personal", session);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var personal = Parse(response, JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement);
+        Assert.Equal(JsonValueKind.Null, personal.Body.GetProperty("activeInstitution").ValueKind);
+        Assert.DoesNotContain(new JsonWebToken(personal.AccessToken).Claims, c => c.Type == SethikaClaimTypes.InstitutionId);
+        Assert.Null((await RowAsync(personal.Refresh)).ActiveInstitutionId);
+        Assert.Equal("Rotated", (await RowAsync(session.Refresh)).RevokedReason);
+        // The institution is still theirs to switch back to.
+        Assert.Equal("alpha-temple", personal.Body.GetProperty("institutions")[0].GetProperty("slug").GetString());
+
+        var refreshed = await RefreshAsync(personal);
+
+        Assert.Equal(JsonValueKind.Null, refreshed.Body.GetProperty("activeInstitution").ValueKind);
+        Assert.DoesNotContain(new JsonWebToken(refreshed.AccessToken).Claims, c => c.Type == SethikaClaimTypes.InstitutionId);
+    }
+
+    [Fact]
+    public async Task FromPersonalTheUserCanSwitchBackIntoTheirInstitution()
+    {
+        var phone = await CreateUserAsync();
+        await AssignRoleAsync(phone, database.AlphaInstitutionId);
+        var session = await LogInAsync(phone);
+        using var toPersonal = await PostAsync("switch-personal", session);
+        var personal = Parse(toPersonal, JsonDocument.Parse(await toPersonal.Content.ReadAsStringAsync()).RootElement);
+
+        using var back = await PostAsync("switch-institution", personal, new { institution = "alpha-temple" });
+
+        Assert.Equal(HttpStatusCode.OK, back.StatusCode);
+        var again = Parse(back, JsonDocument.Parse(await back.Content.ReadAsStringAsync()).RootElement);
+        Assert.Equal(
+            database.AlphaInstitutionId,
+            new JsonWebToken(again.AccessToken).GetPayloadValue<int>(SethikaClaimTypes.InstitutionId));
+    }
+
+    [Fact]
+    public async Task SwitchingToPersonalNeedsTheCsrfTokenAndADeadSessionCannotDoIt()
+    {
+        var phone = await CreateUserAsync();
+        await AssignRoleAsync(phone, database.AlphaInstitutionId);
+        var session = await LogInAsync(phone);
+
+        using var forged = await PostAsync("switch-personal", session, csrfHeader: null);
+        Assert.Equal(HttpStatusCode.Forbidden, forged.StatusCode);
+        Assert.Equal("csrf_failed", await CodeOf(forged));
+        Assert.Null((await RowAsync(session.Refresh)).RevokedAt);
+
+        using var logout = await PostAsync("logout", session);
+        using var afterwards = await PostAsync("switch-personal", session);
+        Assert.Equal(HttpStatusCode.Unauthorized, afterwards.StatusCode);
+    }
+
+    [Fact]
     public async Task NoRefreshCookieIsNoSession()
     {
         var session = await LogInAsync(await CreateUserAsync());

@@ -481,6 +481,40 @@ public sealed class OtpSignInEndpointsTests(SethikaTestDatabase database) : IAsy
 
     // ------------------------------------------------------------------ who may sign in
 
+    [Fact]
+    public async Task AnAccountThePlatformMadeIsSentACode_AndItsFirstSignInConfirmsTheNumber()
+    {
+        // Plan 04, Y6: made by an administrator for someone who cannot sign up - pending, unconfirmed,
+        // no password. The code is the only way in, and the first right one proves the phone.
+        var host = Host();
+        using var client = Client(host);
+        var phone = await CreateUserAsync(status: "PendingVerification", phoneConfirmed: false);
+
+        using var requested = await RequestAsync(client, phone);
+        Assert.Equal(HttpStatusCode.Accepted, requested.StatusCode);
+        using var response = await SignInAsync(client, phone, CodeSentTo(phone));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Active|1", await ScalarAsync<string>(
+            "SELECT CONCAT(Status, '|', CAST(PhoneConfirmed AS INT)) FROM auth.Users WHERE PhoneNumber = @phone;", new { phone }));
+    }
+
+    [Fact]
+    public async Task APendingAccountWithAPasswordIsSentNoCode()
+    {
+        // Someone who set a password but never confirmed the number did not come from the platform:
+        // the rule for an unconfirmed number holds for them.
+        var host = Host();
+        using var client = Client(host);
+        var phone = await CreateUserAsync(status: "PendingVerification", phoneConfirmed: false);
+        await ExecuteAsync("UPDATE auth.Users SET PasswordHash = N'not-a-real-hash' WHERE PhoneNumber = @phone;", new { phone });
+
+        using var response = await RequestAsync(client, phone);
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.DoesNotContain(_sms, m => m.Phone == phone);
+    }
+
     [Theory]
     [InlineData("Suspended", true)]
     [InlineData("Active", false)]

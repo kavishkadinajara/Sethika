@@ -32,7 +32,10 @@ USING (
         ('DONOR',       'APPLY',       N'Register an institution', 10, 0),
         ('DONOR',       'BOOK',        N'Book a meal',             20, 0),
         ('DONOR',       'REQUEST',     N'Request a religious service', 30, 0),
-        ('ADMIN',       'ONBOARDING',  N'Institution onboarding',  10, 0)
+        ('ADMIN',       'ONBOARDING',  N'Institution onboarding',  10, 0),
+        -- Plan 04, U4: the platform's own administration.
+        ('ADMIN',       'INSTITUTIONS', N'Institutions',           20, 0),
+        ('ADMIN',       'USERS',        N'Users',                  30, 0)
     ) AS v(PortalCode, Code, Name, SortOrder, IsCore)
     JOIN auth.Portals p ON p.Code = v.PortalCode
 ) AS s
@@ -59,7 +62,9 @@ USING (
         ('APPLY',       'ONBOARDING.APPLICATION', N'Institution application', '/apply',               1),
         ('BOOK',        'MYBOOKINGS.BOOKINGS',    N'My bookings',             '/bookings/mine',       1),
         ('REQUEST',     'MYSERVICES.APPOINTMENTS', N'My service requests',    '/services/mine',       1),
-        ('ONBOARDING',  'ONBOARDING.REQUESTS',    N'Registration requests',   '/admin/registrations', 1)
+        ('ONBOARDING',  'ONBOARDING.REQUESTS',    N'Registration requests',   '/admin/registrations', 1),
+        ('INSTITUTIONS', 'PLATFORM.INSTITUTIONS', N'All institutions',        '/admin/institutions',  1),
+        ('USERS',       'PLATFORM.USERS',         N'All users',               '/admin/users',         1)
     ) AS v(ModuleCode, Code, Name, Route, SortOrder)
     JOIN auth.Modules m ON m.Code = v.ModuleCode
 ) AS s
@@ -126,6 +131,14 @@ VALUES
     ('ONBOARDING.REQUESTS.EDIT',      'ONBOARDING.REQUESTS',    'EDIT',    'Platform', N'Review registration requests',                1, 0),
     ('ONBOARDING.REQUESTS.APPROVE',   'ONBOARDING.REQUESTS',    'APPROVE', 'Platform', N'Approve registration requests',               1, 1),
     ('ONBOARDING.REQUESTS.REJECT',    'ONBOARDING.REQUESTS',    'REJECT',  'Platform', N'Reject registration requests',                1, 1),
+    /*  Platform administration (plan 04, U4). EXECUTE on institutions is working inside one as
+        platform support, with every permission there (Y1-Y3): step-up. Accounts list phone numbers,
+        hence sensitive; making, suspending and giving platform roles need a step-up.           */
+    ('PLATFORM.INSTITUTIONS.VIEW',    'PLATFORM.INSTITUTIONS',  'VIEW',    'Platform', N'View every institution',                      0, 0),
+    ('PLATFORM.INSTITUTIONS.EXECUTE', 'PLATFORM.INSTITUTIONS',  'EXECUTE', 'Platform', N'Work inside any institution as platform support', 1, 1),
+    ('PLATFORM.USERS.VIEW',           'PLATFORM.USERS',         'VIEW',    'Platform', N'View every account',                          1, 0),
+    ('PLATFORM.USERS.CREATE',         'PLATFORM.USERS',         'CREATE',  'Platform', N'Make accounts for people who cannot sign up', 1, 1),
+    ('PLATFORM.USERS.EDIT',           'PLATFORM.USERS',         'EDIT',    'Platform', N'Suspend accounts and give platform roles',    1, 1),
     /*  A donor's own bookings (plan 03): Self scope, like applying. EDIT is cancelling one.       */
     ('MYBOOKINGS.BOOKINGS.VIEW',      'MYBOOKINGS.BOOKINGS',    'VIEW',    'Self',     N'See my bookings',                             0, 0),
     ('MYBOOKINGS.BOOKINGS.CREATE',    'MYBOOKINGS.BOOKINGS',    'CREATE',  'Self',     N'Book a meal slot',                            0, 0),
@@ -183,6 +196,9 @@ VALUES
     ('ONBOARDING.REQUESTS.EDIT',      'ONBOARDING.REQUESTS.VIEW'),
     ('ONBOARDING.REQUESTS.APPROVE',   'ONBOARDING.REQUESTS.VIEW'),
     ('ONBOARDING.REQUESTS.REJECT',    'ONBOARDING.REQUESTS.VIEW'),
+    ('PLATFORM.INSTITUTIONS.EXECUTE', 'PLATFORM.INSTITUTIONS.VIEW'),
+    ('PLATFORM.USERS.CREATE',        'PLATFORM.USERS.VIEW'),
+    ('PLATFORM.USERS.EDIT',          'PLATFORM.USERS.VIEW'),
     ('MYBOOKINGS.BOOKINGS.CREATE',    'MYBOOKINGS.BOOKINGS.VIEW'),
     ('MYBOOKINGS.BOOKINGS.EDIT',      'MYBOOKINGS.BOOKINGS.VIEW'),
     ('SERVICES.TYPES.CREATE',         'SERVICES.TYPES.VIEW'),
@@ -267,7 +283,10 @@ UNION ALL
 SELECT 'PLATFORM_STAFF', v.Code
 FROM (VALUES
     ('ONBOARDING.REQUESTS.VIEW'),
-    ('ONBOARDING.REQUESTS.EDIT')
+    ('ONBOARDING.REQUESTS.EDIT'),
+    -- Plan 04: staff may see the institutions and the accounts, never act in or on them.
+    ('PLATFORM.INSTITUTIONS.VIEW'),
+    ('PLATFORM.USERS.VIEW')
 ) AS v(Code);
 
 IF EXISTS (SELECT 1 FROM @RbacCeilings c
@@ -401,7 +420,9 @@ UNION ALL
 SELECT 'PLATFORM_REVIEWER', v.Code
 FROM (VALUES
     ('ONBOARDING.REQUESTS.VIEW'),
-    ('ONBOARDING.REQUESTS.EDIT')
+    ('ONBOARDING.REQUESTS.EDIT'),
+    ('PLATFORM.INSTITUTIONS.VIEW'),
+    ('PLATFORM.USERS.VIEW')
 ) AS v(Code);
 
 IF EXISTS (SELECT 1 FROM @RbacSystemGrants g

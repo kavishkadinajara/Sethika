@@ -53,6 +53,27 @@ Sethika follows the device's light or dark setting by default. The `ThemeSwitche
 **The rim mark.** A short 3px line on the top edge, the bowl's rim. Gold on the one card that
 matters most on a screen; in the status colour on a toast. Never more than one gold rim per view.
 
+## The app shell (plan 04, 2026-10-25)
+
+Every screen that is not a sign-in form sits in one shell (`components/shell/AppShell.tsx`):
+
+- **Top bar**: brand, who the session acts as (the context chip, which also switches between the
+  person's own account and their institutions), language, account menu. Signed out: the public
+  links instead.
+- **The rail**: a floating column of section icons, shaped like the bowl, with a flyout that opens
+  beside it on the section's modules (an accordion) and their screens. Below `lg` the same tree is
+  in a sheet from the left. The section and the link the user is on carry the gold rim.
+- **Full width.** The page uses the whole width beside the rail; lists add columns as the screen
+  grows (`lg:grid-cols-2 2xl:grid-cols-3`), forms and paragraphs keep a readable width of their
+  own (`max-w-3xl`, `max-w-prose`).
+- **Brand panels may carry a tonal gradient of their own green** (the rail, the dashboard's
+  greeting, the landing page's picture): Estate Green from a lighter to a darker shade, never a
+  second hue, never glass. This relaxes "no gradients" for these three places only.
+- The menu is the RBAC catalogue's shape filtered by `.VIEW` permissions (`lib/shell/nav.ts`);
+  hiding a link is UX only.
+- **Toasts sit top right, under the bar.** At the bottom they covered the save bars and primary
+  buttons placed where the thumb reaches (found by the access e2e test on a 320 px phone).
+
 ## Motion
 
 Short (under 300 ms), ease-out, and only where it explains something: a sheet arriving, a

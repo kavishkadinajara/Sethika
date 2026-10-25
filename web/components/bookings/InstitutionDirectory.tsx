@@ -74,9 +74,11 @@ export function InstitutionDirectory() {
   return (
     <div className="grid gap-6">
       {institutions.length > 0 && (
-        <Field label={t("filter")} description={t("filterHint")}>
-          <Input type="search" value={filter} onChange={(event) => setFilter(event.target.value)} autoComplete="off" />
-        </Field>
+        <div className="max-w-xl">
+          <Field label={t("filter")} description={t("filterHint")}>
+            <Input type="search" value={filter} onChange={(event) => setFilter(event.target.value)} autoComplete="off" />
+          </Field>
+        </div>
       )}
 
       {institutions.length === 0 ? (
@@ -84,7 +86,7 @@ export function InstitutionDirectory() {
       ) : shown.length === 0 ? (
         <EmptyState>{t("noneMatch")}</EmptyState>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {shown.map((institution) => (
             <li key={institution.slug}>
               <Link

@@ -56,7 +56,7 @@ export default function DesignPage({ params }: PageProps<"/[locale]/design">) {
               <ThemeSwitcher />
             </div>
           </div>
-          <p className="text-muted">{t("intro")}</p>
+          <p className="max-w-3xl text-muted">{t("intro")}</p>
           <p className="text-sm text-muted">{t("hint")}</p>
         </header>
 

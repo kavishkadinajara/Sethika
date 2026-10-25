@@ -49,16 +49,46 @@ public enum RoleChangeFailure
 
     /// <summary>Nobody assigns or revokes their own roles.</summary>
     OwnRoles = 13,
+
+    // ---- staff invitations (plan 04, X1-X5)
+
+    /// <summary>Not a number that could be texted.</summary>
+    InvalidPhone = 14,
+
+    /// <summary>No active Sethika account has that phone number (X1).</summary>
+    AccountNotFound = 15,
+
+    /// <summary>They already hold a role here: give them another with assign, not an invitation (X3).</summary>
+    AlreadyMember = 16,
+
+    /// <summary>An open invitation to them is already waiting.</summary>
+    InvitationPending = 17,
+
+    /// <summary>No such invitation for this caller - including one addressed to someone else.</summary>
+    InvitationNotFound = 18,
+
+    /// <summary>Already accepted, declined or cancelled.</summary>
+    InvitationClosed = 19,
+
+    InvitationExpired = 20,
 }
+
+/// <summary>An invitation to an existing account, found by phone, to hold one of the institution's roles.</summary>
+/// <param name="Phone">As typed; normalised to E.164 before the lookup.</param>
+/// <param name="Role">The role's code in the institution.</param>
+public sealed record InviteCommand(string? Phone, string? Role);
 
 /// <summary>The outcome of a role change.</summary>
 /// <param name="Failure">Why it was refused, or <see cref="RoleChangeFailure.None"/>.</param>
 /// <param name="Permissions">The offending permission codes, for the refusals about permissions.</param>
-public sealed record RoleChangeResult(RoleChangeFailure Failure, IReadOnlyList<string> Permissions)
+/// <param name="Invitation">The new invitation's public id, after an invite.</param>
+public sealed record RoleChangeResult(RoleChangeFailure Failure, IReadOnlyList<string> Permissions, Guid? Invitation = null)
 {
     public bool Succeeded => Failure == RoleChangeFailure.None;
 
     public static RoleChangeResult Success { get; } = new(RoleChangeFailure.None, []);
+
+    public static RoleChangeResult Invited(Guid invitation) => new(RoleChangeFailure.None, [], invitation);
 
     public static RoleChangeResult Failed(RoleChangeFailure failure, IReadOnlyList<string>? permissions = null) =>
         new(failure, permissions ?? []);

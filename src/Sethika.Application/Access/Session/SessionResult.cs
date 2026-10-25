@@ -10,12 +10,23 @@ namespace Sethika.Application.Access.Session;
 /// </param>
 /// <param name="IpAddress">For the new refresh token row.</param>
 /// <param name="UserAgent">For the new refresh token row.</param>
-public sealed record RefreshCommand(string? RefreshToken, string? SwitchToInstitution, string? IpAddress, string? UserAgent)
+/// <param name="SwitchToPersonal">
+/// True to leave the institution and act as the person themselves (plan 04, bug P1): the global
+/// grants, a donor's own bookings and applications (plan 02, B1). Never set with
+/// <paramref name="SwitchToInstitution"/>.
+/// </param>
+public sealed record RefreshCommand(
+    string? RefreshToken,
+    string? SwitchToInstitution,
+    string? IpAddress,
+    string? UserAgent,
+    bool SwitchToPersonal = false)
 {
     /// <summary>Leaves the refresh token - a bearer secret for two weeks - out of <see cref="object.ToString"/>.</summary>
     private bool PrintMembers(StringBuilder builder)
     {
-        builder.Append("SwitchToInstitution = ").Append(SwitchToInstitution);
+        builder.Append("SwitchToInstitution = ").Append(SwitchToInstitution)
+            .Append(", SwitchToPersonal = ").Append(SwitchToPersonal);
         return true;
     }
 }

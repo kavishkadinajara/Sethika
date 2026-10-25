@@ -25,7 +25,9 @@ export default function Page({ params }: PageProps<"/[locale]/apply/[requestNo]"
   return (
     <NextIntlClientProvider messages={pickMessages(messages, [...sharedClientNamespaces, "Apply"])}>
       <ApplyGate>
-        <ApplicationScreen key={requestNo} requestNo={decodeURIComponent(requestNo)} />
+        <div className="max-w-3xl">
+          <ApplicationScreen key={requestNo} requestNo={decodeURIComponent(requestNo)} />
+        </div>
       </ApplyGate>
     </NextIntlClientProvider>
   );

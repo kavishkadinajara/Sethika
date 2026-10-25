@@ -6,26 +6,172 @@
     "name": "Sethika",
     "tagline": "Sponsor a meal at a temple, kovil, mosque, church or care home in Sri Lanka."
   },
-  "Home": {
-    "intro": "Permission engine wiring. Controls appear only for codes the signed-in user actually holds.",
-    "apply": "Register an institution",
-    "review": "Review institution applications",
-    "find": "Find a place to give",
-    "mine": "My bookings",
-    "calendar": "Booking calendar",
-    "slots": "Meals and days"
+  "Shell": {
+    "skipToContent": "Skip to content",
+    "mainMenu": "Main menu",
+    "openMenu": "Open the menu",
+    "home": "Sethika dashboard",
+    "sections": {
+      "dashboard": "Dashboard",
+      "giving": "Giving",
+      "institution": "Institution",
+      "platform": "Platform"
+    },
+    "groups": {
+      "book": "Meals",
+      "apply": "Register an institution",
+      "bookings": "Bookings",
+      "onboarding": "Onboarding",
+      "access": "Access control",
+      "administration": "Administration"
+    },
+    "items": {
+      "find": "Find a place to give",
+      "myBookings": "My bookings",
+      "apply": "My applications",
+      "calendar": "Booking calendar",
+      "slots": "Meals and days",
+      "registrations": "Registration requests",
+      "roles": "Roles",
+      "members": "Staff",
+      "institutions": "Institutions",
+      "users": "Users"
+    },
+    "context": {
+      "platform": "Platform team",
+      "donor": "Donor",
+      "switch": "Switch institution",
+      "label": "Acting as",
+      "personal": "My own account"
+    },
+    "account": {
+      "menu": "Your account",
+      "changePassword": "Change password",
+      "signOut": "Sign out",
+      "signOutEverywhere": "Sign out on all devices",
+      "theme": "Appearance",
+      "language": "Language"
+    },
+    "public": {
+      "find": "Find a place",
+      "signIn": "Sign in",
+      "signUp": "Create an account"
+    },
+    "support": {
+      "banner": "You are in {institution} as platform support. Every change is recorded under your name.",
+      "leave": "Leave"
+    }
   },
-  "PermissionDebug": {
-    "heading": "Resolved context",
-    "signedIn": "Signed in",
-    "platformStaff": "Platform staff",
-    "institution": "Institution",
-    "yes": "yes",
-    "no": "no",
-    "none": "none",
-    "granted": "granted",
-    "denied": "denied",
-    "signedOutNote": "The web app does not issue an access token yet (the sign-in screens arrive with slice 5.7), so it renders signed out and every gate is closed."
+  "Dashboard": {
+    "morning": "Good morning",
+    "afternoon": "Good afternoon",
+    "evening": "Good evening",
+    "welcome": "Welcome back, {name}",
+    "welcomeNoName": "Welcome back",
+    "asDonor": "Every meal you give is someone's day made easier.",
+    "asInstitution": "Here is {name} at a glance.",
+    "asPlatform": "Every institution and every request, in one place.",
+    "quickActions": "Quick actions",
+    "actions": {
+      "find": {
+        "title": "Find a place to give",
+        "description": "Temples, kovils, mosques, churches and care homes"
+      },
+      "myBookings": {
+        "title": "My bookings",
+        "description": "Your meals, and cancelling one"
+      },
+      "apply": {
+        "title": "Register an institution",
+        "description": "Bring your place onto Sethika"
+      },
+      "calendar": {
+        "title": "Booking calendar",
+        "description": "Requests to answer, and the month's meals"
+      },
+      "slots": {
+        "title": "Meals and days",
+        "description": "The meals you offer, and days you are closed"
+      },
+      "registrations": {
+        "title": "Registration requests",
+        "description": "Applications waiting for a review"
+      },
+      "password": {
+        "title": "Change password",
+        "description": "Keep your account safe"
+      },
+      "roles": {
+        "title": "Roles",
+        "description": "What each role may do"
+      },
+      "members": {
+        "title": "Staff",
+        "description": "Invite people and give them roles"
+      },
+      "institutions": {
+        "title": "Institutions",
+        "description": "Open any institution as platform support"
+      },
+      "users": {
+        "title": "Users",
+        "description": "Every account, roles and suspensions"
+      }
+    },
+    "landing": {
+      "eyebrow": "Give a meal, share a blessing",
+      "title": "Sponsor a meal where it is needed most",
+      "lead": "Places of every faith across Sri Lanka publish the meals they need. You choose a day, they confirm it, and we remind you before it comes.",
+      "how": "How it works",
+      "steps": {
+        "find": {
+          "title": "Find a place",
+          "description": "Temples, kovils, mosques, churches, elders' homes and children's homes across Sri Lanka."
+        },
+        "book": {
+          "title": "Choose a day and a meal",
+          "description": "See which days are free, book one, and the place confirms it."
+        },
+        "remind": {
+          "title": "Come and serve",
+          "description": "We send you a reminder before the day, in your language."
+        }
+      },
+      "forInstitutions": "Run a temple, kovil, mosque, church or care home?",
+      "forInstitutionsLead": "Publish your meals, take bookings and stop keeping the diary on paper.",
+      "findCta": "Find a place to give",
+      "joinCta": "Create a free account",
+      "registerCta": "Register your institution",
+      "places": {
+        "temples": "Temples",
+        "kovils": "Kovils",
+        "mosques": "Mosques",
+        "churches": "Churches",
+        "elders": "Elders' homes",
+        "children": "Children's homes"
+      },
+      "preview": {
+        "title": "A fortnight of meals",
+        "legend": "Each bowl fills as sponsors book the day.",
+        "open": "Waiting for a sponsor",
+        "full": "Fully sponsored"
+      },
+      "promise": {
+        "title": "Built for trust",
+        "verified": {
+          "title": "Every place is checked",
+          "description": "An institution appears only after a reviewer has seen its documents."
+        },
+        "languages": {
+          "title": "Sinhala, Tamil and English",
+          "description": "Every screen and every reminder, in the language you choose."
+        },
+        "neutral": {
+          "title": "Open to every faith",
+          "description": "One place for temples, kovils, mosques, churches and care homes alike."
+        }
+      }
+    }
   },
   "Login": {
     "title": "Sign in",
@@ -70,7 +216,8 @@
     "loading": "Loading",
     "required": "required",
     "showPassword": "Show password",
-    "hidePassword": "Hide password"
+    "hidePassword": "Hide password",
+    "switchToPersonal": "Switch to my own account"
   },
   "Toast": {
     "region": "Notifications ({hotkey})",
@@ -337,7 +484,7 @@
     "signInFirst": "Sign in to apply for an institution. New to Sethika? Create an account first.",
     "signIn": "Sign in",
     "createAccount": "Create an account",
-    "institutionSession": "You are signed in for an institution. Applications are made from your own account, and switching back to it from an institution is not possible yet.",
+    "institutionSession": "You are acting for an institution. Applications are made from your own account.",
     "notAllowed": "This account cannot make applications.",
     "loadFailed": "Your applications could not be loaded.",
     "retry": "Try again",
@@ -708,7 +855,7 @@
       "notAllowed": "Your role in this institution does not include this page.",
       "donorSignIn": "Sign in to see your bookings. New to Sethika? Create an account.",
       "createAccount": "Create an account",
-      "institutionSession": "You are signed in for an institution. Your own bookings are under your personal account: sign out, then sign in again without choosing an institution."
+      "institutionSession": "You are acting for an institution. Your own bookings are in your own account."
     },
     "dates": {
       "months": [
@@ -1024,6 +1171,223 @@
         "complete": "{bookingNo} marked as served.",
         "no-show": "{bookingNo} marked as not happened."
       }
+    }
+  },
+  "Access": {
+    "roles": {
+      "title": "Roles",
+      "intro": "What each role in your institution may do. Give a role only what the people holding it need.",
+      "newRole": "New role",
+      "members": "{count, plural, =0 {No one} one {# person} other {# people}}",
+      "permissionCount": "{count, plural, =0 {Nothing yet} one {# permission} other {# permissions}}",
+      "system": "Built in",
+      "locked": "At your level or above: only someone more senior can change it.",
+      "empty": "Choose a role to see what it may do.",
+      "save": "Save changes",
+      "discard": "Discard",
+      "changesCount": "{count, plural, one {# change} other {# changes}}",
+      "saved": "Saved. Everyone holding {role} has the new permissions now.",
+      "mfa": "Needs a texted code each time",
+      "notGrantable": "You can't give this at this role's level",
+      "editing": "What {role} may do",
+      "readOnly": "What {role} may do. You can't change this role.",
+      "level": "Level",
+      "list": "Roles in your institution"
+    },
+    "create": {
+      "title": "New role",
+      "description": "Name it after the work, like \"Kitchen helper\" or \"Front office\".",
+      "name": "Name",
+      "code": "Code",
+      "codeHint": "Capital letters, numbers and _. Used inside Sethika; people see the name.",
+      "level": "Level",
+      "levelHint": "Someone more senior than this level can manage it.",
+      "startFrom": "Start from",
+      "startEmpty": "Nothing (choose after)",
+      "create": "Create role",
+      "created": "{role} is ready. Choose what it may do."
+    },
+    "members": {
+      "title": "Staff",
+      "intro": "Everyone who works with your institution on Sethika, and their roles.",
+      "invite": "Invite someone",
+      "you": "You",
+      "addRole": "Add a role",
+      "removeRole": "Remove {role} from {name}",
+      "noneToAdd": "No other role you can give",
+      "removed": "{role} removed from {name}.",
+      "added": "{name} now has {role}.",
+      "pending": "Waiting for an answer",
+      "expires": "Expires {date}",
+      "invitedBy": "Invited by {name}",
+      "cancel": "Cancel invitation",
+      "cancelled": "Invitation to {name} cancelled.",
+      "empty": "No staff yet.",
+      "staffList": "Staff"
+    },
+    "invite": {
+      "title": "Invite someone",
+      "description": "They need a Sethika account first. They see the invitation when they sign in, and the role is theirs once they accept.",
+      "phone": "Their phone number",
+      "role": "Role",
+      "send": "Send invitation",
+      "sent": "Invitation sent to {phone}."
+    },
+    "errors": {
+      "account_not_found": "No Sethika account has this number. Ask them to create one, then invite them again.",
+      "already_member": "They already work here. Give them another role from the staff list.",
+      "invitation_pending": "An invitation to them is already waiting.",
+      "invitation_closed": "This invitation was already answered or cancelled.",
+      "invitation_expired": "This invitation has expired.",
+      "invitation_not_found": "This invitation no longer exists.",
+      "own_roles": "You can't change your own roles.",
+      "rank_not_junior": "Only someone more senior can do this.",
+      "no_rank": "Only staff of this institution can do this.",
+      "outside_ceiling": "Some of these can't be given at this level.",
+      "not_held": "You can only give permissions you hold yourself.",
+      "unknown_permission": "Some of these permissions no longer exist. Reload the page.",
+      "role_exists": "A role with this code already exists.",
+      "invalid_role_code": "The code must start with a letter and use only capital letters, numbers and _.",
+      "invalid_role_name": "Give the role a name.",
+      "unknown_level": "Choose a level.",
+      "role_not_found": "This role no longer exists.",
+      "member_not_found": "They are no longer on the staff.",
+      "assignment_not_found": "They no longer have this role.",
+      "invalid_phone_number": "Enter a phone number that can receive texts."
+    },
+    "actions": {
+      "VIEW": "View",
+      "CREATE": "Add",
+      "EDIT": "Change",
+      "DELETE": "Delete",
+      "APPROVE": "Approve",
+      "REJECT": "Reject",
+      "EXPORT": "Export",
+      "PRINT": "Print",
+      "ENABLE": "Turn on",
+      "EXECUTE": "Run"
+    },
+    "modules": {
+      "INSTITUTION": "Institution profile",
+      "BOOKINGS": "Bookings",
+      "SERVICES": "Religious services",
+      "ACCESS": "Access control"
+    },
+    "screens": {
+      "INSTITUTION": {
+        "PROFILE": "Institution profile"
+      },
+      "BOOKINGS": {
+        "CALENDAR": "Booking calendar",
+        "SLOTS": "Meals and days"
+      },
+      "SERVICES": {
+        "TYPES": "Services offered",
+        "LEADERS": "Religious leaders",
+        "APPOINTMENTS": "Service appointments",
+        "MYSCHEDULE": "My schedule"
+      },
+      "ACCESS": {
+        "ROLES": "Roles",
+        "MEMBERS": "Staff and their roles"
+      }
+    },
+    "levels": {
+      "OWNER": "Owner",
+      "MANAGER": "Manager",
+      "STAFF": "Staff"
+    },
+    "systemRoles": {
+      "OWNER": "Owner",
+      "MANAGER": "Manager",
+      "STAFF": "Staff",
+      "LEADER": "Religious leader"
+    },
+    "invitations": {
+      "title": "Invitations",
+      "body": "{by} invited you to join {institution} as {role}.",
+      "expires": "Answer by {date}",
+      "accept": "Accept",
+      "decline": "Decline",
+      "accepted": "You are now on the staff of {institution}.",
+      "open": "Open {institution}",
+      "declined": "Invitation declined."
+    }
+  },
+  "Admin": {
+    "institutions": {
+      "title": "Institutions",
+      "intro": "Every institution on Sethika. Open one as platform support to work inside it with every permission.",
+      "search": "Search",
+      "searchHint": "By name, type or district",
+      "empty": "No institution matches.",
+      "staff": "{count, plural, =0 {No staff} one {# staff member} other {# staff}}",
+      "owner": "Owner: {name}",
+      "noOwner": "No owner yet",
+      "open": "Open as platform support",
+      "status": {
+        "Onboarding": "Onboarding",
+        "Active": "Active",
+        "Suspended": "Suspended",
+        "Deactivated": "Deactivated"
+      }
+    },
+    "users": {
+      "title": "Users",
+      "intro": "Every account on Sethika: donors, institution staff and the platform team.",
+      "search": "Search",
+      "searchHint": "By name or phone number",
+      "create": "Create an account",
+      "empty": "No account matches.",
+      "type": {
+        "Donor": "Donor",
+        "InstitutionStaff": "Institution staff",
+        "PlatformStaff": "Platform team"
+      },
+      "status": {
+        "Active": "Active",
+        "PendingVerification": "Not verified",
+        "Suspended": "Suspended",
+        "Deactivated": "Deactivated"
+      },
+      "suspend": "Suspend",
+      "reactivate": "Reactivate",
+      "suspended": "{name} is suspended and signed out everywhere.",
+      "reactivated": "{name} can sign in again.",
+      "platformRoles": "Platform roles",
+      "addPlatformRole": "Give a platform role",
+      "removePlatformRole": "Take {role} from {name}",
+      "granted": "{name} now has {role}.",
+      "revoked": "{role} taken from {name}.",
+      "institutions": "Institutions",
+      "none": "None",
+      "you": "You",
+      "list": "Accounts"
+    },
+    "create": {
+      "title": "Create an account",
+      "description": "For someone who cannot sign up themselves. They sign in with a code texted to this number; no password is needed.",
+      "name": "Full name",
+      "phone": "Phone number",
+      "language": "Language for their texts",
+      "create": "Create account",
+      "created": "Account created for {name}. They can sign in with a texted code."
+    },
+    "errors": {
+      "already_registered": "This number already has an account. Search for it instead.",
+      "invalid_phone_number": "Enter a phone number that can receive texts.",
+      "invalid_full_name": "Enter their full name.",
+      "own_account": "You can't change your own account here.",
+      "rank_not_junior": "Only someone more senior can do this.",
+      "user_not_found": "This account no longer exists.",
+      "role_not_found": "This role no longer exists.",
+      "institution_not_found": "This institution is not open on Sethika."
+    },
+    "gate": {
+      "signInFirst": "Sign in with your platform account.",
+      "signIn": "Sign in",
+      "notAllowed": "This account is not part of the platform team.",
+      "inInstitution": "You are inside an institution as platform support. Leave it to use the platform's screens."
     }
   }
 }

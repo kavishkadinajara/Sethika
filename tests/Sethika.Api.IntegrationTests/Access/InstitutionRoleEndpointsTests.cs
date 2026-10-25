@@ -32,7 +32,7 @@ namespace Sethika.Api.IntegrationTests.Access;
 /// the step-up flow has its own tests, and these are about roles.
 /// </remarks>
 [Collection(SethikaDatabaseCollection.Name)]
-public sealed class InstitutionRoleEndpointsTests(SethikaTestDatabase database) : IAsyncLifetime
+public sealed partial class InstitutionRoleEndpointsTests(SethikaTestDatabase database) : IAsyncLifetime
 {
     private const string SigningKey = "institution-role-test-signing-key-at-least-32-bytes!!";
     private const string Password = "Dana!2026Sethika";
@@ -95,6 +95,10 @@ public sealed class InstitutionRoleEndpointsTests(SethikaTestDatabase database) 
             DECLARE @ids TABLE (Id UNIQUEIDENTIFIER);
             INSERT @ids SELECT Id FROM auth.Users WHERE PhoneNumber IN @phones;
 
+            -- Invitations sit behind RLS (plan 04, X2): without the platform flag this deletes nothing.
+            EXEC sp_set_session_context N'IsPlatform', 1;
+            DELETE FROM org.StaffInvitations WHERE InviteeUserId IN (SELECT Id FROM @ids) OR InvitedBy IN (SELECT Id FROM @ids);
+
             -- What these users made or granted points back at them: CreatedBy, GrantedBy, AssignedBy.
             DECLARE @made TABLE (Id INT);
             INSERT @made SELECT Id FROM auth.Roles WHERE CreatedBy IN (SELECT Id FROM @ids);
@@ -131,7 +135,7 @@ public sealed class InstitutionRoleEndpointsTests(SethikaTestDatabase database) 
     }
 
     /// <summary>A signed-in member of Alpha.</summary>
-    private sealed record Member(Guid UserId, string AccessToken, string TokenId);
+    private sealed record Member(Guid UserId, string AccessToken, string TokenId, string Phone);
 
     private async Task ExecuteAsync(string sql, object parameters)
     {
@@ -189,7 +193,7 @@ public sealed class InstitutionRoleEndpointsTests(SethikaTestDatabase database) 
 
         var token = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("accessToken").GetString()!;
         var jwt = new JsonWebToken(token);
-        return new Member(Guid.Parse(jwt.GetClaim(SethikaClaimTypes.UserId).Value), token, jwt.Id);
+        return new Member(Guid.Parse(jwt.GetClaim(SethikaClaimTypes.UserId).Value), token, jwt.Id, phone);
     }
 
     /// <summary>As if <paramref name="member"/> had just stepped up (plan A5).</summary>

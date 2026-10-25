@@ -171,7 +171,7 @@ function Tray({ days, onDecided }: { days: SlotDay[] | null; onDecided: () => vo
       {requests.length === 0 ? (
         <p className="font-tagline text-lg italic text-muted">{t("clear")}</p>
       ) : (
-        <ul className="grid gap-3 md:grid-cols-2">
+        <ul className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
           {requests.map(({ day, booking }) => (
             <li key={booking.bookingNo}>
               <BookingItem day={day} booking={booking} showWhen onDecided={onDecided} />

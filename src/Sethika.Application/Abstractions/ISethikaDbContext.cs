@@ -45,6 +45,7 @@ public interface ISethikaDbContext
 
     // What approving an application creates (plan 02, B6).
     DbSet<InstitutionMember> InstitutionMembers { get; }
+    DbSet<StaffInvitation> StaffInvitations { get; }
     DbSet<InstitutionDocument> InstitutionDocuments { get; }
     DbSet<InstitutionStatusChange> InstitutionStatusHistory { get; }
     DbSet<AuditLogEntry> AuditLogs { get; }

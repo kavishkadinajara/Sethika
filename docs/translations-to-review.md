@@ -577,3 +577,29 @@ people say, or is there a more usual word?
 | `App.profile.benefits.book` | Book a day in a few taps, and see every booking in one place. | තට්ටු කිහිපයකින් දිනයක් වෙන් කර, සෑම වෙන්කිරීමක්ම එක තැනකින් බලන්න. | சில தட்டல்களில் ஒரு நாளை முன்பதிவு செய்து, ஒவ்வொரு முன்பதிவையும் ஒரே இடத்தில் பாருங்கள். | | |
 | `App.profile.benefits.remind` | Get texts and reminders in your own language. | ඔබේම භාෂාවෙන් කෙටි පණිවිඩ සහ සිහිකැඳවීම් ලබාගන්න. | உங்கள் சொந்த மொழியில் குறுஞ்செய்திகளும் நினைவூட்டல்களும் பெறுங்கள். | | |
 | `App.profile.version` | Version {version} | අනුවාදය {version} | பதிப்பு {version} | | |
+
+## App shell, dashboard and access screens (plan 04: `Shell`, `Dashboard`, `Access` namespaces)
+
+The web app's frame (menu, account menu, who the session acts as), the landing page and the
+dashboard, and the access screens (roles, the permission matrix, staff, invitations): about 250
+strings, plus `Common.switchToPersonal`, a new `Booking.gate.institutionSession` and
+`Apply.institutionSession` (the old texts said switching back was impossible; it now is). The
+`Home` and `PermissionDebug` namespaces were removed with the old home page: their rows above can
+go. Drafts, as above: review them in the JSON files side by side with `en.json`.
+
+Questions for the reviewers:
+
+1. `පරිත්‍යාග` / `நன்கொடை` as the menu section for a donor's own things ("Giving"). Natural as a
+   heading, or is there a warmer word?
+2. `භූමිකාව` / `பங்கு` for a "role" (Owner, Manager, a custom "Kitchen helper"), and
+   `අවසර` / `அனுமதி` for a "permission". Do staff of a temple or a care home use these words?
+3. `කාර්ය මණ්ඩලය` / `பணியாளர்கள்` for "staff", which here includes volunteers and religious
+   leaders who are not employees.
+4. The greeting `සුබ උදෑසනක්` / `காலை வணக்கம்` and the landing page's eyebrow
+   `ආහාර වේලක් දෙන්න, සතුට බෙදාගන්න` / `ஒரு வேளை உணவு, ஒரு ஆசீர்வாதம்`: faith-neutral enough?
+5. The action names on the role editor's pills (`Access.actions`: View, Add, Change, Approve,
+   Reject): short imperatives, as English. Natural on a button-like pill?
+
+| Namespace | Reviewer (si) | Reviewer (ta) | Status |
+|---|---|---|---|
+| `Shell`, `Dashboard`, `Access`, `Common.switchToPersonal`, `Booking.gate.institutionSession`, `Apply.institutionSession` | | | |

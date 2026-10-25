@@ -50,9 +50,9 @@ test("a reviewer starts a review, judges the documents, answers the checklist an
   const { requestNo } = await applicationBy(baseURL!, "E2E Review Temple");
   await staff(page, baseURL!, "PLATFORM_REVIEWER");
 
-  // The home page leads to the queue, where the new application waits.
+  // The dashboard leads to the queue, where the new application waits.
   await page.goto("/");
-  await page.getByRole("link", { name: "Review institution applications" }).click();
+  await page.getByRole("main").getByRole("link", { name: /Registration requests/ }).click();
   await expect(page.getByRole("heading", { name: "Institution applications" })).toBeVisible();
   const row = page.locator("li").filter({ hasText: requestNo });
   await expect(row.getByText("Submitted", { exact: true })).toBeVisible();
@@ -149,18 +149,21 @@ test("an administrator approves once everything is checked, with a texted code, 
   await expect(applicantPage.getByText(/^Your institution is on Sethika as /)).toBeVisible();
   await applicantPage.getByRole("button", { name: "Open the institution" }).click();
   await applicantPage.waitForURL((url) => !url.pathname.includes("/apply"));
-  await expect(applicantPage.getByText("Acting for E2E Approved Kovil")).toBeVisible();
+  await expect(applicantPage.getByText("Here is E2E Approved Kovil at a glance.")).toBeVisible();
   await context.close();
 
-  // Signing in afresh (or any reload: a refresh picks the only institution too), the owner acts
-  // for it at once, and the application screens say plainly why they are closed to it.
+  // Signing in afresh, the owner acts for their only institution at once, and the application
+  // screens say plainly why they are closed to it, with the way back to their own account
+  // (plan 04, P1).
   const fresh = await browser.newContext();
   const ownerPage = await fresh.newPage();
   await signIn(ownerPage, applicant);
   await ownerPage.goto("/");
-  await expect(ownerPage.getByText("Acting for E2E Approved Kovil")).toBeVisible();
+  await expect(ownerPage.getByText("Here is E2E Approved Kovil at a glance.")).toBeVisible();
   await ownerPage.goto("/apply");
-  await expect(ownerPage.getByText(/switching back to it from an institution is not possible yet/)).toBeVisible();
+  await expect(ownerPage.getByText("Applications are made from your own account.", { exact: false })).toBeVisible();
+  await ownerPage.getByRole("button", { name: "Switch to my own account" }).click();
+  await expect(ownerPage.getByText(requestNo)).toBeVisible();
   await fresh.close();
 });
 
@@ -203,7 +206,7 @@ test("an applicant is not let into the review screens", async ({ applicant: { pa
   await page.goto("/admin/registrations");
   await expect(page.getByText("This account cannot review applications.")).toBeVisible();
   await page.goto("/");
-  await expect(page.getByRole("link", { name: "Review institution applications" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Registration requests/ })).toHaveCount(0);
 });
 
 test("the review screens in Sinhala and Tamil fit a phone, with nothing clipped @phone", async ({ page, baseURL }, testInfo) => {
