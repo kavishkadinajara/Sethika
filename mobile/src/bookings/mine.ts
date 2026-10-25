@@ -18,3 +18,29 @@ export function splitBookings(bookings: readonly DonorBooking[], today: string):
     past: bookings.filter((booking) => !isUpcoming(booking, today)).sort((a, b) => soonest(b, a)),
   };
 }
+
+export type DonorStats = {
+  /** Bookings still to come. */
+  upcoming: number;
+  /** Meals the institution marked served (Completed). */
+  given: number;
+  /** The people those served meals fed: their headcounts added up. */
+  fed: number;
+  /** The soonest booking still to come, if any. */
+  next: DonorBooking | null;
+};
+
+/**
+ * What the donor's own bookings add up to, for their Profile. Only a served meal counts as given:
+ * an approved booking may still be cancelled, and a no-show fed no one.
+ */
+export function donorStats(bookings: readonly DonorBooking[], today: string): DonorStats {
+  const { upcoming } = splitBookings(bookings, today);
+  const served = bookings.filter((booking) => booking.status === "Completed");
+  return {
+    upcoming: upcoming.length,
+    given: served.length,
+    fed: served.reduce((sum, booking) => sum + booking.headcount, 0),
+    next: upcoming[0] ?? null,
+  };
+}

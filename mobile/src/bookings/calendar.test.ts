@@ -1,6 +1,7 @@
 import {
   addDays,
   addMonths,
+  colomboPartOfDay,
   colomboToday,
   dayOfWeek,
   daysBetween,
@@ -72,5 +73,16 @@ describe("monthWindow", () => {
     expect(monthWindow("2026-10-25", 90)).toEqual({ first: "2026-10", last: "2027-01" });
     expect(monthWindow("2026-10-25", 6)).toEqual({ first: "2026-10", last: "2026-10" });
     expect(monthWindow("2026-10-25", 7)).toEqual({ first: "2026-10", last: "2026-11" });
+  });
+});
+
+describe("colomboPartOfDay", () => {
+  it("greets by the hour in Colombo (UTC+5:30), not the phone's or UTC's", () => {
+    expect(colomboPartOfDay(new Date("2026-11-19T18:29:59Z"))).toBe("evening");
+    expect(colomboPartOfDay(new Date("2026-11-19T18:30:00Z"))).toBe("morning");
+    expect(colomboPartOfDay(new Date("2026-11-20T06:29:59Z"))).toBe("morning");
+    expect(colomboPartOfDay(new Date("2026-11-20T06:30:00Z"))).toBe("afternoon");
+    expect(colomboPartOfDay(new Date("2026-11-20T12:29:59Z"))).toBe("afternoon");
+    expect(colomboPartOfDay(new Date("2026-11-20T12:30:00Z"))).toBe("evening");
   });
 });

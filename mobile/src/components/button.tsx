@@ -3,17 +3,24 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { radius, spacing } from "@/theme/colors";
 import { usePalette } from "@/theme/use-theme";
 
+import { Icon, type IconName } from "./icon";
 import { Text } from "./text";
 
 type Props = {
   label: string;
   onPress: () => void;
-  variant?: "primary" | "secondary" | "link";
+  variant?: "primary" | "secondary" | "quiet" | "danger" | "link";
+  icon?: IconName;
   busy?: boolean;
   disabled?: boolean;
 };
 
-export function Button({ label, onPress, variant = "primary", busy = false, disabled = false }: Props) {
+/**
+ * A full pill (DESIGN.md: never bowl a button). A press settles it to 97 % so a thumb feels it
+ * land. `quiet` is a soft tinted pill for second actions inside a card; `danger` the outline
+ * for something that ends a session or a booking. A busy button keeps its width.
+ */
+export function Button({ label, onPress, variant = "primary", icon, busy = false, disabled = false }: Props) {
   const palette = usePalette();
   const inactive = disabled || busy;
 
@@ -33,7 +40,13 @@ export function Button({ label, onPress, variant = "primary", busy = false, disa
     );
   }
 
-  const primary = variant === "primary";
+  const look = {
+    primary: { rest: palette.primary, pressed: palette.primaryStrong, border: palette.primary, text: palette.onPrimary },
+    secondary: { rest: palette.surface, pressed: palette.subtle, border: palette.line, text: palette.fg },
+    quiet: { rest: palette.subtle, pressed: palette.hairline, border: palette.subtle, text: palette.primary },
+    danger: { rest: palette.surface, pressed: palette.dangerSoft, border: palette.danger, text: palette.danger },
+  }[variant];
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -42,15 +55,18 @@ export function Button({ label, onPress, variant = "primary", busy = false, disa
       disabled={inactive}
       style={({ pressed }) => [
         styles.button,
-        primary
-          ? { backgroundColor: pressed ? palette.primaryStrong : palette.primary }
-          : { backgroundColor: pressed ? palette.subtle : palette.surface, borderColor: palette.line, borderWidth: 1 },
+        { backgroundColor: pressed ? look.pressed : look.rest, borderColor: look.border },
+        pressed && styles.pressed,
         { opacity: disabled && !busy ? 0.5 : 1 },
       ]}
     >
       <View style={styles.content}>
-        {busy && <ActivityIndicator color={primary ? palette.onPrimary : palette.primary} />}
-        <Text variant="label" style={{ color: primary ? palette.onPrimary : palette.fg }}>
+        {busy ? (
+          <ActivityIndicator color={look.text} />
+        ) : (
+          icon && <Icon name={icon} size={18} color={look.text} />
+        )}
+        <Text variant="label" style={[styles.label, { color: look.text }]}>
           {label}
         </Text>
       </View>
@@ -60,11 +76,15 @@ export function Button({ label, onPress, variant = "primary", busy = false, disa
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 48,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
+    minHeight: 52,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
     justifyContent: "center",
   },
+  pressed: { transform: [{ scale: 0.97 }] },
   content: { flexDirection: "row", gap: spacing.sm, justifyContent: "center", alignItems: "center" },
+  label: { textAlign: "center", flexShrink: 1 },
   link: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },
 });

@@ -10,6 +10,7 @@ import { Button } from "@/components/button";
 import { BrandHeader, Screen } from "@/components/screen";
 import { Text } from "@/components/text";
 import { I18nProvider, useI18n } from "@/i18n/i18n-provider";
+import { ThemePreferenceProvider } from "@/theme/appearance";
 import { colors, spacing } from "@/theme/colors";
 
 SplashScreen.preventAutoHideAsync();
@@ -33,12 +34,14 @@ export default function RootLayout() {
         },
       }}
     >
-      <I18nProvider>
-        <SessionProvider>
-          <StatusBar style="auto" />
-          <Routes />
-        </SessionProvider>
-      </I18nProvider>
+      <ThemePreferenceProvider>
+        <I18nProvider>
+          <SessionProvider>
+            <StatusBar style="auto" />
+            <Routes />
+          </SessionProvider>
+        </I18nProvider>
+      </ThemePreferenceProvider>
     </ThemeProvider>
   );
 }
@@ -54,7 +57,16 @@ export default function RootLayout() {
     they are, signed out.                                                                     */
 function Routes() {
   const session = useSession();
-  const [fontsLoaded, fontError] = useFonts({ Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold });
+  const scheme = useColorScheme();
+  const palette = scheme === "dark" ? colors.dark : colors.light;
+  const [fontsLoaded, fontError] = useFonts({
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    // Fraunces italic, the human voice (DESIGN.md), from the OFL font in assets/fonts: one static
+    // face, copied in rather than installed as a package (PHASE-F-MOBILE.md, F16).
+    Fraunces_400Regular_Italic: require("@/assets/fonts/Fraunces_400Regular_Italic.ttf"),
+  });
   const ready = (fontsLoaded || fontError !== null) && session.status !== "loading";
 
   useEffect(() => {
@@ -67,7 +79,16 @@ function Routes() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(app)" />
-      <Stack.Screen name="i/[slug]" options={{ headerShown: true, title: "" }} />
+      <Stack.Screen
+        name="i/[slug]"
+        options={{
+          headerShown: true,
+          title: "",
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: palette.canvas },
+          headerTintColor: palette.primary,
+        }}
+      />
       <Stack.Screen name="(auth)" />
     </Stack>
   );

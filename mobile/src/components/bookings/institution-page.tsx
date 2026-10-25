@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Linking, Pressable, StyleSheet, View } from "react-native";
 
 import { useSession } from "@/auth/session-provider";
 import { useBookingApi } from "@/bookings/api";
@@ -11,10 +11,12 @@ import { formatLkr, inLocale, localName } from "@/bookings/names";
 import { bookingReturnPath } from "@/bookings/return-path";
 import type { Availability, DayAvailability, PublicInstitution, PublicMealSlot } from "@/bookings/types";
 import { useDates } from "@/bookings/use-dates";
-import { FormError } from "@/components/screen";
+import { Button } from "@/components/button";
+import { Icon, type IconName } from "@/components/icon";
+import { FormError, SectionTitle } from "@/components/screen";
 import { Text } from "@/components/text";
 import { useI18n } from "@/i18n/i18n-provider";
-import { radius, spacing } from "@/theme/colors";
+import { bowl, cup, radius, spacing } from "@/theme/colors";
 import { usePalette } from "@/theme/use-theme";
 
 import { Bowl } from "./bowl";
@@ -179,35 +181,41 @@ export function InstitutionPage({ slug, chosen }: Props) {
 
           {slot && window && (
             <View style={styles.section}>
-              <Text variant="heading" accessibilityRole="header">
-                {t("Discover.chooseDay")}
-              </Text>
+              <SectionTitle>{t("Discover.chooseDay")}</SectionTitle>
               <Text variant="muted">{t("Discover.chooseDayHint", { meal: localName(language, slot) })}</Text>
               <Text variant="muted">{t("App.calendar.tapHint")}</Text>
 
               <FormError message={notice} />
 
-              <BowlCalendar
-                month={month}
-                onMonthChange={(next) => {
-                  setMonth(next);
-                  setInspected(null);
-                }}
-                canGoBack={month > window.first}
-                canGoForward={month < window.last}
-                selected={inspected}
-                onSelect={choose}
-                loading={!days && !monthFailed}
-                day={(date) => view(date, slot)}
-              />
+              <View style={[styles.band, { backgroundColor: palette.surface, borderColor: palette.hairline }]}>
+                <BowlCalendar
+                  month={month}
+                  onMonthChange={(next) => {
+                    setMonth(next);
+                    setInspected(null);
+                  }}
+                  canGoBack={month > window.first}
+                  canGoForward={month < window.last}
+                  selected={inspected}
+                  onSelect={choose}
+                  loading={!days && !monthFailed}
+                  day={(date) => view(date, slot)}
+                  today={today}
+                />
 
-              {inspected && inspectedWords && (
-                <Text accessibilityLiveRegion="polite" style={{ color: palette.fg }}>
-                  {t("App.calendar.dayStatus", { date: dates.full(inspected), status: t(inspectedWords.key, inspectedWords.values) })}
-                </Text>
-              )}
-              {monthFailed && <Failed message={t("Discover.monthFailed")} onRetry={refresh} />}
-              <Legend shared={slot.bookingMode === "Shared"} />
+                <View style={styles.bandBody}>
+                  {inspected && inspectedWords && (
+                    <View style={[styles.dayStatus, { backgroundColor: palette.subtle }]}>
+                      <Icon name="calendar" size={16} color={palette.primary} />
+                      <Text accessibilityLiveRegion="polite" style={styles.grow}>
+                        {t("App.calendar.dayStatus", { date: dates.full(inspected), status: t(inspectedWords.key, inspectedWords.values) })}
+                      </Text>
+                    </View>
+                  )}
+                  {monthFailed && <Failed message={t("Discover.monthFailed")} onRetry={refresh} />}
+                  <Legend shared={slot.bookingMode === "Shared"} />
+                </View>
+              </View>
             </View>
           )}
 
@@ -240,25 +248,47 @@ export function InstitutionPage({ slug, chosen }: Props) {
 function Profile({ institution }: { institution: PublicInstitution }) {
   const { t, language } = useI18n();
   const palette = usePalette();
+  const name = localName(language, institution);
   const address = [institution.addressLine1, institution.addressLine2, institution.city].filter(Boolean).join(", ");
 
   return (
     <View style={styles.profile}>
-      <Text variant="muted">{inLocale(language, institution.typeName, institution.typeNameSi, institution.typeNameTa)}</Text>
-      <Text variant="title" accessibilityRole="header" style={{ color: palette.brand }}>
-        {localName(language, institution)}
+      <View style={[styles.monogram, { backgroundColor: palette.subtle, borderColor: palette.hairline }]}>
+        <Text variant="title" style={{ color: palette.brand }}>
+          {Array.from(name)[0] ?? ""}
+        </Text>
+      </View>
+      <Text variant="eyebrow">{inLocale(language, institution.typeName, institution.typeNameSi, institution.typeNameTa)}</Text>
+      <Text variant="display" accessibilityRole="header">
+        {name}
       </Text>
-      <Text>
-        {address} · {inLocale(language, institution.district, institution.districtSi, institution.districtTa)}
-      </Text>
-      {institution.description && <Text variant="muted">{institution.description}</Text>}
+      <View style={styles.place}>
+        <Icon name="place" size={16} />
+        <Text variant="muted" style={styles.grow}>
+          {address} · {inLocale(language, institution.district, institution.districtSi, institution.districtTa)}
+        </Text>
+      </View>
+      {institution.description && <Text style={styles.description}>{institution.description}</Text>}
       {institution.dietaryNotes && (
         <View style={[styles.note, { backgroundColor: palette.subtle, borderColor: palette.hairline }]}>
-          <Text>
+          <Icon name="info" size={18} color={palette.primary} />
+          <Text style={styles.grow}>
             <Text variant="label">{t("Discover.dietary")}</Text> {institution.dietaryNotes}
           </Text>
         </View>
       )}
+      <View style={styles.directions}>
+        <Button
+          label={t("App.institution.directions")}
+          variant="quiet"
+          icon="map"
+          onPress={() =>
+            void Linking.openURL(
+              `https://www.google.com/maps/search/?api=1&query=${institution.latitude},${institution.longitude}`,
+            ).catch(() => {})
+          }
+        />
+      </View>
     </View>
   );
 }
@@ -271,9 +301,7 @@ function SlotChooser({ slots, selected, onSelect }: { slots: PublicMealSlot[]; s
 
   return (
     <View style={styles.section} accessibilityRole="radiogroup" accessibilityLabel={t("Discover.chooseMeal")}>
-      <Text variant="heading" accessibilityRole="header">
-        {t("Discover.chooseMeal")}
-      </Text>
+      <SectionTitle>{t("Discover.chooseMeal")}</SectionTitle>
       {slots.map((slot) => {
         const checked = slot.publicId === selected;
         const days = maskDays(slot.daysOfWeekMask);
@@ -284,34 +312,57 @@ function SlotChooser({ slots, selected, onSelect }: { slots: PublicMealSlot[]; s
             accessibilityRole="radio"
             accessibilityState={{ checked }}
             onPress={() => onSelect(slot.publicId)}
-            style={[
+            style={({ pressed }) => [
               styles.slot,
-              { borderColor: checked ? palette.primary : palette.hairline, backgroundColor: checked ? palette.subtle : palette.surface },
+              {
+                borderColor: checked ? palette.primary : palette.hairline,
+                backgroundColor: checked ? palette.subtle : palette.surface,
+                borderWidth: checked ? 2 : 1,
+              },
+              pressed && styles.pressed,
             ]}
           >
             <View style={styles.slotTitle}>
-              <Text variant="heading" style={[styles.grow, { color: palette.brand }]}>
-                {localName(language, slot)}
-              </Text>
+              <View style={[styles.slotIcon, { backgroundColor: checked ? palette.primary : palette.subtle }]}>
+                <Icon name="meal" size={20} color={checked ? palette.onPrimary : palette.primary} />
+              </View>
+              <View style={styles.grow}>
+                <Text variant="heading">{localName(language, slot)}</Text>
+                <Text variant="muted">
+                  {slot.startTime}–{slot.endTime} ·{" "}
+                  {days.length === 7 ? t("Discover.everyDay") : days.map((day) => dates.weekdayName(day, "short")).join(" ")}
+                </Text>
+              </View>
               <View style={[styles.radio, { borderColor: checked ? palette.primary : palette.line }]}>
                 {checked && <View style={[styles.radioDot, { backgroundColor: palette.primary }]} />}
               </View>
             </View>
-            <Text>
-              {slot.startTime}–{slot.endTime} ·{" "}
-              {days.length === 7 ? t("Discover.everyDay") : days.map((day) => dates.weekdayName(day, "short")).join(" ")}
-            </Text>
-            <Text variant="muted">
-              {slot.bookingMode === "Shared" ? t("Discover.shared", { count: slot.maxSponsors }) : t("Discover.exclusive")}
-              {" · "}
-              {t("Discover.people", { min: slot.minHeadcount, max: slot.maxHeadcount })}
-            </Text>
-            {slot.estimatedCostPerHead !== null && (
-              <Text variant="muted">{t("Discover.costPerHead", { cost: formatLkr(slot.estimatedCostPerHead) })}</Text>
-            )}
+            <View style={styles.facts}>
+              <Fact
+                icon="people"
+                words={slot.bookingMode === "Shared" ? t("Discover.shared", { count: slot.maxSponsors }) : t("Discover.exclusive")}
+              />
+              <Fact icon="person" words={t("Discover.people", { min: slot.minHeadcount, max: slot.maxHeadcount })} />
+              {slot.estimatedCostPerHead !== null && (
+                <Fact icon="heart" words={t("Discover.costPerHead", { cost: formatLkr(slot.estimatedCostPerHead) })} />
+              )}
+            </View>
           </Pressable>
         );
       })}
+    </View>
+  );
+}
+
+/** One fact about a meal, as a small tag: an icon and the words that say it. */
+function Fact({ icon, words }: { icon: IconName; words: string }) {
+  const palette = usePalette();
+  return (
+    <View style={[styles.fact, { backgroundColor: palette.canvas, borderColor: palette.hairline }]}>
+      <Icon name={icon} size={14} />
+      <Text variant="caption" style={{ color: palette.fg }}>
+        {words}
+      </Text>
     </View>
   );
 }
@@ -349,15 +400,35 @@ function Legend({ shared }: { shared: boolean }) {
 
 const styles = StyleSheet.create({
   profile: { gap: spacing.xs },
-  note: { borderWidth: 1, borderRadius: radius.sm, padding: spacing.md, marginTop: spacing.sm },
+  monogram: { ...cup, width: 64, height: 68, borderWidth: 1, alignItems: "center", justifyContent: "center", marginBottom: spacing.sm },
+  place: { flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 2 },
+  description: { marginTop: spacing.sm },
+  note: { ...bowl, flexDirection: "row", alignItems: "flex-start", gap: spacing.sm, borderWidth: 1, padding: spacing.md, marginTop: spacing.sm },
+  directions: { alignSelf: "flex-start", marginTop: spacing.sm },
   section: { gap: spacing.sm },
-  slot: { borderWidth: 1.5, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs, minHeight: 44 },
-  slotTitle: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
+  // The calendar runs edge to edge (seven 45 pt days on a 320 pt phone) on a surface band.
+  band: { marginHorizontal: -spacing.md, borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: spacing.md, gap: spacing.sm },
+  bandBody: { paddingHorizontal: spacing.md, gap: spacing.sm },
+  dayStatus: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm, borderRadius: radius.md, padding: spacing.sm + 4 },
+  slot: { ...bowl, padding: spacing.md, gap: spacing.sm, minHeight: 44 },
+  pressed: { transform: [{ scale: 0.98 }] },
+  slotTitle: { flexDirection: "row", alignItems: "center", gap: spacing.sm + 4 },
+  slotIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   grow: { flex: 1 },
-  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: "center", justifyContent: "center", marginTop: 3 },
+  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: "center", justifyContent: "center" },
   radioDot: { width: 10, height: 10, borderRadius: 5 },
-  legend: { gap: spacing.xs, marginTop: spacing.xs },
-  legendRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  legendMark: { width: 32, alignItems: "center" },
+  facts: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs + 2 },
+  fact: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 4,
+  },
+  legend: { flexDirection: "row", flexWrap: "wrap", columnGap: spacing.md, rowGap: spacing.xs, marginTop: spacing.xs },
+  legendRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  legendMark: { width: 30, alignItems: "center" },
   plainDate: { textAlign: "center" },
 });

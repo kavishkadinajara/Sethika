@@ -1,6 +1,6 @@
 import { booking } from "@/test-utils/fixtures";
 
-import { isUpcoming, splitBookings } from "./mine";
+import { donorStats, isUpcoming, splitBookings } from "./mine";
 
 /*  My bookings' two lists. The API returns the newest 200 by slot date (plan 03, E27); the app
     sorts them itself, so the order does not depend on how the API happens to send them.     */
@@ -30,5 +30,30 @@ describe("splitBookings", () => {
     expect(isUpcoming(booking({ date: "2026-11-20", status: "Cancelled" }), TODAY)).toBe(false);
     expect(isUpcoming(booking({ date: "2026-11-09", status: "Approved" }), TODAY)).toBe(false);
     expect(isUpcoming(booking({ date: TODAY, status: "Requested" }), TODAY)).toBe(true);
+  });
+});
+
+describe("donorStats", () => {
+  it("counts only served meals as given, adds up the people they fed, and names the soonest still to come", () => {
+    const stats = donorStats(
+      [
+        booking({ bookingNo: "BK-1", date: "2026-11-30", status: "Approved", headcount: 40 }),
+        booking({ bookingNo: "BK-2", date: "2026-11-01", status: "Completed", headcount: 25 }),
+        booking({ bookingNo: "BK-3", date: "2026-11-12", status: "Requested", headcount: 10 }),
+        booking({ bookingNo: "BK-4", date: "2026-10-20", status: "Completed", headcount: 15 }),
+        booking({ bookingNo: "BK-5", date: "2026-11-05", status: "NoShow", headcount: 30 }),
+        booking({ bookingNo: "BK-6", date: "2026-11-02", status: "Approved", headcount: 50 }),
+      ],
+      TODAY,
+    );
+
+    expect(stats.given).toBe(2);
+    expect(stats.fed).toBe(40);
+    expect(stats.upcoming).toBe(2);
+    expect(stats.next?.bookingNo).toBe("BK-3");
+  });
+
+  it("is all zeros, with nothing next, for a donor who has not booked", () => {
+    expect(donorStats([], TODAY)).toEqual({ upcoming: 0, given: 0, fed: 0, next: null });
   });
 });

@@ -360,7 +360,16 @@
       "profile": "Profile"
     },
     "explore": {
-      "title": "Find a place to give"
+      "title": "Find a place to give",
+      "greeting": {
+        "morning": "Good morning",
+        "afternoon": "Good afternoon",
+        "evening": "Good evening"
+      },
+      "voice": "One meal can brighten someone's whole day.",
+      "kinds": "Kind of place",
+      "allKinds": "All",
+      "count": "{count, plural, one {# place} other {# places}}"
     },
     "bookings": {
       "title": "My bookings"
@@ -369,7 +378,29 @@
       "title": "Profile",
       "greeting": "Hello, {name}",
       "signOutEverywhereHelp": "Ends your session on this phone and in every browser where you are signed in.",
-      "signedOut": "Sign in to book a meal and see your bookings."
+      "signedOut": "Sign in to book a meal and see your bookings.",
+      "thanks": "Thank you for every meal you share.",
+      "stats": {
+        "upcoming": "Coming up",
+        "given": "Meals given",
+        "fed": "People fed"
+      },
+      "next": "Your next meal",
+      "preferences": "Preferences",
+      "account": "Account",
+      "appearance": "Appearance",
+      "theme": {
+        "auto": "Auto",
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "joinTitle": "Give a meal, from wherever you are",
+      "benefits": {
+        "find": "Find places across Sri Lanka that welcome meal sponsors.",
+        "book": "Book a day in a few taps, and see every booking in one place.",
+        "remind": "Get texts and reminders in your own language."
+      },
+      "version": "Version {version}"
     },
     "dates": {
       "monthYear": "{month} {year}",
@@ -379,6 +410,9 @@
     "calendar": {
       "dayStatus": "{date}: {status}",
       "tapHint": "Tap an open day to book it. Tap any other day to see why it is not open."
+    },
+    "institution": {
+      "directions": "Directions"
     }
   }
 }

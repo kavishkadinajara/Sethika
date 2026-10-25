@@ -12,13 +12,15 @@ import { inLocale } from "@/bookings/names";
 import type { BookingStatus, DonorBooking } from "@/bookings/types";
 import { useDates } from "@/bookings/use-dates";
 import { Button } from "@/components/button";
-import { Card, FormError } from "@/components/screen";
+import { Icon } from "@/components/icon";
+import { Card, FormError, SectionTitle } from "@/components/screen";
 import { Text } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { useI18n } from "@/i18n/i18n-provider";
-import { radius, spacing, type Palette } from "@/theme/colors";
+import { bowl, radius, spacing, type Palette } from "@/theme/colors";
 import { usePalette } from "@/theme/use-theme";
 
+import { Bowl } from "./bowl";
 import { EmptyState, Failed, Loading } from "./states";
 
 /** booking.Bookings.CancelReason's length (plan 03, E16). */
@@ -29,14 +31,25 @@ const MAX_REASON = 300;
  * first. Each says where and when, what became of it, and why if it did not go ahead. Cancelling
  * is offered only where the API says the donor may still do it (`canCancel`, Q1).
  */
-export function MyBookings() {
+type Props = {
+  /** Changes when the donor pulls to refresh: the list is fetched again. */
+  refreshKey?: number;
+  /** A fetch finished, well or not: the pull-to-refresh spinner can stop. */
+  onSettled?: () => void;
+};
+
+export function MyBookings({ refreshKey = 0, onSettled }: Props) {
   const { t } = useI18n();
   const session = useSession();
+  const palette = usePalette();
 
   if (session.status === "loading") return <Loading />;
   if (session.status !== "authenticated") {
     return (
-      <Card>
+      <Card rim>
+        <View style={styles.gateIcon}>
+          <Bowl fill={0} color={palette.brand} scale={1.6} />
+        </View>
         <Text>{t("Booking.gate.donorSignIn")}</Text>
         <Button label={t("Booking.gate.signIn")} onPress={() => router.push("/sign-in")} />
         <Button label={t("Booking.gate.createAccount")} variant="secondary" onPress={() => router.push("/sign-up")} />
@@ -45,29 +58,36 @@ export function MyBookings() {
   }
   if (session.activeInstitution) return <Text>{t("Booking.gate.institutionSession")}</Text>;
 
-  return <BookingList />;
+  return <BookingList refreshKey={refreshKey} onSettled={onSettled} />;
 }
 
-function BookingList() {
+function BookingList({ refreshKey, onSettled }: Required<Pick<Props, "refreshKey">> & Pick<Props, "onSettled">) {
   const { t } = useI18n();
   const api = useBookingApi();
   const [bookings, setBookings] = useState<DonorBooking[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [cancelling, setCancelling] = useState<DonorBooking | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const palette = usePalette();
 
   const load = useCallback(async () => {
     setFailed(false);
     const result = await api.listMine();
     if (result.ok) setBookings(result.value);
     else setFailed(true);
+    onSettled?.();
+    // A new onSettled callback on its own must not fetch again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api]);
 
-  // Every time the tab is shown: a booking just made on an institution's page belongs here.
+  // Every time the tab is shown (a booking just made on an institution's page belongs here),
+  // and again when the donor pulls to refresh.
   useFocusEffect(
     useCallback(() => {
       void load();
-    }, [load]),
+      // refreshKey is not read here; a change to it is what asks again.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [load, refreshKey]),
   );
 
   if (failed) return <Failed message={t("MyBookings.loadFailed")} onRetry={() => void load()} />;
@@ -88,11 +108,21 @@ function BookingList() {
   return (
     <>
       {notice && (
-        <Text accessibilityLiveRegion="polite" variant="label">
-          {notice}
-        </Text>
+        <View style={[styles.notice, { backgroundColor: palette.successSoft, borderLeftColor: palette.success }]}>
+          <Icon name="check" size={18} color={palette.success} />
+          <Text accessibilityLiveRegion="polite" variant="label" style={styles.grow}>
+            {notice}
+          </Text>
+        </View>
       )}
-      <Section title={t("MyBookings.upcoming")} empty={t("MyBookings.noneUpcoming")} bookings={upcoming} today={today} onCancel={setCancelling} />
+      <Section
+        title={t("MyBookings.upcoming")}
+        empty={t("MyBookings.noneUpcoming")}
+        bookings={upcoming}
+        today={today}
+        onCancel={setCancelling}
+        featureFirst
+      />
       {past.length > 0 && <Section title={t("MyBookings.past")} bookings={past} today={today} onCancel={setCancelling} />}
 
       {cancelling && (
@@ -116,28 +146,60 @@ function Section({
   bookings,
   today,
   onCancel,
+  featureFirst = false,
 }: {
   title: string;
   empty?: string;
   bookings: DonorBooking[];
   today: string;
   onCancel: (booking: DonorBooking) => void;
+  /** The soonest booking leads, with the gold rim: the one card that matters most here. */
+  featureFirst?: boolean;
 }) {
+  const palette = usePalette();
   return (
     <View style={styles.section}>
-      <Text variant="heading" accessibilityRole="header">
+      <SectionTitle
+        aside={
+          bookings.length > 0 ? (
+            <View style={[styles.count, { backgroundColor: palette.subtle }]}>
+              <Text variant="caption" style={{ color: palette.fg }}>
+                {bookings.length}
+              </Text>
+            </View>
+          ) : undefined
+        }
+      >
         {title}
-      </Text>
+      </SectionTitle>
       {bookings.length === 0 ? (
         <Text variant="muted">{empty}</Text>
       ) : (
-        bookings.map((booking) => <BookingCard key={booking.bookingNo} booking={booking} today={today} onCancel={() => onCancel(booking)} />)
+        bookings.map((booking, index) => (
+          <BookingCard
+            key={booking.bookingNo}
+            booking={booking}
+            today={today}
+            featured={featureFirst && index === 0}
+            onCancel={() => onCancel(booking)}
+          />
+        ))
       )}
     </View>
   );
 }
 
-function BookingCard({ booking, today, onCancel }: { booking: DonorBooking; today: string; onCancel: () => void }) {
+function BookingCard({
+  booking,
+  today,
+  featured,
+  onCancel,
+}: {
+  booking: DonorBooking;
+  today: string;
+  featured: boolean;
+  onCancel: () => void;
+}) {
   const { t, language } = useI18n();
   const dates = useDates();
   const palette = usePalette();
@@ -146,35 +208,56 @@ function BookingCard({ booking, today, onCancel }: { booking: DonorBooking; toda
   const institution = inLocale(language, booking.institutionName, booking.institutionNameSi, booking.institutionNameTa);
 
   return (
-    <View testID={`booking-${booking.bookingNo}`} style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.hairline }]}>
-      {/* The stub: the day, large, as on a temple's own dana calendar. */}
-      <View style={[styles.stub, { backgroundColor: live ? palette.subtle : palette.canvas, borderColor: palette.hairline }]}>
-        <Text variant="muted">{dates.weekday(booking.date, "short")}</Text>
-        <Text variant="title" style={{ color: live ? palette.brand : palette.muted }}>
+    <View
+      testID={`booking-${booking.bookingNo}`}
+      style={[
+        styles.card,
+        { backgroundColor: palette.surface, borderColor: featured ? palette.primary : palette.hairline },
+        featured && styles.featured,
+      ]}
+    >
+      {featured && <View style={[styles.rim, { backgroundColor: palette.accent }]} />}
+      {/* The stub: the day, large, as on an institution's own meal calendar. A booking still
+          going ahead is printed in the primary colour; one that is over, quietly. */}
+      <View style={[styles.stub, { backgroundColor: live ? palette.primary : palette.subtle }]}>
+        <Text variant="caption" style={{ color: live ? palette.onPrimary : palette.muted }}>
+          {dates.weekday(booking.date, "short")}
+        </Text>
+        <Text variant="title" style={{ color: live ? palette.onPrimary : palette.muted }}>
           {Number(booking.date.slice(8))}
         </Text>
-        <Text variant="muted">{dates.monthShort(booking.date)}</Text>
+        <Text variant="caption" style={{ color: live ? palette.onPrimary : palette.muted }}>
+          {dates.monthShort(booking.date)}
+        </Text>
       </View>
+      {/* The perforation between stub and body: two notches in the canvas colour. */}
+      <View style={[styles.notch, styles.notchTop, { backgroundColor: palette.canvas, borderColor: palette.hairline }]} />
+      <View style={[styles.notch, styles.notchBottom, { backgroundColor: palette.canvas, borderColor: palette.hairline }]} />
 
       <View style={styles.body}>
-        <Text variant="label">
-          {inLocale(language, booking.slotName, booking.slotNameSi, booking.slotNameTa)} · {booking.startTime}
-        </Text>
-        <StatusBadge status={booking.status} />
+        <View style={styles.titleRow}>
+          <Text variant="label" style={styles.grow}>
+            {inLocale(language, booking.slotName, booking.slotNameSi, booking.slotNameTa)} · {booking.startTime}
+          </Text>
+          <StatusBadge status={booking.status} />
+        </View>
         <Pressable
           accessibilityRole="link"
           onPress={() => router.push({ pathname: "/i/[slug]", params: { slug: booking.institution } })}
           style={styles.link}
         >
-          <Text variant="label" style={{ color: palette.primary }}>
-            {institution}
-          </Text>
+          <View style={styles.place}>
+            <Icon name="place" size={15} color={palette.primary} />
+            <Text variant="label" style={{ color: palette.primary }}>
+              {institution}
+            </Text>
+          </View>
         </Pressable>
         <Text variant="muted">
           {live && away >= 0 && away <= 7 ? `${t("MyBookings.when", { days: away })} · ` : ""}
           {t("MyBookings.people", { count: booking.headcount })} · {t(`Booking.fulfilment.${booking.fulfilmentMode}`)} · {booking.bookingNo}
         </Text>
-        {booking.inMemoryOf && <Text style={styles.memory}>{t("MyBookings.inMemoryOf", { name: booking.inMemoryOf })}</Text>}
+        {booking.inMemoryOf && <Text variant="voice">{t("MyBookings.inMemoryOf", { name: booking.inMemoryOf })}</Text>}
 
         {booking.status === "Rejected" && booking.rejectReason && (
           <View style={[styles.reason, { backgroundColor: palette.dangerSoft }]}>
@@ -188,7 +271,11 @@ function BookingCard({ booking, today, onCancel }: { booking: DonorBooking; toda
         )}
         {booking.status === "Requested" && <Text variant="muted">{t("MyBookings.waiting")}</Text>}
 
-        {booking.canCancel && <Button label={t("MyBookings.cancel")} variant="secondary" onPress={onCancel} />}
+        {booking.canCancel && (
+          <View style={styles.cancel}>
+            <Button label={t("MyBookings.cancel")} variant="danger" onPress={onCancel} />
+          </View>
+        )}
       </View>
     </View>
   );
@@ -216,7 +303,7 @@ function StatusBadge({ status }: { status: BookingStatus }) {
   const colours = tone(status, palette);
   return (
     <View style={[styles.badge, { backgroundColor: colours.background, borderColor: colours.border }]}>
-      <Text variant="muted" style={{ color: colours.text }}>
+      <Text variant="caption" style={{ color: colours.text }}>
         {t(`Booking.status.${status}`)}
       </Text>
     </View>
@@ -243,8 +330,12 @@ function CancelSheet({ booking, onClose, onCancelled }: { booking: DonorBooking;
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView edges={["top", "bottom"]} style={[styles.fill, { backgroundColor: palette.canvas }]}>
+        <View style={[styles.handle, { backgroundColor: palette.hairline }]} />
         <ScrollView contentContainerStyle={styles.sheet} keyboardShouldPersistTaps="handled">
-          <Text variant="title" accessibilityRole="header" style={{ color: palette.brand }}>
+          <View style={[styles.warn, { backgroundColor: palette.dangerSoft }]}>
+            <Icon name="calendar" size={26} color={palette.danger} />
+          </View>
+          <Text variant="title" accessibilityRole="header">
             {t("MyBookings.cancelSheet.title")}
           </Text>
           <Text variant="muted">{t("MyBookings.cancelSheet.description", { bookingNo: booking.bookingNo })}</Text>
@@ -268,13 +359,26 @@ function CancelSheet({ booking, onClose, onCancelled }: { booking: DonorBooking;
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  grow: { flex: 1 },
+  handle: { alignSelf: "center", width: 40, height: 5, borderRadius: 3, marginTop: spacing.sm },
   sheet: { padding: spacing.md, gap: spacing.md, flexGrow: 1 },
-  section: { gap: spacing.sm },
-  card: { flexDirection: "row", borderWidth: 1, borderRadius: radius.md, overflow: "hidden" },
-  stub: { width: 72, alignItems: "center", justifyContent: "center", paddingVertical: spacing.md, borderRightWidth: 1, borderStyle: "dashed" },
-  body: { flex: 1, padding: spacing.md, gap: spacing.xs },
-  badge: { alignSelf: "flex-start", borderWidth: 1, borderRadius: 999, paddingHorizontal: spacing.sm, paddingVertical: 2 },
+  warn: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
+  gateIcon: { alignItems: "flex-start", paddingVertical: spacing.xs },
+  notice: { flexDirection: "row", alignItems: "center", gap: spacing.sm, borderLeftWidth: 4, borderRadius: radius.sm, padding: spacing.md },
+  section: { gap: spacing.sm + 4 },
+  count: { minWidth: 28, height: 24, borderRadius: radius.pill, paddingHorizontal: spacing.sm, alignItems: "center", justifyContent: "center" },
+  card: { ...bowl, flexDirection: "row", borderWidth: 1, overflow: "hidden" },
+  featured: { borderWidth: 2 },
+  rim: { position: "absolute", top: 0, left: 104, right: 28, height: 3, zIndex: 1, borderBottomLeftRadius: 3, borderBottomRightRadius: 3 },
+  stub: { width: 76, alignItems: "center", justifyContent: "center", paddingVertical: spacing.md },
+  notch: { position: "absolute", left: 66, width: 20, height: 20, borderRadius: 10, borderWidth: 1 },
+  notchTop: { top: -11 },
+  notchBottom: { bottom: -11 },
+  body: { flex: 1, padding: spacing.md, paddingLeft: spacing.md + 4, gap: spacing.xs },
+  titleRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
+  badge: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 2 },
   link: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },
-  memory: { fontStyle: "italic" },
+  place: { flexDirection: "row", alignItems: "center", gap: 4 },
   reason: { borderRadius: radius.sm, padding: spacing.sm },
+  cancel: { marginTop: spacing.xs },
 });

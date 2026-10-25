@@ -11,13 +11,15 @@ import { formatLkr, localName } from "@/bookings/names";
 import type { BookingCreated, DayAvailability, FulfilmentMode, PublicInstitution, PublicMealSlot } from "@/bookings/types";
 import { useDates } from "@/bookings/use-dates";
 import { Button } from "@/components/button";
-import { FormError } from "@/components/screen";
+import { Icon } from "@/components/icon";
+import { Card, FormError } from "@/components/screen";
 import { Text } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { useI18n } from "@/i18n/i18n-provider";
-import { radius, spacing } from "@/theme/colors";
+import { bowl, radius, spacing } from "@/theme/colors";
 import { usePalette } from "@/theme/use-theme";
 
+import { Bowl } from "./bowl";
 import { Loading } from "./states";
 
 /** The columns' lengths (booking.Bookings), so a long entry is stopped while typing, not refused. */
@@ -52,26 +54,42 @@ export function BookingSheet({ institution, slot, day, onClose, onBooked, onTake
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView edges={["top", "bottom"]} style={[styles.fill, { backgroundColor: palette.canvas }]}>
+        <View style={[styles.handle, { backgroundColor: palette.hairline }]} />
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <View style={styles.grow}>
-              <Text variant="title" accessibilityRole="header" style={{ color: palette.brand }}>
-                {t("Discover.sheet.title", { meal: localName(language, slot) })}
-              </Text>
-              <Text variant="muted">
-                {dates.full(day.date)} · {slot.startTime}–{slot.endTime} · {localName(language, institution)}
-              </Text>
-            </View>
+            <Text variant="title" accessibilityRole="header" style={styles.grow}>
+              {t("Discover.sheet.title", { meal: localName(language, slot) })}
+            </Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t("Discover.sheet.close")}
               onPress={onClose}
-              style={[styles.close, { borderColor: palette.line }]}
+              hitSlop={8}
+              style={({ pressed }) => [styles.close, { backgroundColor: pressed ? palette.hairline : palette.subtle }]}
             >
-              <Text variant="heading" style={{ color: palette.fg }}>
-                ×
-              </Text>
+              <Icon name="close" size={18} color={palette.fg} />
             </Pressable>
+          </View>
+
+          {/* The day as a ticket: the date on its stub, what and where beside it. */}
+          <View style={[styles.ticket, { backgroundColor: palette.surface, borderColor: palette.hairline }]}>
+            <View style={[styles.stub, { backgroundColor: palette.primary }]}>
+              <Text variant="caption" style={{ color: palette.onPrimary }}>
+                {dates.weekday(day.date, "short")}
+              </Text>
+              <Text variant="title" style={{ color: palette.onPrimary }}>
+                {Number(day.date.slice(8))}
+              </Text>
+              <Text variant="caption" style={{ color: palette.onPrimary }}>
+                {dates.monthShort(day.date)}
+              </Text>
+            </View>
+            <View style={styles.ticketBody}>
+              <Text variant="muted">
+                {dates.full(day.date)} · {slot.startTime}–{slot.endTime}
+              </Text>
+              <Text variant="label">{localName(language, institution)}</Text>
+            </View>
           </View>
 
           {done ? (
@@ -182,7 +200,7 @@ function BookingForm({
         <Text variant="label">{t("Discover.sheet.headcount")}</Text>
         <Text variant="muted">{t("Discover.sheet.headcountHint", { min: limits.min, max: limits.max })}</Text>
         <View style={styles.stepper}>
-          <StepButton label={t("Discover.sheet.fewer")} glyph="−" enabled={(people ?? limits.min) > limits.min} onPress={() => step(-1)} />
+          <StepButton label={t("Discover.sheet.fewer")} icon="minus" enabled={(people ?? limits.min) > limits.min} onPress={() => step(-1)} />
           <TextInput
             testID="headcount"
             accessibilityLabel={t("Discover.sheet.headcount")}
@@ -198,7 +216,7 @@ function BookingForm({
               { color: palette.fg, backgroundColor: palette.surface, borderColor: headcountError ? palette.danger : palette.line },
             ]}
           />
-          <StepButton label={t("Discover.sheet.more")} glyph="+" enabled={(people ?? limits.min) < limits.max} onPress={() => step(1)} />
+          <StepButton label={t("Discover.sheet.more")} icon="plus" enabled={(people ?? limits.min) < limits.max} onPress={() => step(1)} />
         </View>
         {headcountError && (
           <Text variant="error" accessibilityLiveRegion="polite">
@@ -208,9 +226,14 @@ function BookingForm({
       </View>
 
       {cost !== null && (
-        <View style={[styles.estimate, { backgroundColor: palette.subtle }]}>
-          <Text>{t("Discover.sheet.estimate", { cost: formatLkr(cost) })}</Text>
-        </View>
+        <Card rim>
+          <View style={styles.estimate}>
+            <Icon name="heart" size={20} color={palette.primary} />
+            <Text variant="label" style={styles.grow}>
+              {t("Discover.sheet.estimate", { cost: formatLkr(cost) })}
+            </Text>
+          </View>
+        </Card>
       )}
 
       <View style={styles.field} accessibilityRole="radiogroup" accessibilityLabel={t("Discover.sheet.whoBrings")}>
@@ -223,13 +246,23 @@ function BookingForm({
               accessibilityRole="radio"
               accessibilityState={{ checked }}
               onPress={() => setFulfilment(mode)}
-              style={[
+              style={({ pressed }) => [
                 styles.option,
-                { borderColor: checked ? palette.primary : palette.hairline, backgroundColor: checked ? palette.subtle : palette.surface },
+                {
+                  borderColor: checked ? palette.primary : palette.hairline,
+                  borderWidth: checked ? 2 : 1,
+                  backgroundColor: checked ? palette.subtle : palette.surface,
+                },
+                pressed && styles.pressed,
               ]}
             >
-              <Text variant="label">{t(`Booking.fulfilment.${mode}`)}</Text>
-              <Text variant="muted">{t(`Discover.sheet.fulfilmentHint.${mode}`)}</Text>
+              <View style={[styles.radio, { borderColor: checked ? palette.primary : palette.line }]}>
+                {checked && <View style={[styles.radioDot, { backgroundColor: palette.primary }]} />}
+              </View>
+              <View style={styles.grow}>
+                <Text variant="label">{t(`Booking.fulfilment.${mode}`)}</Text>
+                <Text variant="muted">{t(`Discover.sheet.fulfilmentHint.${mode}`)}</Text>
+              </View>
             </Pressable>
           );
         })}
@@ -255,7 +288,12 @@ function BookingForm({
 
       <FormError message={failure} />
 
-      <Text variant="muted">{slot.requiresApproval ? t("Discover.sheet.approvalNote") : t("Discover.sheet.instantNote")}</Text>
+      <View style={styles.noteRow}>
+        <Icon name={slot.requiresApproval ? "time" : "check"} size={16} color={palette.primary} />
+        <Text variant="muted" style={styles.grow}>
+          {slot.requiresApproval ? t("Discover.sheet.approvalNote") : t("Discover.sheet.instantNote")}
+        </Text>
+      </View>
       <Button
         label={slot.requiresApproval ? t("Discover.sheet.request") : t("Discover.sheet.confirm")}
         busy={busy}
@@ -265,7 +303,7 @@ function BookingForm({
   );
 }
 
-function StepButton({ label, glyph, enabled, onPress }: { label: string; glyph: string; enabled: boolean; onPress: () => void }) {
+function StepButton({ label, icon, enabled, onPress }: { label: string; icon: "plus" | "minus"; enabled: boolean; onPress: () => void }) {
   const palette = usePalette();
   return (
     <Pressable
@@ -276,17 +314,16 @@ function StepButton({ label, glyph, enabled, onPress }: { label: string; glyph: 
       onPress={onPress}
       style={({ pressed }) => [
         styles.step,
-        { borderColor: palette.line, backgroundColor: pressed ? palette.subtle : palette.surface, opacity: enabled ? 1 : 0.4 },
+        { backgroundColor: pressed ? palette.primaryStrong : palette.primary, opacity: enabled ? 1 : 0.35 },
+        pressed && styles.pressed,
       ]}
     >
-      <Text variant="heading" style={{ color: palette.primary }}>
-        {glyph}
-      </Text>
+      <Icon name={icon} size={22} color={palette.onPrimary} />
     </Pressable>
   );
 }
 
-/** The booking made: its number, and what happens next. */
+/** The booking made: a full bowl, its number on a ticket, and what happens next. */
 function Done({ result, onClose }: { result: BookingCreated; onClose: () => void }) {
   const { t } = useI18n();
   const palette = usePalette();
@@ -294,20 +331,28 @@ function Done({ result, onClose }: { result: BookingCreated; onClose: () => void
 
   return (
     <View style={[styles.block, styles.done]} accessibilityLiveRegion="polite">
-      <Text variant="title" style={{ color: palette.brand }}>
+      <View style={[styles.seal, { backgroundColor: palette.successSoft, borderColor: palette.success }]}>
+        <Bowl fill={confirmed ? 1 : 0.5} color={palette.success} scale={2} />
+      </View>
+      <Text variant="display" style={styles.centred}>
         {confirmed ? t("Discover.sheet.doneConfirmed") : t("Discover.sheet.doneRequested")}
       </Text>
-      <Text variant="muted">{t("Discover.sheet.bookingNo")}</Text>
-      <View style={[styles.number, { backgroundColor: palette.subtle }]}>
-        <Text variant="label">{result.bookingNo}</Text>
-      </View>
       <Text style={styles.centred}>{confirmed ? t("Discover.sheet.doneConfirmedNext") : t("Discover.sheet.doneRequestedNext")}</Text>
-      <Text variant="muted" style={[styles.centred, styles.thanks]}>
+
+      <View style={[styles.number, { backgroundColor: palette.surface, borderColor: palette.line }]}>
+        <Text variant="eyebrow">{t("Discover.sheet.bookingNo")}</Text>
+        <Text variant="heading" selectable style={styles.mono}>
+          {result.bookingNo}
+        </Text>
+      </View>
+
+      <Text variant="voice" style={styles.centred}>
         {t("Discover.sheet.thanks")}
       </Text>
       <View style={styles.actions}>
         <Button
           label={t("Discover.sheet.seeMine")}
+          icon="calendar"
           onPress={() => {
             onClose();
             router.navigate("/bookings");
@@ -321,20 +366,29 @@ function Done({ result, onClose }: { result: BookingCreated; onClose: () => void
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  content: { padding: spacing.md, gap: spacing.md, flexGrow: 1 },
+  handle: { alignSelf: "center", width: 40, height: 5, borderRadius: 3, marginTop: spacing.sm },
+  content: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md, flexGrow: 1 },
   header: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
   grow: { flex: 1, gap: spacing.xs },
-  close: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  close: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  ticket: { ...bowl, flexDirection: "row", borderWidth: 1, overflow: "hidden" },
+  stub: { width: 76, alignItems: "center", justifyContent: "center", paddingVertical: spacing.md },
+  ticketBody: { flex: 1, padding: spacing.md, gap: spacing.xs, justifyContent: "center" },
   block: { gap: spacing.md },
   field: { gap: spacing.xs },
-  stepper: { flexDirection: "row", alignItems: "stretch", gap: spacing.sm },
-  step: { width: 48, minHeight: 48, borderRadius: radius.sm, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  count: { width: 88, minHeight: 48, borderWidth: 1, borderRadius: radius.sm, textAlign: "center", fontSize: 18 },
-  estimate: { borderRadius: radius.sm, padding: spacing.md },
-  option: { borderWidth: 1.5, borderRadius: radius.md, padding: spacing.md, gap: 2, minHeight: 56 },
+  stepper: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginTop: spacing.xs },
+  step: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center" },
+  count: { width: 96, minHeight: 52, borderWidth: 1, borderRadius: radius.md, textAlign: "center", fontSize: 22, fontWeight: "600" },
+  estimate: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  option: { ...bowl, flexDirection: "row", alignItems: "center", gap: spacing.sm + 4, padding: spacing.md, minHeight: 56 },
+  pressed: { transform: [{ scale: 0.97 }] },
+  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+  radioDot: { width: 10, height: 10, borderRadius: 5 },
+  noteRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
   done: { alignItems: "center", paddingVertical: spacing.lg },
-  number: { borderRadius: 999, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
+  seal: { width: 112, height: 112, borderRadius: 56, borderWidth: 2, alignItems: "center", justifyContent: "center", marginBottom: spacing.sm },
+  number: { ...bowl, alignItems: "center", gap: 2, borderWidth: 1, borderStyle: "dashed", paddingHorizontal: spacing.xl, paddingVertical: spacing.md },
+  mono: { letterSpacing: 1 },
   centred: { textAlign: "center" },
-  thanks: { fontStyle: "italic" },
   actions: { alignSelf: "stretch", gap: spacing.sm, marginTop: spacing.sm },
 });

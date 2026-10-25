@@ -13,6 +13,12 @@ export function colomboToday(now: Date = new Date()): string {
   return new Date(now.getTime() + COLOMBO_OFFSET_MS).toISOString().slice(0, 10);
 }
 
+/** The part of the day in Colombo, for a greeting: before noon, before six, or later. */
+export function colomboPartOfDay(now: Date = new Date()): "morning" | "afternoon" | "evening" {
+  const hour = new Date(now.getTime() + COLOMBO_OFFSET_MS).getUTCHours();
+  return hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+}
+
 /** A date's parts; months are 1-12. */
 export function parts(date: string): { year: number; month: number; day: number } {
   const [year, month, day] = date.split("-").map(Number);

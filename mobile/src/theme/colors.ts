@@ -45,6 +45,35 @@ export const colors = {
 
 export type Palette = { [K in keyof typeof colors.light]: string };
 
-export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 } as const;
+/** The brand itself, the same in both themes: for a panel where the brand is the point (DESIGN.md). */
+export const brand = { estate: "#16513D", gold: "#E0A33E", ink: "#0E2A21", ivory: "#F7F4EC" } as const;
 
-export const radius = { sm: 8, md: 12 } as const;
+export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 } as const;
+
+export const radius = { sm: 8, md: 12, lg: 20, pill: 999 } as const;
+
+/*  The bowl (DESIGN.md, signature 1): things that hold or receive have gentle top corners and
+    deeper bottom ones. `bowl` is for cards and sheets' blocks, `cup` for inputs and small tiles.
+    Buttons stay pills.                                                                       */
+export const bowl = {
+  borderTopLeftRadius: 14,
+  borderTopRightRadius: 14,
+  borderBottomLeftRadius: 28,
+  borderBottomRightRadius: 28,
+} as const;
+
+export const cup = {
+  borderTopLeftRadius: 10,
+  borderTopRightRadius: 10,
+  borderBottomLeftRadius: 18,
+  borderBottomRightRadius: 18,
+} as const;
+
+/** Warm depth (signature 3): one level, a green-tinted shadow, never grey. */
+export const lift = {
+  shadowColor: brand.ink,
+  shadowOpacity: 0.1,
+  shadowRadius: 14,
+  shadowOffset: { width: 0, height: 6 },
+  elevation: 3,
+} as const;
