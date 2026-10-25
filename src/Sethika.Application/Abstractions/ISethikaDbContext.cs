@@ -6,6 +6,7 @@ using Sethika.Domain.Bookings;
 using Sethika.Domain.Core;
 using Sethika.Domain.Institutions;
 using Sethika.Domain.Onboarding;
+using Sethika.Domain.Services;
 
 namespace Sethika.Application.Abstractions;
 
@@ -65,6 +66,16 @@ public interface ISethikaDbContext
     DbSet<BlockedDate> BlockedDates { get; }
     DbSet<SlotInstance> SlotInstances { get; }
     DbSet<Booking> Bookings { get; }
+
+    // Religious services (Phase E). An appointment's leaders and history are reached through it.
+    // Time blocks have a set of their own: handlers write and delete them beside the assignment or
+    // leave they belong to, and their primary key is the overlap guarantee (V2).
+    DbSet<ServiceType> ServiceTypes { get; }
+    DbSet<ReligiousLeader> ReligiousLeaders { get; }
+    DbSet<LeaderWeeklyHours> LeaderWeeklyHours { get; }
+    DbSet<LeaderTimeOff> LeaderTimeOff { get; }
+    DbSet<LeaderTimeBlock> LeaderTimeBlocks { get; }
+    DbSet<ServiceAppointment> ServiceAppointments { get; }
 
     /// <summary>For transactions that span a set-based update and tracked inserts.</summary>
     DatabaseFacade Database { get; }

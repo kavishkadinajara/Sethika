@@ -7,6 +7,7 @@ using Sethika.Domain.Bookings;
 using Sethika.Domain.Core;
 using Sethika.Domain.Institutions;
 using Sethika.Domain.Onboarding;
+using Sethika.Domain.Services;
 
 namespace Sethika.Infrastructure.Persistence;
 
@@ -52,6 +53,12 @@ public partial class SethikaDbContext(DbContextOptions<SethikaDbContext> options
     public DbSet<BlockedDate> BlockedDates => Set<BlockedDate>();
     public DbSet<SlotInstance> SlotInstances => Set<SlotInstance>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<ServiceType> ServiceTypes => Set<ServiceType>();
+    public DbSet<ReligiousLeader> ReligiousLeaders => Set<ReligiousLeader>();
+    public DbSet<LeaderWeeklyHours> LeaderWeeklyHours => Set<LeaderWeeklyHours>();
+    public DbSet<LeaderTimeOff> LeaderTimeOff => Set<LeaderTimeOff>();
+    public DbSet<LeaderTimeBlock> LeaderTimeBlocks => Set<LeaderTimeBlock>();
+    public DbSet<ServiceAppointment> ServiceAppointments => Set<ServiceAppointment>();
 
     /// <summary>Saves, naming the unique index or constraint when one refuses (see <see cref="DuplicateKeyException"/>).</summary>
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
