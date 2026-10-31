@@ -54,7 +54,7 @@ export function MobileNav({ sections, pathname }: { sections: NavSection[]; path
                   className={cn(
                     "flex min-h-12 items-center gap-3 rounded-2xl px-4 py-2 text-base font-semibold",
                     focusRing,
-                    here ? "bg-estate text-ivory" : "bg-subtle text-fg hover:text-brand",
+                    here ? "bg-primary text-on-primary" : "bg-subtle text-fg hover:text-brand",
                   )}
                 >
                   <Icon className="size-5.5 shrink-0" />

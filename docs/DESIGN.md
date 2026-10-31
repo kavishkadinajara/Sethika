@@ -8,8 +8,9 @@ and every state can be seen at `/design`, `/si/design` and `/ta/design`.
 ## The base: warm and calm
 
 - Light: **Rice Ivory** canvas, **Deep Ink** text, **Estate Green** for actions, **Offering Gold**
-  sparingly. Dark: the same roles on a Deep Ink canvas (see below).
-- No grey anywhere: neutrals (`muted`, `line`, `hairline`, `subtle`) are tinted toward the green.
+  sparingly. Dark: a **true black** canvas, ivory text, **Offering Gold** for actions (see below).
+- No cool grey anywhere: neutrals (`muted`, `line`, `hairline`, `subtle`) are warm, tinted toward
+  the green in light and toward ivory in dark.
 - No gradients, no glass, no stock photos, no decorative illustrations in the UI chrome.
 - Faith-neutral: no religion's symbols, colours or vocabulary in shared UI (CLAUDE.md).
 
@@ -25,8 +26,14 @@ Sethika follows the device's light or dark setting by default. The `ThemeSwitche
   Each has a light and a dark value in `globals.css`, with measured contrast in its header.
 - The brand colours (`estate`, `gold`, `ink`, `ivory`) are fixed and are for places where the
   brand itself is the point, such as a panel that is Estate Green in both themes.
-- Dark is built on **Deep Ink** as the canvas; the greens lighten (the primary becomes a soft
-  mint with dark text) so they still read on it. Gold stays gold.
+- Dark is **true black** (plan 05, R1; the user, 2026-10-31: "no green, full black"). Canvas
+  `#000`, surfaces `#0C0C0C` and `#161616`, ivory text. **Offering Gold is the primary and the
+  brand colour** (filled actions, links, headings, the focus outline), with near-black text on it.
+  Green appears only as the success status. Depth is a faint light top edge plus a black shadow; a
+  green-tinted shadow reads as mud on black. A brand panel that is Estate Green in light becomes a
+  surface with a hairline in dark, never a green field on the black.
+- Measured on the dark canvas: text 18.6:1, muted 7.9, gold 9.5, input borders 3.7 (3.4 on a
+  surface), near-black on gold 8.9. The full table is in the header of `globals.css`.
 - Avoid `dark:`. If a token cannot express a difference, `dark:` works and honours the switcher
   (it is redefined in `globals.css`), but add a token first.
 
@@ -44,8 +51,9 @@ Sethika follows the device's light or dark setting by default. The `ThemeSwitche
 2. **The offering glow.** One focus style everywhere (`focusRing` in `lib/utils.ts`): an
    Estate Green outline carries the contrast, a soft gold halo carries the brand. Never
    remove it and never invent another.
-3. **Warm depth.** Elevation is a green-tinted shadow (`shadow-lift`), never grey. One level
-   only, for cards and toasts; sheets have their own.
+3. **Warm depth.** Elevation is a green-tinted shadow (`shadow-lift`) in light, never grey; in
+   dark, a faint light top edge and a black shadow. One level only, for cards and toasts; sheets
+   have their own.
 4. **Two voices.** Outfit does the work: every label, button and number. Fraunces italic is
    the human voice: the tagline, a brand eyebrow, later the gratitude wall and empty states.
    Never Fraunces on a control.

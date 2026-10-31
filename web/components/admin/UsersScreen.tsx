@@ -117,7 +117,7 @@ export function UsersScreen() {
             return (
               <li key={user.id} className="grid content-start gap-3 rounded-bowl border border-hairline bg-surface p-5 shadow-lift">
                 <div className="flex items-start gap-3">
-                  <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-estate font-semibold text-ivory">
+                  <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-primary font-semibold text-on-primary">
                     {initials(user.fullName)}
                   </span>
                   <div className="grid min-w-0 flex-1 gap-0.5">
@@ -150,7 +150,7 @@ export function UsersScreen() {
                     {user.platformRoles.map((code) => {
                       const removable = mayEdit && !isMe && (roles.find((r) => r.code === code)?.canManage ?? false);
                       return (
-                        <li key={code} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-estate/10 py-1 pr-1 pl-3 text-sm font-medium text-brand">
+                        <li key={code} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-primary/10 py-1 pr-1 pl-3 text-sm font-medium text-brand">
                           <ShieldIcon className="size-4 shrink-0" />
                           {roleName(code)}
                           {removable ? (
