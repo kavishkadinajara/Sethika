@@ -55,11 +55,9 @@ export function AppShell({ width, children }: { width: keyof typeof shellWidths;
   const sections = busy ? kept : signedIn && isLoading ? noSections : fresh;
 
   const contextKey = state.status === "authenticated" ? `in:${state.activeInstitution ?? ""}` : state.status;
-  const data = useShellData({
-    enabled: signedIn,
-    withTable: signedIn && state.activeInstitution !== null && can("BOOKINGS.CALENDAR.VIEW"),
-    contextKey,
-  });
+  // Reading the calendar, for an institution: today's table in the sidebar, and a booking number in the palette.
+  const readsCalendar = signedIn && state.activeInstitution !== null && can("BOOKINGS.CALENDAR.VIEW");
+  const data = useShellData({ enabled: signedIn, withTable: readsCalendar, contextKey });
 
   const [jumping, setJumping] = useState(false);
   const targets = useMemo(
@@ -134,7 +132,7 @@ export function AppShell({ width, children }: { width: keyof typeof shellWidths;
         </div>
       </div>
 
-      {signedIn && <JumpPalette open={jumping} onOpenChange={setJumping} targets={targets} />}
+      {signedIn && <JumpPalette open={jumping} onOpenChange={setJumping} targets={targets} findsBookings={readsCalendar} />}
     </div>
   );
 }

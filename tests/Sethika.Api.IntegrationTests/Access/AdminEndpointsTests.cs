@@ -36,6 +36,9 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
     private const string SigningKey = "admin-endpoint-test-signing-key-at-least-32-bytes!!!";
     private const string Password = "Dana!2026Sethika";
 
+    /// <summary>org.Institutions' statuses, in the order of an institution's life.</summary>
+    private static readonly string[] InstitutionStatuses = ["Onboarding", "Active", "Suspended", "Deactivated"];
+
     private readonly List<string> _phones = [];
     private WebApplicationFactory<Program> _host = null!;
     private ConnectionMultiplexer _redis = null!;
@@ -558,5 +561,41 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
 
         using var wildcard = await SendAsync(admin, HttpMethod.Get, "/api/admin/institutions?search=%25");
         Assert.Empty(JsonDocument.Parse(await wildcard.Content.ReadAsStringAsync()).RootElement.EnumerateArray());
+    }
+
+    [Fact]
+    public async Task TheDashboardCountsInstitutionsByStatus_EveryStatusEvenAtZero_NoneDeleted()
+    {
+        const string AsPlatform = "EXEC sys.sp_set_session_context @key = N'IsPlatform', @value = 1;";
+        var admin = await LogInAsync(await AccountAsync("PLATFORM_ADMIN"));
+        var donor = await LogInAsync(await AccountAsync());
+
+        var original = await ScalarAsync<string>(AsPlatform + "SELECT Status FROM org.Institutions WHERE Id = @beta;", new { beta = database.BetaInstitutionId });
+        try
+        {
+            // Deleted, so in no status at all, though its row still says Deactivated.
+            await ExecuteAsync(AsPlatform + "UPDATE org.Institutions SET Status = 'Deactivated', IsDeleted = 1 WHERE Id = @beta;", new { beta = database.BetaInstitutionId });
+
+            await using var connection = new SqlConnection(database.ConnectionString);
+            await connection.OpenAsync();
+            await connection.ExecuteAsync(AsPlatform);
+            var counted = (await connection.QueryAsync<(string Status, int Count)>(
+                "SELECT Status, COUNT(*) FROM org.Institutions WHERE IsDeleted = 0 GROUP BY Status;")).ToDictionary(r => r.Status, r => r.Count);
+
+            using var response = await SendAsync(admin, HttpMethod.Get, "/api/admin/institutions/statuses");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var rows = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.EnumerateArray()
+                .Select(r => $"{r.GetProperty("status").GetString()} {r.GetProperty("count").GetInt32()}");
+
+            Assert.Equal(InstitutionStatuses.Select(s => $"{s} {counted.GetValueOrDefault(s)}"), rows);
+            Assert.Equal(0, counted.GetValueOrDefault("Deactivated"));
+
+            using var refused = await SendAsync(donor, HttpMethod.Get, "/api/admin/institutions/statuses");
+            Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+        }
+        finally
+        {
+            await ExecuteAsync(AsPlatform + "UPDATE org.Institutions SET Status = @original, IsDeleted = 0 WHERE Id = @beta;", new { original, beta = database.BetaInstitutionId });
+        }
     }
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { hasLocale, NextIntlClientProvider, useMessages, useTranslations } from "next-intl";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { CalendarScreen } from "@/components/bookings/CalendarScreen";
 import { InstitutionGate } from "@/components/bookings/InstitutionGate";
 import { pickMessages, sharedClientNamespaces } from "@/i18n/pick";
@@ -28,7 +29,10 @@ export default function Page({ params }: PageProps<"/[locale]/bookings/calendar"
         <p className="max-w-3xl text-muted">{t("intro")}</p>
       </header>
       <InstitutionGate permission="BOOKINGS.CALENDAR.VIEW">
-        <CalendarScreen />
+        {/* The screen reads `?date=` and `&booking=`; on a static page that waits for the browser. */}
+        <Suspense>
+          <CalendarScreen />
+        </Suspense>
       </InstitutionGate>
     </NextIntlClientProvider>
   );

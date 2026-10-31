@@ -22,6 +22,10 @@ internal static class AdminEndpoints
         admin.MapGet("/institutions", GetInstitutionsAsync)
             .WithMetadata(new HasPermissionAttribute("PLATFORM.INSTITUTIONS.VIEW"));
 
+        // The platform dashboard's "institutions by status" (plan 05, R4).
+        admin.MapGet("/institutions/statuses", async (IAdminQueries queries, CancellationToken ct) => Results.Ok(await queries.GetInstitutionStatusesAsync(ct)))
+            .WithMetadata(new HasPermissionAttribute("PLATFORM.INSTITUTIONS.VIEW"));
+
         // Y1a: RequiresMfa, so the step-up middleware asks before a ticket is issued.
         admin.MapPost("/institutions/{slug}/support", IssueSupportTicketAsync)
             .WithMetadata(new HasPermissionAttribute(PlatformSupport.Permission));

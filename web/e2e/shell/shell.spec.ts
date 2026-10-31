@@ -13,6 +13,9 @@ import { clipsSideways, expect, scrollsSideways, test } from "../support/test";
     On a phone the same body is in the menu sheet.                                            */
 
 const screens = path.join(__dirname, "..", ".screens");
+
+/** The Day Ledger's date (plan 05, R4): the weekday, then the day and month in English's order ("Saturday October 31"). */
+const LEDGER_DATE = /^(Sun|Mon|Tues|Wednes|Thurs|Fri|Satur)day\s+\w+ \d{1,2}$/;
 const isPhone = (page: Page) => (page.viewportSize()?.width ?? 1280) < 1024;
 
 async function shot(page: Page, project: string, name: string) {
@@ -61,7 +64,7 @@ for (const locale of ["en", "si", "ta"] as const) {
 test("a donor's menu holds giving, not an institution's or the platform's @phone", async ({ applicant }, testInfo) => {
   const { page } = applicant;
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Good (morning|afternoon|evening)!/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(LEDGER_DATE);
   await expect(page.getByText("Welcome back, E2E Applicant")).toBeVisible();
   await page.waitForLoadState("networkidle");
   expect(await scrollsSideways(page)).toBe(false);
@@ -99,7 +102,7 @@ test("the sidebar takes a donor to a screen and marks where they are @phone", as
 test("folded, the sidebar keeps every link, each named on hover above the page, and stays folded", async ({ applicant }, testInfo) => {
   const { page } = applicant;
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Good (morning|afternoon|evening)!/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(LEDGER_DATE);
   const side = page.getByRole("complementary", { name: "Sidebar" });
   const unfolded = (await side.boundingBox())!.width;
 
@@ -141,7 +144,7 @@ test("folded, the sidebar keeps every link, each named on hover above the page, 
 test("jump to finds a screen by its name and opens it, offering only screens the person may view @phone", async ({ applicant }, testInfo) => {
   const { page } = applicant;
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Good (morning|afternoon|evening)!/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(LEDGER_DATE);
 
   if (isPhone(page)) {
     await (await sidebar(page)).getByRole("button", { name: "Jump to" }).click();

@@ -83,15 +83,39 @@ Every screen that is not a sign-in form sits in one shell (`components/shell/App
 - **Full width.** The page uses the whole width beside the sidebar; lists add columns as the screen
   grows (`lg:grid-cols-2 2xl:grid-cols-3`), forms and paragraphs keep a readable width of their
   own (`max-w-3xl`, `max-w-prose`).
-- **Brand panels may carry a tonal gradient of their own green** in light (the dashboard's
-  greeting, the landing page's picture): Estate Green from a lighter to a darker shade, never a
-  second hue, never glass. In dark they are plain surfaces (R1). The plan 04 rail and its panel
-  are gone.
+- **Brand panels may carry a tonal gradient of their own green** in light (the landing page's
+  picture): Estate Green from a lighter to a darker shade, never a second hue, never glass. In
+  dark they are plain surfaces (R1). The plan 04 rail and its panel are gone, and so is the
+  dashboard's greeting panel.
 - The menu is the RBAC catalogue's shape filtered by `.VIEW` permissions (`lib/shell/nav.ts`);
   hiding a link is UX only, and so is hiding a count: the API sends only the counts the caller's
   permissions allow.
 - **Toasts sit top right, under the bar.** At the bottom they covered the save bars and primary
   buttons placed where the thumb reaches (found by the access e2e test on a 320 px phone).
+
+## The dashboard: the Day Ledger (plan 05, 2026-10-31)
+
+The signed-in home page reads like a ledger of the day, one for each kind of session
+(`components/home/*Day.tsx`):
+
+- **The frame.** A large date in Fraunces italic (the weekday over the day and month), and beside
+  it **one sentence that says what today needs**, composed from data by `lib/dashboard/sentence.ts`:
+  requests to answer first, then the next meal and the places still open; for a donor, their next
+  meal to give; for the platform, the review queue and its oldest. Never decoration: a number the
+  session may not see is never in it, and while its data loads it is a quiet placeholder.
+- **The panels** are bowl cards, each behind the permission of the screen it summarises; a panel
+  the session may not see is not drawn and its data is not asked for. Each title is a heading and
+  each panel a named region; a link at the right goes to the full screen.
+- **Today's table as a timeline**, 05:00 to 21:00: a bowl at each meal's time, as full as its
+  places, a gold dot where a request waits, a gold **now** needle. The line is a picture
+  (`aria-hidden`); the list under it says the same in words, in the sidebar's own phrases.
+- **The month, bowl by bowl**: a small grid of bowls, today ringed in gold, each day a link to that
+  day on the calendar.
+- **Ledger lines**: a time (or a short date, if not today) in a narrow tabular column, then a
+  sentence, then the number. No status chip: the sentence names the change, and a chip would read
+  as the booking's status now. Lists, not tables: they reflow on a phone.
+- A decision taken on the dashboard is the calendar's own control (`BookingItem`); afterwards the
+  sentence, the panels and the sidebar's counts all move together.
 
 ## Motion
 

@@ -2,7 +2,7 @@
 
 Branch: `redesign`, cut from `develop` after `access-hardening` merges.
 
-Status: **X1 (true-black dark) done; X2 (living sidebar) built and tested, not committed; booking-number jump moved to X3; X3-X4 not started.** Last updated 2026-10-31. Update this line and the §4 boxes
+Status: **X1 (true-black dark) and X2 (living sidebar, 4509df5 + d8f13d0) done; X3 (Day Ledger) built and tested, not committed; X4 not started.** Last updated 2026-10-31. Update this line and the §4 boxes
 whenever either changes; a fresh session trusts them.
 
 Why this plan exists: on 2026-10-31 the user judged the plan 04 shell and dashboard generic ("the
@@ -90,12 +90,16 @@ mud). DESIGN.md is rewritten for R1-R4 in the same branch.
   a date today or later (RLS also scopes it).
 - Today's table and the month: `booking.SlotInstances` + `booking.MealSlots` for the institution,
   Colombo dates (reuse the calendar's month query; no second copy of its date logic).
-- The ledger: booking events of the institution, top 10 by time: each booking's `CreatedAt`
-  (requested), `DecidedAt` (approved or rejected), `CancelledAt`, `CompletedAt` (served), unpivoted
-  in SQL (`CROSS APPLY (VALUES …)`), with `BookingNo`, the meal and the date; donor names as the
-  calendar shows them. No new table.
-- Donor panels: `booking.Bookings` of the user; `auth.FavoriteInstitutions`.
-- Platform: `org.RegistrationRequests` by status and age; `org.Institutions` by status.
+- The ledger: booking events of the institution, top 10 by time, with `BookingNo`, the meal and
+  the date; donor names as the calendar shows them. No new table. **Built differently (X3):** it
+  reads `booking.BookingStatusHistory`, which the `Booking` aggregate writes on every transition,
+  the making included, instead of unpivoting the booking's own timestamps. A booking approved and
+  later cancelled then shows both changes; the timestamps hold only the latest of each kind.
+- Donor panels: `booking.Bookings` of the user (`GET /api/bookings/mine`); "Places you give to"
+  comes from the institutions of those bookings, not `auth.FavoriteInstitutions`, which no screen
+  fills yet.
+- Platform: `org.RegistrationRequests` by status and age (the queue's own `GET
+  /api/admin/registrations`, oldest first); `org.Institutions` by status; the latest decisions.
 
 ## 3. Out of scope
 
@@ -107,7 +111,7 @@ Fuzzy people search, customisable dashboards, charts beyond the bowls, SignalR (
 - [x] `globals.css` dark tokens (R1) in both the `[data-theme=dark]` block and the media block; light unchanged
 - [x] Contrast table in the header of `globals.css`; `/design`, landing, login, institutions seen in both themes, desktop + 320 px
 - [x] Hard-coded greens moved to tokens (avatars, chips, mobile nav, placeholder, browser chrome colour); the landing panel is a surface in dark
-- [ ] DESIGN.md rewritten for R1-R5 (R1, warm depth and the sidebar done; the dashboard section with X3)
+- [x] DESIGN.md rewritten for R1-R5 (R1, warm depth, the sidebar, and the Day Ledger's section with X3)
 
 ### X2: Living sidebar
 - [x] The P1 wobble: during a switch the old menu stays (busy) until the new permissions arrive; at a session's start no half menu
@@ -119,11 +123,38 @@ Fuzzy people search, customisable dashboards, charts beyond the bowls, SignalR (
 - [x] e2e: menu per role (shell.spec rewritten), fold (tooltips on top, kept per browser), palette, badges (and their refresh after a decision), today's table, the P1 switch never emptying the menu, 320 px sheet, light + dark: 22/22
 
 ### X3: Day Ledger dashboard
-- [ ] Endpoints + Dapper queries for the institution panels, the donor panels, the platform panels; integration tests + mutations
-- [ ] The sentence composer (unit-tested in `lib/`, en/si/ta)
-- [ ] Institution, donor and platform dashboards; inline approve/decline reuse the calendar's calls
-- [ ] e2e per role, desktop + 320 px, en/si/ta, light + dark; screenshots read
+- [x] Endpoints + Dapper queries. New: `GET /api/institution/ledger` and `GET /api/institution/bookings/{bookingNo}`
+      (both `BOOKINGS.CALENDAR.VIEW`), `GET /api/admin/institutions/statuses` (`PLATFORM.INSTITUTIONS.VIEW`),
+      `GET /api/admin/registrations/decided` (`ONBOARDING.REQUESTS.VIEW`). Reused: `/api/institution/today`,
+      the calendar's `/api/institution/bookings?from&to&status`, `/api/bookings/mine`, the review queue.
+      Integration tests (5 new) + mutations: ledger and jump 5/8 killed (the two institution filters
+      survive because RLS scopes the rows too, kept as defence in depth like `/api/me/summary`'s;
+      upper-casing the number survived because the collation ignores case, so it was removed);
+      platform 8/8 killed (one only after the test learned that an open request is no decision)
+- [x] The sentence composer (`lib/dashboard/sentence.ts`, 16 unit tests; en/si/ta messages)
+- [x] Institution, donor and platform dashboards (`components/home/*Day.tsx`); inline accept/decline is
+      the calendar's own `BookingItem`, now exported; a decision marks the shell stale and the dashboard
+      reloads with the sidebar. The quick-action grid and the greeting went: the sidebar is the way
+      to every screen, and the dashboard says what today needs
+- [x] Jump-to: a whole `BK-…` number (any case) opens `/bookings/calendar?date=…&booking=…`, the booking
+      marked (`aria-current`) and scrolled into view. `APT-…` waits for Phase E 8.7's appointments agenda
+- [x] e2e per role, desktop + 320 px, en/si/ta, light + dark; screenshots read: `e2e/shell/dashboard.spec.ts`
+      (owner's day with an inline accept, the palette's jump, donor, platform), access/shell/review updated:
+      shell + dashboard 29/29, access + review green. Found by them: a long institution name widened the
+      donor's page at 320 px (single-column lists need `grid-cols-1`, an implicit `auto` track grows to
+      the text); Sinhala's vowel signs ran into the line above the large date at `leading-[0.95]`; an
+      address alone cannot show a signed-in page in another language (A11 moves it back), so the test
+      switches through the language menu. New helper `widerThanWindow` names what scrolls sideways
 
 ### X4: Every other screen on the new base
 - [ ] Walk every page in both themes; fix anything that assumed the green dark canvas
+- [ ] Admin lists (`/admin/users`, `/admin/institutions`, asked by the user 2026-10-31): today they
+      are a flat `TOP (100)` / `TOP (200)` with search only. Server-side pages (`OFFSET/FETCH`, 24 a
+      page to fill the 3-column grid, `COUNT(*) OVER ()` for the total; the response becomes
+      `{ items, total, page, pageSize }`); filters as chips: users by kind (donor, institution
+      staff, platform team) and status, institutions by status, type and district; a sort (users
+      newest or name, institutions name or newest). Filters, sort and page live in the URL query so
+      back and a shared link keep them; typing in search (debounced) goes back to page 1; "1-24 of
+      312" above the grid. Also find why both pages show "Something went wrong" on load, and the
+      stale Owner column (PR #14 audit). Tests: paging and each filter against real SQL, mutations.
 - [ ] Translations of the new strings into `docs/translations-to-review.md`

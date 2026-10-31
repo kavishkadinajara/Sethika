@@ -225,6 +225,53 @@ public sealed class RegistrationReviewEndpointsTests(SethikaTestDatabase databas
     }
 
     [Fact]
+    public async Task TheDashboardListsTheLatestTenDecisions_NewestFirst_WithTheInstitutionAnApprovalMade()
+    {
+        // Plan 05, R4. Eleven decided (approved and rejected in turn, each a minute after the last)
+        // and one still open: the oldest decision is one too many, and the open one is no decision.
+        for (var n = 1; n <= 12; n++)
+        {
+            await _scenario.SubmittedAsync($"REQ-TEST-D{n:D2}", $"BUD/D/{n:D2}");
+        }
+
+        // Submitted is not decided: before any decision, none of them is listed.
+        using (var undecided = await Reviewer().GetAsync($"{Base}/decided"))
+        {
+            Assert.DoesNotContain(
+                (await JsonAsync(undecided)).EnumerateArray(),
+                d => d.GetProperty("requestNo").GetString()!.StartsWith("REQ-TEST-D", StringComparison.Ordinal));
+        }
+
+        await ExecuteAsync(
+            """
+            EXEC sys.sp_set_session_context @key = N'IsPlatform', @value = 1;
+            DECLARE @reason INT = (SELECT TOP (1) v.Id FROM core.LookupValues v
+                                   JOIN core.LookupTypes t ON t.Id = v.LookupTypeId AND t.Code = 'REJECT_REASON' ORDER BY v.Id);
+            UPDATE org.RegistrationRequests
+            SET DecidedBy = @admin,
+                DecidedAt = DATEADD(MINUTE, CAST(RIGHT(RequestNo, 2) AS INT) - 12, SYSUTCDATETIME()),
+                Status = CASE WHEN CAST(RIGHT(RequestNo, 2) AS INT) % 2 = 0 THEN 'Approved' ELSE 'Rejected' END,
+                CreatedInstitutionId = CASE WHEN CAST(RIGHT(RequestNo, 2) AS INT) % 2 = 0 THEN @alpha END,
+                RejectReasonLookupId = CASE WHEN CAST(RIGHT(RequestNo, 2) AS INT) % 2 = 1 THEN @reason END
+            WHERE RequestNo LIKE 'REQ-TEST-D%' AND RequestNo <> 'REQ-TEST-D12';
+            """,
+            new { admin = Admin, alpha = database.AlphaInstitutionId });
+
+        using var response = await Reviewer().GetAsync($"{Base}/decided");
+        var lines = (await JsonAsync(response)).EnumerateArray()
+            .Select(d => $"{d.GetProperty("requestNo").GetString()} {d.GetProperty("status").GetString()} {d.GetProperty("institution").GetString() ?? "-"}");
+
+        Assert.Equal(
+            Enumerable.Range(2, 10).Reverse().Select(n => $"REQ-TEST-D{n:D2} " + (n % 2 == 0 ? "Approved alpha-temple" : "Rejected -")),
+            lines);
+
+        // The applicant holds no reviewer's permission.
+        var (applicant, _) = PlatformClient(OnboardingScenario.Applicant);
+        using var refused = await applicant.GetAsync($"{Base}/decided");
+        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+    }
+
+    [Fact]
     public async Task TheSidebarCountsTheRequestsWaitingForTheReviewers_NotDrafts()
     {
         // Plan 05, R3: the badge beside "Registration requests" is the queue's open work.

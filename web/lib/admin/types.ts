@@ -25,3 +25,18 @@ export type AdminUser = {
 
 /** GET /api/admin/platform-roles: the global platform roles, and whether the caller may hand each out. */
 export type PlatformRole = { code: string; name: string; rank: number; canManage: boolean };
+
+/** How many institutions are in one status (GET /api/admin/institutions/statuses); every status comes, zero included. */
+export type InstitutionStatusCount = { status: "Onboarding" | "Active" | "Suspended" | "Deactivated"; count: number };
+
+/** An application decided (GET /api/admin/registrations/decided), newest first. */
+export type RegistrationDecision = {
+  requestNo: string;
+  proposedName: string;
+  /** The institution type's code. */
+  institutionType: string;
+  status: "Approved" | "Rejected";
+  decidedAt: string;
+  /** The slug of the institution an approval made; null for a rejection. */
+  institution: string | null;
+};

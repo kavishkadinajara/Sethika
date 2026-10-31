@@ -33,9 +33,15 @@ public sealed record AdminUserView(
 /// <summary>A platform role, and whether the caller may hand it out (strictly junior to their rank).</summary>
 public sealed record PlatformRoleView(string Code, string Name, byte Rank, bool CanManage);
 
+/// <summary>How many institutions are in one status: the platform dashboard's panel (plan 05, R4).</summary>
+public sealed record InstitutionStatusCount(string Status, int Count);
+
 /// <summary>Dapper reads for the platform's own screens (plan 04, Y5). The caller is platform staff, so RLS shows every tenant.</summary>
 public interface IAdminQueries
 {
+    /// <summary>Every institution status, in lifecycle order, with how many are in it: zero included.</summary>
+    Task<IReadOnlyList<InstitutionStatusCount>> GetInstitutionStatusesAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Institutions whose name, type or district contains <paramref name="search"/>; every one when it is empty. At most 200.</summary>
     Task<IReadOnlyList<AdminInstitutionView>> GetInstitutionsAsync(string? search, CancellationToken cancellationToken = default);
 

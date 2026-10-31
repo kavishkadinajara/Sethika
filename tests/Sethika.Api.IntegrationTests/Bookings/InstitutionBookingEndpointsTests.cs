@@ -400,6 +400,100 @@ public sealed class InstitutionBookingEndpointsTests(SethikaTestDatabase databas
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
     }
 
+    // ------------------------------------------------------------------ the dashboard's ledger and the palette's jump (plan 05, X3)
+
+    [Fact]
+    public async Task TheLedgerListsTheLatestTenChanges_NewestFirst_AndOnlyTheInstitutionsOwn()
+    {
+        var (slot, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Ledger");
+        var (betaSlot, _) = await CreateSlotAsync(Beta(_betaOwner), "Ledger beta");
+
+        var first = await BookedAsync(slot, SlotDay);
+        var second = await BookedAsync(slot, SlotDay.AddDays(1));
+        List<string> more = [];
+        for (var day = 2; day <= 7; day++)
+        {
+            more.Add(await BookedAsync(slot, SlotDay.AddDays(day)));
+        }
+
+        var betas = await BookedAsync(betaSlot, SlotDay);
+
+        using (var approved = await SendAsync(Alpha(_alphaOwner), HttpMethod.Post, $"/api/institution/bookings/{first}/approve"))
+        using (var rejected = await SendAsync(Alpha(_alphaOwner), HttpMethod.Post, $"/api/institution/bookings/{second}/reject", new { reason = "Full that day" }))
+        using (var cancelled = await SendAsync(Alpha(_alphaOwner), HttpMethod.Post, $"/api/institution/bookings/{first}/cancel", new { reason = "Almsgiving moved" }))
+        {
+            Assert.Equal(HttpStatusCode.OK, approved.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, rejected.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, cancelled.StatusCode);
+        }
+
+        // Staff may read the calendar, so they read its ledger too.
+        using var forStaff = await SendAsync(Alpha(_alphaStaff), HttpMethod.Get, "/api/institution/ledger");
+        Assert.Equal(HttpStatusCode.OK, forStaff.StatusCode);
+
+        static string Line(JsonElement e) =>
+            $"{e.GetProperty("bookingNo").GetString()} {e.GetProperty("status").GetString()} " +
+            $"{e.GetProperty("date").GetString()} {e.GetProperty("slotName").GetString()} {e.GetProperty("donorName").GetString()}";
+
+        string Expected(string bookingNo, string status, int day) => $"{bookingNo} {status} {Iso(SlotDay.AddDays(day))} Ledger Calendar Test";
+
+        // Eleven changes: the first booking's own making is the one too old to show.
+        Assert.Equal(
+            [
+                Expected(first, "Cancelled", 0),
+                Expected(second, "Rejected", 1),
+                Expected(first, "Approved", 0),
+                .. Enumerable.Range(0, more.Count).Reverse().Select(i => Expected(more[i], "Requested", i + 2)),
+                Expected(second, "Requested", 1),
+            ],
+            (await BodyOf(forStaff)).EnumerateArray().Select(Line));
+
+        using var forBeta = await SendAsync(Beta(_betaOwner), HttpMethod.Get, "/api/institution/ledger");
+        var betaLines = (await BodyOf(forBeta)).EnumerateArray().Select(e => e.GetProperty("bookingNo").GetString()).ToList();
+        Assert.Contains(betas, betaLines);
+        Assert.DoesNotContain(first, betaLines);
+    }
+
+    [Fact]
+    public async Task ABookingNumberOpensItsDay_OnlyInItsOwnInstitution()
+    {
+        var (slot, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Jump");
+        var (betaSlot, _) = await CreateSlotAsync(Beta(_betaOwner), "Jump beta");
+        var booked = await BookedAsync(slot, SlotDay.AddDays(3));
+        var betas = await BookedAsync(betaSlot, SlotDay);
+
+        // Typed in lower case into the palette, it still finds the booking: the collation ignores case.
+        using var found = await SendAsync(Alpha(_alphaStaff), HttpMethod.Get, $"/api/institution/bookings/{booked.ToLowerInvariant()}");
+        Assert.Equal(HttpStatusCode.OK, found.StatusCode);
+        var place = await BodyOf(found);
+        Assert.Equal(booked, place.GetProperty("bookingNo").GetString());
+        Assert.Equal(Iso(SlotDay.AddDays(3)), place.GetProperty("date").GetString());
+        Assert.Equal(slot, place.GetProperty("mealSlot").GetGuid());
+        Assert.Equal("Requested", place.GetProperty("status").GetString());
+
+        // Another institution's booking is not found, exactly like one that does not exist.
+        await AssertRefusedAsync(
+            await SendAsync(Alpha(_alphaOwner), HttpMethod.Get, $"/api/institution/bookings/{betas}"),
+            HttpStatusCode.NotFound, "booking_not_found");
+        await AssertRefusedAsync(
+            await SendAsync(Alpha(_alphaOwner), HttpMethod.Get, "/api/institution/bookings/BK-2026-999999"),
+            HttpStatusCode.NotFound, "booking_not_found");
+    }
+
+    [Fact]
+    public async Task TheLedgerAndTheJumpAreTheCalendarsToRead()
+    {
+        var nobody = await UserAsync("InstitutionStaff");
+
+        using var ledger = await SendAsync(Alpha(nobody), HttpMethod.Get, "/api/institution/ledger");
+        using var jump = await SendAsync(Alpha(nobody), HttpMethod.Get, "/api/institution/bookings/BK-2026-000001");
+        using var anonymous = await SendAsync(_host.CreateClient(), HttpMethod.Get, "/api/institution/ledger");
+
+        Assert.Equal(HttpStatusCode.Forbidden, ledger.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, jump.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+    }
+
     // ------------------------------------------------------------------ meal slots
 
     [Fact]

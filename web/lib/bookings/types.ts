@@ -204,4 +204,21 @@ export type TableSlot = {
 /** Today in Colombo (yyyy-MM-dd) and its meals, by start time. */
 export type TodaysTable = { date: string; slots: TableSlot[] };
 
+/** One change of a booking on the dashboard's ledger (GET /api/institution/ledger); `status` is the one it moved to. */
+export type LedgerEntry = {
+  bookingNo: string;
+  status: BookingStatus;
+  /** When, UTC. */
+  at: string;
+  /** The day the meal is for. */
+  date: string;
+  slotName: string;
+  slotNameSi: string | null;
+  slotNameTa: string | null;
+  donorName: string;
+};
+
+/** Where a booking sits on the calendar (GET /api/institution/bookings/{bookingNo}). */
+export type BookingPlace = { bookingNo: string; date: string; mealSlot: string; status: BookingStatus };
+
 export type Decision = "approve" | "reject" | "cancel" | "complete" | "no-show";

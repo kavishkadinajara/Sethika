@@ -70,6 +70,26 @@ export async function scrollsSideways(page: Page): Promise<boolean> {
 }
 
 /**
+ * The innermost elements that reach past the window's right edge: what makes `scrollsSideways`
+ * true, named, so a failure says which element to fix. Hidden and fixed ones are left out.
+ */
+export async function widerThanWindow(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const edge = document.documentElement.clientWidth + 1;
+    // A fixed box (the toasts' region, a sheet) sits on the window and never makes the page scroll.
+    const fixed = (element: HTMLElement | null): boolean =>
+      element !== null && (getComputedStyle(element).position === "fixed" || fixed(element.parentElement));
+    const past = Array.from(document.body.querySelectorAll<HTMLElement>("*")).filter((element) => {
+      const box = element.getBoundingClientRect();
+      return box.width > 1 && box.right > edge && getComputedStyle(element).visibility !== "hidden" && !fixed(element);
+    });
+    return past
+      .filter((element) => !past.some((other) => other !== element && element.contains(other)))
+      .map((element) => `<${element.tagName.toLowerCase()} class="${element.className}"> "${(element.textContent ?? "").trim().slice(0, 60)}"`);
+  });
+}
+
+/**
  * Boxes that cut their own content off at the side: a card with `overflow-hidden` hides a badge
  * that does not fit, and the page itself never scrolls, so `scrollsSideways` cannot see it.
  * Deliberate clipping (an ellipsis, the 1 px screen-reader-only copies) is left out, and so are

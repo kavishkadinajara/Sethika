@@ -33,6 +33,9 @@ internal static class InstitutionBookingEndpoints
     /// <summary>The widest calendar one request reads: a month view with the days either side.</summary>
     public const int MaxCalendarDays = 62;
 
+    /// <summary>How many changes the dashboard's ledger shows.</summary>
+    public const int LedgerLength = 10;
+
     private static readonly string[] Statuses =
     [
         BookingStatus.Requested, BookingStatus.Approved, BookingStatus.Rejected,
@@ -60,6 +63,8 @@ internal static class InstitutionBookingEndpoints
 
         institution.MapGet("/bookings", GetCalendarAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
         institution.MapGet("/today", GetTodayAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
+        institution.MapGet("/ledger", GetLedgerAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
+        institution.MapGet("/bookings/{bookingNo}", FindBookingAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
 
         institution.MapPost("/bookings/{bookingNo}/approve", (string bookingNo, ICurrentUserContext user, BookingDecisionHandler handler, CancellationToken ct) =>
             DecideAsync(bookingNo, InstitutionDecision.Approve, null, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarApprove));
@@ -224,6 +229,40 @@ internal static class InstitutionBookingEndpoints
 
         httpContext.Response.Headers.CacheControl = "no-store";
         return Results.Ok(await table.GetAsync(actor.InstitutionId, cancellationToken));
+    }
+
+    /// <summary>The dashboard's ledger (plan 05, R4): the latest changes of the institution's bookings.</summary>
+    private static async Task<IResult> GetLedgerAsync(
+        HttpContext httpContext,
+        ICurrentUserContext currentUser,
+        IInstitutionBookingQueries queries,
+        CancellationToken cancellationToken)
+    {
+        if (Actor(currentUser) is not { } actor)
+        {
+            return NoInstitution();
+        }
+
+        httpContext.Response.Headers.CacheControl = "no-store";
+        return Results.Ok(await queries.GetLedgerAsync(actor.InstitutionId, LedgerLength, cancellationToken));
+    }
+
+    /// <summary>A booking typed whole into the jump-to palette (plan 05, R2): the day to open the calendar on.</summary>
+    private static async Task<IResult> FindBookingAsync(
+        string bookingNo,
+        ICurrentUserContext currentUser,
+        IInstitutionBookingQueries queries,
+        CancellationToken cancellationToken)
+    {
+        if (Actor(currentUser) is not { } actor)
+        {
+            return NoInstitution();
+        }
+
+        // The database's collation is case-insensitive, so "bk-2026-000123" finds BK-2026-000123 as typed.
+        return await queries.FindBookingAsync(actor.InstitutionId, bookingNo.Trim(), cancellationToken) is { } place
+            ? Results.Ok(place)
+            : ApiErrors.Error(StatusCodes.Status404NotFound, BookingDecisionResult.NotFound);
     }
 
     private static async Task<IResult> DecideAsync(

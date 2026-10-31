@@ -97,6 +97,31 @@ public sealed class InstitutionBookingQueries(IDbConnectionFactory connections) 
         WHERE si.InstitutionId = @institutionId AND si.SlotDate = @day;
         """;
 
+    // Every change is a BookingStatusHistory row, the booking's making included, so the ledger reads
+    // that log rather than piecing events together from the booking's own timestamps: a booking
+    // approved and later cancelled shows both.
+    private const string LedgerSql =
+        """
+        SELECT TOP (@take)
+               b.BookingNo AS BookingNo, h.ToStatus AS Status, h.ChangedAt AS At, si.SlotDate AS Date,
+               s.Name AS SlotName, s.NameSi AS SlotNameSi, s.NameTa AS SlotNameTa, b.DonorName AS DonorName
+        FROM booking.BookingStatusHistory AS h
+        JOIN booking.Bookings AS b      ON b.Id = h.BookingId
+        JOIN booking.SlotInstances AS si ON si.Id = b.SlotInstanceId AND si.InstitutionId = b.InstitutionId
+        JOIN booking.MealSlots AS s      ON s.Id = si.MealSlotId AND s.InstitutionId = si.InstitutionId
+        WHERE b.InstitutionId = @institutionId
+        ORDER BY h.ChangedAt DESC, h.Id DESC;
+        """;
+
+    private const string FindBookingSql =
+        """
+        SELECT b.BookingNo AS BookingNo, si.SlotDate AS Date, s.PublicId AS MealSlot, b.Status AS Status
+        FROM booking.Bookings AS b
+        JOIN booking.SlotInstances AS si ON si.Id = b.SlotInstanceId AND si.InstitutionId = b.InstitutionId
+        JOIN booking.MealSlots AS s      ON s.Id = si.MealSlotId AND s.InstitutionId = si.InstitutionId
+        WHERE b.InstitutionId = @institutionId AND b.BookingNo = @bookingNo;
+        """;
+
     public async Task<IReadOnlyList<InstitutionMealSlotView>> ListSlotsAsync(int institutionId, CancellationToken cancellationToken = default)
     {
         await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
@@ -184,6 +209,29 @@ public sealed class InstitutionBookingQueries(IDbConnectionFactory connections) 
             [.. seasons],
             [.. blocks],
             [.. days.Select(r => new TableSlotDay(r.MealSlotId, r.MaxSponsors, r.BookedSponsors, r.Status, r.Requested))]);
+    }
+
+    public async Task<IReadOnlyList<LedgerEntryView>> GetLedgerAsync(int institutionId, int take, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        var rows = await connection.QueryAsync<LedgerRow>(new CommandDefinition(
+            LedgerSql,
+            new { institutionId, take },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        return [.. rows.Select(r => new LedgerEntryView(
+            r.BookingNo, r.Status, r.At, r.Date, r.SlotName, r.SlotNameSi, r.SlotNameTa, r.DonorName))];
+    }
+
+    public async Task<BookingPlaceView?> FindBookingAsync(int institutionId, string bookingNo, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        var row = await connection.QuerySingleOrDefaultAsync<BookingPlaceRow>(new CommandDefinition(
+            FindBookingSql,
+            new { institutionId, bookingNo },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        return row is null ? null : new BookingPlaceView(row.BookingNo, row.Date, row.MealSlot, row.Status);
     }
 
     private sealed class SlotRow
@@ -286,5 +334,25 @@ public sealed class InstitutionBookingQueries(IDbConnectionFactory connections) 
         public byte BookedSponsors { get; init; }
         public string Status { get; init; } = null!;
         public int Requested { get; init; }
+    }
+
+    private sealed class LedgerRow
+    {
+        public string BookingNo { get; init; } = null!;
+        public string Status { get; init; } = null!;
+        public DateTime At { get; init; }
+        public DateOnly Date { get; init; }
+        public string SlotName { get; init; } = null!;
+        public string? SlotNameSi { get; init; }
+        public string? SlotNameTa { get; init; }
+        public string DonorName { get; init; } = null!;
+    }
+
+    private sealed class BookingPlaceRow
+    {
+        public string BookingNo { get; init; } = null!;
+        public DateOnly Date { get; init; }
+        public Guid MealSlot { get; init; }
+        public string Status { get; init; } = null!;
     }
 }

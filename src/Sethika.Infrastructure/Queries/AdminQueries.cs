@@ -42,6 +42,16 @@ public sealed class AdminQueries(IDbConnectionFactory connections) : IAdminQueri
         ORDER BY i.Name, i.Slug;
         """;
 
+    // Every status from the table's CHECK, so one nobody is in still shows as zero.
+    private const string StatusesSql =
+        """
+        SELECT s.Status AS Status, COUNT(i.Id) AS Count
+        FROM (VALUES ('Onboarding', 1), ('Active', 2), ('Suspended', 3), ('Deactivated', 4)) AS s (Status, SortOrder)
+        LEFT JOIN org.Institutions AS i ON i.Status = s.Status AND i.IsDeleted = 0
+        GROUP BY s.Status, s.SortOrder
+        ORDER BY s.SortOrder;
+        """;
+
     private const string UsersSql =
         """
         SELECT TOP (100)
@@ -96,6 +106,14 @@ public sealed class AdminQueries(IDbConnectionFactory connections) : IAdminQueri
         await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         var rows = await connection.QueryAsync<AdminInstitutionView>(
             new CommandDefinition(InstitutionsSql, new { like = Like(search) }, cancellationToken: cancellationToken)).ConfigureAwait(false);
+        return [.. rows];
+    }
+
+    public async Task<IReadOnlyList<InstitutionStatusCount>> GetInstitutionStatusesAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        var rows = await connection.QueryAsync<InstitutionStatusCount>(
+            new CommandDefinition(StatusesSql, cancellationToken: cancellationToken)).ConfigureAwait(false);
         return [.. rows];
     }
 

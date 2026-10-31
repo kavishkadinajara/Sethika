@@ -26,6 +26,9 @@ internal static class RegistrationReviewEndpoints
 
     private const int MaxPageSize = 100;
 
+    /// <summary>How many decisions the platform dashboard lists.</summary>
+    public const int DecidedLength = 10;
+
     /// <summary>The statuses a reviewer can filter the queue by. Not Draft: drafts are not offered for review.</summary>
     private static readonly HashSet<string> QueueStatuses = new(StringComparer.Ordinal)
     {
@@ -52,6 +55,11 @@ internal static class RegistrationReviewEndpoints
         var registrations = app.MapGroup("/api/admin/registrations");
 
         registrations.MapGet("/", ListAsync).WithMetadata(new HasPermissionAttribute(View));
+
+        // The platform dashboard's ledger of decisions (plan 05, R4). A literal segment, so it wins over {requestNo}.
+        registrations.MapGet("/decided", async (IRegistrationReviewQueries queries, CancellationToken ct) =>
+                Results.Ok(await queries.ListDecidedAsync(DecidedLength, ct)))
+            .WithMetadata(new HasPermissionAttribute(View));
 
         // The names behind the codes the queue and the detail carry (types, districts, documents),
         // under the reviewer's own permission: a reviewer holds none of the applicant's.

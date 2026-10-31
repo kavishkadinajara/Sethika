@@ -28,6 +28,18 @@ public sealed class RegistrationReviewQueries(IDbConnectionFactory connections, 
         SELECT COUNT(*) FROM org.RegistrationRequests AS r WHERE r.Status IN @statuses;
         """;
 
+    private const string DecidedSql =
+        """
+        SELECT TOP (@take)
+               r.RequestNo AS RequestNo, r.ProposedName AS ProposedName, t.Code AS InstitutionType,
+               r.Status AS Status, r.DecidedAt AS DecidedAt, i.Slug AS Institution
+        FROM org.RegistrationRequests AS r
+        JOIN org.InstitutionTypes AS t  ON t.Id = r.InstitutionTypeId
+        LEFT JOIN org.Institutions AS i ON i.Id = r.CreatedInstitutionId
+        WHERE r.Status IN ('Approved', 'Rejected')
+        ORDER BY r.DecidedAt DESC, r.Id DESC;
+        """;
+
     // What the application's type requires, its checklist with any answers, and the reasons a
     // rejection can give. Drafts are left out here too, so a draft's number reads as nothing at all.
     private const string ExtrasSql =
@@ -80,6 +92,14 @@ public sealed class RegistrationReviewQueries(IDbConnectionFactory connections, 
         var items = (await grid.ReadAsync<ReviewQueueItem>().ConfigureAwait(false)).AsList();
         var total = await grid.ReadSingleAsync<int>().ConfigureAwait(false);
         return new ReviewQueuePage(items, total, page, pageSize);
+    }
+
+    public async Task<IReadOnlyList<ReviewDecisionItem>> ListDecidedAsync(int take, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        var rows = await connection.QueryAsync<ReviewDecisionItem>(
+            new CommandDefinition(DecidedSql, new { take }, cancellationToken: cancellationToken)).ConfigureAwait(false);
+        return [.. rows];
     }
 
     public async Task<ReviewView?> GetAsync(string requestNo, CancellationToken cancellationToken = default)

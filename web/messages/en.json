@@ -72,7 +72,11 @@
       "results": "Screens",
       "count": "{count, plural, one {# screen} other {# screens}}",
       "nothing": "No screen matches “{query}”.",
-      "keys": "↑ ↓ to move · Enter to open · Esc to close"
+      "keys": "↑ ↓ to move · Enter to open · Esc to close",
+      "booking": "Open booking {bookingNo}",
+      "bookingHint": "On its day in the calendar",
+      "bookingMissing": "This institution has no booking {bookingNo}.",
+      "bookingFailed": "The booking could not be looked up. Please try again."
     },
     "today": {
       "title": "Today's table",
@@ -84,59 +88,15 @@
     }
   },
   "Dashboard": {
-    "morning": "Good morning",
-    "afternoon": "Good afternoon",
-    "evening": "Good evening",
     "welcome": "Welcome back, {name}",
     "welcomeNoName": "Welcome back",
     "asDonor": "Every meal you give is someone's day made easier.",
     "asInstitution": "Here is {name} at a glance.",
     "asPlatform": "Every institution and every request, in one place.",
-    "quickActions": "Quick actions",
     "actions": {
       "find": {
         "title": "Find a place to give",
         "description": "Temples, kovils, mosques, churches and care homes"
-      },
-      "myBookings": {
-        "title": "My bookings",
-        "description": "Your meals, and cancelling one"
-      },
-      "apply": {
-        "title": "Register an institution",
-        "description": "Bring your place onto Sethika"
-      },
-      "calendar": {
-        "title": "Booking calendar",
-        "description": "Requests to answer, and the month's meals"
-      },
-      "slots": {
-        "title": "Meals and days",
-        "description": "The meals you offer, and days you are closed"
-      },
-      "registrations": {
-        "title": "Registration requests",
-        "description": "Applications waiting for a review"
-      },
-      "password": {
-        "title": "Change password",
-        "description": "Keep your account safe"
-      },
-      "roles": {
-        "title": "Roles",
-        "description": "What each role may do"
-      },
-      "members": {
-        "title": "Staff",
-        "description": "Invite people and give them roles"
-      },
-      "institutions": {
-        "title": "Institutions",
-        "description": "Open any institution as platform support"
-      },
-      "users": {
-        "title": "Users",
-        "description": "Every account, roles and suspensions"
       }
     },
     "landing": {
@@ -192,6 +152,80 @@
           "description": "One place for temples, kovils, mosques, churches and care homes alike."
         }
       }
+    },
+    "sentence": {
+      "waitingAndNext": "{count, plural, one {# booking waits} other {# bookings wait}} for your answer, and next on the table is {meal} at {time}.",
+      "waiting": "{count, plural, one {# booking waits} other {# bookings wait}} for your answer.",
+      "institutionPlain": "Everything you look after is in the menu.",
+      "noMeals": "No meals are on the table today.",
+      "mealsOver": "Today's meals have all begun; the calendar holds what comes next.",
+      "nextWithOpen": "Next on the table is {meal} at {time}, and {open, plural, one {# place is} other {# places are}} still open today.",
+      "nextAllGiven": "Next on the table is {meal} at {time}, and every meal still to come has its sponsor.",
+      "donorPlain": "Find a place, and give a meal on a day that matters to you.",
+      "nothingBooked": "You have no meal booked yet. Find a place, and choose a day.",
+      "givingToday": "Today you give {meal} at {place}, at {time}.",
+      "givingTomorrow": "Tomorrow you give {meal} at {place}, at {time}.",
+      "givingLater": "Your next meal to give is {meal} at {place}, on {date} at {time}.",
+      "askedToday": "Your meal today, {meal} at {place} at {time}, is still waiting for their answer.",
+      "askedTomorrow": "Your meal tomorrow, {meal} at {place} at {time}, is still waiting for their answer.",
+      "askedLater": "Your next meal, {meal} at {place} on {date}, is still waiting for their answer.",
+      "platformPlain": "Every institution on Sethika, in one place.",
+      "queueClear": "No registration is waiting for a review.",
+      "queue": "{count, plural, one {# registration waits} other {# registrations wait}} for a review; the oldest has waited {days, plural, =0 {since today} one {# day} other {# days}}."
+    },
+    "panels": {
+      "today": "Today's table",
+      "openDay": "Open today",
+      "waiting": "Waiting for you",
+      "allWaiting": "All {count} on the calendar",
+      "nothingWaiting": "Nothing is waiting for an answer.",
+      "ledger": "The ledger",
+      "month": "Month, bowl by bowl",
+      "openCalendar": "Open the calendar",
+      "stale": "Some of today's figures could not be read.",
+      "retry": "Try again",
+      "yourTable": "Your table",
+      "allBookings": "All my bookings",
+      "nothingComing": "No meal to give yet.",
+      "places": "Places you give to",
+      "queue": "Waiting for a review",
+      "allQueue": "All {count} in the queue",
+      "openQueue": "Open the queue",
+      "queueClear": "The queue is clear.",
+      "waited": "{days, plural, =0 {today} one {# day} other {# days}}",
+      "decisions": "Latest decisions",
+      "noDecisions": "No application has been decided yet.",
+      "institutions": "Institutions by status",
+      "openInstitutions": "All institutions"
+    },
+    "timeline": {
+      "now": "Now"
+    },
+    "month": {
+      "day": "{taken} of {places} places taken.",
+      "waiting": "{count, plural, one {# request waits.} other {# requests wait.}}",
+      "nothing": "Nothing booked."
+    },
+    "ledger": {
+      "none": "No booking has changed yet.",
+      "line": {
+        "Requested": "{donor} booked {meal} for {date}.",
+        "Approved": "{donor}'s {meal} on {date} was confirmed.",
+        "Rejected": "{donor}'s {meal} on {date} was not accepted.",
+        "Cancelled": "{donor}'s {meal} on {date} was cancelled.",
+        "Completed": "{donor}'s {meal} on {date} was served.",
+        "NoShow": "{donor}'s {meal} on {date} did not happen."
+      }
+    },
+    "status": {
+      "Onboarding": "Onboarding",
+      "Active": "Active",
+      "Suspended": "Suspended",
+      "Deactivated": "Deactivated"
+    },
+    "decision": {
+      "Approved": "{name} was approved.",
+      "Rejected": "{name} was not accepted."
     }
   },
   "Login": {

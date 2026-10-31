@@ -72,6 +72,23 @@ public sealed record SlotDayView(
 /// <param name="Requested">Bookings on it still waiting for an answer.</param>
 public sealed record TableSlotDay(int MealSlotId, byte MaxSponsors, byte BookedSponsors, string Status, int Requested);
 
+/// <summary>One change of one booking, as the dashboard's ledger lists it (plan 05, R4).</summary>
+/// <param name="Status">The status the booking moved to; <c>Requested</c> is the booking being made.</param>
+/// <param name="At">When, in UTC.</param>
+/// <param name="Date">The day the meal is for.</param>
+public sealed record LedgerEntryView(
+    string BookingNo,
+    string Status,
+    DateTime At,
+    DateOnly Date,
+    string SlotName,
+    string? SlotNameSi,
+    string? SlotNameTa,
+    string DonorName);
+
+/// <summary>Where one booking sits on the calendar: what the jump-to palette opens (plan 05, R2).</summary>
+public sealed record BookingPlaceView(string BookingNo, DateOnly Date, Guid MealSlot, string Status);
+
 /// <summary>What one day's table is laid from: the active slots, their seasons, and the day's blocks and slot-days.</summary>
 public sealed record TableSource(
     IReadOnlyList<MealSlot> Slots,
@@ -107,4 +124,10 @@ public interface IInstitutionBookingQueries
 
     /// <summary>The institution's active slots with their seasons, and the blocks and slot-days of <paramref name="day"/>.</summary>
     Task<TableSource> GetTableSourceAsync(int institutionId, DateOnly day, CancellationToken cancellationToken = default);
+
+    /// <summary>The latest <paramref name="take"/> status changes of the institution's bookings, newest first.</summary>
+    Task<IReadOnlyList<LedgerEntryView>> GetLedgerAsync(int institutionId, int take, CancellationToken cancellationToken = default);
+
+    /// <summary>The institution's booking numbered <paramref name="bookingNo"/>, or null if it has none by that number.</summary>
+    Task<BookingPlaceView?> FindBookingAsync(int institutionId, string bookingNo, CancellationToken cancellationToken = default);
 }
