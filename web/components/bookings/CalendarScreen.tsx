@@ -15,6 +15,7 @@ import { addDays, colomboToday, firstOfMonth, lastOfMonth, monthOf } from "@/lib
 import { inLocale } from "@/lib/bookings/names";
 import type { CalendarBooking, Decision, SlotDay } from "@/lib/bookings/types";
 import { usePermissions } from "@/lib/permissions/usePermissions";
+import { markShellStale } from "@/lib/shell/summary";
 import { cn, focusRing } from "@/lib/utils";
 import { BookingStatusBadge } from "./BookingStatusBadge";
 import { Bowl } from "./Bowl";
@@ -67,10 +68,11 @@ export function CalendarScreen() {
     void loadWaiting();
   }, [loadWaiting]);
 
-  /** After any decision: both views may have changed. */
+  /** After any decision: both views may have changed, and so may the sidebar's count and table. */
   const reload = () => {
     void loadWaiting();
     void loadMonth(month);
+    markShellStale();
   };
 
   const onDate = (date: string) => days?.filter((d) => d.date === date) ?? [];

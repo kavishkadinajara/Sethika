@@ -140,6 +140,23 @@ public class MealSlotRulesTests
         Assert.Equal(BookingErrors.DateBlocked, CanBookOn(Slot(), Friday, blocks: [Block(Friday, Friday, slotId: SlotId)]));
     }
 
+    // ------------------------------------------------------------------ the day as planned (today's table)
+
+    [Fact]
+    public void ASlotServesOnItsDaysInItsSeasons_WhateverTheAdvanceWindow()
+    {
+        var fridays = Slot(s => { s.DaysOfWeekMask = MealSlot.DayBit(DayOfWeek.Friday); s.MinAdvanceDays = 5; });
+        MealSlotSeason[] seasons = [new() { MealSlotId = SlotId, Name = "Season", DateFrom = Friday, DateTo = Friday.AddDays(7) }];
+
+        // Too soon to book on Friday, and still laid that day.
+        Assert.True(MealSlotRules.Serves(fridays, seasons, Friday));
+        Assert.False(MealSlotRules.Serves(fridays, seasons, Friday.AddDays(1)));
+        Assert.True(MealSlotRules.Serves(fridays, seasons, Friday.AddDays(7)));
+        Assert.False(MealSlotRules.Serves(fridays, seasons, Friday.AddDays(14)));
+        Assert.True(MealSlotRules.Serves(fridays, [], Friday.AddDays(14)));
+        Assert.False(MealSlotRules.Serves(Slot(s => s.IsActive = false), [], Friday));
+    }
+
     // ------------------------------------------------------------------ the advance window, in Colombo dates
 
     [Fact]

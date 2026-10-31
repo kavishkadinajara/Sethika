@@ -5,6 +5,7 @@ using Sethika.Api.Security;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Bookings.Engine;
 using Sethika.Application.Bookings.Slots;
+using Sethika.Application.Bookings.Today;
 using Sethika.Domain.Bookings;
 
 namespace Sethika.Api.Endpoints;
@@ -58,6 +59,7 @@ internal static class InstitutionBookingEndpoints
         institution.MapPut("/listing", SetListingAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
 
         institution.MapGet("/bookings", GetCalendarAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
+        institution.MapGet("/today", GetTodayAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
 
         institution.MapPost("/bookings/{bookingNo}/approve", (string bookingNo, ICurrentUserContext user, BookingDecisionHandler handler, CancellationToken ct) =>
             DecideAsync(bookingNo, InstitutionDecision.Approve, null, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarApprove));
@@ -206,6 +208,22 @@ internal static class InstitutionBookingEndpoints
         }
 
         return Results.Ok(await queries.GetCalendarAsync(actor.InstitutionId, start, end, wanted, cancellationToken));
+    }
+
+    /// <summary>Today's meals in Colombo, booked or not (plan 05, R2): the sidebar's table and the dashboard's timeline.</summary>
+    private static async Task<IResult> GetTodayAsync(
+        HttpContext httpContext,
+        ICurrentUserContext currentUser,
+        TodaysTable table,
+        CancellationToken cancellationToken)
+    {
+        if (Actor(currentUser) is not { } actor)
+        {
+            return NoInstitution();
+        }
+
+        httpContext.Response.Headers.CacheControl = "no-store";
+        return Results.Ok(await table.GetAsync(actor.InstitutionId, cancellationToken));
     }
 
     private static async Task<IResult> DecideAsync(

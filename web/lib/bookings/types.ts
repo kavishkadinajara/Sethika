@@ -183,4 +183,25 @@ export type SlotDay = {
   bookings: CalendarBooking[];
 };
 
+/** How a meal sits on today's table: places left, every place taken, or blocked for the day. */
+export type TableSlotState = "Open" | "Full" | "Closed";
+
+/** One meal of today's table (GET /api/institution/today). */
+export type TableSlot = {
+  mealSlot: string;
+  name: string;
+  nameSi: string | null;
+  nameTa: string | null;
+  startTime: string;
+  endTime: string;
+  maxSponsors: number;
+  bookedSponsors: number;
+  /** Bookings for it still waiting for an answer. */
+  requested: number;
+  state: TableSlotState;
+};
+
+/** Today in Colombo (yyyy-MM-dd) and its meals, by start time. */
+export type TodaysTable = { date: string; slots: TableSlot[] };
+
 export type Decision = "approve" | "reject" | "cancel" | "complete" | "no-show";

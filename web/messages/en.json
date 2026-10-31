@@ -60,6 +60,27 @@
     "support": {
       "banner": "You are in {institution} as platform support. Every change is recorded under your name.",
       "leave": "Leave"
+    },
+    "sidebar": "Sidebar",
+    "fold": "Fold the sidebar",
+    "unfold": "Open the sidebar",
+    "badge": "{count, plural, one {# waiting} other {# waiting}}",
+    "jump": {
+      "title": "Jump to",
+      "shortcut": "Ctrl K",
+      "placeholder": "Type a screen's name",
+      "results": "Screens",
+      "count": "{count, plural, one {# screen} other {# screens}}",
+      "nothing": "No screen matches “{query}”.",
+      "keys": "↑ ↓ to move · Enter to open · Esc to close"
+    },
+    "today": {
+      "title": "Today's table",
+      "none": "No meals today.",
+      "places": "{booked} of {max} taken",
+      "full": "Every place taken",
+      "closed": "Closed today",
+      "requested": "{count, plural, one {# to answer} other {# to answer}}"
     }
   },
   "Dashboard": {

@@ -20,6 +20,7 @@ import type {
   PublicInstitution,
   PublicInstitutionSummary,
   SlotDay,
+  TodaysTable,
 } from "./types";
 
 /*  Typed calls to the booking API (plan 03, 5.5 and 5.4). The same `{ code, fields }` refusal as
@@ -115,6 +116,11 @@ export async function getCalendar(from: string, to: string, status?: BookingStat
   const query = new URLSearchParams({ from, to });
   if (status) query.set("status", status);
   return json(await send(`${INSTITUTION}/bookings?${query}`, { method: "GET" }));
+}
+
+/** Today's meals, booked or not, with the places taken and the requests to answer. */
+export async function getToday(): Promise<BookingResult<TodaysTable>> {
+  return json(await send(`${INSTITUTION}/today`, { method: "GET" }));
 }
 
 export async function decide(bookingNo: string, decision: Decision, reason?: string): Promise<BookingResult<{ status: BookingStatus }>> {

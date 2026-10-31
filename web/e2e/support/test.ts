@@ -74,10 +74,12 @@ export async function scrollsSideways(page: Page): Promise<boolean> {
  * that does not fit, and the page itself never scrolls, so `scrollsSideways` cannot see it.
  * Deliberate clipping (an ellipsis, the 1 px screen-reader-only copies) is left out, and so are
  * text fields: a value longer than its box scrolls inside it, which is how a field works.
+ * `within` (a CSS selector) narrows the check to part of the page, such as the sidebar.
  */
-export async function clipsSideways(page: Page): Promise<string[]> {
-  return page.evaluate(() =>
-    Array.from(document.body.querySelectorAll<HTMLElement>("*"))
+export async function clipsSideways(page: Page, within?: string): Promise<string[]> {
+  return page.evaluate((scope) =>
+    Array.from(scope ? document.querySelectorAll(scope) : [document.body])
+      .flatMap((root) => Array.from(root.querySelectorAll<HTMLElement>("*")))
       .filter((element) => {
         const style = getComputedStyle(element);
         return (
@@ -89,5 +91,6 @@ export async function clipsSideways(page: Page): Promise<string[]> {
         );
       })
       .map((element) => `<${element.tagName.toLowerCase()}> "${(element.textContent ?? "").trim().slice(0, 60)}"`),
+    within,
   );
 }

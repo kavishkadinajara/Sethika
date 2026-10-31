@@ -15,6 +15,9 @@ if (!process.env.API_BASE_URL && process.env.NODE_ENV === "production") {
 }
 
 const nextConfig: NextConfig = {
+  // Development only: the "N" indicator's default corner (bottom left) covers the sidebar's fold
+  // button (plan 05, R2).
+  devIndicators: { position: "bottom-right" },
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${apiBaseUrl}/api/:path*` }];
   },

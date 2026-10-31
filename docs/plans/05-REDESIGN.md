@@ -2,7 +2,7 @@
 
 Branch: `redesign`, cut from `develop` after `access-hardening` merges.
 
-Status: **X1 (true-black dark) done; X2 in progress (`/api/me/summary` done, the sidebar next); X3-X4 not started.** Last updated 2026-10-31. Update this line and the §4 boxes
+Status: **X1 (true-black dark) done; X2 (living sidebar) built and tested, not committed; booking-number jump moved to X3; X3-X4 not started.** Last updated 2026-10-31. Update this line and the §4 boxes
 whenever either changes; a fresh session trusts them.
 
 Why this plan exists: on 2026-10-31 the user judged the plan 04 shell and dashboard generic ("the
@@ -107,15 +107,16 @@ Fuzzy people search, customisable dashboards, charts beyond the bowls, SignalR (
 - [x] `globals.css` dark tokens (R1) in both the `[data-theme=dark]` block and the media block; light unchanged
 - [x] Contrast table in the header of `globals.css`; `/design`, landing, login, institutions seen in both themes, desktop + 320 px
 - [x] Hard-coded greens moved to tokens (avatars, chips, mobile nav, placeholder, browser chrome colour); the landing panel is a surface in dark
-- [ ] DESIGN.md rewritten for R1-R5 (R1 and warm depth done; sidebar and dashboard sections with X2/X3)
+- [ ] DESIGN.md rewritten for R1-R5 (R1, warm depth and the sidebar done; the dashboard section with X3)
 
 ### X2: Living sidebar
-- [ ] `Sidebar` (sections, groups, links, badges, fold), mobile sheet reuses it; rail, flyout and `NavGroups` removed
-- [ ] Institution card as the context switcher (from `ContextChip`); top bar slimmed
-- [ ] Jump-to palette (`Ctrl K`): screens + whole booking/appointment numbers
+- [x] The P1 wobble: during a switch the old menu stays (busy) until the new permissions arrive; at a session's start no half menu
+- [x] `Sidebar` (sections, groups, links, badges, fold), mobile sheet reuses it; rail, flyout and `NavGroups` removed
+- [x] Institution card as the context switcher (`ContextCard`, from `ContextChip`); top bar slimmed
+- [x] Jump-to palette (`Ctrl K`): screens. A whole booking/appointment number needs a lookup endpoint and a calendar that opens on one booking: moved to X3, with the dashboard's inline decisions
 - [x] `GET /api/me/summary` + tests (each count shown only with its permission; a count from another institution never leaks; mutations: 5/6 killed, the institution filter's mutant survives because RLS scopes the count too, kept as defence in depth)
-- [ ] Today's table in the sidebar
-- [ ] e2e: menu per role (shell.spec rewritten), fold, palette, badges, 320 px sheet, light + dark
+- [x] Today's table in the sidebar: `GET /api/institution/today` (`BOOKINGS.CALENDAR.VIEW`), every slot laid today by `MealSlotRules.Serves` (the engine's own weekday and season rule), blocked ones shown closed; integration tests + 8/8 mutants killed. X3's timeline reads the same endpoint
+- [x] e2e: menu per role (shell.spec rewritten), fold (tooltips on top, kept per browser), palette, badges (and their refresh after a decision), today's table, the P1 switch never emptying the menu, 320 px sheet, light + dark: 22/22
 
 ### X3: Day Ledger dashboard
 - [ ] Endpoints + Dapper queries for the institution panels, the donor panels, the platform panels; integration tests + mutations

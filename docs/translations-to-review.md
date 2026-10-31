@@ -614,3 +614,33 @@ an edit sent without the role's version, and taking away an institution's only o
 | `Access.errors.changed_meanwhile` | Someone else changed this role while you were editing it. Reload the page to see their change, then make yours again. | ඔබ සංස්කරණය කරන අතරතුර වෙනත් අයෙක් මෙම භූමිකාව වෙනස් කළා. ඔවුන්ගේ වෙනස බැලීමට පිටුව නැවත පූරණය කර, ඔබේ වෙනස නැවත කරන්න. | நீங்கள் திருத்திக்கொண்டிருந்தபோது வேறொருவர் இந்தப் பங்கை மாற்றினார். அவர்களின் மாற்றத்தைக் காண பக்கத்தை மீண்டும் ஏற்றி, உங்கள் மாற்றத்தை மீண்டும் செய்யுங்கள். | | |
 | `Access.errors.invalid_version` | Reload the page, then make your change again. | පිටුව නැවත පූරණය කර, ඔබේ වෙනස නැවත කරන්න. | பக்கத்தை மீண்டும் ஏற்றி, உங்கள் மாற்றத்தை மீண்டும் செய்யுங்கள். | | |
 | `Access.errors.last_owner` | This is the institution's only owner. Make someone else an owner first. | මෙය ආයතනයේ එකම හිමිකරු ය. මුලින්ම වෙනත් අයෙකු හිමිකරුවෙකු කරන්න. | இது நிறுவனத்தின் ஒரே உரிமையாளர். முதலில் வேறொருவரை உரிமையாளராக்குங்கள். | | |
+
+## The living sidebar (2026-10-31, `Shell`, plan 05 X2)
+
+The new sidebar's words: folding it, the count beside a link, jump-to (`Ctrl K`), and today's
+table. Drafts, written by the developer; please check them.
+
+Questions for the reviewers:
+
+1. `අද දවසේ ආහාර වේල්` / `இன்றைய உணவு` for "Today's table" (the day's meals and how full each
+   is). Kept faith-neutral on purpose (`දානය` would read as Buddhist); does it read naturally?
+2. `වෙත යන්න` / `இதற்குச் செல்` as the name of a search box that takes you to a screen.
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `Shell.sidebar` | Sidebar | පැති තීරුව | பக்கப்பட்டி | | |
+| `Shell.fold` | Fold the sidebar | පැති තීරුව හකුළන්න | பக்கப்பட்டியைச் சுருக்கு | | |
+| `Shell.unfold` | Open the sidebar | පැති තීරුව විවෘත කරන්න | பக்கப்பட்டியைத் திற | | |
+| `Shell.badge` | # waiting | #ක් රැඳී සිටී | # காத்திருக்கிறது / காத்திருக்கின்றன | | |
+| `Shell.jump.title` | Jump to | වෙත යන්න | இதற்குச் செல் | | |
+| `Shell.jump.placeholder` | Type a screen's name | තිරයක නම ටයිප් කරන්න | ஒரு திரையின் பெயரைத் தட்டச்சு செய்யுங்கள் | | |
+| `Shell.jump.results` | Screens | තිර | திரைகள் | | |
+| `Shell.jump.count` | # screen(s) | තිර # | # திரை / திரைகள் | | |
+| `Shell.jump.nothing` | No screen matches “{query}”. | “{query}” ට ගැළපෙන තිරයක් නැත. | “{query}” உடன் பொருந்தும் திரை இல்லை. | | |
+| `Shell.jump.keys` | ↑ ↓ to move · Enter to open · Esc to close | ↑ ↓ ගමන් කිරීමට · Enter විවෘත කිරීමට · Esc වැසීමට | ↑ ↓ நகர · Enter திறக்க · Esc மூட | | |
+| `Shell.today.title` | Today's table | අද දවසේ ආහාර වේල් | இன்றைய உணவு | | |
+| `Shell.today.none` | No meals today. | අද ආහාර වේල් නැත. | இன்று உணவு வேளைகள் இல்லை. | | |
+| `Shell.today.places` | {booked} of {max} taken | {max} න් {booked}ක් වෙන් වී ඇත | {max} இல் {booked} பதிவாகியுள்ளன | | |
+| `Shell.today.full` | Every place taken | සියලු ස්ථාන වෙන් වී ඇත | எல்லா இடங்களும் பதிவாகிவிட்டன | | |
+| `Shell.today.closed` | Closed today | අද වසා ඇත | இன்று மூடப்பட்டுள்ளது | | |
+| `Shell.today.requested` | # to answer | පිළිතුරු දීමට # | # பதில் தேவை | | |

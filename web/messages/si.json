@@ -60,6 +60,27 @@
     "support": {
       "banner": "ඔබ වේදිකා සහාය ලෙස {institution} තුළ සිටී. සෑම වෙනස්කමක්ම ඔබගේ නමින් සටහන් වේ.",
       "leave": "ඉවත් වන්න"
+    },
+    "sidebar": "පැති තීරුව",
+    "fold": "පැති තීරුව හකුළන්න",
+    "unfold": "පැති තීරුව විවෘත කරන්න",
+    "badge": "{count, plural, one {#ක් රැඳී සිටී} other {#ක් රැඳී සිටී}}",
+    "jump": {
+      "title": "වෙත යන්න",
+      "shortcut": "Ctrl K",
+      "placeholder": "තිරයක නම ටයිප් කරන්න",
+      "results": "තිර",
+      "count": "{count, plural, one {තිර #} other {තිර #}}",
+      "nothing": "“{query}” ට ගැළපෙන තිරයක් නැත.",
+      "keys": "↑ ↓ ගමන් කිරීමට · Enter විවෘත කිරීමට · Esc වැසීමට"
+    },
+    "today": {
+      "title": "අද දවසේ ආහාර වේල්",
+      "none": "අද ආහාර වේල් නැත.",
+      "places": "{max} න් {booked}ක් වෙන් වී ඇත",
+      "full": "සියලු ස්ථාන වෙන් වී ඇත",
+      "closed": "අද වසා ඇත",
+      "requested": "{count, plural, one {පිළිතුරු දීමට #} other {පිළිතුරු දීමට #}}"
     }
   },
   "Dashboard": {

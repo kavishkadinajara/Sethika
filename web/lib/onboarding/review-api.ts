@@ -1,4 +1,5 @@
 import { empty, json, jsonBody, send, type OnboardingFailure, type OnboardingResult } from "./api";
+import { markShellStale } from "@/lib/shell/summary";
 import type { ChecklistAnswer, Lookups, ReviewQueuePage, ReviewView } from "./types";
 
 /*  Typed calls to /api/admin/registrations (RegistrationReviewEndpoints.cs), through the
@@ -48,11 +49,17 @@ export async function askQuestions(requestNo: string, questions: string[]): Prom
 }
 
 export async function approveApplication(requestNo: string): Promise<OnboardingResult<{ institutionCode: string; slug: string }>> {
-  return json(await send(`${at(requestNo)}/approve`, { method: "POST" }));
+  return decided(await json<{ institutionCode: string; slug: string }>(await send(`${at(requestNo)}/approve`, { method: "POST" })));
 }
 
 export async function rejectApplication(requestNo: string, reason: string, note: string | null): Promise<OnboardingResult> {
-  return empty(await send(`${at(requestNo)}/reject`, jsonBody("POST", { reason, note })));
+  return decided(await empty(await send(`${at(requestNo)}/reject`, jsonBody("POST", { reason, note }))));
+}
+
+/** A decided application leaves the queue: the sidebar's count need not wait for its next poll. */
+function decided<T>(result: OnboardingResult<T>): OnboardingResult<T> {
+  if (result.ok) markShellStale();
+  return result;
 }
 
 export type { OnboardingFailure };

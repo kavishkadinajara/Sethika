@@ -61,24 +61,35 @@ Sethika follows the device's light or dark setting by default. The `ThemeSwitche
 **The rim mark.** A short 3px line on the top edge, the bowl's rim. Gold on the one card that
 matters most on a screen; in the status colour on a toast. Never more than one gold rim per view.
 
-## The app shell (plan 04, 2026-10-25)
+## The app shell (plan 04, 2026-10-25; the living sidebar, plan 05, 2026-10-31)
 
 Every screen that is not a sign-in form sits in one shell (`components/shell/AppShell.tsx`):
 
-- **Top bar**: brand, who the session acts as (the context chip, which also switches between the
-  person's own account and their institutions), language, account menu. Signed out: the public
+- **Top bar**: brand, language, account menu; on phones, the menu button. Signed out: the public
   links instead.
-- **The rail**: a floating column of section icons, shaped like the bowl, with a flyout that opens
-  beside it on the section's modules (an accordion) and their screens. Below `lg` the same tree is
-  in a sheet from the left. The section and the link the user is on carry the gold rim.
-- **Full width.** The page uses the whole width beside the rail; lists add columns as the screen
+- **The living sidebar** (`Sidebar.tsx`, `lg` and up, 17 rem): from the top, the **institution
+  card** (initials in a bowl-shaped tile with the gold rim, the name; it is the context switcher),
+  **Jump to** (`Ctrl K` / `⌘K`, a combobox over the screens the person may view), **the menu**
+  (every link visible under its module's name; the link the user is on carries the rim on its
+  left edge), and **today's table** for those who read the calendar (each of today's meals as a
+  bowl that fills as sponsors take its places). A link may carry a **gold count badge**: requests
+  to answer, registrations waiting, invitations; zero shows nothing. The counts and the table are
+  read every minute while the tab is visible, on focus, and right after a decision on the screen.
+- **It folds** to a column of icons (kept per browser); folded, each control's name shows beside it
+  on hover and focus. Tooltips and menus are portalled, so nothing of the sidebar is trapped in its
+  own stacking context or scroll box. Below `lg` the same body opens in a sheet from the left.
+- **During a switch** the menu of the old context stays (dimmed, `aria-busy`) until the new one's
+  permissions arrive: the sidebar never blinks out.
+- **Full width.** The page uses the whole width beside the sidebar; lists add columns as the screen
   grows (`lg:grid-cols-2 2xl:grid-cols-3`), forms and paragraphs keep a readable width of their
   own (`max-w-3xl`, `max-w-prose`).
-- **Brand panels may carry a tonal gradient of their own green** (the rail, the dashboard's
+- **Brand panels may carry a tonal gradient of their own green** in light (the dashboard's
   greeting, the landing page's picture): Estate Green from a lighter to a darker shade, never a
-  second hue, never glass. This relaxes "no gradients" for these three places only.
+  second hue, never glass. In dark they are plain surfaces (R1). The plan 04 rail and its panel
+  are gone.
 - The menu is the RBAC catalogue's shape filtered by `.VIEW` permissions (`lib/shell/nav.ts`);
-  hiding a link is UX only.
+  hiding a link is UX only, and so is hiding a count: the API sends only the counts the caller's
+  permissions allow.
 - **Toasts sit top right, under the bar.** At the bottom they covered the save bars and primary
   buttons placed where the thumb reaches (found by the access e2e test on a 320 px phone).
 

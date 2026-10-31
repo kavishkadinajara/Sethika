@@ -310,6 +310,96 @@ public sealed class InstitutionBookingEndpointsTests(SethikaTestDatabase databas
         Assert.Equal(1, (await BodyOf(forBeta)).GetProperty("bookingsToAnswer").GetInt32());
     }
 
+    [Fact]
+    public async Task TodaysTableLaysEveryMealOfTheDay_BookedOrNot_AndOnlyTheInstitutionsOwn()
+    {
+        var today = SriLankaTime.Today(DateTime.UtcNow);
+        var (full, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Table full");
+        var (shared, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Table shared", "Shared", 4);
+        var (empty, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Table empty");
+        var (blocked, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Table blocked");
+        var (offDay, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Table off day");
+        var (outOfSeason, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Table out of season");
+        var (inactive, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Table inactive");
+        var (betaSlot, _) = await CreateSlotAsync(Beta(_betaOwner), "Table beta");
+
+        await BookedAsync(full, SlotDay);
+        await BookedAsync(shared, SlotDay);
+        var approved = await BookedAsync(shared, SlotDay);
+        await BookedAsync(betaSlot, SlotDay);
+
+        await using (var connection = await PlatformConnectionAsync())
+        {
+            // Booked ten days ahead, then moved to today: nobody may book a slot for today here.
+            await connection.ExecuteAsync(
+                """
+                UPDATE booking.Bookings SET Status = 'Approved', DecidedAt = SYSUTCDATETIME(), DecidedBy = @owner WHERE BookingNo = @approved;
+                UPDATE booking.SlotInstances SET SlotDate = @today WHERE SlotDate = @slotDay;
+                UPDATE booking.MealSlots SET StartTime = '07:00', MaxSponsors = 6 WHERE PublicId = @shared; -- the slot-day keeps its 4 (C3)
+                UPDATE booking.MealSlots SET DaysOfWeekMask = 127 - @todayBit WHERE PublicId = @offDay;
+                UPDATE booking.MealSlots SET IsActive = 0 WHERE PublicId = @inactive;
+                INSERT booking.MealSlotSeasons (MealSlotId, Name, DateFrom, DateTo)
+                SELECT s.Id, N'Next season', DATEADD(DAY, 30, @today), DATEADD(DAY, 60, @today) FROM booking.MealSlots s WHERE s.PublicId = @outOfSeason;
+                INSERT booking.BlockedDates (InstitutionId, MealSlotId, DateFrom, DateTo, Reason, CreatedBy)
+                SELECT s.InstitutionId, s.Id, @today, @today, N'Festival', @owner FROM booking.MealSlots s WHERE s.PublicId = @blocked;
+                """,
+                new
+                {
+                    owner = _alphaOwner,
+                    approved,
+                    today = today.ToDateTime(TimeOnly.MinValue),
+                    slotDay = SlotDay.ToDateTime(TimeOnly.MinValue),
+                    shared,
+                    offDay,
+                    todayBit = (int)MealSlot.DayBit(today.DayOfWeek),
+                    inactive,
+                    outOfSeason,
+                    blocked,
+                });
+        }
+
+        using var forStaff = await SendAsync(Alpha(_alphaStaff), HttpMethod.Get, "/api/institution/today");
+        Assert.Equal(HttpStatusCode.OK, forStaff.StatusCode);
+        var table = await BodyOf(forStaff);
+        Assert.Equal(Iso(today), table.GetProperty("date").GetString());
+
+        // The seed's own slots run every day too; only this test's are compared, and the ones that
+        // must not be laid are among them.
+        HashSet<Guid> made = [full, shared, empty, blocked, offDay, outOfSeason, inactive, betaSlot];
+        var slots = table.GetProperty("slots").EnumerateArray().Where(s => made.Contains(s.GetProperty("mealSlot").GetGuid())).ToList();
+        Assert.Equal([shared, blocked, empty, full], slots.Select(s => s.GetProperty("mealSlot").GetGuid()));
+
+        static string Line(JsonElement s) =>
+            $"{s.GetProperty("name").GetString()} {s.GetProperty("startTime").GetString()} " +
+            $"{s.GetProperty("bookedSponsors").GetInt32()}/{s.GetProperty("maxSponsors").GetInt32()} " +
+            $"requested {s.GetProperty("requested").GetInt32()} {s.GetProperty("state").GetString()}";
+
+        Assert.Equal(
+            [
+                "Table shared 07:00 2/4 requested 1 Open",
+                "Table blocked 11:00 0/1 requested 0 Closed",
+                "Table empty 11:00 0/1 requested 0 Open",
+                "Table full 11:00 1/1 requested 1 Full",
+            ],
+            slots.Select(Line));
+
+        using var forBeta = await SendAsync(Beta(_betaOwner), HttpMethod.Get, "/api/institution/today");
+        Assert.Equal([betaSlot], (await BodyOf(forBeta)).GetProperty("slots").EnumerateArray().Select(s => s.GetProperty("mealSlot").GetGuid()).Where(made.Contains));
+    }
+
+    [Fact]
+    public async Task TodaysTableIsTheCalendarsToRead()
+    {
+        // A member holding no role in Alpha: no calendar, no table.
+        var nobody = await UserAsync("InstitutionStaff");
+
+        using var refused = await SendAsync(Alpha(nobody), HttpMethod.Get, "/api/institution/today");
+        using var anonymous = await SendAsync(_host.CreateClient(), HttpMethod.Get, "/api/institution/today");
+
+        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+    }
+
     // ------------------------------------------------------------------ meal slots
 
     [Fact]
