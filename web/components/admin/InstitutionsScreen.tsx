@@ -1,20 +1,22 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { FormError } from "@/components/auth/FormError";
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
 import { InstitutionIcon, ShieldIcon } from "@/components/ui/icons";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
 import { useRouter } from "@/i18n/navigation";
-import { listInstitutions, requestSupport } from "@/lib/admin/api";
-import type { AdminInstitution } from "@/lib/admin/types";
+import { getInstitutionLookups, listInstitutions, requestSupport } from "@/lib/admin/api";
+import { institutionStatuses, parseInstitutionQuery, type InstitutionQuery } from "@/lib/admin/list-query";
+import type { AdminInstitution, AdminPage } from "@/lib/admin/types";
+import { localName } from "@/lib/bookings/names";
+import type { Lookups } from "@/lib/onboarding/types";
 import { session } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions/usePermissions";
 import { cn } from "@/lib/utils";
+import { FilterChips, ListCount, ListSearch, ListSelect, Pager, useListQuery } from "./ListControls";
 import { useAdminError } from "./useAdminError";
 
 const statusTone: Record<AdminInstitution["status"], string> = {
@@ -25,7 +27,8 @@ const statusTone: Record<AdminInstitution["status"], string> = {
 };
 
 /**
- * Every institution on Sethika (plan 04, Y5), and the way into one as platform support (Y1). Opening
+ * Every institution on Sethika (plan 04, Y5), a page at a time, narrowed by status, type and
+ * district and ordered by name or newest, all kept in the address (plan 05, X4); and the way into one as platform support (Y1). Opening
  * one asks for a support ticket behind a step-up, then spends it switching the session; the
  * dashboard that follows is the institution's, with every permission, under a banner (Y4).
  */
@@ -36,31 +39,39 @@ export function InstitutionsScreen() {
   const toast = useToast();
   const router = useRouter();
   const { can } = usePermissions();
+  const locale = useLocale();
 
-  const [search, setSearch] = useState("");
-  const [rows, setRows] = useState<AdminInstitution[] | null>(null);
+  const [query, setQuery] = useListQuery<InstitutionQuery>(parseInstitutionQuery, "name");
+  const [page, setPage] = useState<AdminPage<AdminInstitution> | null>(null);
+  const [lookups, setLookups] = useState<Lookups | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
 
   useEffect(() => {
+    // A later query's answer must not be overwritten by an earlier one arriving late.
     let cancelled = false;
-    // Typing settles for a moment before the list is read again.
-    const timer = setTimeout(() => {
-      void listInstitutions(search.trim()).then((result) => {
-        if (cancelled) return;
-        if (result.ok) {
-          setRows(result.value);
-          setFailure(null);
-        } else {
-          setFailure(errorMessage(result.failure));
-        }
-      });
-    }, 250);
+    void listInstitutions(query).then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        setPage(result.value);
+        setFailure(null);
+      } else {
+        setFailure(errorMessage(result.failure));
+      }
+    });
     return () => {
       cancelled = true;
-      clearTimeout(timer);
     };
-  }, [search, errorMessage]);
+  }, [query, errorMessage]);
+
+  // The type and district names, in the page's language, for the two filters that take codes.
+  useEffect(() => {
+    let cancelled = false;
+    void getInstitutionLookups(locale).then((result) => !cancelled && result.ok && setLookups(result.value));
+    return () => {
+      cancelled = true;
+    };
+  }, [locale]);
 
   async function open(institution: AdminInstitution) {
     setOpening(institution.slug);
@@ -81,23 +92,51 @@ export function InstitutionsScreen() {
 
   return (
     <div className="grid gap-6">
-      <div className="max-w-xl">
-        <Field label={t("search")} description={t("searchHint")}>
-          <Input type="search" value={search} onChange={(event) => setSearch(event.target.value)} autoComplete="off" />
-        </Field>
+      <ListSearch label={t("search")} hint={t("searchHint")} value={query.search} onSearch={(search) => setQuery({ search })} />
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_minmax(0,14rem)_minmax(0,14rem)] lg:items-end">
+        <FilterChips
+          label={t("statusLabel")}
+          options={institutionStatuses.map((status) => ({ value: status, label: t(`status.${status}`) }))}
+          value={query.status}
+          onChange={(status) => setQuery({ status })}
+        />
+        <ListSelect
+          label={t("type")}
+          options={[{ value: "", label: t("allTypes") }, ...(lookups?.institutionTypes ?? []).map((type) => ({ value: type.code, label: localName(locale, type) }))]}
+          value={query.type ?? ""}
+          onChange={(type) => setQuery({ type: type || null })}
+        />
+        <ListSelect
+          label={t("district")}
+          options={[{ value: "", label: t("allDistricts") }, ...(lookups?.districts ?? []).map((district) => ({ value: district.code, label: localName(locale, district) }))]}
+          value={query.district ?? ""}
+          onChange={(district) => setQuery({ district: district || null })}
+        />
+        <ListSelect
+          label={t("sort")}
+          options={[
+            { value: "name", label: t("sortName") },
+            { value: "newest", label: t("sortNewest") },
+          ]}
+          value={query.sort}
+          onChange={(sort) => setQuery({ sort: sort === "newest" ? "newest" : "name" })}
+        />
       </div>
 
       <FormError>{failure}</FormError>
 
-      {rows === null ? (
+      {page !== null && <ListCount page={page.page} shown={page.items.length} total={page.total} />}
+
+      {page === null ? (
         <div className="flex justify-center py-16 text-brand">
           <Spinner />
         </div>
-      ) : rows.length === 0 ? (
+      ) : page.items.length === 0 ? (
         <p className="text-muted">{t("empty")}</p>
       ) : (
-        <ul className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-          {rows.map((institution) => (
+        <ul aria-label={t("list")} className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+          {page.items.map((institution) => (
             <li key={institution.slug} className="grid content-start gap-3 rounded-bowl border border-hairline bg-surface p-5 shadow-lift">
               <div className="flex items-start gap-3">
                 <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-brand">
@@ -134,6 +173,8 @@ export function InstitutionsScreen() {
           ))}
         </ul>
       )}
+
+      {page !== null && <Pager page={page.page} total={page.total} onPage={(next) => setQuery({ page: next })} />}
     </div>
   );
 }

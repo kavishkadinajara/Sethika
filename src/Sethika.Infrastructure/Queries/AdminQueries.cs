@@ -6,7 +6,8 @@ namespace Sethika.Infrastructure.Queries;
 /// <summary>Dapper reads for the platform's own screens (plan 04, Y5), per the reads-use-Dapper rule.</summary>
 /// <remarks>
 /// Only platform staff reach these endpoints, and their connections carry <c>IsPlatform = 1</c>, so
-/// RLS shows every tenant: the owner's name from <c>org.InstitutionMembers</c> is visible here.
+/// RLS shows every tenant. Each list is one page and a count, read in one batch (as the review
+/// queue is), so a page past the end still knows the total.
 /// </remarks>
 public sealed class AdminQueries(IDbConnectionFactory connections) : IAdminQueries
 {
@@ -18,28 +19,44 @@ public sealed class AdminQueries(IDbConnectionFactory connections) : IAdminQueri
         AND (ur.ValidTo   IS NULL OR ur.ValidTo   >  SYSUTCDATETIME())
         """;
 
-    private const string InstitutionsSql =
-        $"""
-        SELECT TOP (200)
-               i.Slug AS Slug,
-               i.Name AS Name,
-               t.Name AS Type,
-               d.Name AS District,
-               i.Status AS Status,
-               (SELECT TOP (1) u.FullName
-                FROM org.InstitutionMembers m
-                JOIN auth.Users u ON u.Id = m.UserId
-                WHERE m.InstitutionId = i.Id AND m.IsOwner = 1 AND m.Status = 'Active') AS Owner,
-               (SELECT COUNT(DISTINCT ur.UserId)
-                FROM auth.UserRoles ur
-                JOIN auth.Roles r ON r.Id = ur.RoleId AND r.IsActive = 1
-                WHERE ur.InstitutionId = i.Id AND {InForce}) AS Staff
+    /// <summary>The institutions a filter picks; shared by the page and its count.</summary>
+    private const string InstitutionsFrom =
+        """
         FROM org.Institutions i
         JOIN org.InstitutionTypes t ON t.Id = i.InstitutionTypeId
         LEFT JOIN core.Districts d  ON d.Id = i.DistrictId
         WHERE i.IsDeleted = 0
           AND (@like IS NULL OR i.Name LIKE @like OR t.Name LIKE @like OR d.Name LIKE @like OR i.Slug LIKE @like)
-        ORDER BY i.Name, i.Slug;
+          AND (@status IS NULL OR i.Status = @status)
+          AND (@type IS NULL OR t.Code = @type)
+          AND (@district IS NULL OR d.Code = @district)
+        """;
+
+    // The owner is whoever holds an owner-level role there now, the rule the last-owner guard uses
+    // (RoleManagementHandler); org.InstitutionMembers.IsOwner is not kept in step with the roles.
+    private const string InstitutionsSql =
+        $"""
+        SELECT i.Slug AS Slug,
+               i.Name AS Name,
+               t.Name AS Type,
+               d.Name AS District,
+               i.Status AS Status,
+               (SELECT TOP (1) u.FullName
+                FROM auth.UserRoles ur
+                JOIN auth.Roles r      ON r.Id = ur.RoleId AND r.IsActive = 1
+                JOIN auth.RoleLevels l ON l.Id = r.RoleLevelId AND l.Scope = 'Institution' AND l.Rank >= 1
+                JOIN auth.Users u      ON u.Id = ur.UserId
+                WHERE ur.InstitutionId = i.Id AND {InForce}
+                ORDER BY ur.Id) AS Owner,
+               (SELECT COUNT(DISTINCT ur.UserId)
+                FROM auth.UserRoles ur
+                JOIN auth.Roles r ON r.Id = ur.RoleId AND r.IsActive = 1
+                WHERE ur.InstitutionId = i.Id AND {InForce}) AS Staff
+        {InstitutionsFrom}
+        ORDER BY CASE WHEN @newest = 1 THEN i.ApprovedAt END DESC, i.Name, i.Slug
+        OFFSET @skip ROWS FETCH NEXT @take ROWS ONLY;
+
+        SELECT COUNT(*) {InstitutionsFrom};
         """;
 
     // Every status from the table's CHECK, so one nobody is in still shows as zero.
@@ -52,18 +69,28 @@ public sealed class AdminQueries(IDbConnectionFactory connections) : IAdminQueri
         ORDER BY s.SortOrder;
         """;
 
-    private const string UsersSql =
+    /// <summary>The accounts a filter picks; shared by the page and its count.</summary>
+    private const string UsersFrom =
         """
-        SELECT TOP (100)
-               u.Id AS Id,
+        FROM auth.Users u
+        WHERE u.IsDeleted = 0
+          AND (@like IS NULL OR u.FullName LIKE @like OR u.PhoneNumber LIKE @like)
+          AND (@kind IS NULL OR u.UserType = @kind)
+          AND (@status IS NULL OR u.Status = @status)
+        """;
+
+    private const string UsersSql =
+        $"""
+        SELECT u.Id AS Id,
                u.FullName AS FullName,
                u.PhoneNumber AS Phone,
                u.UserType AS UserType,
                u.Status AS Status
-        FROM auth.Users u
-        WHERE u.IsDeleted = 0
-          AND (@like IS NULL OR u.FullName LIKE @like OR u.PhoneNumber LIKE @like)
-        ORDER BY u.CreatedAt DESC, u.Id;
+        {UsersFrom}
+        ORDER BY CASE WHEN @byName = 1 THEN u.FullName END, u.CreatedAt DESC, u.Id
+        OFFSET @skip ROWS FETCH NEXT @take ROWS ONLY;
+
+        SELECT COUNT(*) {UsersFrom};
         """;
 
     private const string UserRolesSql =
@@ -101,12 +128,27 @@ public sealed class AdminQueries(IDbConnectionFactory connections) : IAdminQueri
         ORDER BY l.Rank, r.Name;
         """;
 
-    public async Task<IReadOnlyList<AdminInstitutionView>> GetInstitutionsAsync(string? search, CancellationToken cancellationToken = default)
+    public async Task<AdminPage<AdminInstitutionView>> GetInstitutionsAsync(AdminInstitutionFilter filter, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(filter);
         await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
-        var rows = await connection.QueryAsync<AdminInstitutionView>(
-            new CommandDefinition(InstitutionsSql, new { like = Like(search) }, cancellationToken: cancellationToken)).ConfigureAwait(false);
-        return [.. rows];
+        await using var grid = await connection.QueryMultipleAsync(new CommandDefinition(
+            InstitutionsSql,
+            new
+            {
+                like = Like(filter.Search),
+                status = filter.Status,
+                type = filter.Type,
+                district = filter.District,
+                newest = filter.Newest,
+                skip = (filter.Page - 1) * filter.PageSize,
+                take = filter.PageSize,
+            },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        var items = (await grid.ReadAsync<AdminInstitutionView>().ConfigureAwait(false)).AsList();
+        var total = await grid.ReadSingleAsync<int>().ConfigureAwait(false);
+        return new AdminPage<AdminInstitutionView>(items, total, filter.Page, filter.PageSize);
     }
 
     public async Task<IReadOnlyList<InstitutionStatusCount>> GetInstitutionStatusesAsync(CancellationToken cancellationToken = default)
@@ -117,15 +159,32 @@ public sealed class AdminQueries(IDbConnectionFactory connections) : IAdminQueri
         return [.. rows];
     }
 
-    public async Task<IReadOnlyList<AdminUserView>> GetUsersAsync(string? search, CancellationToken cancellationToken = default)
+    public async Task<AdminPage<AdminUserView>> GetUsersAsync(AdminUserFilter filter, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(filter);
         await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
-        var users = (await connection.QueryAsync<UserRow>(
-            new CommandDefinition(UsersSql, new { like = Like(search) }, cancellationToken: cancellationToken)).ConfigureAwait(false)).ToList();
+        List<UserRow> users;
+        int total;
+        await using (var grid = await connection.QueryMultipleAsync(new CommandDefinition(
+            UsersSql,
+            new
+            {
+                like = Like(filter.Search),
+                kind = filter.Kind,
+                status = filter.Status,
+                byName = filter.ByName,
+                skip = (filter.Page - 1) * filter.PageSize,
+                take = filter.PageSize,
+            },
+            cancellationToken: cancellationToken)).ConfigureAwait(false))
+        {
+            users = (await grid.ReadAsync<UserRow>().ConfigureAwait(false)).AsList();
+            total = await grid.ReadSingleAsync<int>().ConfigureAwait(false);
+        }
 
         if (users.Count == 0)
         {
-            return [];
+            return new AdminPage<AdminUserView>([], total, filter.Page, filter.PageSize);
         }
 
         var roles = (await connection.QueryAsync<UserRoleRow>(
@@ -133,7 +192,7 @@ public sealed class AdminQueries(IDbConnectionFactory connections) : IAdminQueri
             .ConfigureAwait(false))
             .ToLookup(r => r.UserId);
 
-        return [.. users.Select(u => new AdminUserView(
+        return new AdminPage<AdminUserView>([.. users.Select(u => new AdminUserView(
             u.Id,
             u.FullName,
             u.Phone,
@@ -143,7 +202,7 @@ public sealed class AdminQueries(IDbConnectionFactory connections) : IAdminQueri
                 .Where(r => r.Slug is not null)
                 .GroupBy(r => (r.Slug!, r.Institution!))
                 .Select(g => new AdminUserInstitution(g.Key.Item1, g.Key.Item2, [.. g.Select(r => r.RoleName)]))],
-            [.. roles[u.Id].Where(r => r.Slug is null).Select(r => r.RoleCode)]))];
+            [.. roles[u.Id].Where(r => r.Slug is null).Select(r => r.RoleCode)]))], total, filter.Page, filter.PageSize);
     }
 
     public async Task<IReadOnlyList<PlatformRoleView>> GetPlatformRolesAsync(Guid userId, CancellationToken cancellationToken = default)

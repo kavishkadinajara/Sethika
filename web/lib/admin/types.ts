@@ -40,3 +40,6 @@ export type RegistrationDecision = {
   /** The slug of the institution an approval made; null for a rejection. */
   institution: string | null;
 };
+
+/** One page of a platform list, and how many there are in all. */
+export type AdminPage<T> = { items: T[]; total: number; page: number; pageSize: number };

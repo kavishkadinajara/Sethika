@@ -389,7 +389,8 @@
     "institution_not_available": "You can no longer act for this institution.",
     "session_expired": "Your session has ended. Please sign in again.",
     "reset_ticket_invalid": "This password reset has expired or was already used. Please verify your number again.",
-    "otp_invalid": "That code didn't work. Check the number and the code, or send a new code."
+    "otp_invalid": "That code didn't work. Check the number and the code, or send a new code.",
+    "stepup_required": "Nothing was changed: the extra check was not finished."
   },
   "Password": {
     "title": "Your password needs:",
@@ -1388,7 +1389,16 @@
         "Active": "Active",
         "Suspended": "Suspended",
         "Deactivated": "Deactivated"
-      }
+      },
+      "statusLabel": "Status",
+      "type": "Type",
+      "allTypes": "All types",
+      "district": "District",
+      "allDistricts": "All districts",
+      "sort": "Order",
+      "sortName": "By name",
+      "sortNewest": "Newest first",
+      "list": "Institutions"
     },
     "users": {
       "title": "Users",
@@ -1420,7 +1430,12 @@
       "institutions": "Institutions",
       "none": "None",
       "you": "You",
-      "list": "Accounts"
+      "list": "Accounts",
+      "kind": "Kind of account",
+      "statusLabel": "Status",
+      "sort": "Order",
+      "sortNewest": "Newest first",
+      "sortName": "By name"
     },
     "create": {
       "title": "Create an account",
@@ -1446,6 +1461,15 @@
       "signIn": "Sign in",
       "notAllowed": "This account is not part of the platform team.",
       "inInstitution": "You are inside an institution as platform support. Leave it to use the platform's screens."
+    },
+    "list": {
+      "all": "All",
+      "showing": "{from}–{to} of {total}",
+      "noneOf": "None of {total}",
+      "pages": "Pages",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {page} of {count}"
     }
   }
 }

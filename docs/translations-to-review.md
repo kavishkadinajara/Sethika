@@ -727,3 +727,34 @@ Questions for the reviewers:
 | `Shell.jump.bookingHint` | On its day in the calendar | දින දර්ශනයේ එහි දිනයේ | நாட்காட்டியில் அதன் நாளில் | | |
 | `Shell.jump.bookingMissing` | This institution has no booking {bookingNo}. | මෙම ආයතනයට {bookingNo} වෙන්කිරීමක් නැත. | இந்த நிறுவனத்திடம் {bookingNo} முன்பதிவு இல்லை. | | |
 | `Shell.jump.bookingFailed` | The booking could not be looked up. Please try again. | වෙන්කිරීම සෙවිය නොහැකි විය. නැවත උත්සාහ කරන්න. | முன்பதிவைத் தேட முடியவில்லை. மீண்டும் முயலுங்கள். | | |
+
+## The platform lists' filters and pages (2026-11-01, `Admin`, `Errors`, plan 05 X4)
+
+The users and institutions lists now show a page at a time, with filters, an order and the page
+in the address; and a step-up that was closed says nothing changed. Drafts, written by the
+developer; please check them. `{from}–{to} of {total}` reads like "25–48 of 312".
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `Admin.list.all` | All | සියල්ල | அனைத்தும் | | |
+| `Admin.list.showing` | {from}–{to} of {total} | {total} න් {from}–{to} | {total} இல் {from}–{to} | | |
+| `Admin.list.noneOf` | None of {total} | {total} න් කිසිවක් නැත | {total} இல் எதுவும் இல்லை | | |
+| `Admin.list.pages` | Pages | පිටු | பக்கங்கள் | | |
+| `Admin.list.previous` | Previous | පෙර | முந்தையது | | |
+| `Admin.list.next` | Next | ඊළඟ | அடுத்தது | | |
+| `Admin.list.page` | Page {page} of {count} | {count} න් {page} වන පිටුව | {count} இல் பக்கம் {page} | | |
+| `Admin.users.kind` | Kind of account | ගිණුමේ වර්ගය | கணக்கின் வகை | | |
+| `Admin.users.statusLabel` | Status | තත්ත්වය | நிலை | | |
+| `Admin.users.sort` | Order | අනුපිළිවෙළ | வரிசை | | |
+| `Admin.users.sortNewest` | Newest first | නවතම මුලින් | புதியவை முதலில் | | |
+| `Admin.users.sortName` | By name | නම අනුව | பெயர் வாரியாக | | |
+| `Admin.institutions.statusLabel` | Status | තත්ත්වය | நிலை | | |
+| `Admin.institutions.type` | Type | වර්ගය | வகை | | |
+| `Admin.institutions.allTypes` | All types | සියලු වර්ග | அனைத்து வகைகளும் | | |
+| `Admin.institutions.district` | District | දිස්ත්‍රික්කය | மாவட்டம் | | |
+| `Admin.institutions.allDistricts` | All districts | සියලු දිස්ත්‍රික්ක | அனைத்து மாவட்டங்களும் | | |
+| `Admin.institutions.sort` | Order | අනුපිළිවෙළ | வரிசை | | |
+| `Admin.institutions.sortName` | By name | නම අනුව | பெயர் வாரியாக | | |
+| `Admin.institutions.sortNewest` | Newest first | නවතම මුලින් | புதியவை முதலில் | | |
+| `Admin.institutions.list` | Institutions | ආයතන | நிறுவனங்கள் | | |
+| `Errors.stepup_required` | Nothing was changed: the extra check was not finished. | කිසිවක් වෙනස් නොවීය: අමතර තහවුරු කිරීම අවසන් කළේ නැත. | எதுவும் மாற்றப்படவில்லை: கூடுதல் சரிபார்ப்பு முடிக்கப்படவில்லை. | | |

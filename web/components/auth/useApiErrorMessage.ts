@@ -24,6 +24,8 @@ const knownCodes = [
   "institution_not_available",
   "session_expired",
   "reset_ticket_invalid",
+  // The extra check (A5) was closed or failed: the API refused, and nothing changed.
+  "stepup_required",
 ] as const;
 type KnownCode = (typeof knownCodes)[number];
 
