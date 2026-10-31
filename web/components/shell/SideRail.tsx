@@ -27,7 +27,9 @@ export function SideRail({ sections, pathname }: { sections: NavSection[]; pathn
     <nav
       aria-label={t("mainMenu")}
       className={cn(
-        "sticky top-20 ml-4 hidden h-[calc(100dvh-6rem)] w-[4.5rem] shrink-0 flex-col items-center gap-2 py-4 lg:flex",
+        // Sticky makes the rail a stacking context, so its tooltips are only as high as the rail:
+        // z-20 lifts them over the page's own positioned cards, and stays under the top bar (z-30).
+        "sticky top-20 z-20 ml-4 hidden h-[calc(100dvh-6rem)] w-[4.5rem] shrink-0 flex-col items-center gap-2 py-4 lg:flex",
         // A brand panel (DESIGN.md): Estate Green in both themes, a tonal gradient of its own green.
         "rounded-bowl bg-[linear-gradient(180deg,#1f7356_0%,var(--color-estate)_38%,#0f3d2e_100%)] shadow-lift",
       )}

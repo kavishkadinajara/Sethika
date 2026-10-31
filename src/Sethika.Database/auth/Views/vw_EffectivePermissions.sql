@@ -45,6 +45,9 @@ Candidates AS (
 )
 SELECT c.UserId, c.InstitutionId, p.Id AS PermissionId, p.Code AS PermissionCode, p.RequiresMfa
 FROM Candidates c
+-- Only an active account holds anything. A suspended one's access token is still a valid JWT
+-- until it expires, and this is what turns it away on the next request (with the version bump).
+JOIN auth.Users u       ON u.Id = c.UserId AND u.Status = 'Active'
 JOIN auth.Permissions p ON p.Id = c.PermissionId AND p.IsActive = 1
 JOIN auth.Screens s     ON s.Id = p.ScreenId AND s.IsActive = 1
 WHERE (c.InstitutionId IS NULL OR EXISTS (

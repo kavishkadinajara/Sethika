@@ -603,3 +603,14 @@ Questions for the reviewers:
 | Namespace | Reviewer (si) | Reviewer (ta) | Status |
 |---|---|---|---|
 | `Shell`, `Dashboard`, `Access`, `Common.switchToPersonal`, `Booking.gate.institutionSession`, `Apply.institutionSession` | | | |
+
+## Role edits and owners (2026-10-31, `Access.errors`)
+
+Three refusals the access screens can now show: a role saved by someone else while you edited it,
+an edit sent without the role's version, and taking away an institution's only owner.
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `Access.errors.changed_meanwhile` | Someone else changed this role while you were editing it. Reload the page to see their change, then make yours again. | ඔබ සංස්කරණය කරන අතරතුර වෙනත් අයෙක් මෙම භූමිකාව වෙනස් කළා. ඔවුන්ගේ වෙනස බැලීමට පිටුව නැවත පූරණය කර, ඔබේ වෙනස නැවත කරන්න. | நீங்கள் திருத்திக்கொண்டிருந்தபோது வேறொருவர் இந்தப் பங்கை மாற்றினார். அவர்களின் மாற்றத்தைக் காண பக்கத்தை மீண்டும் ஏற்றி, உங்கள் மாற்றத்தை மீண்டும் செய்யுங்கள். | | |
+| `Access.errors.invalid_version` | Reload the page, then make your change again. | පිටුව නැවත පූරණය කර, ඔබේ වෙනස නැවත කරන්න. | பக்கத்தை மீண்டும் ஏற்றி, உங்கள் மாற்றத்தை மீண்டும் செய்யுங்கள். | | |
+| `Access.errors.last_owner` | This is the institution's only owner. Make someone else an owner first. | මෙය ආයතනයේ එකම හිමිකරු ය. මුලින්ම වෙනත් අයෙකු හිමිකරුවෙකු කරන්න. | இது நிறுவனத்தின் ஒரே உரிமையாளர். முதலில் வேறொருவரை உரிமையாளராக்குங்கள். | | |

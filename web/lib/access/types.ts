@@ -14,6 +14,8 @@ export type InstitutionRole = {
   canManage: boolean;
   members: number;
   permissions: string[];
+  /** Its RowVersion (base64), sent back with an edit so a stale one is refused. */
+  version: string;
 };
 
 /** GET /api/institution/permission-catalogue */

@@ -50,6 +50,7 @@ public sealed class AccessQueries(IDbConnectionFactory connections) : IAccessQue
                CAST(CASE WHEN r.TemplateRoleId IS NOT NULL OR r.IsSystem = 1 THEN 1 ELSE 0 END AS BIT) AS IsSystem,
                CAST(CASE WHEN a.Rank IS NOT NULL AND l.Rank > a.Rank THEN 1 ELSE 0 END AS BIT) AS CanManage,
                ISNULL(h.Members, 0) AS Members,
+               r.RowVersion AS Version,
                p.Code AS Permission
         FROM auth.Roles r
         JOIN auth.RoleLevels l ON l.Id = r.RoleLevelId
@@ -154,7 +155,8 @@ public sealed class AccessQueries(IDbConnectionFactory connections) : IAccessQue
                 g.Key.IsSystem,
                 g.Key.CanManage,
                 g.Key.Members,
-                [.. g.Where(r => r.Permission is not null).Select(r => r.Permission!)]))];
+                [.. g.Where(r => r.Permission is not null).Select(r => r.Permission!)],
+                g.First().Version))];
     }
 
     public async Task<IReadOnlyList<CatalogueModule>> GetCatalogueAsync(int institutionId, CancellationToken cancellationToken = default)
@@ -221,6 +223,7 @@ public sealed class AccessQueries(IDbConnectionFactory connections) : IAccessQue
         bool IsSystem,
         bool CanManage,
         int Members,
+        byte[] Version,
         string? Permission);
 
     private sealed record CatalogueRow(

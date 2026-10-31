@@ -18,7 +18,8 @@ namespace Sethika.Application.Access.Roles;
 /// a manager manages staff, never managers or owners - and no one reaches an owner role at all,
 /// since rank 1 is the most senior there is. Owners are made by onboarding approval.</item>
 /// <item>Every permission added must be inside the level's ceiling.</item>
-/// <item>Every permission added must be one the actor holds (CLAUDE.md).</item>
+/// <item>Every permission added must be one the actor holds (CLAUDE.md), and so must everything a
+/// role grants here before the actor assigns it or invites someone to it.</item>
 /// </list>
 /// Each is checked inside the change's transaction against rows read in it - the actor's roles,
 /// the ceiling, <c>auth.vw_EffectivePermissions</c> - never against the permission cache, which
@@ -30,6 +31,9 @@ public sealed partial class RoleManagementHandler(ISethikaDbContext db, TimeProv
     private const string InstitutionScope = "Institution";
     private const string ChangedEvent = "RolePermissionsChanged";
     private const int NameMaxLength = 100;
+
+    /// <summary>The most senior institution level (OWNER); an institution always keeps someone at it.</summary>
+    private const byte OwnerRank = 1;
 
     [GeneratedRegex("^[A-Z][A-Z0-9_]{1,49}$")]
     private static partial Regex RoleCode();
@@ -101,7 +105,16 @@ public sealed partial class RoleManagementHandler(ISethikaDbContext db, TimeProv
         };
 
         db.Roles.Add(role);
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DuplicateKeyException)
+        {
+            // The same code, created by someone else after the check above (UX_Roles_Code_Inst).
+            return RoleChangeResult.Failed(RoleChangeFailure.RoleExists);
+        }
 
         foreach (var permission in permissions)
         {
@@ -124,9 +137,15 @@ public sealed partial class RoleManagementHandler(ISethikaDbContext db, TimeProv
         RoleActor actor,
         string roleCode,
         IReadOnlyCollection<string>? permissionCodes,
+        byte[]? version,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(actor);
+
+        if (version is not { Length: 8 })
+        {
+            return RoleChangeResult.Failed(RoleChangeFailure.InvalidVersion);
+        }
 
         var at = timeProvider.GetUtcNow().UtcDateTime;
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
@@ -167,7 +186,7 @@ public sealed partial class RoleManagementHandler(ISethikaDbContext db, TimeProv
 
         if (added.Count == 0 && removed.Count == 0)
         {
-            return RoleChangeResult.Success;
+            return RoleChangeResult.Edited(version);
         }
 
         db.RolePermissions.RemoveRange(removed);
@@ -183,11 +202,29 @@ public sealed partial class RoleManagementHandler(ISethikaDbContext db, TimeProv
             .ExecuteUpdateAsync(s => s.SetProperty(i => i.PermissionsVersion, i => i.PermissionsVersion + 1), cancellationToken)
             .ConfigureAwait(false);
 
+        // The role's own row is updated too, and its WHERE compares the version the editor read: a
+        // save made in between by anyone makes this one stale, instead of the two sets merging.
+        var tracked = await db.Roles.SingleAsync(r => r.Id == role.Id, cancellationToken).ConfigureAwait(false);
+        db.Entry(tracked).Property(r => r.RowVersion).OriginalValue = version;
+        tracked.UpdatedBy = actor.UserId;
+        db.Entry(tracked).Property(r => r.UpdatedBy).IsModified = true;
+
         Record(actor, role.Id, role.Code, "PermissionsChanged", targetUserId: null, at);
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is DbUpdateConcurrencyException or DuplicateKeyException)
+        {
+            // Stale, or a concurrent save of the same permission got its row in first.
+            return RoleChangeResult.Failed(RoleChangeFailure.Conflict);
+        }
+
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        return RoleChangeResult.Success;
+        // EF reads a ROWVERSION back after the UPDATE, so this is the new one.
+        return RoleChangeResult.Edited(tracked.RowVersion);
     }
 
     /// <summary>Gives a member of the institution a role more junior than the actor's.</summary>
@@ -217,7 +254,8 @@ public sealed partial class RoleManagementHandler(ISethikaDbContext db, TimeProv
             return RoleChangeResult.Failed(RoleChangeFailure.RoleNotFound);
         }
 
-        var refusal = await CheckRankAsync(actor, role.Rank, at, cancellationToken).ConfigureAwait(false);
+        var refusal = await CheckRankAsync(actor, role.Rank, at, cancellationToken).ConfigureAwait(false)
+                      ?? await CheckRoleHeldAsync(actor, role, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;
@@ -264,7 +302,18 @@ public sealed partial class RoleManagementHandler(ISethikaDbContext db, TimeProv
 
         await BumpUserVersionAsync(userId, cancellationToken).ConfigureAwait(false);
         Record(actor, role.Id, role.Code, "Assigned", userId, at);
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DuplicateKeyException)
+        {
+            // A concurrent assignment of the same role got there first (UX_UserRoles): they hold it,
+            // which is what was asked - the same answer as when they already held it.
+            return RoleChangeResult.Success;
+        }
+
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         return RoleChangeResult.Success;
@@ -308,6 +357,34 @@ public sealed partial class RoleManagementHandler(ISethikaDbContext db, TimeProv
         if (assignment is null)
         {
             return RoleChangeResult.Failed(RoleChangeFailure.AssignmentNotFound);
+        }
+
+        if (role.Rank == OwnerRank)
+        {
+            // Bumping the institution's version first takes its row's lock, so two revocations of
+            // owners here queue: the second counts after the first has committed (no lost owner).
+            await db.Institutions
+                .Where(i => i.Id == actor.InstitutionId)
+                .ExecuteUpdateAsync(s => s.SetProperty(i => i.PermissionsVersion, i => i.PermissionsVersion + 1), cancellationToken)
+                .ConfigureAwait(false);
+
+            // Any other owner-level assignment that is in force: another person's, or this person's
+            // through a second owner-level role.
+            var ownerLeft = await db.UserRoles
+                .Where(ur => ur.InstitutionId == actor.InstitutionId
+                             && ur.IsActive
+                             && ur.Role.IsActive
+                             && (ur.ValidFrom == null || ur.ValidFrom <= at)
+                             && (ur.ValidTo == null || ur.ValidTo > at)
+                             && !(ur.UserId == userId && ur.RoleId == role.Id)
+                             && db.RoleLevels.Any(l => l.Id == ur.Role.RoleLevelId && l.Rank == OwnerRank))
+                .AnyAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!ownerLeft)
+            {
+                return RoleChangeResult.Failed(RoleChangeFailure.LastOwner);
+            }
         }
 
         // Deactivated rather than deleted: the temporal history keeps who held what, and when.
@@ -391,6 +468,29 @@ public sealed partial class RoleManagementHandler(ISethikaDbContext db, TimeProv
 
         var notHeld = permissions.Where(p => !held.Contains(p.Id)).Select(p => p.Code).Order(StringComparer.Ordinal).ToList();
         return notHeld.Count > 0 ? RoleChangeResult.Failed(RoleChangeFailure.NotHeld, notHeld) : null;
+    }
+
+    /// <summary>
+    /// Rule 3 for handing a role to someone (assign, invite): the actor must hold everything the role
+    /// would really grant here - its permissions inside the level's ceiling and the institution's
+    /// enabled modules. Otherwise a manager could pass on what they lack, e.g. to a second account.
+    /// </summary>
+    private async Task<RoleChangeResult?> CheckRoleHeldAsync(RoleActor actor, ManagedRole role, CancellationToken cancellationToken)
+    {
+        var notHeld = await db.RolePermissions
+            .Where(rp => rp.RoleId == role.Id)
+            .Join(db.RoleLevelPermissions.Where(c => c.RoleLevelId == role.LevelId), rp => rp.PermissionId, c => c.PermissionId, (rp, c) => rp.PermissionId)
+            .Join(db.InstitutionPermissions.Where(ip => ip.InstitutionId == actor.InstitutionId), id => id, ip => ip.PermissionId, (id, ip) => ip)
+            .Where(ip => !db.EffectivePermissions.Any(e => e.UserId == actor.UserId
+                                                          && e.InstitutionId == actor.InstitutionId
+                                                          && e.PermissionId == ip.PermissionId))
+            .Select(ip => ip.PermissionCode)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return notHeld.Count > 0
+            ? RoleChangeResult.Failed(RoleChangeFailure.NotHeld, notHeld.Order(StringComparer.Ordinal).ToList())
+            : null;
     }
 
     private async Task<(List<ResolvedPermission> Known, List<string> Unknown)> ResolveAsync(

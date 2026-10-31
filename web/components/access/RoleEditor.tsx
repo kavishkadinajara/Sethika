@@ -20,7 +20,8 @@ type Props = {
   grantable: ReadonlySet<string>;
   /** The caller may change this role: more senior, and holds ACCESS.ROLES.EDIT. */
   editable: boolean;
-  onSaved: (permissions: string[]) => void;
+  /** The saved permissions and the role's new version, for the next save. */
+  onSaved: (permissions: string[], version: string) => void;
 };
 
 /**
@@ -47,14 +48,14 @@ export function RoleEditor({ role, catalogue, grantable, editable, onSaved }: Pr
     setSaving(true);
     setError(null);
     const permissions = [...selected].sort();
-    const result = await setRolePermissions(role.code, permissions);
+    const result = await setRolePermissions(role.code, permissions, role.version);
     setSaving(false);
     if (!result.ok) {
       setError({ message: errorMessage(result.failure), codes: result.failure.fields });
       return;
     }
     toast({ variant: "success", title: t("saved", { role: name }) });
-    onSaved(permissions);
+    onSaved(permissions, result.value.version);
   }
 
   return (

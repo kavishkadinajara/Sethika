@@ -357,12 +357,54 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
             l => l.GetProperty("level").GetString() == "OWNER");
 
         using var edited = await SendAsync(inside, HttpMethod.Put, "/api/institution/roles/A_OWNER/permissions",
-            new { permissions = OwnerPermissions });
-        Assert.Equal(HttpStatusCode.NoContent, edited.StatusCode);
+            new { permissions = OwnerPermissions, version = owner.GetProperty("version").GetBytesFromBase64() });
+        Assert.Equal(HttpStatusCode.OK, edited.StatusCode);
     }
 
     private static readonly string[] OwnerPermissions =
         ["ACCESS.ROLES.VIEW", "ACCESS.ROLES.EDIT", "INSTITUTION.PROFILE.VIEW", "INSTITUTION.PROFILE.EDIT"];
+
+    [Fact]
+    public async Task SupportCannotTakeTheLastOwnerAway_ButCanTakeASecondOne()
+    {
+        var inside = await InAlphaAsSupportAsync();
+        await SteppedUpAsync(inside);
+        const string MakeOwner =
+            """
+            INSERT auth.UserRoles (UserId, RoleId, InstitutionId, IsActive)
+            SELECT @user, r.Id, r.InstitutionId, 1 FROM auth.Roles r WHERE r.InstitutionId = @alpha AND r.Code = 'A_OWNER';
+            """;
+        const string OwnersInForce =
+            """
+            SELECT COUNT(*) FROM auth.UserRoles ur
+            JOIN auth.Roles r ON r.Id = ur.RoleId AND r.IsActive = 1
+            JOIN auth.RoleLevels l ON l.Id = r.RoleLevelId AND l.Rank = 1
+            WHERE ur.InstitutionId = @alpha AND ur.IsActive = 1;
+            """;
+        Assert.Equal(0, await ScalarAsync<int>(OwnersInForce, new { alpha = database.AlphaInstitutionId }));
+
+        var first = await LogInAsync(await AccountAsync());
+        await ExecuteAsync(MakeOwner, new { user = first.UserId, alpha = database.AlphaInstitutionId });
+
+        using (var last = await SendAsync(inside, HttpMethod.Delete, $"/api/institution/roles/A_OWNER/members/{first.UserId}"))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, last.StatusCode);
+            Assert.Equal("last_owner", await CodeOf(last));
+        }
+
+        Assert.Equal(1, await ScalarAsync<int>(OwnersInForce, new { alpha = database.AlphaInstitutionId }));
+
+        // With a second owner, either may go.
+        var second = await LogInAsync(await AccountAsync());
+        await ExecuteAsync(MakeOwner, new { user = second.UserId, alpha = database.AlphaInstitutionId });
+
+        using (var one = await SendAsync(inside, HttpMethod.Delete, $"/api/institution/roles/A_OWNER/members/{first.UserId}"))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, one.StatusCode);
+        }
+
+        Assert.Equal(1, await ScalarAsync<int>(OwnersInForce, new { alpha = database.AlphaInstitutionId }));
+    }
 
     [Fact]
     public async Task AReviewerCannotEnter_NorSeeTheAccounts()
@@ -431,9 +473,21 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
         var donor = await LogInAsync(await AccountAsync());
         await SteppedUpAsync(admin);
 
+        // Warm the permission cache first, so the refusal below cannot come from a cold read.
+        using (var before = await SendAsync(donor, HttpMethod.Get, "/api/bookings/mine"))
+        {
+            Assert.Equal(HttpStatusCode.OK, before.StatusCode);
+        }
+
         using (var suspend = await SendAsync(admin, HttpMethod.Post, $"/api/admin/users/{donor.UserId}/suspend"))
         {
             Assert.Equal(HttpStatusCode.NoContent, suspend.StatusCode);
+        }
+
+        // The access token issued before the suspension is still a valid JWT: it must hold nothing.
+        using (var during = await SendAsync(donor, HttpMethod.Get, "/api/bookings/mine"))
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, during.StatusCode);
         }
 
         var (refreshed, _, _) = await SessionPostAsync("refresh", donor);
@@ -442,6 +496,11 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
         using (var back = await SendAsync(admin, HttpMethod.Post, $"/api/admin/users/{donor.UserId}/reactivate"))
         {
             Assert.Equal(HttpStatusCode.NoContent, back.StatusCode);
+        }
+
+        using (var after = await SendAsync(donor, HttpMethod.Get, "/api/bookings/mine"))
+        {
+            Assert.Equal(HttpStatusCode.OK, after.StatusCode);
         }
 
         Assert.Equal("Active", await ScalarAsync<string>("SELECT Status FROM auth.Users WHERE Id = @id;", new { id = donor.UserId }));

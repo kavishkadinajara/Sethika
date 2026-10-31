@@ -28,6 +28,8 @@ async function menuLinks(page: Page): Promise<string[]> {
     return links.map((l) => l.trim());
   }
   const rail = page.getByRole("navigation", { name: "Main menu" });
+  // Right after a switch the session reloads and the rail is briefly gone: read it once it is back.
+  await expect(rail.getByRole("link").first()).toBeVisible();
   const found: string[] = [];
   for (const control of await rail.getByRole("link").all()) found.push((await control.getAttribute("aria-label")) ?? "");
   for (const control of await rail.getByRole("button").all()) {
@@ -92,6 +94,33 @@ test("the flyout takes a donor to a screen and closes, marking where they are", 
 
   await rail.getByRole("button", { name: "Giving" }).click();
   await expect(page.getByRole("dialog", { name: "Giving" }).getByRole("link", { name: "My bookings" })).toHaveAttribute("aria-current", "page");
+});
+
+test("a rail icon's name shows on hover, above the page's cards", async ({ applicant }) => {
+  const { page } = applicant;
+  await page.goto("/");
+  // The greeting panel beside the rail is what covered the tooltips: wait for it, not the
+  // placeholder shown while the session loads (which has nothing positioned to cover them).
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Good (morning|afternoon|evening)!/);
+  const rail = page.getByRole("navigation", { name: "Main menu" });
+  for (const control of [...(await rail.getByRole("link").all()), ...(await rail.getByRole("button").all())]) {
+    await control.hover();
+    const tooltip = control.locator("span[aria-hidden]");
+    await expect(tooltip).toHaveCSS("opacity", "1");
+    // The topmost element at the tooltip's centre is the tooltip itself, not the greeting or a card.
+    const box = (await tooltip.boundingBox())!;
+    const onTop = await tooltip.evaluate(
+      (el, { x, y }) => {
+        // elementFromPoint skips pointer-events: none, which the tooltip has; lift it just for the probe.
+        (el as HTMLElement).style.pointerEvents = "auto";
+        const hit = document.elementFromPoint(x, y);
+        (el as HTMLElement).style.pointerEvents = "";
+        return hit !== null && (hit === el || el.contains(hit));
+      },
+      { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+    );
+    expect(onTop, `${await control.getAttribute("aria-label")}'s tooltip is covered`).toBe(true);
+  }
 });
 
 test("an institution owner's menu holds their institution, and the bar names it @phone", async ({ page, baseURL }, testInfo) => {

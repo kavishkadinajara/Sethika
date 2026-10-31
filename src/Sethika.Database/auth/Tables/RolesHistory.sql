@@ -15,7 +15,8 @@ CREATE TABLE auth.RolesHistory (
     [CreatedBy] UNIQUEIDENTIFIER NULL,
     [UpdatedBy] UNIQUEIDENTIFIER NULL,
     [SysStartTime] DATETIME2(3) NOT NULL,
-    [SysEndTime] DATETIME2(3) NOT NULL
+    [SysEndTime] DATETIME2(3) NOT NULL,
+    [RowVersion] ROWVERSION NOT NULL
 );
 GO
 

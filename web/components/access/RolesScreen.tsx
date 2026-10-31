@@ -121,11 +121,11 @@ export function RolesScreen() {
               catalogue={catalogue}
               grantable={grantable}
               editable={role.canManage && can("ACCESS.ROLES.EDIT")}
-              onSaved={(permissions) =>
+              onSaved={(permissions, version) =>
                 setLoaded((current) =>
                   current && {
                     ...current,
-                    roles: current.roles.map((r) => (r.code === role.code ? { ...r, permissions } : r)),
+                    roles: current.roles.map((r) => (r.code === role.code ? { ...r, permissions, version } : r)),
                   },
                 )
               }

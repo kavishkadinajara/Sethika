@@ -16,6 +16,9 @@ CREATE TABLE auth.Roles (
     UpdatedBy         UNIQUEIDENTIFIER NULL REFERENCES auth.Users(Id),
     SysStartTime      DATETIME2(3) GENERATED ALWAYS AS ROW START HIDDEN NOT NULL,
     SysEndTime        DATETIME2(3) GENERATED ALWAYS AS ROW END   HIDDEN NOT NULL,
+    -- Last, so adding it was an ALTER and not a rebuild. Two editors of one role: the second save
+    -- is refused instead of merging their two permission sets into one nobody chose.
+    RowVersion        ROWVERSION,
     PERIOD FOR SYSTEM_TIME (SysStartTime, SysEndTime),
     CONSTRAINT UQ_Roles_Tenant UNIQUE (Id, InstitutionId),
     -- Composite, so the level is always one of the role's own scope: no Institution role at a Platform level.
