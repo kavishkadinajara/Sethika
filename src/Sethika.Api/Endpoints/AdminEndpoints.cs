@@ -27,6 +27,9 @@ internal static class AdminEndpoints
     /// <summary>A type or district code: the lookups' own shape, so nothing else reaches the query.</summary>
     private const int MaxCodeLength = 30;
 
+    /// <summary>An institution's slug: <c>org.Institutions.Slug</c> is <c>VARCHAR(150)</c>.</summary>
+    private const int MaxSlugLength = 150;
+
     public static IEndpointRouteBuilder MapAdminEndpoints(this IEndpointRouteBuilder app)
     {
         var admin = app.MapGroup("/api/admin");
@@ -106,6 +109,7 @@ internal static class AdminEndpoints
         string? search,
         string? kind,
         string? status,
+        string? institution,
         string? sort,
         int? page,
         int? pageSize,
@@ -114,6 +118,7 @@ internal static class AdminEndpoints
     {
         if (Blank(kind) is { } k && !UserKinds.Contains(k)
             || Blank(status) is { } s && !UserStatuses.Contains(s)
+            || Blank(institution) is { Length: > MaxSlugLength }
             || Blank(sort) is { } o && o is not ("newest" or "name"))
         {
             return ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_filter");
@@ -125,7 +130,7 @@ internal static class AdminEndpoints
         }
 
         return Results.Ok(await queries.GetUsersAsync(
-            new AdminUserFilter(search, Blank(kind), Blank(status), Blank(sort) == "name", page ?? 1, pageSize ?? DefaultPageSize),
+            new AdminUserFilter(search, Blank(kind), Blank(status), Blank(institution), Blank(sort) == "name", page ?? 1, pageSize ?? DefaultPageSize),
             cancellationToken));
     }
 

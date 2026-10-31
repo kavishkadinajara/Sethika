@@ -619,6 +619,45 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
     }
 
     [Fact]
+    public async Task TheAccountsKindAndInstitution_AreReadFromTheRolesHeldNow_NotTheStoredType()
+    {
+        const string AsPlatform = "EXEC sys.sp_set_session_context @key = N'IsPlatform', @value = 1;";
+        var admin = await LogInAsync(await AccountAsync("PLATFORM_ADMIN"));
+        // All three institution holders are stored as donors, as approval and invitations leave them.
+        var staff = await AccountAsync(alphaRole: "A_OWNER");
+        var lapsed = await AccountAsync(alphaRole: "A_OWNER");
+        var platform = await AccountAsync("PLATFORM_REVIEWER", "A_OWNER");
+        var donor = await AccountAsync();
+
+        await ExecuteAsync(
+            AsPlatform +
+            """
+            UPDATE auth.Users SET FullName = N'Kinded Staff'    WHERE PhoneNumber = @staff;
+            UPDATE auth.Users SET FullName = N'Kinded Lapsed'   WHERE PhoneNumber = @lapsed;
+            UPDATE auth.Users SET FullName = N'Kinded Platform' WHERE PhoneNumber = @platform;
+            UPDATE auth.Users SET FullName = N'Kinded Donor'    WHERE PhoneNumber = @donor;
+            UPDATE ur SET ValidTo = DATEADD(DAY, -1, SYSUTCDATETIME())
+            FROM auth.UserRoles ur JOIN auth.Users u ON u.Id = ur.UserId
+            WHERE u.PhoneNumber = @lapsed AND ur.InstitutionId IS NOT NULL;
+            """,
+            new { staff, lapsed, platform, donor });
+
+        const string Users = "/api/admin/users?search=Kinded&sort=name";
+        Assert.Equal("Donor|Donor|PlatformStaff|InstitutionStaff of 4", await PageAsync(admin, Users, "userType"));
+        Assert.Equal("Kinded Staff of 1", await PageAsync(admin, Users + "&kind=InstitutionStaff", "fullName"));
+        Assert.Equal("Kinded Donor|Kinded Lapsed of 2", await PageAsync(admin, Users + "&kind=Donor", "fullName"));
+
+        // An institution's people: those holding one of its roles now, platform staff among them.
+        Assert.Equal("Kinded Platform|Kinded Staff of 2", await PageAsync(admin, Users + "&institution=alpha-temple", "fullName"));
+        Assert.Equal("Kinded Staff of 1", await PageAsync(admin, Users + "&institution=alpha-temple&kind=InstitutionStaff", "fullName"));
+        Assert.Equal(" of 0", await PageAsync(admin, Users + "&institution=beta-temple", "fullName"));
+
+        using var refused = await SendAsync(admin, HttpMethod.Get, $"/api/admin/users?institution={new string('x', 151)}");
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Equal("invalid_filter", await CodeOf(refused));
+    }
+
+    [Fact]
     public async Task TheInstitutionsListIsPaged_FilteredByStatusTypeAndDistrict_AndSortedByNameOrNewest()
     {
         const string AsPlatform = "EXEC sys.sp_set_session_context @key = N'IsPlatform', @value = 1;";

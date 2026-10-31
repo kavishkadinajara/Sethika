@@ -44,7 +44,7 @@ public sealed class AdminQueries(IDbConnectionFactory connections) : IAdminQueri
                (SELECT TOP (1) u.FullName
                 FROM auth.UserRoles ur
                 JOIN auth.Roles r      ON r.Id = ur.RoleId AND r.IsActive = 1
-                JOIN auth.RoleLevels l ON l.Id = r.RoleLevelId AND l.Scope = 'Institution' AND l.Rank >= 1
+                JOIN auth.RoleLevels l ON l.Id = r.RoleLevelId AND l.Scope = 'Institution' AND l.Rank = 1
                 JOIN auth.Users u      ON u.Id = ur.UserId
                 WHERE ur.InstitutionId = i.Id AND {InForce}
                 ORDER BY ur.Id) AS Owner,
@@ -70,13 +70,31 @@ public sealed class AdminQueries(IDbConnectionFactory connections) : IAdminQueri
         """;
 
     /// <summary>The accounts a filter picks; shared by the page and its count.</summary>
+    /// <remarks>
+    /// The kind is read from the roles, as the owner is: platform staff by the stored type (the one
+    /// the permission view trusts), then anyone holding an institution's role now, then a donor. The
+    /// stored type is set only when a platform role goes, so approval and invitations leave staff as
+    /// donors there.
+    /// </remarks>
     private const string UsersFrom =
-        """
+        $"""
         FROM auth.Users u
+        CROSS APPLY (SELECT CASE
+            WHEN u.UserType = 'PlatformStaff' THEN 'PlatformStaff'
+            WHEN EXISTS (SELECT 1
+                         FROM auth.UserRoles ur
+                         JOIN auth.Roles r ON r.Id = ur.RoleId AND r.IsActive = 1
+                         WHERE ur.UserId = u.Id AND ur.InstitutionId IS NOT NULL AND {InForce}) THEN 'InstitutionStaff'
+            ELSE 'Donor' END AS Kind) k
         WHERE u.IsDeleted = 0
           AND (@like IS NULL OR u.FullName LIKE @like OR u.PhoneNumber LIKE @like)
-          AND (@kind IS NULL OR u.UserType = @kind)
+          AND (@kind IS NULL OR k.Kind = @kind)
           AND (@status IS NULL OR u.Status = @status)
+          AND (@institution IS NULL OR EXISTS (SELECT 1
+                         FROM auth.UserRoles ur
+                         JOIN auth.Roles r       ON r.Id = ur.RoleId AND r.IsActive = 1
+                         JOIN org.Institutions i ON i.Id = ur.InstitutionId
+                         WHERE ur.UserId = u.Id AND i.Slug = @institution AND {InForce}))
         """;
 
     private const string UsersSql =
@@ -84,7 +102,7 @@ public sealed class AdminQueries(IDbConnectionFactory connections) : IAdminQueri
         SELECT u.Id AS Id,
                u.FullName AS FullName,
                u.PhoneNumber AS Phone,
-               u.UserType AS UserType,
+               k.Kind AS UserType,
                u.Status AS Status
         {UsersFrom}
         ORDER BY CASE WHEN @byName = 1 THEN u.FullName END, u.CreatedAt DESC, u.Id
@@ -172,6 +190,7 @@ public sealed class AdminQueries(IDbConnectionFactory connections) : IAdminQueri
                 like = Like(filter.Search),
                 kind = filter.Kind,
                 status = filter.Status,
+                institution = filter.Institution,
                 byName = filter.ByName,
                 skip = (filter.Page - 1) * filter.PageSize,
                 take = filter.PageSize,

@@ -5,17 +5,18 @@ const params = (query: string) => new URLSearchParams(query);
 
 describe("the accounts list's address", () => {
   it("reads every part, and leaves the defaults out when written back", () => {
-    const query = parseUserQuery(params("q=%20Amal%20&kind=Donor&status=Suspended&sort=name&page=3"));
-    expect(query).toEqual({ search: "Amal", kind: "Donor", status: "Suspended", sort: "name", page: 3 });
-    expect(toQueryString(query, "newest")).toBe("?q=Amal&kind=Donor&status=Suspended&sort=name&page=3");
+    const query = parseUserQuery(params("q=%20Amal%20&kind=Donor&status=Suspended&institution=sri-sumana-temple&sort=name&page=3"));
+    expect(query).toEqual({ search: "Amal", kind: "Donor", status: "Suspended", institution: "sri-sumana-temple", sort: "name", page: 3 });
+    expect(toQueryString(query, "newest")).toBe("?q=Amal&kind=Donor&status=Suspended&institution=sri-sumana-temple&sort=name&page=3");
     expect(toQueryString(parseUserQuery(params("")), "newest")).toBe("");
   });
 
   it("falls back to the default for anything it does not know", () => {
-    expect(parseUserQuery(params("kind=Robot&status=Gone&sort=oldest&page=-2"))).toEqual({
+    expect(parseUserQuery(params("kind=Robot&status=Gone&institution=Not%20A%20Slug&sort=oldest&page=-2"))).toEqual({
       search: "",
       kind: null,
       status: null,
+      institution: null,
       sort: "newest",
       page: 1,
     });
@@ -24,7 +25,9 @@ describe("the accounts list's address", () => {
   });
 
   it("asks the API for the same state, with the page size", () => {
-    expect(toApiQuery(parseUserQuery(params("q=Amal&kind=Donor&page=2")))).toBe("search=Amal&sort=newest&page=2&pageSize=24&kind=Donor");
+    expect(toApiQuery(parseUserQuery(params("q=Amal&kind=Donor&institution=alpha-temple&page=2")))).toBe(
+      "search=Amal&sort=newest&page=2&pageSize=24&kind=Donor&institution=alpha-temple",
+    );
   });
 });
 

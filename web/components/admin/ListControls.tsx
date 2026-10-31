@@ -13,14 +13,16 @@ import { cn, focusRing } from "@/lib/utils";
 
 /*  The platform lists' controls (plan 05, X4): a search that waits for typing to settle, filters
     as chips, an order, and pages. The state lives in the address (lib/admin/list-query.ts), so
-    each change replaces the URL and the screen reads the list again from it.                   */
+    each change writes the URL and the screen reads the list again from it.                     */
 
 /** How long typing must settle before the list is asked again. */
 const SEARCH_DELAY_MS = 300;
 
 /**
  * A list's state from the address, and a way to change it. Changing anything but the page goes
- * back to the first page: the old page number means nothing in a different list.
+ * back to the first page: the old page number means nothing in a different list. A filter, the
+ * order or a page is a step the back button undoes; a search replaces the address instead, or
+ * every settled pause in typing would be one more step back.
  */
 export function useListQuery<Q extends UserQuery | InstitutionQuery>(
   parse: (params: URLSearchParams) => Q,
@@ -35,7 +37,10 @@ export function useListQuery<Q extends UserQuery | InstitutionQuery>(
   const set = useCallback(
     (change: Partial<Q>) => {
       const next = { ...query, ...change, page: "page" in change ? (change.page ?? 1) : 1 };
-      router.replace(`${pathname}${toQueryString(next, defaultSort)}`, { scroll: false });
+      const href = `${pathname}${toQueryString(next, defaultSort)}`;
+      const typed = Object.keys(change).every((key) => key === "search");
+      if (typed) router.replace(href, { scroll: false });
+      else router.push(href, { scroll: false });
     },
     [query, router, pathname, defaultSort],
   );

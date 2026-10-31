@@ -17,7 +17,7 @@ public sealed record AdminUserInstitution(string Slug, string Name, IReadOnlyLis
 /// <param name="Id">The account.</param>
 /// <param name="FullName">Their name.</param>
 /// <param name="Phone">Masked by the database unless the login may unmask it.</param>
-/// <param name="UserType">Donor, InstitutionStaff or PlatformStaff.</param>
+/// <param name="UserType">Donor, InstitutionStaff or PlatformStaff: platform staff by the stored type, staff by an institution role held now.</param>
 /// <param name="Status">Active, PendingVerification, Suspended or Deactivated.</param>
 /// <param name="Institutions">Where they hold roles now.</param>
 /// <param name="PlatformRoles">The codes of the platform roles they hold now.</param>
@@ -48,8 +48,9 @@ public sealed record AdminInstitutionFilter(string? Search, string? Status, stri
 /// <param name="Search">Contained in the name or phone number.</param>
 /// <param name="Kind">Donor, InstitutionStaff or PlatformStaff.</param>
 /// <param name="Status">Active, PendingVerification, Suspended or Deactivated.</param>
+/// <param name="Institution">The slug of an institution they hold a role in now.</param>
 /// <param name="ByName">By name; otherwise newest first.</param>
-public sealed record AdminUserFilter(string? Search, string? Kind, string? Status, bool ByName, int Page, int PageSize);
+public sealed record AdminUserFilter(string? Search, string? Kind, string? Status, string? Institution, bool ByName, int Page, int PageSize);
 
 /// <summary>How many institutions are in one status: the platform dashboard's panel (plan 05, R4).</summary>
 public sealed record InstitutionStatusCount(string Status, int Count);

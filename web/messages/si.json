@@ -1435,7 +1435,11 @@
       "statusLabel": "තත්ත්වය",
       "sort": "අනුපිළිවෙළ",
       "sortNewest": "නවතම මුලින්",
-      "sortName": "නම අනුව"
+      "sortName": "නම අනුව",
+      "institution": "ආයතනය",
+      "institutionHint": "එහි අය: දැනට එහි භූමිකාවක් දරන ඕනෑම අයෙක්",
+      "institutionClear": "සියලු ආයතන",
+      "institutionNone": "කිසිදු ආයතනයක් ගැළපෙන්නේ නැත."
     },
     "create": {
       "title": "ගිණුමක් සාදන්න",

@@ -758,3 +758,7 @@ developer; please check them. `{from}–{to} of {total}` reads like "25–48 of 
 | `Admin.institutions.sortNewest` | Newest first | නවතම මුලින් | புதியவை முதலில் | | |
 | `Admin.institutions.list` | Institutions | ආයතන | நிறுவனங்கள் | | |
 | `Errors.stepup_required` | Nothing was changed: the extra check was not finished. | කිසිවක් වෙනස් නොවීය: අමතර තහවුරු කිරීම අවසන් කළේ නැත. | எதுவும் மாற்றப்படவில்லை: கூடுதல் சரிபார்ப்பு முடிக்கப்படவில்லை. | | |
+| `Admin.users.institution` | Institution | ආයතනය | நிறுவனம் | | |
+| `Admin.users.institutionHint` | Its people: anyone holding a role there now | එහි අය: දැනට එහි භූමිකාවක් දරන ඕනෑම අයෙක් | அதன் நபர்கள்: தற்போது அங்கு ஒரு பங்கை வகிக்கும் எவரும் | | |
+| `Admin.users.institutionClear` | Every institution | සියලු ආයතන | அனைத்து நிறுவனங்களும் | | |
+| `Admin.users.institutionNone` | No institution matches. | කිසිදු ආයතනයක් ගැළපෙන්නේ නැත. | எந்த நிறுவனமும் பொருந்தவில்லை. | | |

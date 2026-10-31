@@ -2,7 +2,7 @@
 
 Branch: `redesign`, cut from `develop` after `access-hardening` merges.
 
-Status: **X1 (true-black dark) and X2 (living sidebar, 4509df5 + d8f13d0) done; X3 (Day Ledger) built and tested, not committed; X4 not started.** Last updated 2026-10-31. Update this line and the §4 boxes
+Status: **X1, X2 and X3 done (X3 in 6d7da7d + 7131448); X4 built and tested (admin lists in c8933f5, the rest uncommitted).** Last updated 2026-11-01. Update this line and the §4 boxes
 whenever either changes; a fresh session trusts them.
 
 Why this plan exists: on 2026-10-31 the user judged the plan 04 shell and dashboard generic ("the
@@ -147,14 +147,27 @@ Fuzzy people search, customisable dashboards, charts beyond the bowls, SignalR (
       switches through the language menu. New helper `widerThanWindow` names what scrolls sideways
 
 ### X4: Every other screen on the new base
-- [ ] Walk every page in both themes; fix anything that assumed the green dark canvas
-- [ ] Admin lists (`/admin/users`, `/admin/institutions`, asked by the user 2026-10-31): today they
-      are a flat `TOP (100)` / `TOP (200)` with search only. Server-side pages (`OFFSET/FETCH`, 24 a
-      page to fill the 3-column grid, `COUNT(*) OVER ()` for the total; the response becomes
-      `{ items, total, page, pageSize }`); filters as chips: users by kind (donor, institution
-      staff, platform team) and status, institutions by status, type and district; a sort (users
-      newest or name, institutions name or newest). Filters, sort and page live in the URL query so
-      back and a shared link keep them; typing in search (debounced) goes back to page 1; "1-24 of
-      312" above the grid. Also find why both pages show "Something went wrong" on load, and the
-      stale Owner column (PR #14 audit). Tests: paging and each filter against real SQL, mutations.
-- [ ] Translations of the new strings into `docs/translations-to-review.md`
+- [x] Walk every page in both themes: `e2e/shell/walk.spec.ts` opens every page of each kind of
+      session (signed out, donor, owner, platform) in dark, desktop + 320 px; none errs or scrolls
+      sideways, and the pictures were read (light is covered by every other spec)
+- [x] Admin lists (`/admin/users`, `/admin/institutions`, asked by the user 2026-10-31). Server-side
+      pages (`OFFSET/FETCH`, 24 a page; the page and a `COUNT(*)` read in one batch, so a page past
+      the end still knows the total; `{ items, total, page, pageSize }`, 400 `invalid_filter` /
+      `invalid_page`); users by kind, status and **institution** (asked 2026-11-01: a combobox that
+      searches institutions, and each institution's staff count links to its people), institutions
+      by status, type and district (the lookups by locale); users newest or by name, institutions by
+      name or newest. Filters, order and page live in the address: a filter, the order or a page is
+      a history step the back button undoes, a search replaces the address; any change but the page
+      goes back to page 1. Found on the way:
+      - "Something went wrong" was a closed step-up dialog (403 `stepup_required`), not the load. It
+        now says "Nothing was changed: the extra check was not finished.", on every screen
+      - The Owner column read `InstitutionMembers.IsOwner`, which role changes never update: now
+        whoever holds an owner-level role in force, the last-owner guard's rule
+      - The kind read `Users.UserType`, which only a platform role's removal ever sets to
+        `InstitutionStaff`, so every owner listed as a donor: now platform staff by the stored type
+        (the one the permission view trusts), then anyone holding an institution role in force
+      Tests: 4 new integration tests (admin 17/17); mutations 18/18 (paging, filters, owner) + 6/6
+      (kind, institution) killed; `list-query` 7 unit tests; `e2e/admin/lists.spec.ts` 5 tests, the
+      step-up message's mutant killed. A commit taken while a mutation run was going held a mutant
+      (`l.Rank >= 1` in c8933f5): commit only after a run ends
+- [x] Translations of the new strings into `docs/translations-to-review.md`

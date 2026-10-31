@@ -16,6 +16,7 @@ import type { AdminPage, AdminUser, PlatformRole } from "@/lib/admin/types";
 import { usePermissions } from "@/lib/permissions/usePermissions";
 import { cn, focusRing } from "@/lib/utils";
 import { CreateUserSheet } from "./CreateUserSheet";
+import { InstitutionFilter } from "./InstitutionFilter";
 import { FilterChips, ListCount, ListSearch, ListSelect, Pager, useListQuery } from "./ListControls";
 import { useAdminError } from "./useAdminError";
 
@@ -27,7 +28,7 @@ const statusTone: Record<AdminUser["status"], string> = {
 };
 
 /**
- * Every account on Sethika (plan 04, Y5), a page at a time, narrowed by kind and status and
+ * Every account on Sethika (plan 04, Y5), a page at a time, narrowed by kind, status and institution and
  * ordered newest first or by name, all kept in the address (plan 05, X4): who they are, where they work and with which roles,
  * their platform roles; making an account for someone who cannot sign up (Y6), suspending one,
  * and giving or taking platform roles below the caller's own rank. Every write needs a step-up,
@@ -86,7 +87,10 @@ export function UsersScreen() {
   return (
     <div className="grid gap-6">
       <div className="flex flex-wrap items-end gap-4">
-        <ListSearch label={t("search")} hint={t("searchHint")} value={query.search} onSearch={(search) => setQuery({ search })} />
+        <div className="grid min-w-0 flex-1 basis-full gap-4 md:basis-0 md:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
+          <ListSearch label={t("search")} hint={t("searchHint")} value={query.search} onSearch={(search) => setQuery({ search })} />
+          <InstitutionFilter value={query.institution} onChange={(institution) => setQuery({ institution })} />
+        </div>
         {can("PLATFORM.USERS.CREATE") && (
           <Button onClick={() => setCreating(true)}>
             <PlusIcon className="size-5" />
@@ -95,7 +99,7 @@ export function UsersScreen() {
         )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,14rem)] lg:items-end">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,14rem)] lg:items-start">
         <FilterChips
           label={t("kind")}
           options={userKinds.map((kind) => ({ value: kind, label: t(`type.${kind}`) }))}
@@ -158,7 +162,15 @@ export function UsersScreen() {
                       <li key={institution.slug} className="flex items-start gap-2 text-fg">
                         <InstitutionIcon className="mt-0.5 size-4 shrink-0 text-muted" />
                         <span>
-                          {institution.name} <span className="text-muted">· {institution.roles.join(", ")}</span>
+                          {/* Its name narrows the list to its people. */}
+                          <button
+                            type="button"
+                            onClick={() => setQuery({ institution: institution.slug })}
+                            className={cn("text-left font-medium text-brand underline-offset-4 hover:underline", focusRing)}
+                          >
+                            {institution.name}
+                          </button>{" "}
+                          <span className="text-muted">· {institution.roles.join(", ")}</span>
                         </span>
                       </li>
                     ))}

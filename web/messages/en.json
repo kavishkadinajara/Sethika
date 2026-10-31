@@ -1435,7 +1435,11 @@
       "statusLabel": "Status",
       "sort": "Order",
       "sortNewest": "Newest first",
-      "sortName": "By name"
+      "sortName": "By name",
+      "institution": "Institution",
+      "institutionHint": "Its people: anyone holding a role there now",
+      "institutionClear": "Every institution",
+      "institutionNone": "No institution matches."
     },
     "create": {
       "title": "Create an account",

@@ -13,6 +13,8 @@ export type UserQuery = {
   search: string;
   kind: (typeof userKinds)[number] | null;
   status: (typeof userStatuses)[number] | null;
+  /** The slug of an institution they hold a role in now. */
+  institution: string | null;
   sort: "newest" | "name";
   page: number;
 };
@@ -36,6 +38,9 @@ const oneOf = <T extends string>(values: readonly T[], value: string | null): T 
 /** A code as the lookups give them: letters, digits, `_` and `-`, at most 30. */
 const code = (value: string | null): string | null => (value && /^[A-Za-z0-9_-]{1,30}$/.test(value) ? value : null);
 
+/** An institution's slug: lower-case letters, digits and `-`, as `org.Institutions.Slug` holds them. */
+const slug = (value: string | null): string | null => (value && /^[a-z0-9-]{1,150}$/.test(value) ? value : null);
+
 const pageOf = (value: string | null): number => {
   const page = Number(value);
   return Number.isInteger(page) && page >= 1 ? page : 1;
@@ -46,6 +51,7 @@ export function parseUserQuery(params: Params): UserQuery {
     search: params.get("q")?.trim() ?? "",
     kind: oneOf(userKinds, params.get("kind")),
     status: oneOf(userStatuses, params.get("status")),
+    institution: slug(params.get("institution")),
     sort: params.get("sort") === "name" ? "name" : "newest",
     page: pageOf(params.get("page")),
   };

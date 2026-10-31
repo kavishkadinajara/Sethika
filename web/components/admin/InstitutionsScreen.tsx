@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { InstitutionIcon, ShieldIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { getInstitutionLookups, listInstitutions, requestSupport } from "@/lib/admin/api";
 import { institutionStatuses, parseInstitutionQuery, type InstitutionQuery } from "@/lib/admin/list-query";
 import type { AdminInstitution, AdminPage } from "@/lib/admin/types";
@@ -15,7 +15,7 @@ import { localName } from "@/lib/bookings/names";
 import type { Lookups } from "@/lib/onboarding/types";
 import { session } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions/usePermissions";
-import { cn } from "@/lib/utils";
+import { cn, focusRing } from "@/lib/utils";
 import { FilterChips, ListCount, ListSearch, ListSelect, Pager, useListQuery } from "./ListControls";
 import { useAdminError } from "./useAdminError";
 
@@ -153,7 +153,17 @@ export function InstitutionsScreen() {
                     {[institution.type, institution.district].filter(Boolean).join(" · ")}
                   </p>
                   <p className="text-sm text-muted">
-                    {institution.owner ? t("owner", { name: institution.owner }) : t("noOwner")} · {t("staff", { count: institution.staff })}
+                    {institution.owner ? t("owner", { name: institution.owner }) : t("noOwner")} ·{" "}
+                    {can("PLATFORM.USERS.VIEW") ? (
+                      <Link
+                        href={`/admin/users?institution=${encodeURIComponent(institution.slug)}`}
+                        className={cn("font-medium text-brand underline underline-offset-4", focusRing)}
+                      >
+                        {t("staff", { count: institution.staff })}
+                      </Link>
+                    ) : (
+                      t("staff", { count: institution.staff })
+                    )}
                   </p>
                 </div>
               </div>

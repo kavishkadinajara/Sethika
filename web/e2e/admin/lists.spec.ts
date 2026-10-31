@@ -19,7 +19,8 @@ async function shot(page: Page, project: string, name: string) {
 
 const last9 = (phone: string) => phone.replace(/\D/g, "").slice(-9);
 /** The list's own cards, not the lists inside a card (an account's institutions and roles). */
-const cards = (page: Page) => page.getByRole("list", { name: /^(Accounts|Institutions)$/ }).locator(":scope > li");
+const cards = (page: Page, list: "Accounts" | "Institutions" = "Accounts") =>
+  page.getByRole("list", { name: list, exact: true }).first().locator(":scope > li");
 const names = (page: Page) => cards(page).locator("span.font-semibold.text-fg");
 
 test("the accounts list filters by kind and status, orders by name, and keeps it all in the address @phone", async ({ page, baseURL }, testInfo) => {
@@ -65,6 +66,7 @@ test("the accounts list filters by kind and status, orders by name, and keeps it
 
   // By name, and every kind again.
   await kinds.getByRole("button", { name: "All" }).click();
+  await expect(page).not.toHaveURL(/kind=/);
   await page.getByLabel("Order").selectOption("name");
   await expect(page).toHaveURL(/sort=name/);
   await expect(names(page)).toHaveText([amal.fullName, bimal.fullName, cara.fullName]);
@@ -101,18 +103,18 @@ test("the institutions list filters by status and district, in the address, on a
   await signIn(page, admin);
   await page.goto("/admin/institutions");
   await page.getByLabel(/^Search/).fill(institution.name);
-  await expect(cards(page)).toHaveCount(1);
+  await expect(cards(page, "Institutions")).toHaveCount(1);
   // The owner is the one holding the owner role.
-  await expect(cards(page)).toContainText(`Owner: ${institution.owner.fullName}`);
+  await expect(cards(page, "Institutions")).toContainText(`Owner: ${institution.owner.fullName}`);
 
   const statuses = page.getByRole("group", { name: "Status" });
   await statuses.getByRole("button", { name: "Active" }).click();
   await expect(page).toHaveURL(/status=Active/);
   await expect(page.getByText("No institution matches.")).toBeVisible();
   await statuses.getByRole("button", { name: "Suspended" }).click();
-  await expect(cards(page)).toHaveCount(1);
+  await expect(cards(page, "Institutions")).toHaveCount(1);
   // A suspended place cannot be opened as support.
-  await expect(cards(page).getByRole("button", { name: "Open as platform support" })).toHaveCount(0);
+  await expect(cards(page, "Institutions").getByRole("button", { name: "Open as platform support" })).toHaveCount(0);
 
   const district = page.getByLabel("District");
   await expect(district.locator("option")).not.toHaveCount(1);
@@ -122,6 +124,47 @@ test("the institutions list filters by status and district, in the address, on a
   expect(await widerThanWindow(page)).toEqual([]);
   expect(await scrollsSideways(page)).toBe(false);
   await shot(page, testInfo.project.name, "en-admin-institutions-filtered");
+});
+
+test("an institution's people: from its staff count, or picked by name, and kept over a reload @phone", async ({ page, baseURL }, testInfo) => {
+  const admin = await createAccount(baseURL!, "E2E People Admin");
+  grantPlatformRole(admin, "PLATFORM_ADMIN");
+  const institution = await approvedInstitution(baseURL!, `E2E People Church ${Date.now()}`);
+
+  await signIn(page, admin);
+  await page.goto("/admin/institutions");
+  await page.getByLabel(/^Search/).fill(institution.name);
+  await expect(cards(page, "Institutions")).toHaveCount(1);
+  await cards(page, "Institutions").getByRole("link", { name: "1 staff member" }).click();
+
+  // Its owner, counted as staff by the role they hold, whatever their account was made as.
+  await expect(page).toHaveURL(new RegExp(`/admin/users\\?institution=${institution.slug}$`));
+  const field = page.getByRole("combobox", { name: "Institution" });
+  await expect(field).toHaveValue(institution.name);
+  await expect(cards(page)).toHaveCount(1);
+  await expect(cards(page)).toContainText(institution.owner.fullName);
+  await expect(cards(page)).toContainText("Institution staff");
+  await page.waitForLoadState("networkidle");
+  expect(await widerThanWindow(page)).toEqual([]);
+  await shot(page, testInfo.project.name, "en-admin-users-of-institution");
+
+  // Every institution again, then the same one picked by typing part of its name.
+  await page.getByRole("button", { name: "Every institution" }).click();
+  await expect(page).not.toHaveURL(/institution=/);
+  await expect(field).toHaveValue("");
+  await field.fill(institution.name.slice(4));
+  const option = page.getByRole("option", { name: new RegExp(institution.name) });
+  await expect(option).toBeVisible();
+  await field.press("Enter");
+  await expect(page).toHaveURL(new RegExp(`institution=${institution.slug}`));
+  await expect(cards(page)).toHaveCount(1);
+
+  // A reload names it again from the address; the back button takes it away.
+  await page.reload();
+  await expect(field).toHaveValue(institution.name);
+  await page.goBack();
+  await expect(page).not.toHaveURL(/institution=/);
+  await expect(field).toHaveValue("");
 });
 
 test("a step-up given up says nothing changed, not that something went wrong", async ({ page, baseURL }) => {
