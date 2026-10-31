@@ -224,6 +224,24 @@ public sealed class RegistrationReviewEndpointsTests(SethikaTestDatabase databas
         Assert.DoesNotContain(approved.GetProperty("items").EnumerateArray(), i => i.GetProperty("requestNo").GetString()!.StartsWith("REQ-TEST-R0", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task TheSidebarCountsTheRequestsWaitingForTheReviewers_NotDrafts()
+    {
+        // Plan 05, R3: the badge beside "Registration requests" is the queue's open work.
+        await _scenario.SubmittedAsync("REQ-TEST-S01", "BUD/S/01");
+        await _scenario.SubmittedAsync("REQ-TEST-S02", "BUD/S/02");
+        await _scenario.SubmittedAsync("REQ-TEST-S03", "BUD/S/03", submit: false);
+
+        var open = await ScalarAsync<int>(
+            "SELECT COUNT(*) FROM org.RegistrationRequests WHERE Status IN ('Submitted', 'UnderReview', 'InfoRequested');");
+        Assert.True(open >= 2);
+
+        var summary = await JsonAsync(await Reviewer().GetAsync("/api/me/summary"));
+
+        Assert.Equal(open, summary.GetProperty("registrationsWaiting").GetInt32());
+        Assert.Equal(JsonValueKind.Null, summary.GetProperty("bookingsToAnswer").ValueKind);
+    }
+
     // ------------------------------------------------------------------ the whole review
 
     [Fact]

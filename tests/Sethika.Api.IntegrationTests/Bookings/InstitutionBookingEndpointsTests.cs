@@ -270,6 +270,46 @@ public sealed class InstitutionBookingEndpointsTests(SethikaTestDatabase databas
 
     private static string[] Strings(JsonElement array) => [.. array.EnumerateArray().Select(e => e.GetString()!)];
 
+    // ------------------------------------------------------------------ the sidebar's counts (plan 05, R3)
+
+    [Fact]
+    public async Task TheSidebarCountsRequestsStillToAnswer_OnlyForThoseWhoMayAnswerThem()
+    {
+        var (slot, _) = await CreateSlotAsync(Alpha(_alphaOwner));
+        var (betaSlot, _) = await CreateSlotAsync(Beta(_betaOwner));
+
+        await BookedAsync(slot, SlotDay);                    // counted
+        var decided = await BookedAsync(slot, SlotDay.AddDays(1));
+        var past = await BookedAsync(slot, SlotDay.AddDays(2));
+        await BookedAsync(betaSlot, SlotDay);                // another institution's
+
+        await using (var connection = await PlatformConnectionAsync())
+        {
+            // One already answered, and one whose day has gone (its slot-day moved into the past).
+            await connection.ExecuteAsync(
+                """
+                UPDATE booking.Bookings SET Status = 'Approved', DecidedAt = SYSUTCDATETIME(), DecidedBy = @owner WHERE BookingNo = @decided;
+                UPDATE si SET SlotDate = DATEADD(DAY, -30, si.SlotDate)
+                FROM booking.SlotInstances si JOIN booking.Bookings b ON b.SlotInstanceId = si.Id WHERE b.BookingNo = @past;
+                """,
+                new { owner = _alphaOwner, decided, past });
+        }
+
+        using var forOwner = await SendAsync(Alpha(_alphaOwner), HttpMethod.Get, "/api/me/summary");
+        using var forStaff = await SendAsync(Alpha(_alphaStaff), HttpMethod.Get, "/api/me/summary");
+        using var forBeta = await SendAsync(Beta(_betaOwner), HttpMethod.Get, "/api/me/summary");
+
+        Assert.Equal(HttpStatusCode.OK, forOwner.StatusCode);
+        var ownerSummary = await BodyOf(forOwner);
+        Assert.Equal(1, ownerSummary.GetProperty("bookingsToAnswer").GetInt32());
+        Assert.Equal(JsonValueKind.Null, ownerSummary.GetProperty("registrationsWaiting").ValueKind);
+        Assert.Equal(0, ownerSummary.GetProperty("invitations").GetInt32());
+
+        // Staff see the calendar but may not approve: no count, not a zero.
+        Assert.Equal(JsonValueKind.Null, (await BodyOf(forStaff)).GetProperty("bookingsToAnswer").ValueKind);
+        Assert.Equal(1, (await BodyOf(forBeta)).GetProperty("bookingsToAnswer").GetInt32());
+    }
+
     // ------------------------------------------------------------------ meal slots
 
     [Fact]
