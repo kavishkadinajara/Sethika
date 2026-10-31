@@ -97,6 +97,9 @@ test("the flyout takes a donor to a screen and closes, marking where they are", 
 test("a rail icon's name shows on hover, above the page's cards", async ({ applicant }) => {
   const { page } = applicant;
   await page.goto("/");
+  // The greeting panel beside the rail is what covered the tooltips: wait for it, not the
+  // placeholder shown while the session loads (which has nothing positioned to cover them).
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Good (morning|afternoon|evening)!/);
   const rail = page.getByRole("navigation", { name: "Main menu" });
   for (const control of [...(await rail.getByRole("link").all()), ...(await rail.getByRole("button").all())]) {
     await control.hover();
