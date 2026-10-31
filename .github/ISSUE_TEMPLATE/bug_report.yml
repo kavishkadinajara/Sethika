@@ -1,0 +1,51 @@
+name: Bug report
+description: Something behaves incorrectly
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Include the exact error or response, not a paraphrase.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should have happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Sign in as institution staff for institution X
+        2. Open /bookings/calendar
+        3. ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - API
+        - Web (Next.js)
+        - Database / schema
+        - Permissions / RBAC
+        - Tenant isolation (RLS)
+        - Booking engine
+        - Notifications
+        - CI / tooling
+    validations:
+      required: true
+
+  - type: input
+    id: tenant
+    attributes:
+      label: Institution / tenant
+      description: Which institution was in context? Needed for anything involving RLS.

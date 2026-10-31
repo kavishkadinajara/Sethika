@@ -1,0 +1,130 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build: solution",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["build", "${workspaceFolder}/Sethika.sln", "-v:minimal", "--nologo"],
+      "problemMatcher": "$msCompile",
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "build: api",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["build", "${workspaceFolder}/src/Sethika.Api/Sethika.Api.csproj", "-v:minimal", "--nologo"],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "build: database (dacpac)",
+      "detail": "Schema source of truth. Produces src/Sethika.Database/bin/Debug/Sethika.Database.dacpac",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["build", "${workspaceFolder}/src/Sethika.Database/Sethika.Database.sqlproj", "-v:minimal", "--nologo"],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "db: publish local",
+      "detail": "Builds the dacpac then publishes it to the local Sethika database",
+      "dependsOn": "build: database (dacpac)",
+      "command": "SqlPackage",
+      "type": "shell",
+      "args": [
+        "/Action:Publish",
+        "/SourceFile:${workspaceFolder}/src/Sethika.Database/bin/Debug/Sethika.Database.dacpac",
+        "/Profile:${workspaceFolder}/src/Sethika.Database/Sethika.Database.local.publish.xml"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "db: publish test",
+      "detail": "Creates or refreshes Sethika_Test, which the integration tests require",
+      "dependsOn": "build: database (dacpac)",
+      "command": "SqlPackage",
+      "type": "shell",
+      "args": [
+        "/Action:Publish",
+        "/SourceFile:${workspaceFolder}/src/Sethika.Database/bin/Debug/Sethika.Database.dacpac",
+        "/TargetServerName:localhost",
+        "/TargetDatabaseName:Sethika_Test",
+        "/TargetTrustServerCertificate:True"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "test: all",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["test", "${workspaceFolder}/Sethika.sln", "--nologo"],
+      "problemMatcher": "$msCompile",
+      "group": { "kind": "test", "isDefault": true }
+    },
+    {
+      "label": "test: unit only",
+      "detail": "Skips everything needing SQL Server or Redis",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "test", "${workspaceFolder}/Sethika.sln", "--nologo",
+        "--filter", "FullyQualifiedName!~IntegrationTests"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "test"
+    },
+    {
+      "label": "web: install",
+      "type": "shell",
+      "command": "npm",
+      "args": ["install"],
+      "options": { "cwd": "${workspaceFolder}/web" },
+      "problemMatcher": []
+    },
+    {
+      "label": "web: lint",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "lint"],
+      "options": { "cwd": "${workspaceFolder}/web" },
+      "problemMatcher": "$eslint-stylish"
+    },
+    {
+      "label": "web: build",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "build"],
+      "options": { "cwd": "${workspaceFolder}/web" },
+      "problemMatcher": []
+    },
+    {
+      "label": "mobile: point at this computer",
+      "detail": "Writes this computer's Wi-Fi address into mobile/.env.local (git-ignored), so the app on a phone finds the API",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile", "-Command",
+        "$ip = (Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq 'Up' } | Select-Object -First 1).IPv4Address.IPAddress; if (-not $ip) { Write-Error 'No connected network found.'; exit 1 }; Set-Content -Path mobile/.env.local -Value \"EXPO_PUBLIC_API_BASE_URL=http://${ip}:5182\" -Encoding ascii; Write-Output \"API for the phone: http://${ip}:5182\""
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "mobile: install",
+      "type": "shell",
+      "command": "npm",
+      "args": ["install"],
+      "options": { "cwd": "${workspaceFolder}/mobile" },
+      "problemMatcher": []
+    },
+    {
+      "label": "verify: everything",
+      "detail": "What CI runs. Use before opening a PR.",
+      "dependsOrder": "sequence",
+      "dependsOn": ["build: solution", "test: all", "web: lint", "web: build"],
+      "problemMatcher": [],
+      "group": "test"
+    }
+  ]
+}

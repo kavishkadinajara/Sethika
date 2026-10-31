@@ -2,8 +2,17 @@
 
   <!-- TargetFramework, Nullable and ImplicitUsings come from Directory.Build.props -->
 
+  <PropertyGroup>
+    <!-- Connection strings live in User Secrets, never in appsettings or source control. -->
+    <UserSecretsId>f0da7f41-496e-4dc2-bda2-41a1553964f3</UserSecretsId>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Sethika.Infrastructure\Sethika.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" />
   </ItemGroup>
 
 </Project>

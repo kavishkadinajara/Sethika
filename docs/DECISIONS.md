@@ -23,6 +23,7 @@ Decisions made while planning the project, with the reasoning behind each.
 | A7 | Modular monolith: 5 projects (Domain, Application, Infrastructure, Api, Database) + tests; modules are folders | Company-style splits (separate Core/Caching/DataAccess/Producer/Consumer projects) suit shared frameworks across many products, not a single app |
 | A8 | No Docker required for development | SQL Server Developer Edition + Redis in WSL2 are enough; a docker-compose file can be added later for demos |
 | A9 | Everything written from scratch | Employer code is company IP and must not be reused |
+| A10 | SMS through **Text.lk** (sender id `Sethika`, registered 2026-10-23), v3 API with a bearer token; the Notify.lk sender stays as an alternative, and the console sender is Development only | The sender id was approved on Text.lk. The v3 API keeps the token out of URLs, which `IHttpClientFactory` logs. Text.lk's two docs pages disagree on the reply shape, so both are accepted and anything else is a failure. **Verified live on 2026-10-23**: an English and a Sinhala signup code reached a Dialog phone from "Sethika"; Sinhala renders correctly under `type: plain` (the docs say nothing about it). |
 
 ## Data
 | # | Decision | Why |
@@ -61,14 +62,152 @@ Filtered-index predicates (`WHERE Status IN (...)`) are not affected and may kee
 To check: `SqlPackage /Action:Script` against the target should produce a script containing only the
 post-deployment seed MERGEs and no schema statements.
 
+## Scope revision (proposal v2)
+
+The proposal originally listed **online payments** and **a Sinhala/Tamil interface** under
+"beyond the scope of this project". Both were brought into scope, and
+`docs/proposal/Sethika_Project_Proposal.docx` was revised accordingly
+(`Sethika_Project_Proposal_v1_original.docx` keeps the pre-revision text so the change is auditable).
+
+| # | Decision | Why |
+|---|----------|-----|
+| S1 | Trilingual interface (en/si/ta) is built from Phase A, not retrofitted | The schema already carries `NameSi`/`NameTa`/`PreferredLanguage`; adding i18n after the screens exist means rewriting every one of them |
+| S2 | Online donation payments via PayHere, Phase D, sandbox in development | A money donation can also simply be *recorded* by the institution, so the booking flow never depends on a gateway being reachable |
+| S3 | The final report must reconcile two places where the proposal understates the build | The proposal describes ~10 snake_case tables in 3NF; the delivered schema is 83 tables across 8 schemas with temporal history, RLS and data masking |
+
+Four statements in the proposal contradicted the implementation and were corrected in the same
+revision: EF Core "migrations" (the SQL Database Project is the source of truth), Docker Compose
+for local dev (not required), query-scoped access control (it is Row-Level Security in the
+database), and "one active booking per slot per date" (shared slots hold up to their configured
+maximum).
+
+> PayHere's notify URL is a server-to-server callback, so it cannot reach `localhost`. Local
+> development needs a tunnel (ngrok or cloudflared) or payment confirmations never arrive.
+
+## Scope revision (proposal v3, 2026-10-23)
+
+The supervisor's feedback on the submitted proposal asked for "a few more functions, like coordination
+of religious leaders and making appointments". `docs/proposal/Sethika_Project_Proposal.docx` (and its
+`.pdf`) is now v3.
+
+| # | Decision | Why |
+|---|----------|-----|
+| S4 | New **Phase E: religious services and leader coordination**: service types, a leader roster with availability and leave, appointment requests, conflict-free assignment with accept/decline, and a personal schedule. Design: `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` | Answers the feedback and stays faith-neutral (services are configuration, like meal slots). It adds a second concurrency guarantee of a different shape: interval overlap, enforced as 15-minute time blocks under a primary key. That is worth more in the report than another CRUD module. |
+| S5 | Phase E is built **after** the Phase A booking engine, and is cut before Phase A rigour is | It reuses the engine's lock, outbox and number-series patterns. If time runs out, the report states what was not built. |
+| S6 | v3 is based on the copy **submitted on 2026-10-18**, not on the repo's v2 | That copy (`Sethika_Project_Proposal_submitted_2026-10-18.docx`) was edited from v1 outside the repo and still carried v1's four contradictions and the old "beyond scope" list. v3 re-applies v2's corrections (dacpac instead of migrations, no Docker, shared slots, trilingual UI, PayHere) to it. The submitted format has no Data Model section, so v2's ERD/3NF chapter lives on in `Sethika_Project_Proposal_v2_repo.docx` for the final report. |
+
+## Scope revision (mobile app, 2026-10-24)
+
+The supervisor suggested that a mobile application part would strengthen the project.
+
+| # | Decision | Why |
+|---|----------|-----|
+| S7 | New **Phase F: a donor-first mobile app** (React Native + Expo, TypeScript) in `mobile/`, calling the same API. Staff get only a "today's sponsors / mark served" view; all other institution work stays on the web. Design: `docs/plans/PHASE-F-MOBILE.md` | One codebase for Android and iOS in the language `web/` already uses. Donors are the phone users; the API stays the single place for business rules, so the app adds a client, not a second backend. |
+| S8 | Phase F runs **in parallel** with the backend phases: scaffolding and mobile sign-in start now, each later slice starts when the API it calls has merged | The booking engine is being built on another machine. The app never changes another module's API from its own branch, so the two lines of work don't collide. |
+
+## Redis (local development)
+| # | Decision | Why |
+|---|----------|-----|
+| R1 | Sethika uses a dedicated logical database (`defaultDatabase=3`) | db 0 on this machine is shared with another application's cache (`EstateList_*`, `RoleMenuList_*`). A `FLUSHDB` while testing would wipe those keys, and both would compete for the same eviction budget |
+| R2 | Connection strings and the JWT signing key live in User Secrets | Nothing secret in `appsettings.json` or source control. `dotnet user-secrets set "ConnectionStrings:Redis" ...` |
+
+> **Local Redis is 3.2.100** — the archived Microsoft Windows port, not the WSL2 install
+> `docs/LOCAL_SETUP.md` describes (WSL is not installed on this machine). Everything the
+> permission cache needs works on it, but it has had no security patches since ~2016 and
+> production Azure Redis will be 6.x/7.x. Worth replacing before relying on anything newer
+> than Redis 3.2 semantics.
+
 ## RBAC
+- Effective permissions come from `auth.vw_EffectivePermissions` and are **never** re-derived in C#.
+  Deny-wins and the module-enabled intersection are both implemented in that view; a second
+  implementation in application code could disagree with it, and the database is what decides access.
+- Cached in Redis under `perm:{userId}:{institutionId}:v{userVersion}.{institutionVersion}`. The versions
+  are part of the key, so bumping either one *is* the invalidation: the next read builds a different key,
+  misses and reloads. No eviction call to forget, and it works across every API instance. A null
+  institution (donors, platform staff) renders as the literal segment `global` with version `0`.
+- A Redis outage degrades to a SQL read, never to a denial — a cache failure must not lock everyone out.
+- `[HasPermission("CODE")]` on every endpoint. Policies are materialised per code on demand by
+  `PermissionPolicyProvider`, so adding a permission never means editing `Program.cs`.
 - Portal → Module → Screen → ScreenElement (Button, Dropdown, DropdownOption, Field, Tab, Section, GridColumn, ExportAction)
 - Permission = Screen/Element + Action; permission dependencies (EDIT requires VIEW)
 - Roles: platform roles, template roles (cloned on approval), institution-owned roles
 - Per-user Grant/Deny overrides; Deny always wins; temporary role validity windows
 - Institution modules come from type defaults + plan; disabled module removes its permissions automatically
 
+## Onboarding (plan 02) — what was cut
+
+The onboarding slice ships the core flow plus clarifications. These have tables or columns in the
+schema but were **deliberately not built**, and the report says so:
+
+- Risk scoring (`RiskScore`/`RiskFlags`: duplicate files via `IX_Files_Hash`, a reused NIC via
+  `IX_OfficeBearer_Nic`, location clashes), `SlaDueAt`, `AssignedReviewerId`
+- Evidence files on checklist items; staff invitations (`org.StaffInvitations`)
+- Plan selection (`RequestedPlanId` stays NULL → FREE); DS divisions (no seed, nullable column)
+- Virus scanning of uploads (`ScanStatus`, B4); a map picker for the location (B11)
+- Editing the institution profile after approval; re-verification (`NextReviewDue`); suspending or
+  deactivating an institution; institution reports; the public institution page (Phase B)
+
+## Booking (plan 03)
+
+Full reasoning in `docs/plans/03-BOOKING.md` §2; choices made while building are its §8 (E1-E35).
+
+| # | Decision | Why |
+|---|----------|-----|
+| C1 | `BookedSponsors` counts `Requested` **and** `Approved` bookings; reject and cancel give the place back in the same transaction | If only approved bookings counted, two donors could both hold "requested" on an exclusive slot and the institution would have to choose: double booking moved one step later |
+| C2 | Three layers: a Redis lock `lock:slot:{mealSlotId}:{yyyy-MM-dd}` (SET NX PX, Lua compare-and-delete), a conditional `UPDATE ... WHERE BookedSponsors < MaxSponsors`, and CHECK constraints. If Redis is down, booking goes on without the lock | **The lock is an optimisation, the database is the guarantee.** The lock gives a fast, clean 409 and serialises get-or-create; the UPDATE and the CHECKs are correct on their own, so a Redis outage degrades rather than denies |
+| C3 | A slot instance is created on first booking, under the lock, copying the slot's capacity; `UQ_SlotInst_SlotDate` is the backstop | Instances are snapshots: editing a slot's capacity later does not break a promise already made |
+| C4 | Bookability is one pure domain function, `MealSlotRules.CanBook`, returning the first failing reason; dates count in Asia/Colombo | Unit-testable without a database, and called inside the lock on fresh data |
+| C5 | Status transitions live on the `Booking` aggregate; each writes `BookingStatusHistory` and an outbox message; concurrent decisions are caught by `RowVersion` (409) | One place for the state machine; the donor may cancel until the day before, the institution after |
+| C6 | The donor is the signed-in user; name and phone are snapshots; one active booking per phone per slot-day (`UX_Bookings_DonorPerSlot`) | Booking on someone's behalf and the donor CRM are cut |
+| C7 | `BookingNo` is platform-wide per year (`BK-2026-000123`), drawn inside the booking transaction | A rolled-back booking leaves a gap, as with registration numbers (B5) |
+| C8 | `booking.SlotInstances` has **no** RLS | See the exposure below |
+| C9 | `booking.MealSlots.PublicId` (UUID v7, unique) | A slot is addressed from the donor's side, and URLs never carry `Id` |
+| C10 | Discovery is a shared link `/i/{slug}` plus a plain `/institutions` list of `Active` and `IsPubliclyListed` institutions; both anonymous and rate-limited | Search, GEO and the map are Phase B. An institution is listed only once its Owner turns it on |
+| C11 | SMS to the donor through the outbox, in their language, with `DedupKey`: received/confirmed, approved, rejected, cancelled, and a reminder at 18:00 Colombo the day before | The institution gets no SMS (cost); its calendar shows the waiting requests |
+| C12 / E32 | Sethika's own month grid (`BowlCalendar`), not FullCalendar | A CSS grid with Intl names and keyboard navigation did what was needed without a dependency |
+
+**The C8 exposure, stated plainly.** A donor's connection has to update another tenant's
+availability counters, and availability is public, so `SlotInstances` sits outside RLS. The
+consequence is that any signed-in connection *could* change any slot's counters. The only code that
+does so is the booking handler, and the CHECK constraints bound what it can store
+(`CK_SlotInst_Sponsors`, `CK_SlotInst_Headcount`: never above the maximum, never below zero). This is a known, deliberate trade-off, and the report
+says so.
+
+**Cut from plan 03, and the report says so:** the waitlist; co-sponsors (`BookingContributors`);
+recurring bookings and the Memorial Dana Planner (Phase C); staff booking on behalf of a donor; the
+donor CRM (`InstitutionDonors`); a seasons screen (the rule is enforced, seasons have no UI); caterer
+fulfilment; SignalR live updates (Phase C); availability alerts; search, GEO and the map (Phase B).
+
+## Unconfirmed reference data (seeded as drafts)
+CLAUDE.md forbids inventing facts about real institutions. Where the flow cannot run without a row,
+the row is seeded as a visibly marked draft and listed here until someone confirms or replaces it.
+
+| Data | Seed | Marked | Confirm with |
+|------|------|--------|--------------|
+| Terms of Use, Privacy Policy | `09_LegalDocuments.sql` | `0.1-draft` in title and body | a legal reviewer |
+| Institution declaration | `09_LegalDocuments.sql` | `0.1-draft` in title and body | a legal reviewer |
+| Document types and the documents each institution type must upload | `12_OnboardingDrafts.sql` | `DRAFT` in every name and instruction | real institutions of each type |
+| Reviewer checklist items | `12_OnboardingDrafts.sql` | `DRAFT` in every question | the platform's reviewers |
+| Religious service suggestions per institution type (name, duration, leaders needed) — Phase E, not seeded yet | to be written | `DRAFT` in every name | real institutions of each faith |
+
+The registration reject reasons in the same seed are Sethika's own review policy, not facts about
+institutions, and are not drafts. Every row is read from the tables at run time, so a confirmed list
+is a seed edit, not a code change.
+
 ## Deliverables produced so far
-- `docs/proposal/Sethika_Project_Proposal.docx` (NIBM format)
+- `docs/proposal/Sethika_Project_Proposal.docx` + `.pdf` (NIBM format, v3); earlier versions kept beside it
 - `src/Sethika.Database/` SQL project (78 tables, idempotent seeds) and `docs/erd/*.png` (5 diagrams)
 - `branding/` logo kit (light/dark transparent SVG/PNG, favicon set)
+
+## Plans
+
+Design work that is agreed but not yet implemented lives in `docs/plans/`. Decisions move up into the
+tables above once the code exists and the choice has held.
+
+| Plan | Branch | State |
+|------|--------|-------|
+| `docs/plans/01-AUTH.md` — authentication, MFA step-up, i18n foundation, design system | `2-authentication-and-i18n-foundation` | Merged into `develop` (PR #4, #5); browser walk-throughs still owed — see its status line |
+| `docs/plans/02-ONBOARDING.md` — institution onboarding and approval, outbox processor | `3-institution-onboarding` | Merged into `develop` (PR #6, #7 Text.lk) on 2026-10-23 |
+| `docs/plans/03-BOOKING.md` — meal slots, the booking engine (Redis lock + conditional UPDATE + CHECKs), donor booking, reminders | `5-booking-engine` | 5.1-5.7 built (engine, institution and donor APIs, SMS and reminders, screens); decisions summarised above under "Booking (plan 03)", the rest in its §8 |
+| `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` — religious services, leader roster, conflict-free assignment | not cut yet | Designed (S4); build after the booking engine |
+| `docs/plans/PHASE-F-MOBILE.md` — donor mobile app (Expo), mobile sessions, push notifications | `ccr-79f10240-uk4n3v` | F.1–F.2 built (app scaffold, mobile sessions); phone walk-through owed; F.3+ follow the API (S8) |

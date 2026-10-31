@@ -25,5 +25,6 @@ internal sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.Property(r => r.Code).HasColumnType("varchar(50)").IsRequired();
         builder.Property(r => r.Name).HasColumnType("nvarchar(100)").IsRequired();
         builder.Property(r => r.Description).HasColumnType("nvarchar(300)");
+        builder.Property(r => r.RowVersion).IsRowVersion();
     }
 }

@@ -22,7 +22,7 @@ Sethika/
 ├─ src/
 │  ├─ Sethika.Domain/             # entities, value objects, domain rules — no dependencies
 │  ├─ Sethika.Application/        # use cases (commands/queries), interfaces, validation (FluentValidation)
-│  │   └─ Access/ Onboarding/ Institutions/ Booking/ Giving/ Notifications/   (one folder per module)
+│  │   └─ Access/ Onboarding/ Institutions/ Bookings/ Giving/ Notifications/   (one folder per module)
 │  ├─ Sethika.Infrastructure/     # EF Core, Dapper, Redis, SMS/email, files, Hangfire jobs, outbox
 │  │   └─ Persistence/ Queries/ Caching/ Messaging/ Security/
 │  ├─ Sethika.Api/                # host: endpoints, auth, SignalR hubs, Hangfire dashboard, DI wiring
@@ -32,6 +32,7 @@ Sethika/
 │  ├─ Sethika.Application.Tests/
 │  └─ Sethika.Api.IntegrationTests/
 ├─ web/                           # Next.js frontend
+├─ mobile/                        # React Native + Expo donor app (Phase F) — see mobile/README.md
 ├─ docs/  branding/
 ```
 Dependency rule: `Api → Infrastructure → Application → Domain`. Domain references nothing.
@@ -40,7 +41,9 @@ Adding the SQL project to the .sln: project type GUID `42EA0DBD-9CF1-443E-919E-B
 (or `dotnet sln add src/Sethika.Database/Sethika.Database.sqlproj`).
 
 ## Tech stack
-- Frontend: Next.js (App Router) + TypeScript (strict) + Tailwind + shadcn/ui, FullCalendar, Leaflet + OpenStreetMap
+- Frontend: Next.js (App Router) + TypeScript (strict) + Tailwind + shadcn/ui, our own month calendar
+  (`web/components/bookings/BowlCalendar.tsx`, not FullCalendar: plan 03, E32), Leaflet + OpenStreetMap
+- Mobile (Phase F): React Native + Expo (TypeScript strict, Expo Router), push via Expo Push Service
 - Backend: ASP.NET Core Web API on .NET 10
 - Data: SQL Server 2022 locally, Azure SQL in production
 - Redis (mandatory course requirement): booking locks, permission cache, caching, GEO search, OTP, rate limiting, SignalR backplane
@@ -109,6 +112,13 @@ Adding the SQL project to the .sln: project type GUID `42EA0DBD-9CF1-443E-919E-B
 - **Phase B:** public pages, cross-institution search + Redis GEO + map.
 - **Phase C:** recurring bookings, **Memorial Dana Planner**, co-sponsors, SignalR live updates.
 - **Phase D:** donations, needs board, gratitude wall, dashboards & reports.
+- **Phase E (added in proposal v3 after supervisor feedback):** religious services & leader coordination —
+  service types, leader roster + leave, appointment requests, conflict-free leader assignment (accept/decline),
+  personal schedule. Build after the booking engine. Design: `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md`.
+- **Phase F (added 2026-10-24, runs in parallel):** donor-first mobile app in `mobile/` (React Native + Expo,
+  TypeScript) on the same API — browse, book, my bookings, push notifications, near me; staff get only
+  "today's sponsors / mark served". Mobile sessions carry the refresh token in the body (secure store), not a cookie.
+  Design: `docs/plans/PHASE-F-MOBILE.md`.
 - Designed but optional: plans/subscriptions, availability alerts, demand heatmap, impersonation, trust & safety.
 
 ## First tasks for Claude Code
@@ -120,6 +130,7 @@ Adding the SQL project to the .sln: project type GUID `42EA0DBD-9CF1-443E-919E-B
 ## Open items (never invent data for these)
 - `core.MemorialRules` per religion, required legal documents per institution type, and `core.SpecialDays`
   must be confirmed with real institutions before seeding.
+- Religious service types per faith (names, durations, leaders needed) for Phase E — seed only as `DRAFT` suggestions.
 
 ## Branding
 - Name **Sethika** (sethika.com). Colours: Estate Green `#16513D`, Offering Gold `#E0A33E`, Deep Ink `#0E2A21`, Rice Ivory `#F7F4EC`.

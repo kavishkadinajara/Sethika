@@ -1,0 +1,418 @@
+{
+  "Brand": {
+    "name": "Sethika",
+    "tagline": "Sponsor a meal at a temple, kovil, mosque, church or care home in Sri Lanka."
+  },
+  "Login": {
+    "title": "Sign in",
+    "subtitle": "Welcome back.",
+    "loginLabel": "Phone number or email",
+    "loginHelp": "The mobile number or email you signed up with.",
+    "loginRequired": "Enter your phone number or email.",
+    "passwordLabel": "Password",
+    "passwordRequired": "Enter your password.",
+    "submit": "Sign in",
+    "noAccount": "New to Sethika?",
+    "createAccount": "Create an account",
+    "forgotPassword": "Forgot password?",
+    "useCode": "Sign in with a code instead"
+  },
+  "LoginOtp": {
+    "title": "Sign in with a code",
+    "phoneHelp": "Enter the mobile number on your Sethika account. We'll text it a 6-digit code.",
+    "phoneLabel": "Mobile number",
+    "phonePlaceholder": "07X XXX XXXX",
+    "phoneRequired": "Enter your mobile number.",
+    "sendCode": "Send code",
+    "usePassword": "Sign in with a password instead",
+    "noAccount": "New to Sethika?",
+    "createAccount": "Create an account",
+    "codeTitle": "Enter the code",
+    "codeSentTo": "If {phone} is on a Sethika account, a code is on its way. It can take a minute to arrive.",
+    "codeLabel": "6-digit code",
+    "codeRequired": "Enter all 6 digits of the code.",
+    "signIn": "Sign in",
+    "changeNumber": "Change number",
+    "resend": "Send a new code",
+    "resendIn": "New code in {time}"
+  },
+  "Common": {
+    "close": "Close",
+    "loading": "Loading",
+    "required": "required",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
+  },
+  "LanguageSwitcher": {
+    "label": "Language",
+    "names": {
+      "en": "English",
+      "si": "සිංහල",
+      "ta": "தமிழ்"
+    }
+  },
+  "Errors": {
+    "network": "Can't reach Sethika right now. Check your connection and try again.",
+    "unexpected": "Something went wrong. Please try again.",
+    "tooManyRequests": "Too many tries. Please wait {time} and try again.",
+    "tooManyRequestsNoTime": "Too many tries. Please wait a minute and try again.",
+    "invalid_phone_number": "Enter a Sri Lankan mobile number, for example 077 123 4567.",
+    "invalid_full_name": "Enter your name (up to 150 characters).",
+    "invalid_email": "Enter a valid email address, or leave it empty.",
+    "password_rejected": "Please choose a stronger password.",
+    "consent_missing": "Please accept both documents to continue.",
+    "phone_not_verified": "Your phone verification has expired. Please verify your number again.",
+    "already_registered": "An account already uses this phone number or email.",
+    "verification_unavailable": "We can't send or check codes right now. Please try again shortly.",
+    "invalid_credentials": "That phone number, email or password is not right.",
+    "account_not_active": "This account is not active. Please contact Sethika support.",
+    "otp_incorrect": "That code is not right. {count, plural, one {# try left} other {# tries left}}.",
+    "otp_not_found": "This code has expired. Send a new one.",
+    "otp_attempts_exhausted": "Too many wrong codes. Send a new one.",
+    "no_verified_phone": "Your account has no confirmed phone number, so we can't send a code.",
+    "institution_not_available": "You can no longer act for this institution.",
+    "session_expired": "Your session has ended. Please sign in again.",
+    "reset_ticket_invalid": "This password reset has expired or was already used. Please verify your number again.",
+    "otp_invalid": "That code didn't work. Check the number and the code, or send a new code."
+  },
+  "Password": {
+    "title": "Your password needs:",
+    "met": "Done:",
+    "notMet": "Not yet:",
+    "TooShort": "At least 6 characters",
+    "TooLong": "No more than 128 characters",
+    "MissingUppercase": "An uppercase letter (A–Z)",
+    "MissingLowercase": "A lowercase letter (a–z)",
+    "MissingDigit": "A number (0–9)",
+    "MissingNonAlphanumeric": "A symbol, such as ! or #",
+    "ContainsPersonalData": "Not your name, phone number or email",
+    "RecentlyUsed": "Not a password you used recently"
+  },
+  "Signup": {
+    "title": "Create your account",
+    "step": "Step {current} of {total}",
+    "phoneTitle": "Your mobile number",
+    "phoneHelp": "We'll text you a 6-digit code to confirm it's yours.",
+    "phoneLabel": "Mobile number",
+    "phonePlaceholder": "07X XXX XXXX",
+    "phoneRequired": "Enter your mobile number.",
+    "sendCode": "Send code",
+    "haveAccount": "Already have an account?",
+    "signIn": "Sign in",
+    "codeTitle": "Enter the code",
+    "codeSentTo": "We sent a code to {phone}.",
+    "codeLabel": "6-digit code",
+    "codeRequired": "Enter all 6 digits of the code.",
+    "verify": "Verify",
+    "changeNumber": "Change number",
+    "resend": "Send a new code",
+    "resendIn": "New code in {time}",
+    "detailsTitle": "About you",
+    "detailsHelp": "Your number is confirmed. Now your name and a password.",
+    "fullNameLabel": "Full name",
+    "nameRequired": "Enter your name.",
+    "emailLabel": "Email",
+    "emailHelp": "Optional. You can sign in with it too.",
+    "passwordLabel": "Password",
+    "passwordRequired": "Choose a password.",
+    "continue": "Continue",
+    "differentNumber": "Use a different number",
+    "consentTitle": "Before you join",
+    "consentHelp": "Please read and accept these.",
+    "documentsUnavailable": "We couldn't load the documents.",
+    "retry": "Try again",
+    "readDocument": "Read the {title}",
+    "version": "Version {version}",
+    "accept": "I have read and accept the {title}",
+    "acceptAll": "Please accept every document to continue.",
+    "createAccount": "Create account",
+    "back": "Back",
+    "signInInstead": "Sign in instead",
+    "createdTitle": "Your account is ready",
+    "createdSignIn": "Please sign in with your new account."
+  },
+  "Session": {
+    "unavailable": "Can't reach Sethika right now. Please try again later.",
+    "actingFor": "Acting for {name}",
+    "signOut": "Sign out",
+    "signOutEverywhere": "Sign out on all devices"
+  },
+  "Booking": {
+    "calendar": {
+      "previous": "Previous month",
+      "next": "Next month"
+    },
+    "status": {
+      "Requested": "Waiting for reply",
+      "Approved": "Confirmed",
+      "Rejected": "Not accepted",
+      "Cancelled": "Cancelled",
+      "Completed": "Served",
+      "NoShow": "Did not happen"
+    },
+    "fulfilment": {
+      "DonorBrings": "The sponsor brings the meal",
+      "InstitutionPrepares": "The institution prepares it"
+    },
+    "errors": {
+      "slot_inactive": "This meal is not being offered any more.",
+      "institution_not_active": "This place is not taking bookings right now.",
+      "not_on_this_day": "This meal is not served on that day of the week.",
+      "out_of_season": "This meal is only offered in its season.",
+      "date_blocked": "This day is closed for bookings.",
+      "too_soon": "That day is too soon to book. Please choose a later day.",
+      "too_far": "That day is too far ahead to book yet.",
+      "slot_full": "Someone has just taken this day. Please choose another.",
+      "headcount_out_of_range": "That number of people is outside what this meal allows.",
+      "fulfilment_not_offered": "That way of providing the meal is not offered here.",
+      "already_booked": "You have already booked this meal on this day.",
+      "slot_busy": "Several people are booking this day right now. Please try again in a moment.",
+      "phone_required": "Your account needs a confirmed phone number before you can book.",
+      "slot_not_found": "This meal could not be found. It may have been removed.",
+      "institution_not_found": "This place could not be found.",
+      "booking_not_found": "This booking could not be found.",
+      "invalid_transition": "This booking has already moved on. The list has been refreshed.",
+      "cancel_window_closed": "It is too late to cancel this booking yourself. Please call the institution.",
+      "too_early": "This can only be marked on or after the day of the meal.",
+      "reason_required": "Please give a reason.",
+      "reason_too_long": "Please keep the reason under 300 characters.",
+      "stale": "Someone else changed this just now. It has been refreshed; please check and try again.",
+      "slot_name_taken": "You already have a meal with this name.",
+      "blocked_date_not_found": "This closed day has already been removed.",
+      "no_active_slot": "Add a meal first: a place is listed once there is something to book.",
+      "invalid_range": "That range of days cannot be shown.",
+      "invalid_details": "Some details need fixing."
+    },
+    "gate": {
+      "signInFirst": "Sign in with the account you use for your institution.",
+      "signIn": "Sign in",
+      "chooseInstitution": "Choose the institution you are working for first.",
+      "choose": "Choose an institution",
+      "notAllowed": "Your role in this institution does not include this page.",
+      "donorSignIn": "Sign in to see your bookings. New to Sethika? Create an account.",
+      "createAccount": "Create an account",
+      "institutionSession": "You are signed in for an institution. Your own bookings are under your personal account: sign out, then sign in again without choosing an institution."
+    },
+    "dates": {
+      "months": [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      ],
+      "monthsShort": [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec"
+      ],
+      "weekdays": [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday"
+      ],
+      "weekdaysShort": [
+        "Sun",
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat"
+      ],
+      "weekdaysNarrow": [
+        "S",
+        "M",
+        "T",
+        "W",
+        "T",
+        "F",
+        "S"
+      ]
+    }
+  },
+  "Discover": {
+    "directoryTitle": "Find a place to give",
+    "directoryIntro": "Temples, kovils, mosques, churches and care homes that welcome meal sponsors. Choose one to see its meals and open days.",
+    "filter": "Search",
+    "filterHint": "By name, type, town or district, in any language.",
+    "noneListed": "No places are listed yet. Soon, they will be.",
+    "noneMatch": "Nothing matches that search.",
+    "loadFailed": "Could not load this.",
+    "retry": "Try again",
+    "notFound": "We could not find this place. The link may be old.",
+    "noSlots": "This place has no meals open for booking yet.",
+    "monthFailed": "Could not load this month.",
+    "chooseMeal": "Choose a meal",
+    "chooseDay": "Choose a day",
+    "chooseDayHint": "Open days for {meal}. Each bowl fills as sponsors book the day.",
+    "everyDay": "Every day",
+    "exclusive": "One sponsor gives the whole meal",
+    "shared": "Shared by up to {count} sponsors",
+    "people": "{min}–{max} people",
+    "costPerHead": "About {cost} a person",
+    "dietary": "Food notes:",
+    "placesLeft": "{count, plural, one {# place left} other {# places left}}",
+    "open": "Open",
+    "reason": {
+      "slot_inactive": "Not offered",
+      "institution_not_active": "Not taking bookings",
+      "not_on_this_day": "Not served this day",
+      "out_of_season": "Out of season",
+      "date_blocked": "Closed this day",
+      "too_soon": "Too soon to book",
+      "too_far": "Too far ahead",
+      "slot_full": "Full"
+    },
+    "legend": {
+      "open": "Open",
+      "filling": "Some places taken",
+      "full": "Full",
+      "notOffered": "A plain date is not open"
+    },
+    "sheet": {
+      "title": "Sponsor {meal}",
+      "signInFirst": "Sign in to book this day. It takes a minute, and we will bring you straight back here.",
+      "signIn": "Sign in",
+      "createAccount": "Create an account",
+      "institutionSession": "You are signed in for an institution. To book as yourself, sign out and sign in again without choosing an institution.",
+      "notAllowed": "This account cannot make bookings.",
+      "headcount": "How many people will be fed?",
+      "headcountHint": "Between {min} and {max}.",
+      "headcountRange": "Please enter a number from {min} to {max}.",
+      "fewer": "One fewer",
+      "more": "One more",
+      "estimate": "Estimated cost: about {cost}",
+      "whoBrings": "Who provides the meal?",
+      "fulfilmentHint": {
+        "DonorBrings": "You cook or buy the meal and bring it on the day.",
+        "InstitutionPrepares": "Their kitchen prepares it; you settle the cost with them."
+      },
+      "inMemoryOf": "In memory of (optional)",
+      "inMemoryOfHint": "If this meal remembers someone, their name.",
+      "notes": "A note for them (optional)",
+      "notesHint": "Dietary needs, arrival time, anything they should know.",
+      "approvalNote": "They confirm each booking. We will text you their reply.",
+      "instantNote": "This meal is confirmed as soon as you book it.",
+      "request": "Send request",
+      "confirm": "Book this day",
+      "doneRequested": "Request sent",
+      "doneConfirmed": "Booked",
+      "bookingNo": "Your booking number",
+      "doneRequestedNext": "We will text you when they reply. The day is held for you meanwhile.",
+      "doneConfirmedNext": "We have texted you the details, and will remind you the evening before.",
+      "thanks": "Thank you for feeding others.",
+      "seeMine": "See my bookings",
+      "close": "Close"
+    }
+  },
+  "MyBookings": {
+    "title": "My bookings",
+    "intro": "The meals you have sponsored, and those still to come.",
+    "loadFailed": "Could not load your bookings.",
+    "retry": "Try again",
+    "none": "You have not sponsored a meal yet.",
+    "find": "Find a place to give",
+    "upcoming": "Coming up",
+    "noneUpcoming": "Nothing coming up.",
+    "past": "Earlier",
+    "when": "{days, plural, =0 {Today} =1 {Tomorrow} other {In # days}}",
+    "people": "{count, plural, one {# person} other {# people}}",
+    "inMemoryOf": "In memory of {name}",
+    "rejectedBecause": "Not accepted: {reason}",
+    "cancelledBecause": "Cancelled: {reason}",
+    "waiting": "Waiting for their reply. We will text you.",
+    "cancel": "Cancel booking",
+    "cancelSheet": {
+      "title": "Cancel this booking?",
+      "description": "{bookingNo}. The day becomes free for someone else.",
+      "reason": "Reason (optional)",
+      "reasonHint": "The institution will see it.",
+      "keep": "Keep booking",
+      "confirm": "Cancel booking",
+      "done": "{bookingNo} is cancelled."
+    }
+  },
+  "App": {
+    "tabs": {
+      "explore": "Explore",
+      "bookings": "My bookings",
+      "profile": "Profile"
+    },
+    "explore": {
+      "title": "Find a place to give",
+      "greeting": {
+        "morning": "Good morning",
+        "afternoon": "Good afternoon",
+        "evening": "Good evening"
+      },
+      "voice": "One meal can brighten someone's whole day.",
+      "kinds": "Kind of place",
+      "allKinds": "All",
+      "count": "{count, plural, one {# place} other {# places}}"
+    },
+    "bookings": {
+      "title": "My bookings"
+    },
+    "profile": {
+      "title": "Profile",
+      "greeting": "Hello, {name}",
+      "signOutEverywhereHelp": "Ends your session on this phone and in every browser where you are signed in.",
+      "signedOut": "Sign in to book a meal and see your bookings.",
+      "thanks": "Thank you for every meal you share.",
+      "stats": {
+        "upcoming": "Coming up",
+        "given": "Meals given",
+        "fed": "People fed"
+      },
+      "next": "Your next meal",
+      "preferences": "Preferences",
+      "account": "Account",
+      "appearance": "Appearance",
+      "theme": {
+        "auto": "Auto",
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "joinTitle": "Give a meal, from wherever you are",
+      "benefits": {
+        "find": "Find places across Sri Lanka that welcome meal sponsors.",
+        "book": "Book a day in a few taps, and see every booking in one place.",
+        "remind": "Get texts and reminders in your own language."
+      },
+      "version": "Version {version}"
+    },
+    "dates": {
+      "monthYear": "{month} {year}",
+      "full": "{weekday}, {day} {month} {year}",
+      "dayMonth": "{weekday}, {day} {month}"
+    },
+    "calendar": {
+      "dayStatus": "{date}: {status}",
+      "tapHint": "Tap an open day to book it. Tap any other day to see why it is not open."
+    },
+    "institution": {
+      "directions": "Directions"
+    }
+  }
+}

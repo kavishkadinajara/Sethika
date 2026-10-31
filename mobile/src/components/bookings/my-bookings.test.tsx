@@ -1,0 +1,118 @@
+import { router } from "expo-router";
+
+import type { SessionState } from "@/auth/session-client";
+import { ANONYMOUS, createApiStub, DONOR } from "@/test-utils/api-stub";
+import { booking } from "@/test-utils/fixtures";
+import { json, press, render, type } from "@/test-utils/render";
+
+import { MyBookings } from "./my-bookings";
+
+/*  My bookings against GET /api/bookings/mine and POST /api/bookings/{no}/cancel, stubbed at the
+    app's client boundary. Today is 2026-11-10 in Colombo.                                     */
+
+const mockApi = createApiStub();
+let mockSession: SessionState = DONOR;
+
+jest.mock("@/api/http", () => ({ getJson: (path: string) => mockApi.getJson(path) }));
+jest.mock("@/auth/session-provider", () => ({ useSession: () => mockSession, useSessionClient: () => mockApi.client }));
+jest.mock("expo-router", () => ({
+  router: { push: jest.fn(), navigate: jest.fn(), dismissTo: jest.fn() },
+  useFocusEffect: (effect: () => void) => jest.requireActual<typeof import("react")>("react").useEffect(effect, [effect]),
+}));
+jest.mock("react-native-safe-area-context", () => jest.requireActual("react-native-safe-area-context/jest/mock").default);
+
+const MINE = [
+  booking({ bookingNo: "BK-2026-000001", date: "2026-11-30", status: "Approved", canCancel: true }),
+  booking({ bookingNo: "BK-2026-000002", date: "2026-11-01", status: "Completed", canCancel: false }),
+  booking({ bookingNo: "BK-2026-000003", date: "2026-11-12", status: "Requested", canCancel: true }),
+  booking({ bookingNo: "BK-2026-000004", date: "2026-11-15", status: "Rejected", canCancel: false, rejectReason: "Closed for the festival" }),
+  booking({ bookingNo: "BK-2026-000005", date: "2026-11-11", status: "Approved", canCancel: false }),
+];
+
+const order = (allText: string[]) => allText.filter((line) => /BK-2026-\d+$/.test(line)).map((line) => line.slice(-14));
+
+beforeEach(() => {
+  jest.useFakeTimers({ advanceTimers: true, now: new Date("2026-11-10T04:00:00Z") });
+  mockApi.sent.length = 0;
+  mockSession = DONOR;
+  mockApi.serve({ "GET /api/bookings/mine": () => json(200, MINE) });
+});
+
+afterEach(() => {
+  jest.useRealTimers();
+});
+
+it("lists what is coming soonest first, then the rest latest first", async () => {
+  const screen = await render(<MyBookings />);
+
+  const text = screen.allText();
+  expect(text.indexOf("Coming up")).toBeLessThan(text.indexOf("Earlier"));
+  expect(order(text)).toEqual(["BK-2026-000005", "BK-2026-000003", "BK-2026-000001", "BK-2026-000004", "BK-2026-000002"]);
+});
+
+it("says each booking's status in words, and why one was not accepted", async () => {
+  const screen = await render(<MyBookings />);
+
+  screen.getText("Waiting for reply");
+  screen.getText("Not accepted");
+  screen.getText("Served");
+  screen.getText("Not accepted: Closed for the festival");
+  screen.getText(/^Tomorrow · 25 people/);
+});
+
+it("offers cancel only on the bookings the API says the donor may cancel", async () => {
+  const screen = await render(<MyBookings />);
+
+  const cancellable = MINE.filter((b) => b.canCancel).map((b) => b.bookingNo);
+  for (const { bookingNo } of MINE) {
+    const card = screen.getTestId(`booking-${bookingNo}`);
+    const hasCancel = card.queryAll((node) => node.type === "Text" && node.children.join("") === "Cancel booking").length > 0;
+    expect([bookingNo, hasCancel]).toEqual([bookingNo, cancellable.includes(bookingNo)]);
+  }
+});
+
+it("cancels with the reason given, then shows the list again", async () => {
+  const screen = await render(<MyBookings />);
+  mockApi.also({ "POST /api/bookings/BK-2026-000003/cancel": () => json(200, { bookingNo: "BK-2026-000003", status: "Cancelled" }) });
+
+  const card = screen.getTestId("booking-BK-2026-000003");
+  await press(card.queryAll((node) => node.type === "Text" && node.children.join("") === "Cancel booking")[0]);
+  screen.getText("Cancel this booking?");
+  await type(screen.getLabel("Reason (optional)"), " Travelling that week ");
+  // The sheet's confirm button, after the cards' own.
+  await press(screen.allMatching("Cancel booking").at(-1)!);
+
+  const cancel = mockApi.sent.find((request) => request.method === "POST");
+  expect(cancel).toEqual({ method: "POST", path: "/api/bookings/BK-2026-000003/cancel", body: { reason: "Travelling that week" }, signedIn: true });
+  screen.getText("BK-2026-000003 is cancelled.");
+  expect(mockApi.sent.filter((request) => request.path === "/api/bookings/mine")).toHaveLength(2);
+});
+
+it("says why a cancel was refused", async () => {
+  const screen = await render(<MyBookings />);
+  mockApi.also({ "POST /api/bookings/BK-2026-000001/cancel": () => json(409, { code: "cancel_window_closed" }) });
+
+  await press(screen.getTestId("booking-BK-2026-000001").queryAll((node) => node.type === "Text" && node.children.join("") === "Cancel booking")[0]);
+  await press(screen.allMatching("Cancel booking").at(-1)!);
+
+  screen.getText("It is too late to cancel this booking yourself. Please call the institution.");
+});
+
+it("asks a visitor to sign in, and asks the API for nothing", async () => {
+  mockSession = ANONYMOUS;
+  const screen = await render(<MyBookings />);
+
+  screen.getText("Sign in to see your bookings. New to Sethika? Create an account.");
+  await press(screen.getText("Sign in"));
+  expect(router.push).toHaveBeenCalledWith("/sign-in");
+  expect(mockApi.sent).toEqual([]);
+});
+
+it("offers a way to find a place when there are no bookings yet", async () => {
+  mockApi.serve({ "GET /api/bookings/mine": () => json(200, []) });
+  const screen = await render(<MyBookings />);
+
+  screen.getText("You have not sponsored a meal yet.");
+  await press(screen.getText("Find a place to give"));
+  expect(router.navigate).toHaveBeenCalledWith("/");
+});

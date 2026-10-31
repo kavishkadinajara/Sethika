@@ -10,7 +10,9 @@ CREATE TABLE auth.Permissions (
     Description     NVARCHAR(300) NULL,
     IsSensitive     BIT           NOT NULL DEFAULT 0,
     RequiresMfa     BIT           NOT NULL DEFAULT 0,   -- step-up: re-verify before approving / voiding
-    IsActive        BIT           NOT NULL DEFAULT 1
+    IsActive        BIT           NOT NULL DEFAULT 1,
+    -- Target of auth.RoleLevelPermissions' composite FK, so a ceiling knows each permission's real scope.
+    CONSTRAINT UQ_Permissions_IdScope UNIQUE (Id, Scope)
 );
 GO
 

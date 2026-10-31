@@ -1,0 +1,256 @@
+@import "tailwindcss";
+
+/*  Sethika theme (branding/, CLAUDE.md, docs/DESIGN.md). Faith-neutral by design: no single
+    religion's symbolism or colour in shared UI.
+
+    Two layers:
+    - Brand colours (estate, gold, ink, ivory) are fixed. Use them only where the brand itself
+      is the point, e.g. a panel that is Estate Green in both themes.
+    - Semantic colours (canvas, surface, fg, muted, brand, primary, accent, ...) are what the
+      UI uses. Their light values are below; their dark values are at the end of this file.
+
+    Theme choice: no data-theme on <html> follows the operating system; data-theme="light" or
+    "dark" (set from the `theme` cookie before first paint, see components/theme) overrides it.
+
+    Contrast, measured (light / dark):
+      fg on canvas 13.9 / 13.2 · muted 6.1 / 7.8 · brand 8.4 / 8.4 · danger 6.0 / 7.5
+      on-primary 8.4 / 8.6 · on-accent 6.9 / 7.7 · line (input border) 3.1 / 4.5
+    Gold on ivory is only 2.0:1, so accent is never text or a boundary on the light canvas.
+    The font variables come from lib/fonts.ts (next/font), set on <html>.                 */
+/*  Tailwind's own `dark:` follows the OS only and would ignore the theme switcher; this one
+    honours both. Prefer semantic tokens; use `dark:` only when a token cannot say it.  */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
+
+/*  A likely session, marked before the first paint (components/shell/session-hint.ts): the home
+    page hides its prerendered landing under it until the session is known.               */
+@custom-variant session (&:where([data-session], [data-session] *));
+
+@theme {
+  /* Brand, fixed in both themes. */
+  --color-estate: #16513d;
+  --color-gold: #e0a33e;
+  --color-ink: #0e2a21;
+  --color-ivory: #f7f4ec;
+
+  /* Semantic, light values. */
+  /* Page background (Rice Ivory). */
+  --color-canvas: #f7f4ec;
+  /* Raised surfaces: cards, inputs, sheets. */
+  --color-surface: #fffdf8;
+  /* Quiet fills: disabled inputs, segmented-control tracks. */
+  --color-subtle: #efe9da;
+  /* Decorative borders. Never where a boundary must be seen. */
+  --color-hairline: #e2dbc9;
+  /* Interactive boundaries (input borders): 3:1 or more. */
+  --color-line: #74877d;
+  /* Body text (Deep Ink). */
+  --color-fg: #0e2a21;
+  /* Secondary text. */
+  --color-muted: #4a6157;
+  /* Brand green as text, outline and focus ring: headings, links. */
+  --color-brand: #16513d;
+  /* Filled primary actions. */
+  --color-primary: #16513d;
+  --color-primary-strong: #0f3d2e;
+  /* Text on primary. */
+  --color-on-primary: #f7f4ec;
+  /* Offering Gold fills. Never text, never a boundary on canvas. */
+  --color-accent: #e0a33e;
+  --color-accent-strong: #c98a2a;
+  --color-on-accent: #0e2a21;
+  --color-danger: #b42318;
+  --color-danger-strong: #8f1c13;
+  --color-danger-soft: #fbeae7;
+  --color-on-danger: #ffffff;
+  --color-success: #1d6b4f;
+  --color-success-soft: #e5f1ea;
+  /* Behind sheets and dialogs. */
+  --color-scrim: rgb(14 42 33 / 0.45);
+
+  /*  Signature 1 - the bowl (docs/DESIGN.md). Things that hold or receive are shaped like
+      the bowl in the mark: gentle top corners, deeper bottom corners. Buttons stay pills. */
+  --radius-bowl: 0.875rem 0.875rem 1.75rem 1.75rem; /* cards, toasts */
+  --radius-cup: 0.625rem 0.625rem 1.125rem 1.125rem; /* inputs, code cells */
+
+  /*  Signature 3 - warm depth. Shadows are tinted with Estate Green, never grey. */
+  --shadow-lift:
+    inset 0 1px 0 rgb(255 255 255 / 0.7), 0 1px 2px rgb(14 42 33 / 0.06),
+    0 14px 30px -18px rgb(22 81 61 / 0.32);
+  --shadow-well: inset 0 1.5px 2.5px rgb(14 42 33 / 0.07);
+  --shadow-sheet: 0 -12px 40px -16px rgb(14 42 33 / 0.35);
+
+  /* Latin resolves to Outfit; Sinhala and Tamil fall through to Noto (A10). */
+  --font-sans:
+    var(--font-outfit), var(--font-noto-sinhala), var(--font-noto-tamil), ui-sans-serif,
+    system-ui, sans-serif;
+  /* The platform's own font. For the names of other scripts in the language switcher, so an
+     English page never downloads Noto Sinhala or Noto Tamil just to draw two words. */
+  --font-system: ui-sans-serif, system-ui, sans-serif;
+  /* Tagline: Fraunces Italic for Latin, the same Noto fallbacks for Sinhala and Tamil. */
+  --font-tagline:
+    var(--font-fraunces), var(--font-noto-sinhala), var(--font-noto-tamil), ui-serif, Georgia,
+    serif;
+
+  --animate-overlay-in: overlay-in 200ms ease-out;
+  --animate-overlay-out: overlay-out 160ms ease-in;
+  --animate-sheet-in-bottom: sheet-in-bottom 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-sheet-out-bottom: sheet-out-bottom 200ms ease-in;
+  --animate-sheet-in-right: sheet-in-right 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-sheet-out-right: sheet-out-right 200ms ease-in;
+  --animate-sheet-in-left: sheet-in-left 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-sheet-out-left: sheet-out-left 200ms ease-in;
+  --animate-toast-in: toast-in 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-toast-out: toast-out 160ms ease-in;
+  --animate-toast-swipe-out: toast-swipe-out 160ms ease-out;
+  --animate-caret: caret 1s steps(2, start) infinite;
+  --animate-shake: shake 360ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  --animate-flyout-in: flyout-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-menu-in: menu-in 160ms ease-out;
+  --animate-rise: rise 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes overlay-in {
+    from { opacity: 0; }
+  }
+  @keyframes overlay-out {
+    to { opacity: 0; }
+  }
+  @keyframes sheet-in-bottom {
+    from { transform: translateY(100%); }
+  }
+  @keyframes sheet-out-bottom {
+    to { transform: translateY(100%); }
+  }
+  @keyframes sheet-in-right {
+    from { transform: translateX(100%); }
+  }
+  @keyframes sheet-out-right {
+    to { transform: translateX(100%); }
+  }
+  @keyframes sheet-in-left {
+    from { transform: translateX(-100%); }
+  }
+  @keyframes sheet-out-left {
+    to { transform: translateX(-100%); }
+  }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(-0.75rem) scale(0.98); }
+  }
+  @keyframes toast-out {
+    to { opacity: 0; }
+  }
+  @keyframes toast-swipe-out {
+    from { transform: translateX(var(--radix-toast-swipe-end-x)); }
+    to { transform: translateX(calc(100% + 1rem)); }
+  }
+  /* The rail's flyout slides out from the rail; a menu settles from its trigger. */
+  @keyframes flyout-in {
+    from { opacity: 0; translate: -8px 0; }
+  }
+  @keyframes menu-in {
+    from { opacity: 0; translate: 0 -4px; scale: 0.98; }
+  }
+  /* The landing page's sections rising into place, once, on load. */
+  @keyframes rise {
+    from { opacity: 0; translate: 0 14px; }
+  }
+  @keyframes caret {
+    to { visibility: hidden; }
+  }
+  /* A wrong code: a short "no" shake, the way a person would shake their head. */
+  @keyframes shake {
+    20%, 60% { translate: -5px 0; }
+    40%, 80% { translate: 5px 0; }
+  }
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+}
+
+/*  Dark theme: the canvas is Deep Ink and the greens lighten so they still read on it.
+    The two blocks below are the same list; generated together, change them together. */
+:root {
+  color-scheme: light dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --color-canvas: #0e2a21;
+  --color-surface: #15382d;
+  --color-subtle: #1c4237;
+  --color-hairline: #2a5345;
+  --color-line: #6e9384;
+  --color-fg: #f2eee3;
+  --color-muted: #a9beb4;
+  --color-brand: #82d0ac;
+  --color-primary: #79cba5;
+  --color-primary-strong: #99d9bb;
+  --color-on-primary: #0b231c;
+  --color-accent: #e6ae4f;
+  --color-accent-strong: #f0c273;
+  --color-on-accent: #0e2a21;
+  --color-danger: #ff9a8c;
+  --color-danger-strong: #ffb7ad;
+  --color-danger-soft: #3d1f1a;
+  --color-on-danger: #2a0c08;
+  --color-success: #86d6ae;
+  --color-success-soft: #183f32;
+  --color-scrim: rgb(0 0 0 / 0.6);
+  --shadow-lift: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 0 0 / 0.3),
+  0 14px 30px -18px rgb(0 0 0 / 0.7);
+  --shadow-well: inset 0 1.5px 2.5px rgb(0 0 0 / 0.3);
+  --shadow-sheet: 0 -12px 40px -16px rgb(0 0 0 / 0.7);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-canvas: #0e2a21;
+    --color-surface: #15382d;
+    --color-subtle: #1c4237;
+    --color-hairline: #2a5345;
+    --color-line: #6e9384;
+    --color-fg: #f2eee3;
+    --color-muted: #a9beb4;
+    --color-brand: #82d0ac;
+    --color-primary: #79cba5;
+    --color-primary-strong: #99d9bb;
+    --color-on-primary: #0b231c;
+    --color-accent: #e6ae4f;
+    --color-accent-strong: #f0c273;
+    --color-on-accent: #0e2a21;
+    --color-danger: #ff9a8c;
+    --color-danger-strong: #ffb7ad;
+    --color-danger-soft: #3d1f1a;
+    --color-on-danger: #2a0c08;
+    --color-success: #86d6ae;
+    --color-success-soft: #183f32;
+    --color-scrim: rgb(0 0 0 / 0.6);
+    --shadow-lift: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 0 0 / 0.3),
+    0 14px 30px -18px rgb(0 0 0 / 0.7);
+    --shadow-well: inset 0 1.5px 2.5px rgb(0 0 0 / 0.3);
+    --shadow-sheet: 0 -12px 40px -16px rgb(0 0 0 / 0.7);
+    color-scheme: dark;
+  }
+}
+
+::selection {
+  background-color: rgb(224 163 62 / 0.35);
+}
+
+/* Sinhala and Tamil stack vowel signs above and below the base line; give them room. */
+:lang(si) body,
+:lang(ta) body {
+  line-height: 1.65;
+}

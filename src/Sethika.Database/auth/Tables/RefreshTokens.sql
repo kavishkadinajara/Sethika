@@ -12,6 +12,10 @@ CREATE TABLE auth.RefreshTokens (
     RevokedAt           DATETIME2(3)  NULL,
     RevokedReason       NVARCHAR(100) NULL,
     ReplacedByTokenId   BIGINT        NULL REFERENCES auth.RefreshTokens(Id),
+    -- The user's SecurityStamp when this token was issued. Refresh refuses a token whose stamp no
+    -- longer matches, so rotating the stamp (password change, log out everywhere) ends every session
+    -- issued before it - including one rotated by a refresh racing the rotation.
+    SecurityStamp       NVARCHAR(100) NOT NULL,
     CONSTRAINT FK_RT_Institution FOREIGN KEY (ActiveInstitutionId) REFERENCES org.Institutions(Id)
 );
 GO

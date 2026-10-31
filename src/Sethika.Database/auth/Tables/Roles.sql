@@ -3,6 +3,7 @@ CREATE TABLE auth.Roles (
     InstitutionId     INT           NULL REFERENCES org.Institutions(Id),
     Scope             VARCHAR(20)   NOT NULL
         CONSTRAINT CK_Roles_Scope CHECK (Scope = 'Platform' OR Scope = 'Institution' OR Scope = 'Donor'),
+    RoleLevelId       TINYINT       NOT NULL,
     Code              VARCHAR(50)   NOT NULL,
     Name              NVARCHAR(100) NOT NULL,
     Description       NVARCHAR(300) NULL,
@@ -15,8 +16,13 @@ CREATE TABLE auth.Roles (
     UpdatedBy         UNIQUEIDENTIFIER NULL REFERENCES auth.Users(Id),
     SysStartTime      DATETIME2(3) GENERATED ALWAYS AS ROW START HIDDEN NOT NULL,
     SysEndTime        DATETIME2(3) GENERATED ALWAYS AS ROW END   HIDDEN NOT NULL,
+    -- Last, so adding it was an ALTER and not a rebuild. Two editors of one role: the second save
+    -- is refused instead of merging their two permission sets into one nobody chose.
+    RowVersion        ROWVERSION,
     PERIOD FOR SYSTEM_TIME (SysStartTime, SysEndTime),
     CONSTRAINT UQ_Roles_Tenant UNIQUE (Id, InstitutionId),
+    -- Composite, so the level is always one of the role's own scope: no Institution role at a Platform level.
+    CONSTRAINT FK_Roles_Level FOREIGN KEY (RoleLevelId, Scope) REFERENCES auth.RoleLevels(Id, Scope),
     CONSTRAINT CK_Roles_ScopeInstitution CHECK (
         ((Scope = 'Platform' OR Scope = 'Donor') AND InstitutionId IS NULL AND IsTemplate = 0) OR
         (Scope = 'Institution' AND ((IsTemplate = 1 AND InstitutionId IS NULL) OR (IsTemplate = 0 AND InstitutionId IS NOT NULL))))

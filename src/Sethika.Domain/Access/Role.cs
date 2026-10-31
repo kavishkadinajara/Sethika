@@ -5,6 +5,10 @@ public class Role
     public int Id { get; set; }
     public int? InstitutionId { get; set; }
     public string Scope { get; set; } = null!;
+
+    /// <summary>The level the role sits at - plan A15. Always a level of the role's own scope.</summary>
+    public byte RoleLevelId { get; set; }
+
     public string Code { get; set; } = null!;
     public string Name { get; set; } = null!;
     public string? Description { get; set; }
@@ -15,6 +19,9 @@ public class Role
     public bool IsActive { get; set; }
     public Guid? CreatedBy { get; set; }
     public Guid? UpdatedBy { get; set; }
+
+    /// <summary>Moves on every save; an edit carries the one its editor read, and a stale one is refused.</summary>
+    public byte[] RowVersion { get; set; } = [];
 
     public ICollection<UserRole> UserRoles { get; } = [];
 }
