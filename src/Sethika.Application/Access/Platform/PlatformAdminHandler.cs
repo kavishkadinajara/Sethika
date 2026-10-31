@@ -193,6 +193,10 @@ public sealed class PlatformAdminHandler(
             user.Status = user.PhoneConfirmed || user.PasswordHash is not null ? Active : PendingVerification;
         }
 
+        // The view grants nothing to an account that is not Active; a new version makes every
+        // cached permission set miss, so a live access token is refused on its next request.
+        user.PermissionsVersion++;
+
         user.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
         user.UpdatedBy = actor;
         Record(actor, suspend ? "UserSuspended" : "UserReactivated", userId, institutionId: null);

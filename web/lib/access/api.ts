@@ -47,8 +47,13 @@ export async function createRole(input: { code: string; name: string; level: str
   return empty(await send(`${BASE}/roles`, jsonBody("POST", input)));
 }
 
-export async function setRolePermissions(role: string, permissions: string[]): Promise<AccessResult> {
-  return empty(await send(`${BASE}/roles/${code(role)}/permissions`, jsonBody("PUT", { permissions })));
+/** Sends the version the editor read; a role changed meanwhile is refused (409 changed_meanwhile). */
+export async function setRolePermissions(
+  role: string,
+  permissions: string[],
+  version: string,
+): Promise<AccessResult<{ version: string }>> {
+  return json(await send(`${BASE}/roles/${code(role)}/permissions`, jsonBody("PUT", { permissions, version })));
 }
 
 export async function assignRole(role: string, user: string): Promise<AccessResult> {

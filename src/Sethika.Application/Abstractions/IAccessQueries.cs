@@ -13,6 +13,7 @@ namespace Sethika.Application.Abstractions;
 /// </param>
 /// <param name="Members">People holding it now.</param>
 /// <param name="Permissions">Its permission codes.</param>
+/// <param name="Version">Its <c>RowVersion</c>, sent back with an edit so a stale one is refused.</param>
 public sealed record InstitutionRoleView(
     string Code,
     string Name,
@@ -22,7 +23,8 @@ public sealed record InstitutionRoleView(
     bool IsSystem,
     bool CanManage,
     int Members,
-    IReadOnlyList<string> Permissions);
+    IReadOnlyList<string> Permissions,
+    byte[] Version);
 
 /// <summary>A permission in the role editor's matrix.</summary>
 /// <param name="Code">Such as <c>BOOKINGS.CALENDAR.APPROVE</c>.</param>

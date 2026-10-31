@@ -60,6 +60,9 @@ public interface ISethikaDbContext
     /// <summary><c>auth.vw_EffectivePermissions</c>, read-only.</summary>
     DbSet<EffectivePermission> EffectivePermissions { get; }
 
+    /// <summary><c>auth.vw_InstitutionPermissions</c>, read-only.</summary>
+    DbSet<InstitutionPermission> InstitutionPermissions { get; }
+
     // Meal slots and bookings (plan 03). A slot's seasons and a booking's history are reached
     // through their aggregate. Slot instances have a set of their own: the engine reads and creates
     // them, but changes their counters only with a conditional UPDATE (C2).

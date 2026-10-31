@@ -50,6 +50,7 @@ public partial class SethikaDbContext(DbContextOptions<SethikaDbContext> options
     public DbSet<RoleLevelPermission> RoleLevelPermissions => Set<RoleLevelPermission>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<EffectivePermission> EffectivePermissions => Set<EffectivePermission>();
+    public DbSet<InstitutionPermission> InstitutionPermissions => Set<InstitutionPermission>();
     public DbSet<MealSlot> MealSlots => Set<MealSlot>();
     public DbSet<BlockedDate> BlockedDates => Set<BlockedDate>();
     public DbSet<SlotInstance> SlotInstances => Set<SlotInstance>();

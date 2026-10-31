@@ -27,6 +27,9 @@ const accessCodes = [
   "member_not_found",
   "assignment_not_found",
   "invalid_phone_number",
+  "changed_meanwhile",
+  "invalid_version",
+  "last_owner",
 ] as const;
 type AccessCode = (typeof accessCodes)[number];
 

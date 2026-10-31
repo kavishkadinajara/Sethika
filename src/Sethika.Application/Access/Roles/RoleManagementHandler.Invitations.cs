@@ -58,7 +58,8 @@ public sealed partial class RoleManagementHandler
             return RoleChangeResult.Failed(RoleChangeFailure.RoleNotFound);
         }
 
-        var refusal = await CheckRankAsync(actor, role.Rank, at, cancellationToken).ConfigureAwait(false);
+        var refusal = await CheckRankAsync(actor, role.Rank, at, cancellationToken).ConfigureAwait(false)
+                      ?? await CheckRoleHeldAsync(actor, role, cancellationToken).ConfigureAwait(false);
         if (refusal is not null)
         {
             return refusal;

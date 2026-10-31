@@ -20,5 +20,8 @@ public class Role
     public Guid? CreatedBy { get; set; }
     public Guid? UpdatedBy { get; set; }
 
+    /// <summary>Moves on every save; an edit carries the one its editor read, and a stale one is refused.</summary>
+    public byte[] RowVersion { get; set; } = [];
+
     public ICollection<UserRole> UserRoles { get; } = [];
 }

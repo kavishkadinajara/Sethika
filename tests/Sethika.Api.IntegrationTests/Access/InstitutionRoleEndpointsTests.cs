@@ -56,6 +56,7 @@ public sealed partial class InstitutionRoleEndpointsTests(SethikaTestDatabase da
 
     private static readonly string[] StaffWithApprove = [.. StaffPermissions, "BOOKINGS.CALENDAR.APPROVE"];
     private static readonly string[] ApproveOnly = ["BOOKINGS.CALENDAR.APPROVE"];
+    private static readonly string[] CalendarViewOnly = ["BOOKINGS.CALENDAR.VIEW"];
 
     private readonly List<string> _phones = [];
     private WebApplicationFactory<Program> _host = null!;
@@ -103,6 +104,8 @@ public sealed partial class InstitutionRoleEndpointsTests(SethikaTestDatabase da
             DECLARE @made TABLE (Id INT);
             INSERT @made SELECT Id FROM auth.Roles WHERE CreatedBy IN (SELECT Id FROM @ids);
 
+            -- A role edit records its editor (UpdatedBy) on roles these users did not make.
+            UPDATE auth.Roles SET UpdatedBy = NULL WHERE UpdatedBy IN (SELECT Id FROM @ids);
             UPDATE auth.RefreshTokens SET ReplacedByTokenId = NULL WHERE UserId IN (SELECT Id FROM @ids);
             DELETE FROM auth.RefreshTokens   WHERE UserId IN (SELECT Id FROM @ids);
             DELETE FROM auth.LoginHistory    WHERE UserId IN (SELECT Id FROM @ids);
@@ -238,6 +241,12 @@ public sealed partial class InstitutionRoleEndpointsTests(SethikaTestDatabase da
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return [.. (await BodyOf(response)).GetProperty("permissions").EnumerateArray().Select(p => p.GetString()!)];
     }
+
+    /// <summary>The role's version as an editor reading it now would get it.</summary>
+    private Task<byte[]> VersionAsync(string code, int? institutionId = null) =>
+        ScalarAsync<byte[]>(
+            "SELECT RowVersion FROM auth.Roles WHERE InstitutionId = @institutionId AND Code = @code;",
+            new { institutionId = institutionId ?? database.AlphaInstitutionId, code });
 
     private Task<int> RoleCountAsync(string code) =>
         ScalarAsync<int>("SELECT COUNT(*) FROM auth.Roles WHERE InstitutionId = @alpha AND Code = @code;", new { alpha = database.AlphaInstitutionId, code });
@@ -382,10 +391,53 @@ public sealed partial class InstitutionRoleEndpointsTests(SethikaTestDatabase da
         Assert.DoesNotContain("BOOKINGS.CALENDAR.APPROVE", await MyPermissionsAsync(member)); // now cached
 
         using var response = await SendAsync(owner, HttpMethod.Put, "/api/institution/roles/T_STAFF/permissions",
-            new { permissions = StaffWithApprove });
+            new { permissions = StaffWithApprove, version = await VersionAsync("T_STAFF") });
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("BOOKINGS.CALENDAR.APPROVE", await MyPermissionsAsync(member));
+    }
+
+    [Fact]
+    public async Task OfTwoEditorsWhoReadTheSameRole_TheSecondSaveIsRefused()
+    {
+        // Both read the role as its two VIEWs; one adds APPROVE, the other drops the profile VIEW. Merged,
+        // the role would be a set neither chose; instead the second is told it changed meanwhile.
+        var owner = await MemberAsync("T_OWNER");
+        await SteppedUpAsync(owner);
+        var read = await VersionAsync("T_STAFF");
+
+        using var first = await SendAsync(owner, HttpMethod.Put, "/api/institution/roles/T_STAFF/permissions",
+            new { permissions = StaffWithApprove, version = read });
+        using var second = await SendAsync(owner, HttpMethod.Put, "/api/institution/roles/T_STAFF/permissions",
+            new { permissions = CalendarViewOnly, version = read });
+        using var missing = await SendAsync(owner, HttpMethod.Put, "/api/institution/roles/T_STAFF/permissions",
+            new { permissions = StaffPermissions });
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        await AssertRefusedAsync(second, HttpStatusCode.Conflict, "changed_meanwhile");
+        await AssertRefusedAsync(missing, HttpStatusCode.BadRequest, "invalid_version");
+        Assert.Equal(
+            StaffWithApprove.Order(StringComparer.Ordinal),
+            await PermissionCodesOfAsync("T_STAFF"));
+
+        // The first editor got the new version back, and saves again with it.
+        var next = (await BodyOf(first)).GetProperty("version").GetBytesFromBase64();
+        Assert.Equal(await VersionAsync("T_STAFF"), next);
+        using var again = await SendAsync(owner, HttpMethod.Put, "/api/institution/roles/T_STAFF/permissions",
+            new { permissions = StaffPermissions, version = next });
+        Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+    }
+
+    private async Task<string[]> PermissionCodesOfAsync(string code)
+    {
+        await using var connection = new SqlConnection(database.ConnectionString);
+        return [.. await connection.QueryAsync<string>(
+            """
+            SELECT p.Code FROM auth.RolePermissions rp
+            JOIN auth.Roles r ON r.Id = rp.RoleId JOIN auth.Permissions p ON p.Id = rp.PermissionId
+            WHERE r.InstitutionId = @alpha AND r.Code = @code ORDER BY p.Code;
+            """,
+            new { alpha = database.AlphaInstitutionId, code })];
     }
 
     [Fact]
@@ -399,9 +451,9 @@ public sealed partial class InstitutionRoleEndpointsTests(SethikaTestDatabase da
         await SteppedUpAsync(manager);
 
         using var narrowed = await SendAsync(manager, HttpMethod.Put, "/api/institution/roles/T_APPROVER/permissions",
-            new { permissions = ApproveOnly });
+            new { permissions = ApproveOnly, version = await VersionAsync("T_APPROVER") });
 
-        Assert.Equal(HttpStatusCode.NoContent, narrowed.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, narrowed.StatusCode);
     }
 
     [Fact]
@@ -412,9 +464,9 @@ public sealed partial class InstitutionRoleEndpointsTests(SethikaTestDatabase da
         await SteppedUpAsync(manager);
 
         using var ownRank = await SendAsync(manager, HttpMethod.Put, "/api/institution/roles/T_MANAGER/permissions",
-            new { permissions = ManagerPermissions });
+            new { permissions = ManagerPermissions, version = await VersionAsync("T_MANAGER") });
         using var elsewhere = await SendAsync(manager, HttpMethod.Put, "/api/institution/roles/BETA_ONLY/permissions",
-            new { permissions = StaffPermissions });
+            new { permissions = StaffPermissions, version = await VersionAsync("BETA_ONLY", database.BetaInstitutionId) });
 
         await AssertRefusedAsync(ownRank, HttpStatusCode.Forbidden, "rank_not_junior");
         await AssertRefusedAsync(elsewhere, HttpStatusCode.NotFound, "role_not_found");
@@ -486,6 +538,54 @@ public sealed partial class InstitutionRoleEndpointsTests(SethikaTestDatabase da
 
         await AssertRefusedAsync(response, HttpStatusCode.Forbidden, "rank_not_junior");
         Assert.DoesNotContain("ACCESS.ROLES.CREATE", await MyPermissionsAsync(member));
+    }
+
+    [Fact]
+    public async Task NobodyHandsOutARoleGrantingWhatTheyDoNotHold()
+    {
+        // T_APPROVER is junior to a manager, but it grants APPROVE, which the manager lacks: assigning
+        // it (or inviting a second account of theirs into it) would pass on what they do not hold.
+        await CreateRoleAsync("T_APPROVER", "STAFF", ApproverPermissions);
+        var manager = await MemberAsync("T_MANAGER");
+        var member = await MemberAsync("T_STAFF");
+        var outsider = await MemberAsync(roleCode: null);
+        await SteppedUpAsync(manager);
+
+        using var assign = await SendAsync(manager, HttpMethod.Post, "/api/institution/roles/T_APPROVER/members", new { user = member.UserId });
+        using var invite = await SendAsync(manager, HttpMethod.Post, "/api/institution/invitations", new { phone = outsider.Phone, role = "T_APPROVER" });
+
+        await AssertRefusedAsync(assign, HttpStatusCode.Forbidden, "not_held", "BOOKINGS.CALENDAR.APPROVE");
+        await AssertRefusedAsync(invite, HttpStatusCode.Forbidden, "not_held", "BOOKINGS.CALENDAR.APPROVE");
+        Assert.DoesNotContain("BOOKINGS.CALENDAR.APPROVE", await MyPermissionsAsync(member));
+        Assert.Equal(0, await ScalarAsync<int>(
+            """
+            EXEC sp_set_session_context N'IsPlatform', 1;
+            SELECT COUNT(*) FROM org.StaffInvitations WHERE InviteeUserId = @id;
+            """,
+            new { id = outsider.UserId }));
+    }
+
+    [Fact]
+    public async Task WhatASwitchedOffModuleWouldGrantDoesNotStopAnAssignment()
+    {
+        // With the bookings module off, nobody here holds its permissions, the owner included, and
+        // the role grants none of them either: only what the role would really grant must be held.
+        await CreateRoleAsync("T_APPROVER", "STAFF", ApproverPermissions);
+        var owner = await MemberAsync("T_OWNER");
+        var member = await MemberAsync("T_STAFF");
+        await SteppedUpAsync(owner);
+        const string Toggle = "UPDATE org.InstitutionModules SET IsEnabled = @on WHERE InstitutionId = @alpha AND ModuleId = (SELECT Id FROM auth.Modules WHERE Code = 'BOOKINGS');";
+
+        await ExecuteAsync(Toggle, new { on = false, alpha = database.AlphaInstitutionId });
+        try
+        {
+            using var assign = await SendAsync(owner, HttpMethod.Post, "/api/institution/roles/T_APPROVER/members", new { user = member.UserId });
+            Assert.Equal(HttpStatusCode.NoContent, assign.StatusCode);
+        }
+        finally
+        {
+            await ExecuteAsync(Toggle, new { on = true, alpha = database.AlphaInstitutionId });
+        }
     }
 
     [Fact]

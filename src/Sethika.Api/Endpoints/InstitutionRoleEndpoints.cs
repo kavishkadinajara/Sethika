@@ -178,8 +178,8 @@ internal static class InstitutionRoleEndpoints
             return NoInstitution();
         }
 
-        var result = await roles.SetPermissionsAsync(actor, code, body.Permissions, cancellationToken);
-        return result.Succeeded ? Results.NoContent() : Refused(result);
+        var result = await roles.SetPermissionsAsync(actor, code, body.Permissions, body.Version, cancellationToken);
+        return result.Succeeded ? Results.Ok(new { version = result.Version }) : Refused(result);
     }
 
     private static async Task<IResult> AssignAsync(
@@ -251,6 +251,9 @@ internal static class InstitutionRoleEndpoints
         RoleChangeFailure.InvitationNotFound => ApiErrors.Error(StatusCodes.Status404NotFound, "invitation_not_found"),
         RoleChangeFailure.InvitationClosed => ApiErrors.Error(StatusCodes.Status409Conflict, "invitation_closed"),
         RoleChangeFailure.InvitationExpired => ApiErrors.Error(StatusCodes.Status409Conflict, "invitation_expired"),
+        RoleChangeFailure.LastOwner => ApiErrors.Error(StatusCodes.Status409Conflict, "last_owner"),
+        RoleChangeFailure.Conflict => ApiErrors.Error(StatusCodes.Status409Conflict, "changed_meanwhile"),
+        RoleChangeFailure.InvalidVersion => ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_version"),
         _ => ApiErrors.Error(StatusCodes.Status400BadRequest, "role_change_refused"),
     };
 

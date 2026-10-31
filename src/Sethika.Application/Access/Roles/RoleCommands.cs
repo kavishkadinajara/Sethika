@@ -71,6 +71,15 @@ public enum RoleChangeFailure
     InvitationClosed = 19,
 
     InvitationExpired = 20,
+
+    /// <summary>It would leave the institution with no one at the Owner level, so nobody could manage its access.</summary>
+    LastOwner = 21,
+
+    /// <summary>Someone else changed the same thing at the same moment; read it again and retry.</summary>
+    Conflict = 22,
+
+    /// <summary>An edit without the role's version as the editor read it.</summary>
+    InvalidVersion = 23,
 }
 
 /// <summary>An invitation to an existing account, found by phone, to hold one of the institution's roles.</summary>
@@ -82,11 +91,14 @@ public sealed record InviteCommand(string? Phone, string? Role);
 /// <param name="Failure">Why it was refused, or <see cref="RoleChangeFailure.None"/>.</param>
 /// <param name="Permissions">The offending permission codes, for the refusals about permissions.</param>
 /// <param name="Invitation">The new invitation's public id, after an invite.</param>
-public sealed record RoleChangeResult(RoleChangeFailure Failure, IReadOnlyList<string> Permissions, Guid? Invitation = null)
+public sealed record RoleChangeResult(RoleChangeFailure Failure, IReadOnlyList<string> Permissions, Guid? Invitation = null, byte[]? Version = null)
 {
     public bool Succeeded => Failure == RoleChangeFailure.None;
 
     public static RoleChangeResult Success { get; } = new(RoleChangeFailure.None, []);
+
+    /// <summary>An edit saved; <paramref name="version"/> is the role's, for the editor's next save.</summary>
+    public static RoleChangeResult Edited(byte[] version) => new(RoleChangeFailure.None, [], Version: version);
 
     public static RoleChangeResult Invited(Guid invitation) => new(RoleChangeFailure.None, [], invitation);
 

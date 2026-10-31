@@ -175,7 +175,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
             var after = await connection.QuerySingleAsync(Snapshot, transaction: transaction);
 
             Assert.Equal((IDictionary<string, object>)before, (IDictionary<string, object>)after);
-            Assert.Equal(39, (int)after.Permissions);
+            Assert.Equal(44, (int)after.Permissions);
         }
     }
 
@@ -235,7 +235,8 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
     private static string WithReviewerGrants(string replacement)
     {
         const string Section = "system role grants */";
-        const string ReviewerGrants = "    ('ONBOARDING.REQUESTS.VIEW'),\n    ('ONBOARDING.REQUESTS.EDIT')\n) AS v(Code);";
+        const string ReviewerGrants =
+            "    ('ONBOARDING.REQUESTS.VIEW'),\n    ('ONBOARDING.REQUESTS.EDIT'),\n    ('PLATFORM.INSTITUTIONS.VIEW'),\n    ('PLATFORM.USERS.VIEW')\n) AS v(Code);";
         var seed = CatalogueSeed().ReplaceLineEndings("\n");
         var at = seed.IndexOf(Section, StringComparison.Ordinal);
         Assert.True(at > 0, "the system role grants section is not in the seed");
@@ -249,7 +250,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
     {
         // The reviewer given the decision its level never allows.
         var mistaken = WithReviewerGrants(
-            "    ('ONBOARDING.REQUESTS.VIEW'),\n    ('ONBOARDING.REQUESTS.EDIT'),\n    ('ONBOARDING.REQUESTS.APPROVE')\n) AS v(Code);");
+            "    ('ONBOARDING.REQUESTS.VIEW'),\n    ('ONBOARDING.REQUESTS.EDIT'),\n    ('PLATFORM.INSTITUTIONS.VIEW'),\n    ('PLATFORM.USERS.VIEW'),\n    ('ONBOARDING.REQUESTS.APPROVE')\n) AS v(Code);");
 
         var (connection, transaction) = await BeginAsync();
         await using (connection)
@@ -312,8 +313,8 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
 
     [Theory]
     [InlineData("DONOR", "MYBOOKINGS.BOOKINGS.CREATE,MYBOOKINGS.BOOKINGS.EDIT,MYBOOKINGS.BOOKINGS.VIEW,MYSERVICES.APPOINTMENTS.CREATE,MYSERVICES.APPOINTMENTS.EDIT,MYSERVICES.APPOINTMENTS.VIEW,ONBOARDING.APPLICATION.CREATE,ONBOARDING.APPLICATION.EDIT,ONBOARDING.APPLICATION.VIEW")]
-    [InlineData("PLATFORM_ADMIN", "ONBOARDING.REQUESTS.APPROVE,ONBOARDING.REQUESTS.EDIT,ONBOARDING.REQUESTS.REJECT,ONBOARDING.REQUESTS.VIEW")]
-    [InlineData("PLATFORM_REVIEWER", "ONBOARDING.REQUESTS.EDIT,ONBOARDING.REQUESTS.VIEW")]
+    [InlineData("PLATFORM_ADMIN", "ONBOARDING.REQUESTS.APPROVE,ONBOARDING.REQUESTS.EDIT,ONBOARDING.REQUESTS.REJECT,ONBOARDING.REQUESTS.VIEW,PLATFORM.INSTITUTIONS.EXECUTE,PLATFORM.INSTITUTIONS.VIEW,PLATFORM.USERS.CREATE,PLATFORM.USERS.EDIT,PLATFORM.USERS.VIEW")]
+    [InlineData("PLATFORM_REVIEWER", "ONBOARDING.REQUESTS.EDIT,ONBOARDING.REQUESTS.VIEW,PLATFORM.INSTITUTIONS.VIEW,PLATFORM.USERS.VIEW")]
     public async Task EachSystemRoleHoldsExactlyItsGrants(string roleCode, string expected)
     {
         // Read back through the view, as /api/me/permissions reads it: a person holding only this role,

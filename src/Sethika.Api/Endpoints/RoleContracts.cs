@@ -4,7 +4,7 @@ namespace Sethika.Api.Endpoints;
 public sealed record CreateRoleBody(string? Code, string? Name, string? Level, string[]? Permissions);
 
 /// <summary>Everything the role should grant from now on.</summary>
-public sealed record RolePermissionsBody(string[]? Permissions);
+public sealed record RolePermissionsBody(string[]? Permissions, byte[]? Version);
 
 /// <summary>The member to give a role to, by the user id their own token carries as <c>sub</c>.</summary>
 public sealed record RoleMemberBody(Guid? User);
