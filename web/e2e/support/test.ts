@@ -1,5 +1,6 @@
 import { test as base, expect, type Page } from "@playwright/test";
 import { createAccount, signIn, type Account } from "./accounts";
+import { clearRateLimits } from "./redis";
 
 /*  Every test also fails on what a person would not notice but a release must not have: an
     uncaught exception, an error in the console (React, next-intl's missing messages), or a 5xx
@@ -12,9 +13,23 @@ type Fixtures = {
   applicant: { page: Page; account: Account };
   /** Problems collected while the test ran; checked automatically at the end. */
   problems: string[];
+  /** Clears the rate-limit counters before each test (see below). */
+  freshLimits: void;
 };
 
 export const test = base.extend<Fixtures>({
+  /*  Every sign-in, step-up and texted code from the screens comes from 127.0.0.1, so a full
+      run (two projects, ~55 tests) passes the per-client limits mid-run and fails on 429s that
+      have nothing to do with the screens. The global setup clears the counters once; this
+      clears them before every test too. The limits are covered by the API's integration tests. */
+  freshLimits: [
+    async ({}, provide) => {
+      await clearRateLimits();
+      await provide();
+    },
+    { auto: true },
+  ],
+
   problems: [
     async ({ page }, provide) => {
       const problems: string[] = [];
@@ -57,7 +72,8 @@ export async function scrollsSideways(page: Page): Promise<boolean> {
 /**
  * Boxes that cut their own content off at the side: a card with `overflow-hidden` hides a badge
  * that does not fit, and the page itself never scrolls, so `scrollsSideways` cannot see it.
- * Deliberate clipping (an ellipsis, the 1 px screen-reader-only copies) is left out.
+ * Deliberate clipping (an ellipsis, the 1 px screen-reader-only copies) is left out, and so are
+ * text fields: a value longer than its box scrolls inside it, which is how a field works.
  */
 export async function clipsSideways(page: Page): Promise<string[]> {
   return page.evaluate(() =>
@@ -65,6 +81,7 @@ export async function clipsSideways(page: Page): Promise<string[]> {
       .filter((element) => {
         const style = getComputedStyle(element);
         return (
+          !(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) &&
           style.overflowX !== "visible" &&
           style.textOverflow !== "ellipsis" &&
           element.clientWidth > 1 &&

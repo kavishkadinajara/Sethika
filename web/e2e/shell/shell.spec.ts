@@ -28,6 +28,8 @@ async function menuLinks(page: Page): Promise<string[]> {
     return links.map((l) => l.trim());
   }
   const rail = page.getByRole("navigation", { name: "Main menu" });
+  // Right after a switch the session reloads and the rail is briefly gone: read it once it is back.
+  await expect(rail.getByRole("link").first()).toBeVisible();
   const found: string[] = [];
   for (const control of await rail.getByRole("link").all()) found.push((await control.getAttribute("aria-label")) ?? "");
   for (const control of await rail.getByRole("button").all()) {
