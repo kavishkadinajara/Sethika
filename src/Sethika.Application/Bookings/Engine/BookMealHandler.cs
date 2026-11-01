@@ -195,7 +195,7 @@ public sealed class BookMealHandler(
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
         var claimed = await db.RecurringBookings
-            .Where(r => r.Id == recurringId && r.IsActive)
+            .Where(r => r.Id == recurringId && r.IsActive && (r.LastGeneratedYear == null || r.LastGeneratedYear < year))
             .ExecuteUpdateAsync(set => set.SetProperty(r => r.LastGeneratedYear, (short)year), cancellationToken)
             .ConfigureAwait(false);
 
@@ -235,7 +235,7 @@ public sealed class BookMealHandler(
         var (slot, refused) = await CheckAsync(yearly.MealSlotId, date, now, yearly.Headcount, yearly.FulfilmentMode, cancellationToken).ConfigureAwait(false);
         if (refused is not null)
         {
-            NotBooked(yearly, year, date, ClosedReason, now);
+            NotBooked(yearly, year, date, FullReason, now);
             return await SaveAsync(new RecurringYearResult(RecurringYearOutcome.NotBooked, refused, null), cancellationToken).ConfigureAwait(false);
         }
 
