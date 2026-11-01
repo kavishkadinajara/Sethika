@@ -36,6 +36,10 @@ public sealed class SearchEndpointsTests(SethikaTestDatabase database) : IAsyncL
 {
     private const string SigningKey = "search-test-signing-key-at-least-32-bytes";
 
+    private const string SearchPath = "/api/search";
+
+    private const string MonthPath = "/api/search/month";
+
     /// <summary>The rule name of <c>BookingRateLimits.PublicReadPerClient</c>, which is internal to the Api.</summary>
     private const string PublicReadRule = "institution-read-client";
 
@@ -258,21 +262,21 @@ public sealed class SearchEndpointsTests(SethikaTestDatabase database) : IAsyncL
     private static string Near(GeoPoint point) =>
         string.Create(CultureInfo.InvariantCulture, $"{point.Latitude},{point.Longitude}");
 
-    /// <summary>A GET from a fresh client address, so the per-address limit is never shared.</summary>
-    private async Task<HttpResponseMessage> GetAsync(string query, WebApplicationFactory<Program>? host = null)
+    /// <summary>A GET from <paramref name="address"/>, or a fresh client address so the per-address limit is never shared.</summary>
+    private async Task<HttpResponseMessage> GetAsync(string query, WebApplicationFactory<Program>? host = null, string path = SearchPath, string? address = null)
     {
-        var address = $"10.{Random.Shared.Next(256)}.{Random.Shared.Next(256)}.{Random.Shared.Next(1, 255)}";
+        address ??= $"10.{Random.Shared.Next(256)}.{Random.Shared.Next(256)}.{Random.Shared.Next(1, 255)}";
         _addresses.Add(address);
 
         using var client = (host ?? _host).CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
         client.DefaultRequestHeaders.Add("X-Forwarded-For", address);
-        return await client.GetAsync("/api/search?" + query);
+        return await client.GetAsync(path + "?" + query);
     }
 
     /// <summary>The raw answer of a search that succeeds, so two can be compared byte for byte.</summary>
-    private async Task<string> SearchTextAsync(string query, WebApplicationFactory<Program>? host = null)
+    private async Task<string> SearchTextAsync(string query, WebApplicationFactory<Program>? host = null, string path = SearchPath)
     {
-        using var response = await GetAsync(query, host);
+        using var response = await GetAsync(query, host, path);
         var text = await response.Content.ReadAsStringAsync();
         Assert.True(response.StatusCode == HttpStatusCode.OK, $"{query} answered {(int)response.StatusCode}: {text}");
         return text;
@@ -281,9 +285,18 @@ public sealed class SearchEndpointsTests(SethikaTestDatabase database) : IAsyncL
     private async Task<JsonElement> SearchAsync(string query, WebApplicationFactory<Program>? host = null) =>
         JsonDocument.Parse(await SearchTextAsync(query, host)).RootElement;
 
-    private async Task<string[]> RefusedAsync(string query)
+    private async Task<JsonElement> MonthAsync(string query, WebApplicationFactory<Program>? host = null) =>
+        JsonDocument.Parse(await SearchTextAsync(query, host, MonthPath)).RootElement;
+
+    /// <summary>The month view's counts, by date.</summary>
+    private static Dictionary<DateOnly, int> Counts(JsonElement month) =>
+        month.GetProperty("days").EnumerateArray().ToDictionary(
+            d => DateOnly.ParseExact(d.GetProperty("date").GetString()!, "yyyy-MM-dd", CultureInfo.InvariantCulture),
+            d => d.GetProperty("institutions").GetInt32());
+
+    private async Task<string[]> RefusedAsync(string query, string path = SearchPath)
     {
-        using var response = await GetAsync(query);
+        using var response = await GetAsync(query, path: path);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
@@ -820,5 +833,148 @@ public sealed class SearchEndpointsTests(SethikaTestDatabase database) : IAsyncL
         // Today is searchable: what is left of it.
         using var today = await GetAsync($"date={Iso(Today)}");
         Assert.Equal(HttpStatusCode.OK, today.StatusCode);
+    }
+
+    [Fact]
+    public async Task SearchingSharesThePublicReadBudgetOfAnAddress()
+    {
+        var address = $"10.{Random.Shared.Next(256)}.{Random.Shared.Next(256)}.{Random.Shared.Next(1, 255)}";
+        _addresses.Add(address);
+
+        // The budget of the institution reads, already spent this window.
+        await _host.Services.GetRequiredService<IConnectionMultiplexer>().GetDatabase()
+            .StringSetAsync(RateLimitKey.For(PublicReadRule, address), 600, TimeSpan.FromMinutes(15));
+
+        foreach (var (query, path) in new[] { ($"date={Iso(Day)}", SearchPath), ($"month={MonthOf(NextMonth)}", MonthPath) })
+        {
+            using var limited = await GetAsync(query, path: path, address: address);
+            Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+            Assert.Equal("too_many_requests", JsonDocument.Parse(await limited.Content.ReadAsStringAsync()).RootElement.GetProperty("code").GetString());
+
+            using var elsewhere = await GetAsync(query, path: path);
+            Assert.Equal(HttpStatusCode.OK, elsewhere.StatusCode);
+        }
+    }
+
+    // ------------------------------------------------------------------ the month view
+
+    /// <summary>The first of the month 40 days ahead: every day of it is 10 to 71 days away, inside every slot's window.</summary>
+    private static DateOnly NextMonth
+    {
+        get
+        {
+            var ahead = Today.AddDays(40);
+            return new DateOnly(ahead.Year, ahead.Month, 1);
+        }
+    }
+
+    private static string MonthOf(DateOnly date) => date.ToString("yyyy-MM", CultureInfo.InvariantCulture);
+
+    [Fact]
+    public async Task TheMonthCountsOnEachDayTheInstitutionsTheDaySearchFinds()
+    {
+        var month = NextMonth;
+
+        await SlotAsync(await InstitutionAsync("Month Every Day"));
+        await SlotAsync(await InstitutionAsync("Month Mondays"), days: MealSlot.DayBit(DayOfWeek.Monday));
+        await SlotAsync(await InstitutionAsync("Month Evening"), "18:00", "19:00");
+        await SlotAsync(await InstitutionAsync("Month Hidden", listed: false));
+
+        var interrupted = await InstitutionAsync("Month Interrupted");
+        var interruptedSlot = await SlotAsync(interrupted);
+        await BlockAsync(interrupted, month.AddDays(4));
+        await BookedAsync(interruptedSlot, month.AddDays(6), sponsors: 1, headcount: 10);
+
+        var seasonal = await InstitutionAsync("Month Seasonal");
+        await SeasonAsync(await SlotAsync(seasonal), month.AddDays(9), month.AddDays(14));
+
+        var view = await MonthAsync($"month={MonthOf(month)}");
+        Assert.Equal(MonthOf(month), view.GetProperty("month").GetString());
+
+        var counts = Counts(view);
+        Assert.Equal(DateTime.DaysInMonth(month.Year, month.Month), counts.Count);
+        Assert.Equal(month, counts.Keys.Min());
+
+        // By hand, so the month and the search cannot be wrong together.
+        int Expected(DateOnly date) =>
+            2
+            + (date.DayOfWeek == DayOfWeek.Monday ? 1 : 0)
+            + (date == month.AddDays(4) || date == month.AddDays(6) ? 0 : 1)
+            + (date >= month.AddDays(9) && date <= month.AddDays(14) ? 1 : 0);
+
+        Assert.All(counts, c => Assert.Equal(Expected(c.Key), c.Value));
+
+        // And each day as the day search finds it.
+        foreach (var (date, count) in counts)
+        {
+            Assert.Equal(count, Slugs(await SearchAsync($"date={Iso(date)}")).Length);
+        }
+
+        // The time of day narrows the month as it narrows the search.
+        Assert.All(Counts(await MonthAsync($"month={MonthOf(month)}&time=evening")), c => Assert.Equal(1, c.Value));
+    }
+
+    [Fact]
+    public async Task TheMonthTakesTheSearchsFilters_AndRedisDownGivesTheSameMonth()
+    {
+        await RingAsync();
+        await SlotAsync(await InstitutionAsync("Month Kovil", Offset(Centre, 2, 0), type: "KOVIL"));
+        await SlotAsync(await InstitutionAsync("Month Galle", new GeoPoint(6.0329, 80.2168), district: "GLL", city: "Galle"));
+        Assert.Equal(9, await RebuildAsync());
+
+        var month = MonthOf(NextMonth);
+
+        // Every slot runs every day of a month inside its window, so each day counts the same.
+        async Task<int> EachDayAsync(string query) => Counts(await MonthAsync($"month={month}&{query}")).Values.Distinct().Single();
+
+        Assert.Equal(6, await EachDayAsync($"near={Near(Centre)}&radiusKm=5"));
+        Assert.Equal(5, await EachDayAsync($"near={Near(Centre)}&radiusKm=5&type=TEMPLE"));
+        Assert.Equal(8, await EachDayAsync($"near={Near(Centre)}&radiusKm=25"));
+        Assert.Equal(1, await EachDayAsync("district=GLL"));
+        Assert.Equal(9, await EachDayAsync("time=any"));
+
+        await using var down = Host(DeadRedis);
+        foreach (var query in new[] { $"month={month}&near={Near(Centre)}&radiusKm=5", $"month={month}&near={Near(Centre)}&radiusKm=25&type=TEMPLE" })
+        {
+            Assert.Equal(await SearchTextAsync(query, path: MonthPath), await SearchTextAsync(query, down, MonthPath));
+        }
+    }
+
+    [Fact]
+    public async Task InThisMonthTheDaysGoneCountNone()
+    {
+        // Booked a day ahead at the earliest: today is too soon as well.
+        await SlotAsync(await InstitutionAsync("Month Now"));
+
+        var counts = Counts(await MonthAsync($"month={MonthOf(Today)}"));
+
+        Assert.Equal(DateTime.DaysInMonth(Today.Year, Today.Month), counts.Count);
+        Assert.All(counts, c => Assert.Equal(c.Key > Today ? 1 : 0, c.Value));
+    }
+
+    [Fact]
+    public async Task AMonthThatCannotBeShownIsRefused_AndNoMonthIsLogged()
+    {
+        var thisMonth = new DateOnly(Today.Year, Today.Month, 1);
+        var near = Near(Centre);
+
+        Assert.Equal(["month"], await RefusedAsync("", MonthPath));
+        Assert.Equal(["month"], await RefusedAsync("month=2027-13", MonthPath));
+        Assert.Equal(["month"], await RefusedAsync($"month={Iso(thisMonth)}", MonthPath));
+        Assert.Equal(["month"], await RefusedAsync($"month={MonthOf(thisMonth.AddMonths(-1))}", MonthPath));
+        Assert.Equal(["month"], await RefusedAsync($"month={MonthOf(thisMonth.AddMonths(13))}", MonthPath));
+        Assert.Equal(["month"], await RefusedAsync("month=9999-12", MonthPath));
+        Assert.Equal(["radiusKm"], await RefusedAsync($"month={MonthOf(thisMonth)}&near={near}&radiusKm=7", MonthPath));
+        Assert.Equal(["district"], await RefusedAsync($"month={MonthOf(thisMonth)}&near={near}&district=CMB", MonthPath));
+        Assert.Equal(["type"], await RefusedAsync($"month={MonthOf(thisMonth)}&type=SYNAGOGUE", MonthPath));
+        Assert.Equal(["district"], await RefusedAsync($"month={MonthOf(thisMonth)}&district=XYZ", MonthPath));
+        Assert.Equal(["month", "near"], await RefusedAsync("month=soon&near=x", MonthPath));
+
+        // The furthest month there is.
+        var furthest = thisMonth.AddMonths(12);
+        Assert.Equal(DateTime.DaysInMonth(furthest.Year, furthest.Month), Counts(await MonthAsync($"month={MonthOf(furthest)}")).Count);
+
+        await using var connection = await PlatformConnectionAsync();
+        Assert.Equal(0, await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM booking.AvailabilitySearches;"));
     }
 }

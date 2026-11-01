@@ -52,6 +52,23 @@ public sealed record SearchResultView(
 /// <param name="More">More institutions matched than <see cref="AvailabilitySearch.MaxResults"/>; the nearest, or the first by name, are shown.</param>
 public sealed record SearchView(string Date, IReadOnlyList<SearchResultView> Results, bool More);
 
+/// <summary>A day of the month view: how many institutions have a slot open on it.</summary>
+public sealed record SearchDayView(DateOnly Date, int Institutions);
+
+/// <summary>The month view's answer (G6).</summary>
+/// <param name="Month"><c>yyyy-MM</c>.</param>
+public sealed record SearchMonthView(string Month, IReadOnlyList<SearchDayView> Days);
+
+/// <summary>The month view's answer, or the filters that cannot be searched.</summary>
+public sealed record SearchMonthResult(SearchMonthView? View, IReadOnlyList<string> Fields)
+{
+    public bool Succeeded => View is not null;
+
+    internal static SearchMonthResult Ok(SearchMonthView view) => new(view, []);
+
+    internal static SearchMonthResult Invalid(IReadOnlyList<string> fields) => new(null, fields);
+}
+
 /// <summary>A search's answer, or the filters that cannot be searched.</summary>
 public sealed record SearchResult(SearchView? View, IReadOnlyList<string> Fields)
 {
@@ -90,6 +107,9 @@ public sealed class AvailabilitySearch(IDiscoveryQueries queries, IInstitutionGe
 
     /// <summary>The radius of a search near a point that names none.</summary>
     public const int DefaultRadiusKm = 10;
+
+    /// <summary>The furthest month the month view reaches, counted from this one: a slot's advance window is a year by default.</summary>
+    public const int MaxMonthsAhead = 12;
 
     /// <summary><c>org.InstitutionTypes.Code</c>'s length.</summary>
     private const int MaxTypeLength = 30;
@@ -147,6 +167,58 @@ public sealed class AvailabilitySearch(IDiscoveryQueries queries, IInstitutionGe
             date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             [.. matches.Take(MaxResults).Select(m => View(m.Institution, m.DistanceKm, m.Slots))],
             matches.Count > MaxResults));
+    }
+
+    /// <summary>
+    /// How many institutions have a slot open on each day of <paramref name="month"/>'s month, under
+    /// the same filters as <see cref="SearchAsync"/> (G6): the donor picks a day on the calendar, and
+    /// the list and the map show that day.
+    /// </summary>
+    /// <remarks>
+    /// One read for the whole month, then every day judged as <see cref="SearchAsync"/> judges its one
+    /// day, by the same candidates and the same slot-day rules, so a day counted here lists that many
+    /// institutions there. Days already gone count none: <see cref="MealSlotRules.Openings"/> finds them
+    /// too soon. Not written to the search log, which keeps searches for a day.
+    /// </remarks>
+    /// <param name="month">Any day of the month; only its year and month are used.</param>
+    public async Task<SearchMonthResult> MonthAsync(DateOnly month, SearchFilters filters, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(filters);
+
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var today = SriLankaTime.Today(now);
+        var thisMonth = new DateOnly(today.Year, today.Month, 1);
+        var first = new DateOnly(month.Year, month.Month, 1);
+
+        var invalid = new List<string>();
+        if (first < thisMonth || first > thisMonth.AddMonths(MaxMonthsAhead))
+        {
+            invalid.Add("month");
+        }
+
+        invalid.AddRange(Check(filters));
+        if (invalid.Count > 0)
+        {
+            return SearchMonthResult.Invalid(invalid);
+        }
+
+        var last = first.AddMonths(1).AddDays(-1);
+        var radiusKm = filters.Near is null ? (int?)null : filters.RadiusKm ?? DefaultRadiusKm;
+        var source = await SourceAsync(filters, radiusKm, first, last, cancellationToken).ConfigureAwait(false);
+        if (Unknown(source) is { Count: > 0 } unknown)
+        {
+            return SearchMonthResult.Invalid(unknown);
+        }
+
+        var judge = new SlotDayJudge(source, now);
+        var candidates = Candidates(source, filters.Near, radiusKm);
+        var days = new List<SearchDayView>();
+        for (var date = first; date <= last; date = date.AddDays(1))
+        {
+            days.Add(new SearchDayView(date, candidates.Count(c => judge.Open(c.Institution, date, filters.TimeOfDay).Count > 0)));
+        }
+
+        return SearchMonthResult.Ok(new SearchMonthView(first.ToString("yyyy-MM", CultureInfo.InvariantCulture), days));
     }
 
     /// <summary>The filters that cannot be searched as given, before anything is read.</summary>

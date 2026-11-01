@@ -19,6 +19,7 @@ internal static class SearchEndpoints
         var search = app.MapGroup("/api/search").AllowAnonymous();
 
         search.MapGet("/", SearchAsync).RateLimitPerClient(BookingRateLimits.PublicReadPerClient);
+        search.MapGet("/month", MonthAsync).RateLimitPerClient(BookingRateLimits.PublicReadPerClient);
 
         return app;
     }
@@ -40,6 +41,46 @@ internal static class SearchEndpoints
             invalid.Add("date");
         }
 
+        var filters = ReadFilters(time, type, near, radiusKm, district, invalid);
+        if (invalid.Count > 0)
+        {
+            return Invalid(invalid);
+        }
+
+        var result = await search.SearchAsync(day, filters, cancellationToken);
+        return result.Succeeded ? Results.Ok(result.View) : Invalid(result.Fields);
+    }
+
+    /// <summary><c>?month=yyyy-MM</c> and the same filters as the search: how many institutions are open each day (G6).</summary>
+    private static async Task<IResult> MonthAsync(
+        string? month,
+        string? time,
+        string? type,
+        string? near,
+        string? radiusKm,
+        string? district,
+        AvailabilitySearch search,
+        CancellationToken cancellationToken)
+    {
+        var invalid = new List<string>();
+        if (!DateOnly.TryParseExact(month?.Trim(), "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var first))
+        {
+            invalid.Add("month");
+        }
+
+        var filters = ReadFilters(time, type, near, radiusKm, district, invalid);
+        if (invalid.Count > 0)
+        {
+            return Invalid(invalid);
+        }
+
+        var result = await search.MonthAsync(first, filters, cancellationToken);
+        return result.Succeeded ? Results.Ok(result.View) : Invalid(result.Fields);
+    }
+
+    /// <summary>The filters as sent; a point or radius that does not parse is added to <paramref name="invalid"/>.</summary>
+    private static SearchFilters ReadFilters(string? time, string? type, string? near, string? radiusKm, string? district, List<string> invalid)
+    {
         GeoPoint? point = null;
         if (!string.IsNullOrWhiteSpace(near))
         {
@@ -66,22 +107,12 @@ internal static class SearchEndpoints
             }
         }
 
-        if (invalid.Count > 0)
-        {
-            return Invalid(invalid);
-        }
-
-        var result = await search.SearchAsync(
-            day,
-            new SearchFilters(
-                string.IsNullOrWhiteSpace(time) ? MealTimes.Any : time.Trim().ToLowerInvariant(),
-                Blank(type),
-                point,
-                radius,
-                Blank(district)),
-            cancellationToken);
-
-        return result.Succeeded ? Results.Ok(result.View) : Invalid(result.Fields);
+        return new SearchFilters(
+            string.IsNullOrWhiteSpace(time) ? MealTimes.Any : time.Trim().ToLowerInvariant(),
+            Blank(type),
+            point,
+            radius,
+            Blank(district));
     }
 
     private static IResult Invalid(IReadOnlyList<string> fields) =>

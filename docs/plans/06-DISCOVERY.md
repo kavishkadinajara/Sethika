@@ -3,8 +3,8 @@
 Branch: `rcsi-on` for now (RCSI first, then this phase on the same branch), cut on 2026-11-01 from
 `phase-e-donor` at 10f870c (Phase E on `develop`).
 
-Status: **G1-G11 agreed by the user 2026-11-01. B.1 built (not committed), tests and mutations
-below; B.2-B.5 not started.** Last updated 2026-11-01. Update this line and the §7 boxes whenever
+Status: **G1-G11 agreed by the user 2026-11-01. B.1 built and committed by the user (7954b8c,
+together with RCSI and the Phase E report draft). B.2 built, not committed. B.3-B.5 not started.** Last updated 2026-11-01. Update this line and the §7 boxes whenever
 either changes; a fresh session trusts them.
 
 Decision numbers here are **G1, G2, …** (Geo / discovery). Plan 03 uses E1-E35 and Phase E V1-V39.
@@ -69,6 +69,8 @@ Proposal v3, "Cross-Institution Availability Search" and Phase B:
   point and a district, coordinates outside Sri Lanka's box (the box of `CK_RegReq_Latitude`/
   `Longitude`), an unknown time of day, type or district code).
 - `GET /api/search/month?month=yyyy-MM&...same filters...` → `{ month, days: [{ date, institutions }] }`.
+  The month may be this one up to 12 months ahead (`MaxMonthsAhead`); 400 `invalid_search` with
+  `month` otherwise. No search log row.
 - Both anonymous, `PublicReadPerClient` rate limit; added to `EndpointPolicyTests`' anonymous list.
 
 ## 4. Tests (what must be proved)
@@ -119,7 +121,13 @@ Proposal v3, "Cross-Institution Availability Search" and Phase B:
       Mutations 35/35 killed (30 integration, 5 domain; a no-op control survived), among them every
       one in §4 plus the 2 % margin, the rebuild's `DEL`, a refresh that creates a one-member index,
       the ids filter, the time-of-day filter, seasons, blocks and slot-days ignored.
-- [ ] **B.2 The month view**: `GET /api/search/month`. Tests and mutations. ~0.25 day
+- [x] **B.2 The month view**: `GET /api/search/month`. Tests and mutations. ~0.25 day
+      Built 2026-11-01: `AvailabilitySearch.MonthAsync` (one read for the month, every day judged by
+      the day search's own candidates and `SlotDayJudge`; this month back to 12 months ahead; not
+      logged), `/month` on `SearchEndpoints` with the filters read once for both. Tests: 4 month
+      tests (each day's count equals a hand count and the day search's result count; filters and
+      Redis down; days gone count none; refusals and no log row) and one rate-limit test for both
+      endpoints, which shared nothing before. `SearchEndpointsTests` 20/20.
 - [ ] **B.3 Public pages**: `/i/[slug]` on the server (G9), JSON-LD, `sitemap.xml`, `robots.txt`.
       ~0.25 day
 - [ ] **B.4 `/find`**: filters, list, month view, Leaflet map, near me, search this area; the
