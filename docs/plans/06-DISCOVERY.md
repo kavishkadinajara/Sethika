@@ -4,7 +4,7 @@ Branch: `rcsi-on` for now (RCSI first, then this phase on the same branch), cut 
 `phase-e-donor` at 10f870c (Phase E on `develop`).
 
 Status: **G1-G11 agreed by the user 2026-11-01. B.1 built and committed by the user (7954b8c,
-together with RCSI and the Phase E report draft). B.2 built, not committed. B.3-B.5 not started.** Last updated 2026-11-01. Update this line and the §7 boxes whenever
+together with RCSI and the Phase E report draft). B.2 committed by the user (46dbc4f). B.3 built, not committed. B.4-B.5 not started.** Last updated 2026-11-01. Update this line and the §7 boxes whenever
 either changes; a fresh session trusts them.
 
 Decision numbers here are **G1, G2, …** (Geo / discovery). Plan 03 uses E1-E35 and Phase E V1-V39.
@@ -128,8 +128,24 @@ Proposal v3, "Cross-Institution Availability Search" and Phase B:
       tests (each day's count equals a hand count and the day search's result count; filters and
       Redis down; days gone count none; refusals and no log row) and one rate-limit test for both
       endpoints, which shared nothing before. `SearchEndpointsTests` 20/20.
-- [ ] **B.3 Public pages**: `/i/[slug]` on the server (G9), JSON-LD, `sitemap.xml`, `robots.txt`.
+- [x] **B.3 Public pages**: `/i/[slug]` on the server (G9), JSON-LD, `sitemap.xml`, `robots.txt`.
       ~0.25 day
+      Built 2026-11-01: the page is a server component that reads the institution once per request
+      (React `cache`, shared with `generateMetadata`) and hands it to `InstitutionPage` as
+      `initial`, so the client component renders it in the server's HTML and does not fetch it
+      again; if the API cannot answer, the page loads in the browser as before; a missing or
+      inactive institution is a real 404 with the page's own words (segment `not-found.tsx`). The
+      server forwards the visitor's address (the last `X-Forwarded-For` entry) so its reads count on
+      the visitor's limit, not the web server's. Metadata: title, snippet (own description cut at
+      160, else `Metadata.institution` in en/si/ta), canonical, `hreflang` en/si/ta + x-default,
+      Open Graph, `metadataBase` from `SITE_URL`. JSON-LD with each faith's schema.org type
+      (Place for care homes), `<` escaped. `sitemap.xml` (dynamic: home, directory, every listed
+      institution, one entry per language), `robots.txt` (signed-in screens disallowed in all three
+      languages). Tests: 12 vitest (`lib/bookings/seo.test.ts`), 5 Playwright
+      (`e2e/discovery/public-pages.spec.ts`: raw HTML, the forwarded address on the API's counter,
+      404, sitemap/robots, hydration without errors and no second fetch). Mutations 14/14 killed
+      (control survived). The dev `Sethika` database now has RCSI on (published 2026-11-01).
+      Owed to the batch's `npm run build`: confirm `/sitemap.xml` is listed as dynamic.
 - [ ] **B.4 `/find`**: filters, list, month view, Leaflet map, near me, search this area; the
       sidebar link and the `/institutions` redirect; en/si/ta; Playwright desktop + 320 px. ~0.75 day
 - [ ] **B.5 Done**: decisions into `docs/DECISIONS.md`, the report chapter, the full test runs, the PR.

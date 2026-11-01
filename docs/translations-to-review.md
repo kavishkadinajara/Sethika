@@ -1112,3 +1112,13 @@ schedule. Drafts, written by the developer; please check them. `{...}` are fille
 | `Shell.items.leaders` | Religious leaders | ආගමික නායකයින් | சமயத் தலைவர்கள் | | |
 | `Shell.items.appointments` | Service appointments | සේවා වාර | சேவை நியமனங்கள் | | |
 | `Shell.items.schedule` | My schedule | මගේ කාලසටහන | என் அட்டவணை | | |
+
+## Institution pages for search engines (2026-11-01, `Metadata`, plan 06 B.3)
+
+The snippet a search engine shows under an institution's page when the institution wrote no
+description of its own. Drafts, written by the developer; please check them. `{name}` and `{city}`
+are filled in by the app.
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `Metadata.institution` | {name}, {city}. Sponsor a meal here through Sethika. | {name}, {city}. Sethika හරහා මෙහි ආහාර වේලකට අනුග්‍රහය දක්වන්න. | {name}, {city}. Sethika மூலம் இங்கு ஒரு வேளை உணவுக்கு அனுசரணை வழங்குங்கள். | | |

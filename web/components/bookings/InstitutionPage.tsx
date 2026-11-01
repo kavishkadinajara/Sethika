@@ -24,17 +24,20 @@ import { useDates } from "./useDates";
  * An institution's own page (plan 03, C10): who they are, the meals they offer, and a month of
  * each meal's days as bowls - empty, filling, full. Choosing an open day opens the booking form.
  * Anyone can look; booking asks for a sign-in, and comes back here to the same meal and day.
+ *
+ * `initial` is the institution as the server read it (plan 06, G9): rendered at once, in the
+ * server's HTML too, and not fetched again. Without it the page loads the institution itself.
  */
-export function InstitutionPage({ slug }: { slug: string }) {
+export function InstitutionPage({ slug, initial = null }: { slug: string; initial?: PublicInstitution | null }) {
   const t = useTranslations("Discover");
   const locale = useLocale();
   const errorMessage = useBookingError();
   const dates = useDates();
   const search = useSearchParams();
 
-  const [institution, setInstitution] = useState<PublicInstitution | null>(null);
+  const [institution, setInstitution] = useState<PublicInstitution | null>(initial);
   const [failure, setFailure] = useState<BookingFailure | null>(null);
-  const [slotId, setSlotId] = useState<string | null>(search.get("slot"));
+  const [slotId, setSlotId] = useState<string | null>(() => (initial ? slotFor(initial, search.get("slot")) : search.get("slot")));
   const [month, setMonth] = useState(() => monthOf(validDate(search.get("date")) ?? colomboToday()));
   const [months, setMonths] = useState<Record<string, Availability>>({});
   const [monthFailed, setMonthFailed] = useState(false);
@@ -53,7 +56,7 @@ export function InstitutionPage({ slug }: { slug: string }) {
       return;
     }
     setInstitution(result.value);
-    setSlotId((current) => (result.value.slots.some((s) => s.publicId === current) ? current : (result.value.slots[0]?.publicId ?? null)));
+    setSlotId((current) => slotFor(result.value, current));
   }, [slug]);
 
   const loadMonth = useCallback(
@@ -67,10 +70,10 @@ export function InstitutionPage({ slug }: { slug: string }) {
   );
 
   useEffect(() => {
-    // Loading the page's data is what this component is for.
+    // Loading the page's data is what this component is for, unless the server already did.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [load]);
+    if (!initial) void load();
+  }, [load, initial]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -330,6 +333,11 @@ function Legend({ shared }: { shared: boolean }) {
       </li>
     </ul>
   );
+}
+
+/** The meal to show: the one named, if the institution has it, else its first. */
+function slotFor(institution: PublicInstitution, wanted: string | null): string | null {
+  return institution.slots.some((s) => s.publicId === wanted) ? wanted : (institution.slots[0]?.publicId ?? null);
 }
 
 function validDate(value: string | null): string | null {
