@@ -247,6 +247,15 @@ public sealed class DonorBookingQueries(IDbConnectionFactory connections) : IDon
             .ThenBy(v => v.InstitutionName, StringComparer.Ordinal)];
     }
 
+    public async Task<string?> SlugOfAsync(int institutionId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        return await connection.QuerySingleOrDefaultAsync<string>(new CommandDefinition(
+            "SELECT i.Slug AS Slug FROM org.Institutions AS i WHERE i.Id = @institutionId;",
+            new { institutionId },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+    }
+
     private static DbString Slug(string slug) => new() { Value = slug.Trim(), IsAnsi = true, Length = SlugLength };
 
     private static string[] Fulfilment(string allowed) =>

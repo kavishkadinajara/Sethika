@@ -5,11 +5,13 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using Sethika.Api.Bootstrap;
 using Sethika.Api.Endpoints;
+using Sethika.Api.Hubs;
 using Sethika.Api.Security;
 using Sethika.Application;
 using Sethika.Application.Abstractions;
 using Sethika.Infrastructure;
 using Sethika.Infrastructure.Security;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -84,6 +86,19 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     }
 });
 
+// Live slot updates (plan 07, H9-H11): the hub, and the Redis backplane that carries a change made
+// on one instance to calendars connected to another. Pub/sub channels ignore the database number, so
+// the prefix is what keeps Sethika's channels (and its tests') apart from other apps on the Redis.
+var signalRPrefix = builder.Configuration["SignalR:ChannelPrefix"] is { Length: > 0 } prefix ? prefix : "sethika";
+builder.Services
+    .AddSignalR()
+    .AddStackExchangeRedis(redisConnectionString, options =>
+    {
+        options.Configuration.ChannelPrefix = RedisChannel.Literal(signalRPrefix);
+        options.Configuration.AbortOnConnectFail = false;
+    });
+builder.Services.AddSingleton<IAvailabilityNotifier, HubAvailabilityNotifier>();
+
 var app = builder.Build();
 
 // `dotnet run --project src/Sethika.Api -- bootstrap` creates the first platform administrator
@@ -118,6 +133,7 @@ app.MapSearchEndpoints();
 app.MapServiceSetupEndpoints();
 app.MapDonorAppointmentEndpoints();
 app.MapInstitutionAppointmentEndpoints();
+app.MapHub<AvailabilityHub>(AvailabilityHub.Path).AllowAnonymous();
 
 app.Run();
 

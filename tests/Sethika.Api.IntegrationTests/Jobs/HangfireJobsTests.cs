@@ -170,6 +170,24 @@ public sealed class HangfireJobsTests(SethikaTestDatabase database) : IAsyncLife
 
             // The same run, in the job's own scope: the platform, so Row-Level Security showed both tenants' rows.
             Assert.Equal((true, 2), await host.Services.GetRequiredService<ProbeRecorder>().Seen.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+
+            // A change wakes the outbox at once (plan 07, H10): the wake queues the outbox job
+            // itself, unlike the recurring job's runs, which carry their RecurringJobId.
+            var woken = DateTime.UtcNow.AddSeconds(-1);
+            using (var scope = host.Services.CreateScope())
+            {
+                var wake = scope.ServiceProvider.GetRequiredService<IOutboxWake>();
+                Assert.Equal("HangfireOutboxWake", wake.GetType().Name);
+                wake.Wake();
+            }
+
+            Assert.Equal(1, await connection.ExecuteScalarAsync<int>(
+                """
+                SELECT COUNT(*) FROM HangFire.Job j
+                WHERE j.CreatedAt >= @woken AND j.InvocationData LIKE '%OutboxJob%'
+                  AND NOT EXISTS (SELECT 1 FROM HangFire.JobParameter p WHERE p.JobId = j.Id AND p.Name = 'RecurringJobId');
+                """,
+                new { woken }));
         }
         finally
         {

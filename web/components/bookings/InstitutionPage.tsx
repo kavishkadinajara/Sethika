@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { getAvailability, getInstitution, type BookingFailure } from "@/lib/bookings/api";
 import { addDays, addMonths, colomboToday, maskDays, monthOf, weekdayDate } from "@/lib/bookings/calendar";
+import { touchesMonth } from "@/lib/bookings/live";
 import { inLocale, localName } from "@/lib/bookings/names";
 import type { Availability, DayAvailability, PublicInstitution, PublicMealSlot } from "@/lib/bookings/types";
 import { cn, focusRing } from "@/lib/utils";
@@ -19,6 +20,7 @@ import { BowlCalendar, type DayView } from "./BowlCalendar";
 import { EmptyState } from "./EmptyState";
 import { useBookingError } from "./useBookingError";
 import { useDates } from "./useDates";
+import { useLiveAvailability } from "./useLiveAvailability";
 
 /**
  * An institution's own page (plan 03, C10): who they are, the meals they offer, and a month of
@@ -79,6 +81,14 @@ export function InstitutionPage({ slug, initial = null }: { slug: string; initia
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (institution && !months[month]) void loadMonth(month);
   }, [institution, month, months, loadMonth]);
+
+  // Live (plan 07, H11): another donor's booking, a decision or a blocked day changes the bowls
+  // without a reload. The month on screen is fetched again in place; other months it touches are
+  // forgotten, and fetched when shown.
+  useLiveAvailability(institution ? slug : null, (change) => {
+    setMonths((loaded) => Object.fromEntries(Object.entries(loaded).filter(([m]) => m === month || !touchesMonth(change, m))));
+    if (touchesMonth(change, month)) void loadMonth(month);
+  });
 
   const slot = institution?.slots.find((s) => s.publicId === slotId) ?? null;
   const days = months[month]?.slots.find((s) => s.mealSlot === slotId)?.days ?? null;

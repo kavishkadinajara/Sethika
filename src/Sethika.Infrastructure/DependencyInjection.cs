@@ -309,8 +309,12 @@ public static class DependencyInjection
         var jobs = configuration.GetSection(JobsOptions.SectionName).Get<JobsOptions>() ?? new JobsOptions();
         if (!jobs.Enabled)
         {
+            services.AddSingleton<IOutboxWake, NoOutboxWake>();
             return services;
         }
+
+        // A change that wrote an outbox message queues the outbox job at once (plan 07, H10).
+        services.AddScoped<IOutboxWake, HangfireOutboxWake>();
 
         services.AddHangfire(hangfire => hangfire
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)

@@ -13,8 +13,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
 import { decide, getCalendar, type BookingFailure } from "@/lib/bookings/api";
 import { addDays, colomboToday, firstOfMonth, lastOfMonth, monthOf } from "@/lib/bookings/calendar";
+import { touchesMonth } from "@/lib/bookings/live";
 import { inLocale } from "@/lib/bookings/names";
 import type { CalendarBooking, Decision, SlotDay } from "@/lib/bookings/types";
+import { useSession } from "@/lib/auth/useSession";
 import { usePermissions } from "@/lib/permissions/usePermissions";
 import { markShellStale } from "@/lib/shell/summary";
 import { cn, focusRing } from "@/lib/utils";
@@ -23,6 +25,7 @@ import { Bowl } from "./Bowl";
 import { BowlCalendar } from "./BowlCalendar";
 import { useBookingError } from "./useBookingError";
 import { useDates } from "./useDates";
+import { useLiveAvailability } from "./useLiveAvailability";
 
 /** How far ahead the "to decide" tray looks: the API's widest read (§8, E19). */
 const TRAY_DAYS = 62;
@@ -63,8 +66,9 @@ export function CalendarScreen() {
   const [waiting, setWaiting] = useState<SlotDay[] | null>(null);
   const [failure, setFailure] = useState<BookingFailure | null>(null);
 
-  const loadMonth = useCallback(async (wanted: string) => {
-    setDays(null);
+  /** A month shown afresh; `quiet` keeps the days on screen while a live change refetches them. */
+  const loadMonth = useCallback(async (wanted: string, quiet = false) => {
+    if (!quiet) setDays(null);
     const result = await getCalendar(firstOfMonth(wanted), lastOfMonth(wanted));
     if (result.ok) setDays(result.value);
     else setFailure(result.failure);
@@ -85,6 +89,15 @@ export function CalendarScreen() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadWaiting();
   }, [loadWaiting]);
+
+  // Live (plan 07, H11): a donor's booking or cancellation, or a colleague's decision, shows here
+  // without a reload - the requests waiting, the month if the change touches it, the sidebar's count.
+  const session = useSession();
+  useLiveAvailability(session.status === "authenticated" ? session.activeInstitution : null, (change) => {
+    void loadWaiting();
+    if (touchesMonth(change, month)) void loadMonth(month, true);
+    markShellStale();
+  });
 
   /** After any decision: both views may have changed, and so may the sidebar's count and table. */
   const reload = () => {

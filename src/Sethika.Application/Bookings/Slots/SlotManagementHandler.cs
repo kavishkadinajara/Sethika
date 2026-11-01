@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Sethika.Application.Abstractions;
+using Sethika.Application.Bookings.Live;
 using Sethika.Domain.Bookings;
 using Sethika.Domain.Core;
 using Sethika.Domain.Institutions;
@@ -204,6 +205,7 @@ public sealed class SlotManagementHandler(ISethikaDbContext db, TimeProvider tim
         };
 
         db.BlockedDates.Add(block);
+        db.OutboxMessages.Add(AvailabilityChange.Message(institutionId, block.DateFrom, block.DateTo, now));
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         var affected = await ActiveBookingsAsync(institutionId, slotId, block.DateFrom, block.DateTo, cancellationToken).ConfigureAwait(false);
@@ -223,6 +225,7 @@ public sealed class SlotManagementHandler(ISethikaDbContext db, TimeProvider tim
         }
 
         db.BlockedDates.Remove(block);
+        db.OutboxMessages.Add(AvailabilityChange.Message(institutionId, block.DateFrom, block.DateTo, timeProvider.GetUtcNow().UtcDateTime));
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return SlotChangeResult.Ok();
     }
@@ -280,8 +283,14 @@ public sealed class SlotManagementHandler(ISethikaDbContext db, TimeProvider tim
     private Task<MealSlot?> FindSlotAsync(int institutionId, Guid publicId, CancellationToken cancellationToken) =>
         db.MealSlots.SingleOrDefaultAsync(s => s.PublicId == publicId && s.InstitutionId == institutionId, cancellationToken);
 
+    /// <summary>
+    /// Saves a slot added, changed or switched on or off, with the hint that every day of its
+    /// institution may have changed (plan 07, H10): a slot's days are not a range worth working out.
+    /// </summary>
     private async Task<SlotChangeResult> SaveAsync(MealSlot slot, CancellationToken cancellationToken)
     {
+        db.OutboxMessages.Add(AvailabilityChange.Message(slot.InstitutionId, null, null, timeProvider.GetUtcNow().UtcDateTime));
+
         try
         {
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

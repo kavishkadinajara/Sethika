@@ -7,7 +7,8 @@ merge `develop` in later; never rebase a pushed branch.
 Status: **drafted 2026-11-01; the user answered §8 the same day (co-sponsors in, email cut for now,
 the C# engine and the three packages OK, the draft rules OK). H1-H19 agreed. C.1 done (2026-11-01,
 committed by the user). C.2 done 2026-11-01 (schema on `Sethika_Test` and the dev `Sethika`; the user
-kept the "day of passing is day 1" count, H24); H20-H27 recorded while building. Next: C.3.**
+kept the "day of passing is day 1" count, H24); H20-H27 recorded while building. C.2 committed by the
+user (f5cb142). C.3 done 2026-11-02 (H28-H31; no schema change). Next: C.4.**
 Update this line and the §7 boxes whenever either changes; a fresh session trusts them.
 
 Decision numbers here are **H1, H2, …**. Plan 03 uses C1-C12 and E1-E35, Phase E V1-V39, plan 06 G1-G11.
@@ -94,6 +95,10 @@ Decided while building (recorded here so the report and DECISIONS.md match the c
 | H25 | (C.2) The memorial reminder covers tomorrow to 7 days ahead, not exactly the 7th day, with `memorial:{plan}:{rule}:{date}` as the dedup key; it never carries the deceased's name (typed by the donor, and template values are never typed text) | A plan made 3 days before an observance, or a night the job did not run, still gets one text; never two |
 | H26 | (C.2) Archiving a plan stops its reminders and hides it; bookings and yearly bookings made from it stay until the donor cancels or stops them in My bookings | As H5: nothing an institution accepted is cancelled as a side effect |
 | H27 | (C.2) `RELATIONSHIP` values (mother, father, ...) are seeded as plain words, not drafts; the planner is a new donor screen `MYMEMORIAL.PLANS` (`/memorial`) under the BOOK module, `Self` scope, VIEW/CREATE/EDIT granted to the DONOR role. RLS: a new `sec.fn_Owner(DonorUserId)` (the donor and the platform, never an institution) with FILTER and BLOCK AFTER INSERT/UPDATE | Family words are not facts about a faith; the plan needs its own permissions so a role can never hold it by accident |
+| H28 | (C.3) The hint is an outbox message of its own, `AvailabilityChanged` (aggregate `Institution`; payload the institution's id and the first and last day that changed, both null for "any day"), written in the change's own transaction by: a booking; a rejection or cancellation that gives a place back; a blocked range added or removed (its range); a slot added, changed, switched off or on (any day). Approving writes none, because it changes no place (a colleague's approval shows on the calendar's next load) | H10 assumed the existing events would do. But the outbox runs one handler per event type, the booking events already have their texts, and slots and blocked days had no event at all. A range, because one blocked range can cover months |
+| H29 | (C.3) The hub is at `/api/hubs/availability` (H9 and §3 said `/hubs/availability`), and its message is `AvailabilityChanged { slug, from, to }`. A connection watches at most 3 institutions (`too_many_watched`), and a slug is 1-150 characters (`invalid_slug`). Connecting is **not** rate-limited, although §3 said it would be | Under `/api`, the web's one proxy rule (A3) carries the hub and the browser keeps one origin. Each watched institution is a Redis subscription on every instance, so the cap bounds what one connection costs them. Sethika's Redis rate limiter is an endpoint filter, and a hub's endpoints never run endpoint filters, so a limit on connecting waits for the hardening day (§6) |
+| H30 | (C.3) The wake is an endpoint filter, `WakesOutbox()`, on every endpoint whose change writes outbox messages: booking, the donor's cancel, the three decisions, slots, blocked days and the listing. After a 2xx result it queues `OutboxJob` with Hangfire. A refusal wakes nothing. With jobs off (tests) the wake does nothing. A failed enqueue is logged, and the minute's run delivers | The wake comes after the commit, never inside it: a job queued before the commit could run first and find nothing. One line per endpoint, instead of a call in every handler |
+| H31 | (C.3) A calendar quietly refetches the month it shows, with no loading state, when a hint touches that month and after a reconnect. The public page also forgets any other cached month the hint touched. The institution's calendar also reloads its waiting list and the shell's counts | A hint says which days changed, not what they now hold (H9). A reconnect may have missed hints |
 
 ## 3. API
 
@@ -150,6 +155,7 @@ Decided while building (recorded here so the report and DECISIONS.md match the c
 - Email confirmations and reminders (the user, Q2): built on the hardening day only if time is left.
 - Texting an invitation to a co-sponsor (H16); contributors' shares of a cost or a donation.
 - Live counts on `/find`; live updates in the mobile app; SignalR for anything but availability.
+- A per-address limit on connecting to the hub (H29): the hardening day, if time is left.
 - Confirmed memorial rules and religion names (drafts until a reviewer confirms them, H7).
 - `core.SpecialDays` (poya, festivals): still unseeded (CLAUDE.md's open items); nothing here reads it.
 - The waitlist and availability alerts (designed, optional).
@@ -173,8 +179,19 @@ Decided while building (recorded here so the report and DECISIONS.md match the c
   killed (54 code incl. 4 API, 5 RLS/seed) plus a surviving control. Built in a separate worktree on
   `Sethika_C2Test` while C.1's mutations ran, then moved in byte for byte; the memorial and neighbouring
   test classes 59/59 again on `Sethika_Test`.
-- [ ] **C.3 Live slot updates**: the packages (Q4), the hub, the backplane, the outbox handler and wake,
-  the two calendars. ~0.5 day
+- [x] **C.3 Live slot updates**: the packages (Q4), the hub, the backplane, the outbox handler and wake,
+  the two calendars. ~0.5 day. **Done 2026-11-02 (H28-H31):** integration 6 (`LiveAvailabilityTests`:
+  each kind of change heard, with its days, by a calendar on the institution and none by one on
+  another; nothing for an approval; unwatching; the hub's slug and watch limits; a successful change
+  wakes the outbox and a refusal does not; **two hosts on one Redis**, a change on one heard on the
+  other, and a host on another channel prefix hears nothing; the handler and notifier wired), the
+  host's wake queues the outbox job (`HangfireJobsTests`), and the hub's two routes in the anonymous
+  list; neighbours 154/155, the one failure being that list before the hub's routes were added (then
+  the live, Hangfire and policy classes 10/10); 24/24 mutants killed (10 writers and handler, 7 hub, 2 backplane, 5 wake)
+  plus a surviving control. H6 (the message's name) survived at first, because the test client
+  listened by the server's own constant; the client now listens as the web does, by the literal name
+  and the JSON fields, and H6 and H7 (a renamed field) are killed. Web: `touchesMonth` 4/4 mutants
+  plus a control, vitest 223, tsc, eslint and `dotnet format` clean.
 - [ ] **C.4 Co-sponsors**: the schema change and predicate (H18), invite, the token summary, join,
   decline, withdraw, shared with me, the contributor's reminder. ~0.75 day
 - [ ] **C.5 Screens**: every-year in the sheet and My bookings, `/memorial`, sharing and `/share/[token]`,

@@ -169,6 +169,9 @@ public interface IDonorBookingQueries
     /// <summary>The donor's active yearly bookings, soonest next date first.</summary>
     Task<IReadOnlyList<RecurringBookingView>> ListYearlyAsync(Guid donorId, CancellationToken cancellationToken = default);
 
+    /// <summary>The slug of institution <paramref name="institutionId"/>, whatever its status: what its open calendars watch (plan 07, H9).</summary>
+    Task<string?> SlugOfAsync(int institutionId, CancellationToken cancellationToken = default);
+
     /// <summary>The most bookings <see cref="ListMineAsync"/> returns; the list has no paging yet.</summary>
     const int MaxMine = 200;
 }

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Sethika.Application.Abstractions;
+using Sethika.Application.Bookings.Live;
 using Sethika.Domain.Bookings;
 using Sethika.Domain.Core;
 
@@ -148,7 +149,7 @@ public sealed class BookMealHandler(
             return BookMealResult.Failed(BookingErrors.SlotFull);
         }
 
-        var booking = await AddBookingAsync(slot, instance.Id, donorId, donor, command.Headcount, fulfilment, now, cancellationToken).ConfigureAwait(false);
+        var booking = await AddBookingAsync(slot, instance.Id, command.Date, donorId, donor, command.Headcount, fulfilment, now, cancellationToken).ConfigureAwait(false);
         booking.InMemoryOf = Tidy(command.InMemoryOf);
         booking.Notes = Tidy(command.Notes);
 
@@ -296,7 +297,7 @@ public sealed class BookMealHandler(
             return await SaveAsync(new RecurringYearResult(RecurringYearOutcome.NotBooked, BookingErrors.SlotFull, null), cancellationToken).ConfigureAwait(false);
         }
 
-        var booking = await AddBookingAsync(slot, instance.Id, yearly.DonorUserId, donor, yearly.Headcount, yearly.FulfilmentMode, now, cancellationToken).ConfigureAwait(false);
+        var booking = await AddBookingAsync(slot, instance.Id, date, yearly.DonorUserId, donor, yearly.Headcount, yearly.FulfilmentMode, now, cancellationToken).ConfigureAwait(false);
         booking.Source = Booking.RecurringSource;
         booking.RecurringBookingId = yearly.Id;
         booking.MemorialPlanId = yearly.MemorialPlanId;
@@ -366,8 +367,11 @@ public sealed class BookMealHandler(
         return (slot, MealSlotRules.CanBook(slot, institutionStatus, slot.Seasons, blocks, date, now, headcount, fulfilment));
     }
 
-    /// <summary>Numbers the booking (C7) and adds it with its outbox message; the caller saves.</summary>
-    private async Task<Booking> AddBookingAsync(MealSlot slot, long instanceId, Guid donorId, Donor donor, short headcount, string fulfilment, DateTime now, CancellationToken cancellationToken)
+    /// <summary>
+    /// Numbers the booking (C7) and adds it with its outbox message, and the hint to the institution's
+    /// open calendars that <paramref name="date"/> changed (plan 07, H10); the caller saves.
+    /// </summary>
+    private async Task<Booking> AddBookingAsync(MealSlot slot, long instanceId, DateOnly date, Guid donorId, Donor donor, short headcount, string fulfilment, DateTime now, CancellationToken cancellationToken)
     {
         var bookingNo = await numbers
             .NextAsync(NumberSeriesDefinition.Booking, NumberSeriesDefinition.PlatformScope, now.Year, cancellationToken)
@@ -384,6 +388,8 @@ public sealed class BookMealHandler(
             Payload = JsonSerializer.Serialize(new { bookingNo, donorUserId = donorId }),
             OccurredAt = now,
         });
+
+        db.OutboxMessages.Add(AvailabilityChange.Message(slot.InstitutionId, date, date, now));
 
         return booking;
     }

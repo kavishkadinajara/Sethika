@@ -12,6 +12,7 @@ using Sethika.Application.Access.SignUp;
 using Sethika.Application.Access.StepUp;
 using Sethika.Application.Bookings.Discovery;
 using Sethika.Application.Bookings.Engine;
+using Sethika.Application.Bookings.Live;
 using Sethika.Application.Bookings.Memorial;
 using Sethika.Application.Bookings.Notifications;
 using Sethika.Application.Bookings.Recurring;
@@ -77,6 +78,7 @@ public static class DependencyInjection
         services.AddScoped<IOutboxHandler, OnboardingSmsHandler>();
         services.AddScoped<IOutboxHandler, BookingSmsHandler>();
         services.AddScoped<IOutboxHandler, RecurringBookingSmsHandler>();
+        services.AddScoped<IOutboxHandler, AvailabilityChangedHandler>();
         services.AddScoped<IOutboxHandler, AppointmentCancelledHandler>();
         services.AddScoped<IOutboxHandler, AppointmentSmsHandler>();
         services.AddScoped<IOutboxHandler, InstitutionGeoHandler>();

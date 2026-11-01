@@ -48,18 +48,20 @@ internal static class InstitutionBookingEndpoints
     {
         var institution = app.MapGroup("/api/institution");
 
+        // A change below writes outbox messages - texts, the search index, the live calendars - and
+        // wakes the outbox when it succeeds (plan 07, H10).
         institution.MapGet("/meal-slots", ListSlotsAsync).WithMetadata(new HasPermissionAttribute(SlotsView));
-        institution.MapPost("/meal-slots", CreateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsCreate));
-        institution.MapPut("/meal-slots/{publicId:guid}", UpdateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
-        institution.MapPost("/meal-slots/{publicId:guid}/deactivate", DeactivateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
-        institution.MapPost("/meal-slots/{publicId:guid}/activate", ActivateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
+        institution.MapPost("/meal-slots", CreateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsCreate)).WakesOutbox();
+        institution.MapPut("/meal-slots/{publicId:guid}", UpdateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
+        institution.MapPost("/meal-slots/{publicId:guid}/deactivate", DeactivateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
+        institution.MapPost("/meal-slots/{publicId:guid}/activate", ActivateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
 
         institution.MapGet("/blocked-dates", ListBlockedDatesAsync).WithMetadata(new HasPermissionAttribute(SlotsView));
-        institution.MapPost("/blocked-dates", AddBlockedDateAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
-        institution.MapDelete("/blocked-dates/{id:int}", RemoveBlockedDateAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
+        institution.MapPost("/blocked-dates", AddBlockedDateAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
+        institution.MapDelete("/blocked-dates/{id:int}", RemoveBlockedDateAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
 
         institution.MapGet("/listing", GetListingAsync).WithMetadata(new HasPermissionAttribute(SlotsView));
-        institution.MapPut("/listing", SetListingAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
+        institution.MapPut("/listing", SetListingAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
 
         institution.MapGet("/bookings", GetCalendarAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
         institution.MapGet("/today", GetTodayAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
@@ -67,13 +69,13 @@ internal static class InstitutionBookingEndpoints
         institution.MapGet("/bookings/{bookingNo}", FindBookingAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
 
         institution.MapPost("/bookings/{bookingNo}/approve", (string bookingNo, ICurrentUserContext user, BookingDecisionHandler handler, CancellationToken ct) =>
-            DecideAsync(bookingNo, InstitutionDecision.Approve, null, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarApprove));
+            DecideAsync(bookingNo, InstitutionDecision.Approve, null, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarApprove)).WakesOutbox();
 
         institution.MapPost("/bookings/{bookingNo}/reject", ([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReasonBody? body, string bookingNo, ICurrentUserContext user, BookingDecisionHandler handler, CancellationToken ct) =>
-            DecideAsync(bookingNo, InstitutionDecision.Reject, body?.Reason, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarReject));
+            DecideAsync(bookingNo, InstitutionDecision.Reject, body?.Reason, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarReject)).WakesOutbox();
 
         institution.MapPost("/bookings/{bookingNo}/cancel", ([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReasonBody? body, string bookingNo, ICurrentUserContext user, BookingDecisionHandler handler, CancellationToken ct) =>
-            DecideAsync(bookingNo, InstitutionDecision.Cancel, body?.Reason, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarEdit));
+            DecideAsync(bookingNo, InstitutionDecision.Cancel, body?.Reason, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarEdit)).WakesOutbox();
 
         institution.MapPost("/bookings/{bookingNo}/complete", (string bookingNo, ICurrentUserContext user, BookingDecisionHandler handler, CancellationToken ct) =>
             DecideAsync(bookingNo, InstitutionDecision.Complete, null, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarEdit));

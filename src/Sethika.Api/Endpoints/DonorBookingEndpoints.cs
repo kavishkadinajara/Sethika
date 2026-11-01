@@ -54,10 +54,11 @@ internal static class DonorBookingEndpoints
 
         bookings.MapPost("/", BookAsync)
             .WithMetadata(new HasPermissionAttribute(MineCreate))
-            .RateLimitPerUser(BookingRateLimits.CreatePerUser);
+            .RateLimitPerUser(BookingRateLimits.CreatePerUser)
+            .WakesOutbox();
 
         bookings.MapGet("/mine", ListMineAsync).WithMetadata(new HasPermissionAttribute(MineView));
-        bookings.MapPost("/{bookingNo}/cancel", CancelAsync).WithMetadata(new HasPermissionAttribute(MineEdit));
+        bookings.MapPost("/{bookingNo}/cancel", CancelAsync).WithMetadata(new HasPermissionAttribute(MineEdit)).WakesOutbox();
 
         // Yearly bookings (plan 07, H5): the donor's list, and stopping one.
         bookings.MapGet("/recurring", ListYearlyAsync).WithMetadata(new HasPermissionAttribute(MineView));

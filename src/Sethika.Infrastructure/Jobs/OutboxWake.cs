@@ -1,0 +1,40 @@
+using Hangfire;
+using Microsoft.Extensions.Logging;
+using Sethika.Application.Abstractions;
+
+namespace Sethika.Infrastructure.Jobs;
+
+/// <summary>
+/// Wakes the outbox by queueing <see cref="OutboxJob"/> now (plan 07, H10). The minute's run is still
+/// the guarantee: a wake that fails is logged and the change waits up to a minute, never lost.
+/// </summary>
+/// <remarks>
+/// Two runs at once are safe: the processor claims each message before handling it. A request that
+/// wakes the outbox has already committed, so a failure here must not fail it.
+/// </remarks>
+internal sealed partial class HangfireOutboxWake(IBackgroundJobClient jobs, ILogger<HangfireOutboxWake> logger) : IOutboxWake
+{
+    public void Wake()
+    {
+        try
+        {
+            jobs.Enqueue<OutboxJob>(job => job.RunAsync(CancellationToken.None));
+        }
+        catch (BackgroundJobClientException ex)
+        {
+            // Hangfire wraps every failure to store the job in this one.
+            LogWakeFailed(logger, ex);
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not wake the outbox; the next minute's run delivers.")]
+    private static partial void LogWakeFailed(ILogger logger, Exception exception);
+}
+
+/// <summary>A host with its jobs off (tests, tools) has nothing to wake.</summary>
+internal sealed class NoOutboxWake : IOutboxWake
+{
+    public void Wake()
+    {
+    }
+}
