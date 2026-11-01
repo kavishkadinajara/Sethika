@@ -47,6 +47,13 @@
     differently, so the Sinhala leader texts use no pronoun at all and the Tamil ones the respectful
     தாங்கள்: both are for the reviewers (docs/translations-to-review.md).
 
+    Yearly booking texts (plan 07, H4), sent through the outbox when the yearly job cannot make a
+    year's booking: every place taken, or the meal not open that day (blocked, off that weekday, out
+    of season, the slot or the institution closed). There is no booking, so the opening line is
+    Sethika: {institution}, {date} {time}, with the date the booking was for. A year that is booked
+    is texted like any other booking. With a 20-character institution: en 140 and 149 (one segment),
+    si 128-130 and ta 126-131 (two).
+
     The si and ta bodies are drafts until a native speaker signs off docs/translations-to-review.md.
 
     Saved as UTF-8 with a BOM so the Sinhala and Tamil survive the build on any machine's code page. */
@@ -120,7 +127,13 @@ USING (VALUES
  ('LEADER_CANCELLED', 'SMS', 'ta', N'Sethika {appointmentNo}: {institution}, {date} {time}. இந்தச் சேவை ரத்து செய்யப்பட்டது. தாங்கள் வர வேண்டியதில்லை.'),
  ('LEADER_REMINDER', 'SMS', 'en', N'Sethika {appointmentNo}: {institution}, {date} {time}. A reminder: you are assigned to this service tomorrow.'),
  ('LEADER_REMINDER', 'SMS', 'si', N'Sethika {appointmentNo}: {institution}, {date} {time}. මතක් කිරීමක්: පවරා ඇති මෙම සේවාව හෙටයි.'),
- ('LEADER_REMINDER', 'SMS', 'ta', N'Sethika {appointmentNo}: {institution}, {date} {time}. நினைவூட்டல்: தாங்கள் நியமிக்கப்பட்ட இந்தச் சேவை நாளை.')
+ ('LEADER_REMINDER', 'SMS', 'ta', N'Sethika {appointmentNo}: {institution}, {date} {time}. நினைவூட்டல்: தாங்கள் நியமிக்கப்பட்ட இந்தச் சேவை நாளை.'),
+ ('RECURRING_FULL', 'SMS', 'en', N'Sethika: {institution}, {date} {time}. Your yearly booking could not be made: every place is taken. Sign in to choose another day.'),
+ ('RECURRING_FULL', 'SMS', 'si', N'Sethika: {institution}, {date} {time}. වාර්ෂික වෙන්කිරීම කළ නොහැකි විය: ස්ථාන සියල්ල වෙන් කර ඇත. වෙනත් දිනයකට පිවිසෙන්න.'),
+ ('RECURRING_FULL', 'SMS', 'ta', N'Sethika: {institution}, {date} {time}. வருடாந்த முன்பதிவு முடியவில்லை: இடங்கள் நிரம்பின. வேறு நாளுக்கு உள்நுழையவும்.'),
+ ('RECURRING_CLOSED', 'SMS', 'en', N'Sethika: {institution}, {date} {time}. Your yearly booking could not be made: the meal is not open that day. Sign in to choose another day.'),
+ ('RECURRING_CLOSED', 'SMS', 'si', N'Sethika: {institution}, {date} {time}. වාර්ෂික වෙන්කිරීම කළ නොහැකි විය: එදින මෙම ආහාර වේල නැත. වෙනත් දිනයකට පිවිසෙන්න.'),
+ ('RECURRING_CLOSED', 'SMS', 'ta', N'Sethika: {institution}, {date} {time}. வருடாந்த முன்பதிவு முடியவில்லை: அன்று இந்த வேளை இல்லை. வேறு நாளுக்கு உள்நுழையவும்.')
 ) AS s(Code, Channel, Language, Body)
 ON t.Code = s.Code AND t.Channel = s.Channel AND t.Language = s.Language
 -- Compared as binary: under the database's case-insensitive collation a case-only edit would never

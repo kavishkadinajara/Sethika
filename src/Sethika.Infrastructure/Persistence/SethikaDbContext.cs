@@ -55,6 +55,7 @@ public partial class SethikaDbContext(DbContextOptions<SethikaDbContext> options
     public DbSet<BlockedDate> BlockedDates => Set<BlockedDate>();
     public DbSet<SlotInstance> SlotInstances => Set<SlotInstance>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<RecurringBooking> RecurringBookings => Set<RecurringBooking>();
     public DbSet<ServiceType> ServiceTypes => Set<ServiceType>();
     public DbSet<ReligiousLeader> ReligiousLeaders => Set<ReligiousLeader>();
     public DbSet<LeaderWeeklyHours> LeaderWeeklyHours => Set<LeaderWeeklyHours>();

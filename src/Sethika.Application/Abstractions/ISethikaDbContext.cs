@@ -71,6 +71,10 @@ public interface ISethikaDbContext
     DbSet<SlotInstance> SlotInstances { get; }
     DbSet<Booking> Bookings { get; }
 
+    // Yearly bookings (plan 07, H2). The year is claimed with a conditional UPDATE in the booking's
+    // transaction, so two runs of the yearly job cannot both try it.
+    DbSet<RecurringBooking> RecurringBookings { get; }
+
     // Religious services (Phase E). An appointment's leaders and history are reached through it.
     // Time blocks have a set of their own: handlers write and delete them beside the assignment or
     // leave they belong to, and their primary key is the overlap guarantee (V2).

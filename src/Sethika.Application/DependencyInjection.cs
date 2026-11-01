@@ -13,6 +13,7 @@ using Sethika.Application.Access.StepUp;
 using Sethika.Application.Bookings.Discovery;
 using Sethika.Application.Bookings.Engine;
 using Sethika.Application.Bookings.Notifications;
+using Sethika.Application.Bookings.Recurring;
 using Sethika.Application.Bookings.Slots;
 using Sethika.Application.Bookings.Today;
 using Sethika.Application.Onboarding.Applying;
@@ -59,6 +60,8 @@ public static class DependencyInjection
         services.AddScoped<AvailabilitySearch>();
         services.AddScoped<TodaysTable>();
         services.AddScoped<BookingReminders>();
+        services.AddScoped<RecurringBookingRun>();
+        services.AddScoped<RecurringBookingHandler>();
         services.AddScoped<AssignLeadersHandler>();
         services.AddScoped<ServiceSetupHandler>();
         services.AddScoped<RequestServiceHandler>();
@@ -69,6 +72,7 @@ public static class DependencyInjection
         // What the outbox processor dispatches to, by event type.
         services.AddScoped<IOutboxHandler, OnboardingSmsHandler>();
         services.AddScoped<IOutboxHandler, BookingSmsHandler>();
+        services.AddScoped<IOutboxHandler, RecurringBookingSmsHandler>();
         services.AddScoped<IOutboxHandler, AppointmentCancelledHandler>();
         services.AddScoped<IOutboxHandler, AppointmentSmsHandler>();
         services.AddScoped<IOutboxHandler, InstitutionGeoHandler>();

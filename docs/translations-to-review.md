@@ -1184,3 +1184,13 @@ browser cannot format Sinhala currency the way the server does. Drafts; please c
 | Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
 |---|---|---|---|---|---|
 | `Discover.costPerHead` | About Rs {cost} a person | එක් අයෙකුට ආසන්න වශයෙන් රු. {cost} | ஒருவருக்குச் சுமார் ரூ. {cost} | | |
+
+## Yearly booking texts (2026-11-01, `RECURRING_FULL`, `RECURRING_CLOSED`, plan 07 C.1)
+
+Sent when the yearly job cannot make a year's booking. `{institution}`, `{date}` and `{time}` are filled in by
+the app. Drafts, written by the developer; please check them, and keep each as short as it can be (SMS segments).
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `RECURRING_FULL` | Sethika: {institution}, {date} {time}. Your yearly booking could not be made: every place is taken. Sign in to choose another day. | Sethika: {institution}, {date} {time}. වාර්ෂික වෙන්කිරීම කළ නොහැකි විය: ස්ථාන සියල්ල වෙන් කර ඇත. වෙනත් දිනයකට පිවිසෙන්න. | Sethika: {institution}, {date} {time}. வருடாந்த முன்பதிவு முடியவில்லை: இடங்கள் நிரம்பின. வேறு நாளுக்கு உள்நுழையவும். | | |
+| `RECURRING_CLOSED` | Sethika: {institution}, {date} {time}. Your yearly booking could not be made: the meal is not open that day. Sign in to choose another day. | Sethika: {institution}, {date} {time}. වාර්ෂික වෙන්කිරීම කළ නොහැකි විය: එදින මෙම ආහාර වේල නැත. වෙනත් දිනයකට පිවිසෙන්න. | Sethika: {institution}, {date} {time}. வருடாந்த முன்பதிவு முடியவில்லை: அன்று இந்த வேளை இல்லை. வேறு நாளுக்கு உள்நுழையவும். | | |

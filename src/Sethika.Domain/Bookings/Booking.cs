@@ -43,8 +43,14 @@ public class Booking
     public string? InMemoryOf { get; set; }
     public string? Notes { get; set; }
 
-    /// <summary>Always <c>Online</c> in plan 03; staff booking for a donor is cut (§4).</summary>
+    /// <summary><c>Online</c> when the donor booked it, <c>Recurring</c> when the yearly job did (plan 07, H2).</summary>
     public string Source { get; set; } = OnlineSource;
+
+    /// <summary>The yearly booking this one belongs to: the one it started, or the one that made it.</summary>
+    public int? RecurringBookingId { get; set; }
+
+    /// <summary>Set to add a new yearly booking with this one, in the same save.</summary>
+    public RecurringBooking? RecurringBooking { get; set; }
 
     public string Status { get; private set; } = BookingStatus.Requested;
     public Guid CreatedBy { get; set; }
@@ -62,6 +68,9 @@ public class Booking
 
     /// <summary><c>booking.Bookings.Source</c> for a donor booking on the site.</summary>
     public const string OnlineSource = "Online";
+
+    /// <summary><c>booking.Bookings.Source</c> for a year's booking made by the yearly job.</summary>
+    public const string RecurringSource = "Recurring";
 
     /// <summary>The longest reject or cancel reason: <c>RejectReason</c> and <c>CancelReason</c> are <c>NVARCHAR(300)</c>.</summary>
     public const int MaxReason = 300;

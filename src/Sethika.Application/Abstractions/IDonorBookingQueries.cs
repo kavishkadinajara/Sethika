@@ -96,6 +96,7 @@ public sealed record AvailabilitySource(
 
 /// <summary>One of the signed-in donor's bookings.</summary>
 /// <param name="CanCancel">Whether the donor may still cancel it themselves (Q1).</param>
+/// <param name="Yearly">The active yearly booking it belongs to (plan 07, H5), or <see langword="null"/>.</param>
 public sealed record DonorBookingView(
     string BookingNo,
     string Status,
@@ -117,7 +118,31 @@ public sealed record DonorBookingView(
     DateTime CreatedAt,
     string? RejectReason,
     string? CancelReason,
-    bool CanCancel);
+    bool CanCancel,
+    Guid? Yearly);
+
+/// <summary>One of the signed-in donor's active yearly bookings (plan 07, H5).</summary>
+/// <param name="NextDate">The day it books next, or <see langword="null"/> after its last year.</param>
+/// <param name="LastYear">The last year the job tried, booked or not; the year it was made in at first.</param>
+public sealed record RecurringBookingView(
+    Guid PublicId,
+    string Institution,
+    string InstitutionName,
+    string? InstitutionNameSi,
+    string? InstitutionNameTa,
+    Guid MealSlot,
+    string SlotName,
+    string? SlotNameSi,
+    string? SlotNameTa,
+    string StartTime,
+    string EndTime,
+    int Month,
+    int Day,
+    DateOnly? NextDate,
+    int? LastYear,
+    short Headcount,
+    string FulfilmentMode,
+    string? InMemoryOf);
 
 /// <summary>
 /// Dapper reads for the donor's side of booking (plan 03, 5.5). The institution reads are anonymous
@@ -140,6 +165,9 @@ public interface IDonorBookingQueries
     /// <summary>The donor's own bookings, latest slot-day first, at most <see cref="MaxMine"/>.</summary>
     /// <param name="today">Today in Colombo, for <see cref="DonorBookingView.CanCancel"/>.</param>
     Task<IReadOnlyList<DonorBookingView>> ListMineAsync(Guid donorId, DateOnly today, CancellationToken cancellationToken = default);
+
+    /// <summary>The donor's active yearly bookings, soonest next date first.</summary>
+    Task<IReadOnlyList<RecurringBookingView>> ListYearlyAsync(Guid donorId, CancellationToken cancellationToken = default);
 
     /// <summary>The most bookings <see cref="ListMineAsync"/> returns; the list has no paging yet.</summary>
     const int MaxMine = 200;

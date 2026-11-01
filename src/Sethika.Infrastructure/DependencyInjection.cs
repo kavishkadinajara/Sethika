@@ -300,6 +300,7 @@ public static class DependencyInjection
         services.AddScoped<IUserTextMessages, UserTextMessages>();
         services.AddTransient<OutboxJob>();
         services.AddTransient<BookingReminderJob>();
+        services.AddTransient<RecurringBookingJob>();
         services.AddTransient<AppointmentReminderJob>();
         services.AddTransient<GeoIndexRebuildJob>();
 

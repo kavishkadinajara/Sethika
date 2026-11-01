@@ -23,11 +23,8 @@
         "ASPNETCORE_ENVIRONMENT": "Development",
         "DOTNET_ENVIRONMENT": "Development"
       },
-      "serverReadyAction": {
-        "action": "startDebugging",
-        "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
-        "name": "Web: Chrome"
-      },
+      // No serverReadyAction here: "Web: Next.js server" opens the browser. Two launches
+      // share js-debug's Chrome profile, and the second fails with "Unable to attach to browser".
       "sourceFileMap": {
         "/Views": "${workspaceFolder}/Views"
       }
@@ -74,11 +71,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "skipFiles": ["<node_internals>/**"],
+      // Opens "Web: Chrome" once Next.js is actually listening, so the browser gets the
+      // sourceMapPathOverrides defined there.
       "serverReadyAction": {
-        "action": "debugWithChrome",
+        "action": "startDebugging",
         "pattern": "- Local:\\s+(https?://\\S+)",
-        "uriFormat": "%s",
-        "webRoot": "${workspaceFolder}/web"
+        "name": "Web: Chrome"
       },
       "console": "integratedTerminal"
     },

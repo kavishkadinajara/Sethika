@@ -26,4 +26,10 @@ public interface IBookingNotificationQueries
 
     /// <summary>Approved bookings with a donor account on <paramref name="slotDate"/>, in the order they were made.</summary>
     Task<IReadOnlyList<BookingTextDetails>> ListApprovedOnAsync(DateOnly slotDate, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The yearly booking <paramref name="publicId"/>'s text for <paramref name="slotDate"/> (plan 07, H4),
+    /// with no booking number; <see langword="null"/> if there is none.
+    /// </summary>
+    Task<BookingTextDetails?> GetRecurringAsync(Guid publicId, DateOnly slotDate, CancellationToken cancellationToken = default);
 }

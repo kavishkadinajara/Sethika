@@ -122,7 +122,7 @@ public sealed class HangfireJobsTests(SethikaTestDatabase database) : IAsyncLife
             using (var storage = host.Services.GetRequiredService<JobStorage>().GetConnection())
             {
                 var jobs = storage.GetRecurringJobs().OrderBy(j => j.Id, StringComparer.Ordinal).ToList();
-                Assert.Equal(4, jobs.Count);
+                Assert.Equal(5, jobs.Count);
 
                 var services = jobs[0];
                 Assert.Equal((AppointmentReminderJob.RecurringJobId, "0 18 * * *", typeof(AppointmentReminderJob)), (services.Id, services.Cron, services.Job?.Type));
@@ -142,6 +142,11 @@ public sealed class HangfireJobsTests(SethikaTestDatabase database) : IAsyncLife
 
                 var outbox = jobs[3];
                 Assert.Equal((OutboxJob.RecurringJobId, Cron.Minutely(), typeof(OutboxJob)), (outbox.Id, outbox.Cron, outbox.Job?.Type));
+
+                // 00:30 in Colombo (plan 07, H3): just after a new day opens every slot's window a day further.
+                var yearly = jobs[4];
+                Assert.Equal((RecurringBookingJob.RecurringJobId, "30 0 * * *", typeof(RecurringBookingJob)), (yearly.Id, yearly.Cron, yearly.Job?.Type));
+                Assert.Equal(TimeSpan.FromHours(5.5), TimeZoneInfo.FindSystemTimeZoneById(yearly.TimeZoneId).BaseUtcOffset);
             }
 
             recurring.Trigger(OutboxJob.RecurringJobId);
