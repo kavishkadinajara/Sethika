@@ -62,11 +62,14 @@ public static class DependencyInjection
         services.AddScoped<ServiceSetupHandler>();
         services.AddScoped<RequestServiceHandler>();
         services.AddScoped<AppointmentDecisionHandler>();
+        services.AddScoped<AppointmentTexts>();
+        services.AddScoped<AppointmentReminders>();
 
         // What the outbox processor dispatches to, by event type.
         services.AddScoped<IOutboxHandler, OnboardingSmsHandler>();
         services.AddScoped<IOutboxHandler, BookingSmsHandler>();
         services.AddScoped<IOutboxHandler, AppointmentCancelledHandler>();
+        services.AddScoped<IOutboxHandler, AppointmentSmsHandler>();
 
         return services;
     }

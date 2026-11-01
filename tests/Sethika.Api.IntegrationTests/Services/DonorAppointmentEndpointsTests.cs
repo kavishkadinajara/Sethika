@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Sethika.Api.IntegrationTests.Persistence;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Access;
@@ -19,6 +21,7 @@ using Sethika.Application.Services.Appointments;
 using Sethika.Domain.Bookings;
 using Sethika.Domain.Services;
 using Sethika.Infrastructure.Caching;
+using Sethika.Infrastructure.Notifications;
 using Sethika.Infrastructure.Persistence;
 using Sethika.Infrastructure.Queries;
 using StackExchange.Redis;
@@ -336,7 +339,13 @@ public sealed class DonorAppointmentEndpointsTests(SethikaTestDatabase database)
             .AddInterceptors(new SessionContextConnectionInterceptor(TestCurrentUserContext.Platform()))
             .Options);
 
-        await new AppointmentCancelledHandler(context).HandleAsync(message, CancellationToken.None);
+        var connections = new SqlConnectionFactory(database.ConnectionString, TestCurrentUserContext.Platform());
+        var texts = new AppointmentTexts(new UserTextMessages(
+            connections,
+            new ConsoleSmsSender(connections, Options.Create(new SmsOptions()), NullLogger<ConsoleSmsSender>.Instance),
+            NullLogger<UserTextMessages>.Instance));
+
+        await new AppointmentCancelledHandler(context, new AppointmentNotificationQueries(connections), texts).HandleAsync(message, CancellationToken.None);
     }
 
     // ------------------------------------------------------------------ the public page
@@ -697,14 +706,27 @@ public sealed class DonorAppointmentEndpointsTests(SethikaTestDatabase database)
     }
 
     [Fact]
-    public void TheHostDispatchesCancellationsToTheRelease()
+    public void TheHostDispatchesEachAppointmentEventToItsHandler()
     {
         using var scope = _host.Services.CreateScope();
 
-        var handler = Assert.Single(
-            scope.ServiceProvider.GetServices<IOutboxHandler>(),
-            h => h.EventTypes.Contains(AppointmentDecisionHandler.CancelledEvent));
+        var handlers = scope.ServiceProvider.GetServices<IOutboxHandler>().ToList();
+
+        var handler = Assert.Single(handlers, h => h.EventTypes.Contains(AppointmentDecisionHandler.CancelledEvent));
         Assert.IsType<AppointmentCancelledHandler>(handler);
+
+        // The texts (8.8): every other appointment event that tells someone, and none for a decline,
+        // which the institution sees on its agenda instead.
+        foreach (var eventType in new[]
+                 {
+                     RequestServiceHandler.RequestedEvent, AssignLeadersHandler.ApprovedEvent, AppointmentDecisionHandler.RejectedEvent,
+                     AssignLeadersHandler.AssignedEvent, AppointmentDecisionHandler.RemovedEvent,
+                 })
+        {
+            Assert.IsType<AppointmentSmsHandler>(Assert.Single(handlers, h => h.EventTypes.Contains(eventType)));
+        }
+
+        Assert.DoesNotContain(handlers, h => h.EventTypes.Contains(AppointmentDecisionHandler.DeclinedEvent));
     }
 
     [Fact]

@@ -122,15 +122,19 @@ public sealed class HangfireJobsTests(SethikaTestDatabase database) : IAsyncLife
             using (var storage = host.Services.GetRequiredService<JobStorage>().GetConnection())
             {
                 var jobs = storage.GetRecurringJobs().OrderBy(j => j.Id, StringComparer.Ordinal).ToList();
-                Assert.Equal(2, jobs.Count);
+                Assert.Equal(3, jobs.Count);
 
-                var reminders = jobs[0];
+                var services = jobs[0];
+                Assert.Equal((AppointmentReminderJob.RecurringJobId, "0 18 * * *", typeof(AppointmentReminderJob)), (services.Id, services.Cron, services.Job?.Type));
+
+                var reminders = jobs[1];
                 Assert.Equal((BookingReminderJob.RecurringJobId, "0 18 * * *", typeof(BookingReminderJob)), (reminders.Id, reminders.Cron, reminders.Job?.Type));
 
-                // 18:00 in Colombo (plan 03, Q3), whatever zone the server is in.
+                // 18:00 in Colombo (plan 03, Q3; Phase E, V15), whatever zone the server is in.
                 Assert.Equal(TimeSpan.FromHours(5.5), TimeZoneInfo.FindSystemTimeZoneById(reminders.TimeZoneId).BaseUtcOffset);
+                Assert.Equal(TimeSpan.FromHours(5.5), TimeZoneInfo.FindSystemTimeZoneById(services.TimeZoneId).BaseUtcOffset);
 
-                var outbox = jobs[1];
+                var outbox = jobs[2];
                 Assert.Equal((OutboxJob.RecurringJobId, Cron.Minutely(), typeof(OutboxJob)), (outbox.Id, outbox.Cron, outbox.Job?.Type));
             }
 

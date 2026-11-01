@@ -427,6 +427,38 @@ Questions for the reviewers:
 | `BOOKING_CANCELLED / SMS` | The institution cancelled this booking. Sign in to see why. (123) | ආයතනය මෙම වෙන්කිරීම අවලංගු කළා. හේතුව බැලීමට පිවිසෙන්න. (119) | நிறுவனம் இதை ரத்து செய்தது. காரணத்தைப் பார்க்க உள்நுழையவும். (124) | | |
 | `BOOKING_REMINDER / SMS` | A reminder: this booking is tomorrow. (101) | මතක් කිරීමක්: මෙම වෙන්කිරීම හෙටයි. (98) | நினைவூட்டல்: இந்த முன்பதிவு நாளை. (97) | | |
 
+### Religious service texts (Phase E, 8.8)
+
+Sent about one service appointment, to the donor who asked for it and to each religious leader
+assigned. Every text opens with `Sethika {appointmentNo}: {institution}, {date} {time}.`, as the
+booking texts do; only the sentence after it needs review. `{time}` is when the service starts in
+Colombo. The service's own name is left out because the institution types it freely.
+
+Questions for the reviewers:
+
+1. `සේවා ඉල්ලීම` / `சேவைக் கோரிக்கை` for "service request" (a pirith, a sermon, a pooja, a blessing,
+   a funeral rite): is "service" the word a donor would use, or would they name it as an
+   invitation (`ආරාධනාව`)?
+2. A leader may be a Buddhist monk, a Catholic or Anglican priest, a Hindu kurukkal or a Muslim
+   moulavi, and the text cannot know which. The Sinhala leader texts therefore use **no pronoun**
+   (`පවරා ඇත`, not `ඔබ` / `ඔබවහන්සේ` / `ඔබතුමා`). Is that respectful enough for all four, or does it
+   read as curt? The Tamil ones use the respectful `தாங்கள்`: is that right for each faith?
+3. `පවරා ඇත` / `நியமிக்கப்பட்டுள்ளீர்கள்` ("assigned"): is there a warmer word for asking clergy to
+   come, without sounding like an order?
+4. `පැමිණීම අවශ්‍ය නැත` / `வர வேண்டியதில்லை` ("no need to come") after a cancellation: polite enough?
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) | Reviewer | Status |
+|---|---|---|---|---|---|
+| `APPOINTMENT_REQUESTED / SMS` | Your service request was sent. We will text you when they reply. | ඔබගේ සේවා ඉල්ලීම යැවුණා. පිළිතුර ලැබුණු විට දන්වන්නෙමු. | உங்கள் சேவைக் கோரிக்கை அனுப்பப்பட்டது. பதில் வந்ததும் அறிவிப்போம். | | |
+| `APPOINTMENT_APPROVED / SMS` | Your service request was accepted. Thank you. | ඔබගේ සේවා ඉල්ලීම පිළිගත්තා. ස්තූතියි. | உங்கள் சேவைக் கோரிக்கை ஏற்கப்பட்டது. நன்றி. | | |
+| `APPOINTMENT_REJECTED / SMS` | Your service request was not accepted. Sign in to see why. | ඔබගේ සේවා ඉල්ලීම පිළිගත්තේ නැත. හේතුව බැලීමට පිවිසෙන්න. | உங்கள் சேவைக் கோரிக்கை ஏற்கப்படவில்லை. காரணத்தைப் பார்க்க உள்நுழையவும். | | |
+| `APPOINTMENT_CANCELLED / SMS` | The institution cancelled this service. Sign in to see why. | ආයතනය මෙම සේවාව අවලංගු කළා. හේතුව බැලීමට පිවිසෙන්න. | நிறுவனம் இந்தச் சேவையை ரத்து செய்தது. காரணத்தைப் பார்க்க உள்நுழையவும். | | |
+| `APPOINTMENT_REMINDER / SMS` | A reminder: this service is tomorrow. | මතක් කිරීමක්: මෙම සේවාව හෙටයි. | நினைவூட்டல்: இந்தச் சேவை நாளை. | | |
+| `LEADER_ASSIGNED / SMS` | You are assigned to this service. If you cannot come, please tell the institution. | මෙම සේවාව සඳහා පවරා ඇත. පැමිණිය නොහැකි නම් කරුණාකර ආයතනයට දන්වන්න. | இந்தச் சேவைக்குத் தாங்கள் நியமிக்கப்பட்டுள்ளீர்கள். வர இயலாவிட்டால் தயவுசெய்து நிறுவனத்திடம் தெரிவிக்கவும். | | |
+| `LEADER_REMOVED / SMS` | You are no longer assigned to this service. | මෙම සේවාවේ පැවරීම ඉවත් කළා. | இந்தச் சேவைக்கான தங்கள் நியமனம் நீக்கப்பட்டது. | | |
+| `LEADER_CANCELLED / SMS` | This service was cancelled; there is no need to come. | මෙම සේවාව අවලංගු කළා. පැමිණීම අවශ්‍ය නැත. | இந்தச் சேவை ரத்து செய்யப்பட்டது. தாங்கள் வர வேண்டியதில்லை. | | |
+| `LEADER_REMINDER / SMS` | A reminder: you are assigned to this service tomorrow. | මතක් කිරීමක්: පවරා ඇති මෙම සේවාව හෙටයි. | நினைவூட்டல்: தாங்கள் நியமிக்கப்பட்ட இந்தச் சேவை நாளை. | | |
+
 ## Institution application screens (`Apply` namespace)
 
 The applicant's screens (plan 02, 5.5): `web/messages/si.json` and `ta.json`, namespace `Apply`,

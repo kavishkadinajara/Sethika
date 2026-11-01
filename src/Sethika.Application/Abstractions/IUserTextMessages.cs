@@ -32,4 +32,19 @@ public interface IUserTextMessages
         IReadOnlyDictionary<string, string> values,
         string dedupKey,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends <paramref name="templateCode"/> to a number that need not belong to an account: a
+    /// religious leader on a roster (Phase E, V1, V14). The same template lookup and English fallback
+    /// as <see cref="SendAsync"/>.
+    /// </summary>
+    /// <param name="phoneNumber">E.164, as the roster stores it.</param>
+    /// <param name="language"><c>en</c>, <c>si</c> or <c>ta</c>.</param>
+    Task SendToPhoneAsync(
+        string phoneNumber,
+        string language,
+        string templateCode,
+        IReadOnlyDictionary<string, string> values,
+        string dedupKey,
+        CancellationToken cancellationToken = default);
 }

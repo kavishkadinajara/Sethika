@@ -78,6 +78,7 @@ public static class DependencyInjection
         services.AddScoped<IServiceSetupQueries, ServiceSetupQueries>();
         services.AddScoped<IDonorAppointmentQueries, DonorAppointmentQueries>();
         services.AddScoped<IAppointmentQueries, AppointmentQueries>();
+        services.AddScoped<IAppointmentNotificationQueries, AppointmentNotificationQueries>();
 
         return services;
     }
@@ -293,6 +294,7 @@ public static class DependencyInjection
         services.AddScoped<IUserTextMessages, UserTextMessages>();
         services.AddTransient<OutboxJob>();
         services.AddTransient<BookingReminderJob>();
+        services.AddTransient<AppointmentReminderJob>();
 
         var jobs = configuration.GetSection(JobsOptions.SectionName).Get<JobsOptions>() ?? new JobsOptions();
         if (!jobs.Enabled)

@@ -12,7 +12,7 @@ refuses when it would be wrong, outbox, number series).
 Deadline is about **2026-11-06** and the report needs the last week, so this plan aims at
 **~4 working days (2026-10-25 → 10-29)**. Plan 03 was estimated at 6.25 days and took three; this
 one is estimated the same way. If it runs over, the cut order is in §8.
-Last updated 2026-11-01 (8.1-8.7 built, on branch `phase-e-donor`, cut from `develop` at 3c74dc1). Update this line and the §8 boxes whenever either changes. A fresh session
+Last updated 2026-11-01 (8.1-8.8 built, on branch `phase-e-donor`, cut from `develop` at 3c74dc1; the full `dotnet test` runs once before the PR). Update this line and the §8 boxes whenever either changes. A fresh session
 trusts them and will rebuild anything they claim is missing.
 
 The mobile app's F.3/F.4 (`docs/plans/PHASE-F-MOBILE.md`) are being built at the same time on the
@@ -244,7 +244,11 @@ active service types, shown on `/i/{slug}` beside its meals.
       `GET /api/institution/schedule` and `POST /api/institution/schedule/{no}/respond` for a leader
       (V33). One change path in `AppointmentDecisionHandler` (V30, V31). Tests:
       `InstitutionAppointmentEndpointsTests` (15; the cancel/decline race forced with `UPDLOCK`).
-- [ ] **8.8 Texts and the reminder job** with `DedupKey` (V14, V15). ~0.25 day
+- [x] **8.8 Texts and the reminder job** with `DedupKey` (V14, V15). ~0.25 day. Built as: 27 rows in
+      `11_NotifyTemplates.sql` (9 templates x en/si/ta, in `docs/translations-to-review.md`);
+      `AppointmentSmsHandler` and the texts in `AppointmentCancelledHandler` (V27); `AppointmentTexts`;
+      `IUserTextMessages.SendToPhoneAsync` for leaders without an account; `AppointmentReminders` +
+      `AppointmentReminderJob` at 18:00 Colombo (V35-V39). Tests: `AppointmentSmsTests` (9).
 - [ ] **8.9 Screens**: `/services/types`, `/services/leaders`, `/services/appointments` (agenda +
       assign sheet), `/services/schedule`, the request sheet on `/i/[slug]`, `/services/mine`.
       Playwright, desktop + 320 px, si/ta, `clipsSideways`. ~1 day
@@ -293,3 +297,8 @@ Never cut the overlap guarantee or its concurrency tests.
 | V32 | The agenda has four fixed views: `upcoming` (default; requested or approved, not over, soonest first), `waiting`, `needs-leaders` (live leaders < required, not over), `history` (over or ended in a status, latest first). At most 200, no paging yet. Leaders removed are hidden; those who declined are listed after the live ones. Each view is its own SQL text, chosen in C#. | V10's "what needs me". Nothing the caller sends is written into SQL. |
 | V33 | A leader's schedule: approved appointments not yet over where their answer is `Pending` or `Accepted`. Their own answer finds them by the account's roster row **in the session's institution**; none is 403 `not_a_leader`. A leader not on the roster, named by an admin, is 409 `not_assigned` like one not assigned. | What they still have to attend or answer. The roster link is V21's; the session's institution keeps one roster from answering for another. |
 | V34 | New outbox events: `AppointmentRejected`, `LeaderDeclined`, `LeaderRemoved` (payload names the leader's internal id; texts in 8.8). Accepting and completing write none. | Each is someone to tell; an acceptance and a completion change nothing anyone waits for. |
+| V35 | A leader is texted at the roster's phone, else at the linked account's **confirmed** phone; in the account's language, else the roster's. A leader with neither phone is skipped, not failed. | V14. An unconfirmed number may be someone else's. A missing phone is ordinary for a roster, so it must not hold the outbox. |
+| V36 | Dedup keys: the donor's `{TEMPLATE}:{AppointmentNo}`; a leader's assignment or removal also carries the outbox message id; a cancellation `{TEMPLATE}:{AppointmentNo}:{leaderId}`; reminders `appt-reminder:{AppointmentNo}:donor` / `:leader-{id}` (V15). | Each donor move happens once. A leader can be assigned, decline and be assigned again, and must hear the second time too; a re-run of one message still texts nobody twice. |
+| V37 | Who hears what: the donor of the request, approval, rejection, the institution's cancellation and the reminder; a leader of being assigned or removed, of a cancellation and of the reminder **while still expected** (`Pending`/`Accepted`). A decline, an acceptance and a completion text nobody. | The institution gets no texts, as with bookings: a decline shows on its agenda as "needs leaders". A leader who declined or was removed is no longer expected. |
+| V38 | The Sinhala leader texts use no pronoun; the Tamil ones use `தாங்கள்`. Both are drafts for review. | A leader may be a monk, a priest, a kurukkal or a moulavi, each addressed differently; the text cannot know which. |
+| V39 | The service reminder is its own Hangfire job (`appointment-reminders`) at the same 18:00 Colombo, not folded into the meal job. | Either can fail and retry without the other; the job list shows both. |

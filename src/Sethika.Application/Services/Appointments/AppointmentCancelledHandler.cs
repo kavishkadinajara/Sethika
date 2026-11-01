@@ -7,7 +7,8 @@ namespace Sethika.Application.Services.Appointments;
 
 /// <summary>
 /// Releases a cancelled appointment's leader time (V16): deletes its blocks from
-/// <c>booking.LeaderTimeBlocks</c>, so the leaders can be assigned elsewhere.
+/// <c>booking.LeaderTimeBlocks</c>, so the leaders can be assigned elsewhere. Then texts the donor,
+/// unless they cancelled it themselves, and every leader still expected (V27, 8.8).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -22,8 +23,17 @@ namespace Sethika.Application.Services.Appointments;
 /// is still going. The institution's own cancellation (8.7) deletes the blocks in its transaction;
 /// its message then finds none.
 /// </para>
+/// <para>
+/// The release comes before the texts, so a failed text retries a release that is already done, never
+/// the other way round. Each text is keyed by template, appointment and recipient: an appointment is
+/// cancelled once, so a re-run texts nobody twice. A leader who had declined or been removed is not
+/// told: they were no longer expected.
+/// </para>
 /// </remarks>
-public sealed class AppointmentCancelledHandler(ISethikaDbContext db) : IOutboxHandler
+public sealed class AppointmentCancelledHandler(
+    ISethikaDbContext db,
+    IAppointmentNotificationQueries queries,
+    AppointmentTexts texts) : IOutboxHandler
 {
     public IReadOnlyCollection<string> EventTypes { get; } = [AppointmentDecisionHandler.CancelledEvent];
 
@@ -56,7 +66,20 @@ public sealed class AppointmentCancelledHandler(ISethikaDbContext db) : IOutboxH
             .Where(b => b.AppointmentId == appointment.Id)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        var details = await queries.GetAsync(appointmentNo, cancellationToken).ConfigureAwait(false)
+                      ?? throw new InvalidOperationException($"Outbox message {message.Id} names appointment {appointmentNo}, which does not exist.");
+
+        if (!payload.ByDonor)
+        {
+            await texts.ToDonorAsync(details, AppointmentTexts.Cancelled, $"{AppointmentTexts.Cancelled}:{appointmentNo}", cancellationToken).ConfigureAwait(false);
+        }
+
+        foreach (var leader in (await queries.LeadersAsync(appointmentNo, cancellationToken).ConfigureAwait(false)).Where(AppointmentTexts.Expects))
+        {
+            await texts.ToLeaderAsync(details, leader, AppointmentTexts.LeaderCancelled, $"{AppointmentTexts.LeaderCancelled}:{appointmentNo}:{leader.LeaderId}", cancellationToken).ConfigureAwait(false);
+        }
     }
 
-    private sealed record Payload(string? AppointmentNo);
+    private sealed record Payload(string? AppointmentNo, bool ByDonor);
 }

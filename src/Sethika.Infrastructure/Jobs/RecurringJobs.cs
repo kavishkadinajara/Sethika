@@ -21,6 +21,12 @@ internal sealed class RecurringJobs(IRecurringJobManager jobs) : IHostedService
             BookingReminderJob.Cron,
             new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(SriLankaTime.ZoneId) });
 
+        jobs.AddOrUpdate<AppointmentReminderJob>(
+            AppointmentReminderJob.RecurringJobId,
+            job => job.RunAsync(CancellationToken.None),
+            AppointmentReminderJob.Cron,
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(SriLankaTime.ZoneId) });
+
         return Task.CompletedTask;
     }
 

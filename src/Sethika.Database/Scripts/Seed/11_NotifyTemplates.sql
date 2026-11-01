@@ -39,6 +39,14 @@
     Matched on (Code, Channel, Language), never on Id: notify.Notifications.TemplateId points at
     these rows, so they are updated in place, and rows another seed owns are never deleted.
 
+    Service texts (Phase E, 8.8), sent through the outbox and the 18:00 reminder job. The donor's open
+    like the booking texts - {appointmentNo}: {institution}, {date} {time} - with {time} the service's
+    start in Colombo; the service's own name is left out for the same reason as a slot's. Leaders
+    (V14) get the same opening line at the roster's phone, in their account's language or the
+    roster's. A leader may be a monk, a priest, a kurukkal or a moulavi, and each is addressed
+    differently, so the Sinhala leader texts use no pronoun at all and the Tamil ones the respectful
+    தாங்கள்: both are for the reviewers (docs/translations-to-review.md).
+
     The si and ta bodies are drafts until a native speaker signs off docs/translations-to-review.md.
 
     Saved as UTF-8 with a BOM so the Sinhala and Tamil survive the build on any machine's code page. */
@@ -85,7 +93,34 @@ USING (VALUES
  ('BOOKING_CANCELLED', 'SMS', 'ta', N'Sethika {bookingNo}: {institution}, {date} {time}. நிறுவனம் இதை ரத்து செய்தது. காரணத்தைப் பார்க்க உள்நுழையவும்.'),
  ('BOOKING_REMINDER', 'SMS', 'en', N'Sethika {bookingNo}: {institution}, {date} {time}. A reminder: this booking is tomorrow.'),
  ('BOOKING_REMINDER', 'SMS', 'si', N'Sethika {bookingNo}: {institution}, {date} {time}. මතක් කිරීමක්: මෙම වෙන්කිරීම හෙටයි.'),
- ('BOOKING_REMINDER', 'SMS', 'ta', N'Sethika {bookingNo}: {institution}, {date} {time}. நினைவூட்டல்: இந்த முன்பதிவு நாளை.')
+ ('BOOKING_REMINDER', 'SMS', 'ta', N'Sethika {bookingNo}: {institution}, {date} {time}. நினைவூட்டல்: இந்த முன்பதிவு நாளை.'),
+ ('APPOINTMENT_REQUESTED', 'SMS', 'en', N'Sethika {appointmentNo}: {institution}, {date} {time}. Your service request was sent. We will text you when they reply.'),
+ ('APPOINTMENT_REQUESTED', 'SMS', 'si', N'Sethika {appointmentNo}: {institution}, {date} {time}. ඔබගේ සේවා ඉල්ලීම යැවුණා. පිළිතුර ලැබුණු විට දන්වන්නෙමු.'),
+ ('APPOINTMENT_REQUESTED', 'SMS', 'ta', N'Sethika {appointmentNo}: {institution}, {date} {time}. உங்கள் சேவைக் கோரிக்கை அனுப்பப்பட்டது. பதில் வந்ததும் அறிவிப்போம்.'),
+ ('APPOINTMENT_APPROVED', 'SMS', 'en', N'Sethika {appointmentNo}: {institution}, {date} {time}. Your service request was accepted. Thank you.'),
+ ('APPOINTMENT_APPROVED', 'SMS', 'si', N'Sethika {appointmentNo}: {institution}, {date} {time}. ඔබගේ සේවා ඉල්ලීම පිළිගත්තා. ස්තූතියි.'),
+ ('APPOINTMENT_APPROVED', 'SMS', 'ta', N'Sethika {appointmentNo}: {institution}, {date} {time}. உங்கள் சேவைக் கோரிக்கை ஏற்கப்பட்டது. நன்றி.'),
+ ('APPOINTMENT_REJECTED', 'SMS', 'en', N'Sethika {appointmentNo}: {institution}, {date} {time}. Your service request was not accepted. Sign in to see why.'),
+ ('APPOINTMENT_REJECTED', 'SMS', 'si', N'Sethika {appointmentNo}: {institution}, {date} {time}. ඔබගේ සේවා ඉල්ලීම පිළිගත්තේ නැත. හේතුව බැලීමට පිවිසෙන්න.'),
+ ('APPOINTMENT_REJECTED', 'SMS', 'ta', N'Sethika {appointmentNo}: {institution}, {date} {time}. உங்கள் சேவைக் கோரிக்கை ஏற்கப்படவில்லை. காரணத்தைப் பார்க்க உள்நுழையவும்.'),
+ ('APPOINTMENT_CANCELLED', 'SMS', 'en', N'Sethika {appointmentNo}: {institution}, {date} {time}. The institution cancelled this service. Sign in to see why.'),
+ ('APPOINTMENT_CANCELLED', 'SMS', 'si', N'Sethika {appointmentNo}: {institution}, {date} {time}. ආයතනය මෙම සේවාව අවලංගු කළා. හේතුව බැලීමට පිවිසෙන්න.'),
+ ('APPOINTMENT_CANCELLED', 'SMS', 'ta', N'Sethika {appointmentNo}: {institution}, {date} {time}. நிறுவனம் இந்தச் சேவையை ரத்து செய்தது. காரணத்தைப் பார்க்க உள்நுழையவும்.'),
+ ('APPOINTMENT_REMINDER', 'SMS', 'en', N'Sethika {appointmentNo}: {institution}, {date} {time}. A reminder: this service is tomorrow.'),
+ ('APPOINTMENT_REMINDER', 'SMS', 'si', N'Sethika {appointmentNo}: {institution}, {date} {time}. මතක් කිරීමක්: මෙම සේවාව හෙටයි.'),
+ ('APPOINTMENT_REMINDER', 'SMS', 'ta', N'Sethika {appointmentNo}: {institution}, {date} {time}. நினைவூட்டல்: இந்தச் சேவை நாளை.'),
+ ('LEADER_ASSIGNED', 'SMS', 'en', N'Sethika {appointmentNo}: {institution}, {date} {time}. You are assigned to this service. If you cannot come, please tell the institution.'),
+ ('LEADER_ASSIGNED', 'SMS', 'si', N'Sethika {appointmentNo}: {institution}, {date} {time}. මෙම සේවාව සඳහා පවරා ඇත. පැමිණිය නොහැකි නම් කරුණාකර ආයතනයට දන්වන්න.'),
+ ('LEADER_ASSIGNED', 'SMS', 'ta', N'Sethika {appointmentNo}: {institution}, {date} {time}. இந்தச் சேவைக்குத் தாங்கள் நியமிக்கப்பட்டுள்ளீர்கள். வர இயலாவிட்டால் தயவுசெய்து நிறுவனத்திடம் தெரிவிக்கவும்.'),
+ ('LEADER_REMOVED', 'SMS', 'en', N'Sethika {appointmentNo}: {institution}, {date} {time}. You are no longer assigned to this service.'),
+ ('LEADER_REMOVED', 'SMS', 'si', N'Sethika {appointmentNo}: {institution}, {date} {time}. මෙම සේවාවේ පැවරීම ඉවත් කළා.'),
+ ('LEADER_REMOVED', 'SMS', 'ta', N'Sethika {appointmentNo}: {institution}, {date} {time}. இந்தச் சேவைக்கான தங்கள் நியமனம் நீக்கப்பட்டது.'),
+ ('LEADER_CANCELLED', 'SMS', 'en', N'Sethika {appointmentNo}: {institution}, {date} {time}. This service was cancelled; there is no need to come.'),
+ ('LEADER_CANCELLED', 'SMS', 'si', N'Sethika {appointmentNo}: {institution}, {date} {time}. මෙම සේවාව අවලංගු කළා. පැමිණීම අවශ්‍ය නැත.'),
+ ('LEADER_CANCELLED', 'SMS', 'ta', N'Sethika {appointmentNo}: {institution}, {date} {time}. இந்தச் சேவை ரத்து செய்யப்பட்டது. தாங்கள் வர வேண்டியதில்லை.'),
+ ('LEADER_REMINDER', 'SMS', 'en', N'Sethika {appointmentNo}: {institution}, {date} {time}. A reminder: you are assigned to this service tomorrow.'),
+ ('LEADER_REMINDER', 'SMS', 'si', N'Sethika {appointmentNo}: {institution}, {date} {time}. මතක් කිරීමක්: පවරා ඇති මෙම සේවාව හෙටයි.'),
+ ('LEADER_REMINDER', 'SMS', 'ta', N'Sethika {appointmentNo}: {institution}, {date} {time}. நினைவூட்டல்: தாங்கள் நியமிக்கப்பட்ட இந்தச் சேவை நாளை.')
 ) AS s(Code, Channel, Language, Body)
 ON t.Code = s.Code AND t.Channel = s.Channel AND t.Language = s.Language
 -- Compared as binary: under the database's case-insensitive collation a case-only edit would never
