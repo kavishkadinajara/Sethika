@@ -40,6 +40,8 @@ public sealed class SearchEndpointsTests(SethikaTestDatabase database) : IAsyncL
 
     private const string MonthPath = "/api/search/month";
 
+    private const string LookupsPath = "/api/search/lookups";
+
     /// <summary>The rule name of <c>BookingRateLimits.PublicReadPerClient</c>, which is internal to the Api.</summary>
     private const string PublicReadRule = "institution-read-client";
 
@@ -845,7 +847,7 @@ public sealed class SearchEndpointsTests(SethikaTestDatabase database) : IAsyncL
         await _host.Services.GetRequiredService<IConnectionMultiplexer>().GetDatabase()
             .StringSetAsync(RateLimitKey.For(PublicReadRule, address), 600, TimeSpan.FromMinutes(15));
 
-        foreach (var (query, path) in new[] { ($"date={Iso(Day)}", SearchPath), ($"month={MonthOf(NextMonth)}", MonthPath) })
+        foreach (var (query, path) in new[] { ($"date={Iso(Day)}", SearchPath), ($"month={MonthOf(NextMonth)}", MonthPath), ("", LookupsPath) })
         {
             using var limited = await GetAsync(query, path: path, address: address);
             Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
@@ -853,6 +855,59 @@ public sealed class SearchEndpointsTests(SethikaTestDatabase database) : IAsyncL
 
             using var elsewhere = await GetAsync(query, path: path);
             Assert.Equal(HttpStatusCode.OK, elsewhere.StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task TheLookupsOfferEveryActiveTypeAndEveryDistrict_InThreeLanguages()
+    {
+        await using var connection = await PlatformConnectionAsync();
+        var types = (await connection.QueryAsync<string>("SELECT Code FROM org.InstitutionTypes WHERE IsActive = 1 ORDER BY Name;")).ToArray();
+        var districts = (await connection.QueryAsync<string>("SELECT Code FROM core.Districts ORDER BY Name;")).ToArray();
+
+        var lookups = JsonDocument.Parse(await SearchTextAsync("", path: LookupsPath)).RootElement;
+        string[] Codes(string list) => [.. lookups.GetProperty(list).EnumerateArray().Select(e => e.GetProperty("code").GetString()!)];
+
+        Assert.Equal(types, Codes("types"));
+        Assert.Equal(districts, Codes("districts"));
+        Assert.Equal(25, districts.Length);
+        Assert.Equal(["category", "code", "name", "nameSi", "nameTa"], Names(lookups.GetProperty("types")[0]));
+        Assert.Equal(["code", "name", "nameSi", "nameTa"], Names(lookups.GetProperty("districts")[0]));
+
+        var galle = lookups.GetProperty("districts").EnumerateArray().Single(d => d.GetProperty("code").GetString() == "GLL");
+        Assert.Equal("Galle", galle.GetProperty("name").GetString());
+
+        // A retired type is not offered: no listed institution can be one. Each name comes in its own
+        // language's field; the seed has none yet, so one is given here. Reference data, so put back by hand.
+        var (retired, named) = (types[^1], types[0]);
+        var before = await connection.QuerySingleAsync<(string? TypeSi, string? TypeTa, string? GalleSi, string? GalleTa)>(
+            "SELECT t.NameSi, t.NameTa, d.NameSi, d.NameTa FROM org.InstitutionTypes AS t CROSS JOIN core.Districts AS d WHERE t.Code = @named AND d.Code = 'GLL';",
+            new { named });
+        await connection.ExecuteAsync(
+            """
+            UPDATE org.InstitutionTypes SET IsActive = 0 WHERE Code = @retired;
+            UPDATE org.InstitutionTypes SET NameSi = N'වර්ගය', NameTa = N'வகை' WHERE Code = @named;
+            UPDATE core.Districts SET NameSi = N'ගාල්ල', NameTa = N'காலி' WHERE Code = 'GLL';
+            """,
+            new { retired, named });
+        try
+        {
+            var after = JsonDocument.Parse(await SearchTextAsync("", path: LookupsPath)).RootElement;
+            Assert.Equal(types[..^1], after.GetProperty("types").EnumerateArray().Select(e => e.GetProperty("code").GetString()!));
+
+            static (string?, string?) Local(JsonElement e) => (e.GetProperty("nameSi").GetString(), e.GetProperty("nameTa").GetString());
+            Assert.Equal(("වර්ගය", "வகை"), Local(after.GetProperty("types")[0]));
+            Assert.Equal(("ගාල්ල", "காலி"), Local(after.GetProperty("districts").EnumerateArray().Single(d => d.GetProperty("code").GetString() == "GLL")));
+        }
+        finally
+        {
+            await connection.ExecuteAsync(
+                """
+                UPDATE org.InstitutionTypes SET IsActive = 1 WHERE Code = @retired;
+                UPDATE org.InstitutionTypes SET NameSi = @TypeSi, NameTa = @TypeTa WHERE Code = @named;
+                UPDATE core.Districts SET NameSi = @GalleSi, NameTa = @GalleTa WHERE Code = 'GLL';
+                """,
+                new { retired, named, before.TypeSi, before.TypeTa, before.GalleSi, before.GalleTa });
         }
     }
 

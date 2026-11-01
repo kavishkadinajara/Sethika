@@ -70,7 +70,7 @@ export const navTree: readonly NavSection[] = [
       {
         key: "book",
         items: [
-          { key: "find", href: "/institutions", icon: "search" },
+          { key: "find", href: "/find", icon: "search" },
           { key: "myBookings", href: "/bookings/mine", icon: "ticket", screen: "MYBOOKINGS.BOOKINGS" },
         ],
       },

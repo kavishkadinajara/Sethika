@@ -17,7 +17,7 @@ import { inLocale } from "@/lib/bookings/names";
 import type { DonorBooking } from "@/lib/bookings/types";
 import { cn, focusRing } from "@/lib/utils";
 import { BookingStatusBadge } from "./BookingStatusBadge";
-import { EmptyState } from "./InstitutionDirectory";
+import { EmptyState } from "./EmptyState";
 import { useBookingError } from "./useBookingError";
 import { useWide } from "./useWide";
 import { useDates } from "./useDates";
@@ -72,7 +72,7 @@ export function MyBookings() {
       <div className="grid gap-5">
         <EmptyState>{t("none")}</EmptyState>
         <Button asChild className="justify-self-center">
-          <Link href="/institutions">{t("find")}</Link>
+          <Link href="/find">{t("find")}</Link>
         </Button>
       </div>
     );

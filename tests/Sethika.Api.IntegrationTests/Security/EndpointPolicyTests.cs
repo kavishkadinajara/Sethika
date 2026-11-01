@@ -58,6 +58,7 @@ public sealed class EndpointPolicyTests(SethikaTestDatabase database)
         // Searching across institutions (plan 06, G8): no account needed to look for a place to give.
         "GET /api/search",
         "GET /api/search/month",
+        "GET /api/search/lookups",
     ];
 
     private WebApplicationFactory<Program> Host() =>

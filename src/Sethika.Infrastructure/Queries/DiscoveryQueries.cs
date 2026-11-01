@@ -86,6 +86,19 @@ public sealed class DiscoveryQueries(IDbConnectionFactory connections) : IDiscov
         WHERE si.SlotDate >= @first AND si.SlotDate <= @last;
         """;
 
+    // Retired types are left out: no listed institution can be one, so filtering by it finds nobody.
+    private const string LookupsSql =
+        """
+        SELECT t.Code AS Code, t.Name AS Name, t.NameSi AS NameSi, t.NameTa AS NameTa, t.Category AS Category
+        FROM org.InstitutionTypes AS t
+        WHERE t.IsActive = 1
+        ORDER BY t.Name;
+
+        SELECT d.Code AS Code, d.Name AS Name, d.NameSi AS NameSi, d.NameTa AS NameTa
+        FROM core.Districts AS d
+        ORDER BY d.Name;
+        """;
+
     // No user and no coordinates (G8): only what was asked for and how many answered.
     private const string LogSql =
         """
@@ -143,6 +156,16 @@ public sealed class DiscoveryQueries(IDbConnectionFactory connections) : IDiscov
             [.. seasons],
             [.. blocks],
             [.. slotDays]);
+    }
+
+    public async Task<SearchLookups> GetLookupsAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        await using var reader = await connection.QueryMultipleAsync(new CommandDefinition(LookupsSql, cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        var types = await reader.ReadAsync<InstitutionTypeOption>().ConfigureAwait(false);
+        var districts = await reader.ReadAsync<DistrictOption>().ConfigureAwait(false);
+        return new SearchLookups([.. types], [.. districts]);
     }
 
     public async Task LogSearchAsync(SearchLogEntry entry, CancellationToken cancellationToken = default)

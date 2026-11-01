@@ -101,6 +101,7 @@ test("the sitemap lists a listed place in every language, and robots.txt keeps o
   const sitemap = await html(request, "/sitemap.xml");
   for (const prefix of ["", "/si", "/ta"]) {
     expect(sitemap).toContain(`<loc>${site}${prefix}${path}</loc>`);
+    expect(sitemap).toContain(`<loc>${site}${prefix}/find</loc>`);
   }
   expect(sitemap).toContain(`<xhtml:link rel="alternate" hreflang="ta" href="${site}/ta${path}" />`);
 
@@ -113,6 +114,17 @@ test("the sitemap lists a listed place in every language, and robots.txt keeps o
   await unlist(baseURL!, institution);
   expect(await html(request, "/sitemap.xml")).not.toContain(path);
   await html(request, path);
+});
+
+test("in Sinhala and Tamil the server's page hydrates as it is, cost and all", async ({ page }) => {
+  // Node knows Sinhala's currency format and Chromium does not: a cost formatted by Intl read
+  // "රු. 450" from the server and "LKR 450" in the browser, and React threw the page away.
+  // The problems fixture fails the test on the error React raises when hydration fails.
+  for (const [locale, cost] of [["si", "රු. 450"], ["ta", "ரூ. 450"]]) {
+    await page.goto(`/${locale}/i/${institution.slug}`);
+    await expect(page.getByText(cost)).toBeVisible();
+    await expect(page.getByRole("radio").first()).toBeChecked();
+  }
 });
 
 test("in the browser the page hydrates without an error and does not fetch the place again", async ({ page }) => {

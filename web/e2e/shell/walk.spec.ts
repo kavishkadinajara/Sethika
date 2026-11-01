@@ -37,7 +37,7 @@ test("a donor's pages are dark and fit @phone", async ({ page, baseURL }, testIn
   const institution = await approvedInstitution(baseURL!, `E2E Walk Kovil ${Date.now()}`);
   const donor = await createAccount(baseURL!, "E2E Walk Donor");
   await signIn(page, donor);
-  await walk(page, testInfo.project.name, "donor", ["/", "/institutions", `/i/${institution.slug}`, "/bookings/mine", "/apply"]);
+  await walk(page, testInfo.project.name, "donor", ["/", "/find", `/i/${institution.slug}`, "/bookings/mine", "/apply"]);
 });
 
 test("an owner's pages are dark and fit @phone", async ({ page, baseURL }, testInfo) => {

@@ -41,7 +41,7 @@ export function Landing() {
           <p className="max-w-xl text-lg text-muted">{t("lead")}</p>
           <div className="flex flex-wrap gap-3">
             <Button asChild size="lg">
-              <Link href="/institutions">
+              <Link href="/find">
                 <SearchIcon className="size-5" />
                 {t("findCta")}
               </Link>

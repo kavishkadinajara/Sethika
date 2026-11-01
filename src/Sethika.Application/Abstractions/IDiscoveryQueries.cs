@@ -49,6 +49,9 @@ public sealed record SearchSource(
     IReadOnlyList<BlockedDate> Blocks,
     IReadOnlyList<SlotInstance> SlotDays);
 
+/// <summary>What the search page's filters offer (plan 06, B.4): the active institution types and every district, in three languages.</summary>
+public sealed record SearchLookups(IReadOnlyList<InstitutionTypeOption> Types, IReadOnlyList<DistrictOption> Districts);
+
 /// <summary>One search, as the demand log keeps it (G8): no user and no coordinates.</summary>
 public sealed record SearchLogEntry(DateOnly TargetDate, string? Type, string? District, int? RadiusKm, int ResultCount);
 
@@ -60,6 +63,9 @@ public interface IDiscoveryQueries
     /// everything needed to judge their slots from <paramref name="first"/> to <paramref name="last"/> (G7).
     /// </summary>
     Task<SearchSource> GetSearchSourceAsync(SearchSourceFilter filter, DateOnly first, DateOnly last, CancellationToken cancellationToken = default);
+
+    /// <summary>The types and districts a donor may filter by. Reference data, public like the search.</summary>
+    Task<SearchLookups> GetLookupsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Adds a row to <c>booking.AvailabilitySearches</c>.</summary>
     Task LogSearchAsync(SearchLogEntry entry, CancellationToken cancellationToken = default);

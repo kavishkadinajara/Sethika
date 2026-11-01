@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FormError } from "@/components/auth/FormError";
@@ -16,7 +16,7 @@ import { cn, focusRing } from "@/lib/utils";
 import { Bowl } from "./Bowl";
 import { BookingSheet } from "./BookingSheet";
 import { BowlCalendar, type DayView } from "./BowlCalendar";
-import { EmptyState } from "./InstitutionDirectory";
+import { EmptyState } from "./EmptyState";
 import { useBookingError } from "./useBookingError";
 import { useDates } from "./useDates";
 
@@ -244,11 +244,17 @@ function Profile({ institution }: { institution: PublicInstitution }) {
   );
 }
 
+/**
+ * The cost's digits. The card renders on the server too (plan 06, G9), and Node knows Sinhala's
+ * currency format while Chromium does not ("රු." against "LKR"): the page would not hydrate. Plain
+ * English digits read the same in both, and the message carries the currency in each language.
+ */
+const costFormat = new Intl.NumberFormat("en", { maximumFractionDigits: 2 });
+
 /** The meals on offer as a choice of cards; each says what sponsoring it means. */
 function SlotChooser({ slots, selected, onSelect }: { slots: PublicMealSlot[]; selected: string | null; onSelect: (id: string) => void }) {
   const t = useTranslations("Discover");
   const locale = useLocale();
-  const formatter = useFormatter();
   const dates = useDates();
 
   return (
@@ -299,7 +305,7 @@ function SlotChooser({ slots, selected, onSelect }: { slots: PublicMealSlot[]; s
               </span>
               {slot.estimatedCostPerHead !== null && (
                 <span className="text-sm text-muted">
-                  {t("costPerHead", { cost: formatter.number(slot.estimatedCostPerHead, { style: "currency", currency: "LKR", minimumFractionDigits: 0, maximumFractionDigits: 2 }) })}
+                  {t("costPerHead", { cost: costFormat.format(slot.estimatedCostPerHead) })}
                 </span>
               )}
             </button>

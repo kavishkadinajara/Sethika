@@ -21,6 +21,9 @@ import type {
   MealSlotInput,
   PublicInstitution,
   PublicInstitutionSummary,
+  SearchAnswer,
+  SearchLookups,
+  SearchMonth,
   SlotDay,
   TodaysTable,
 } from "./types";
@@ -48,6 +51,21 @@ export async function getInstitution(slug: string): Promise<BookingResult<Public
 /** One month of every active slot's days; `month` is "yyyy-MM". */
 export async function getAvailability(slug: string, month: string): Promise<BookingResult<Availability>> {
   return json(await publicGet(`/api/institutions/${encodeURIComponent(slug)}/availability?month=${encodeURIComponent(month)}`));
+}
+
+/** The places with a meal open on a day (plan 06); `query` from lib/bookings/find-query.ts. */
+export async function searchPlaces(query: string): Promise<BookingResult<SearchAnswer>> {
+  return json(await publicGet(`/api/search?${query}`));
+}
+
+/** How many places are open on each day of a month, under the same filters. */
+export async function searchMonth(query: string): Promise<BookingResult<SearchMonth>> {
+  return json(await publicGet(`/api/search/month?${query}`));
+}
+
+/** The kinds of place and the districts the search can be narrowed to. */
+export async function getSearchLookups(): Promise<BookingResult<SearchLookups>> {
+  return json(await publicGet("/api/search/lookups"));
 }
 
 // ---- the signed-in donor --------------------------------------------------------------------------

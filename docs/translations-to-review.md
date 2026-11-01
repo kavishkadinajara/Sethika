@@ -1122,3 +1122,65 @@ are filled in by the app.
 | Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
 |---|---|---|---|---|---|
 | `Metadata.institution` | {name}, {city}. Sponsor a meal here through Sethika. | {name}, {city}. Sethika හරහා මෙහි ආහාර වේලකට අනුග්‍රහය දක්වන්න. | {name}, {city}. Sethika மூலம் இங்கு ஒரு வேளை உணவுக்கு அனுசரணை வழங்குங்கள். | | |
+
+## Find a place to give (2026-11-01, `Find`, plan 06 B.4)
+
+The search page: where to look (near me, a district, anywhere), the time of day, the kind of place, a
+month of open days, the list and the map. Drafts, written by the developer; please check them.
+`{...}` are filled in by the app; `#` in a plural is the number. The old directory's
+`Discover.directoryIntro`, `filter`, `filterHint`, `noneListed` and `noneMatch` were removed with it.
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `Find.title` | Find a place to give | දීමට ස්ථානයක් සොයන්න | வழங்க ஓர் இடத்தைக் கண்டறியுங்கள் | | |
+| `Find.intro` | Choose a day and where to look. Every place shown has a meal you can sponsor that day. | දිනයක් සහ සොයන ප්‍රදේශය තෝරන්න. මෙහි පෙන්වන සෑම ස්ථානයකම එදිනට ඔබට අනුග්‍රහය දැක්විය හැකි ආහාර වේලක් ඇත. | ஒரு நாளையும் தேட வேண்டிய இடத்தையும் தேர்ந்தெடுங்கள். காட்டப்படும் ஒவ்வோர் இடத்திலும் அன்று நீங்கள் அனுசரணை வழங்கக்கூடிய ஒரு வேளை உணவு உள்ளது. | | |
+| `Find.where.label` | Where | කොහේද | எங்கே | | |
+| `Find.where.near` | Near me | මා අසල | எனக்கு அருகில் | | |
+| `Find.where.locating` | Finding you… | ඔබ සිටින තැන සොයමින්… | உங்கள் இருப்பிடத்தைக் கண்டறிகிறது… | | |
+| `Find.where.district` | In a district | දිස්ත්‍රික්කයක | ஒரு மாவட்டத்தில் | | |
+| `Find.where.anywhere` | Anywhere | ඕනෑම තැනක | எங்கும் | | |
+| `Find.where.districtLabel` | District | දිස්ත්‍රික්කය | மாவட்டம் | | |
+| `Find.where.chooseDistrict` | Choose a district | දිස්ත්‍රික්කයක් තෝරන්න | ஒரு மாவட்டத்தைத் தேர்ந்தெடுங்கள் | | |
+| `Find.where.radius` | Within | දුර | தூரம் | | |
+| `Find.where.km` | {km} km | කි.මී. {km} | {km} கி.மீ. | | |
+| `Find.where.denied` | Location is turned off for Sethika. Allow it in your browser, or choose a district. | Sethika සඳහා ස්ථාන තොරතුරු අක්‍රීයයි. ඔබගේ බ්‍රවුසරයේ එයට ඉඩ දෙන්න, නැතහොත් දිස්ත්‍රික්කයක් තෝරන්න. | Sethika-க்கு இருப்பிட அனுமதி முடக்கப்பட்டுள்ளது. உங்கள் உலாவியில் அனுமதியுங்கள், அல்லது ஒரு மாவட்டத்தைத் தேர்ந்தெடுங்கள். | | |
+| `Find.where.outside` | You seem to be outside Sri Lanka. Choose a district instead. | ඔබ ශ්‍රී ලංකාවෙන් පිටත සිටින බව පෙනේ. ඒ වෙනුවට දිස්ත්‍රික්කයක් තෝරන්න. | நீங்கள் இலங்கைக்கு வெளியே இருப்பதாகத் தெரிகிறது. அதற்குப் பதிலாக ஒரு மாவட்டத்தைத் தேர்ந்தெடுங்கள். | | |
+| `Find.where.unavailable` | Your location could not be found. Try again, or choose a district. | ඔබගේ ස්ථානය සොයාගත නොහැකි විය. නැවත උත්සාහ කරන්න, නැතහොත් දිස්ත්‍රික්කයක් තෝරන්න. | உங்கள் இருப்பிடத்தைக் கண்டறிய முடியவில்லை. மீண்டும் முயலுங்கள், அல்லது ஒரு மாவட்டத்தைத் தேர்ந்தெடுங்கள். | | |
+| `Find.time.label` | Time of day | දවසේ වේලාව | நாளின் நேரம் | | |
+| `Find.time.any` | Any time | ඕනෑම වේලාවක | எந்த நேரமும் | | |
+| `Find.time.morning` | Morning | උදෑසන | காலை | | |
+| `Find.time.midday` | Midday | දහවල් | மதியம் | | |
+| `Find.time.evening` | Evening | සවස | மாலை | | |
+| `Find.type.label` | Kind of place | ස්ථාන වර්ගය | இடத்தின் வகை | | |
+| `Find.type.all` | Every kind | සියලු වර්ග | எல்லா வகைகளும் | | |
+| `Find.calendar.title` | Choose a day | දිනයක් තෝරන්න | ஒரு நாளைத் தேர்ந்தெடுங்கள் | | |
+| `Find.calendar.hint` | Each day shows how many places have a meal open. | සෑම දිනකම ආහාර වේලක් විවෘත ස්ථාන ගණන පෙන්වයි. | ஒவ்வொரு நாளும் உணவு வேளை திறந்துள்ள இடங்களின் எண்ணிக்கையைக் காட்டுகிறது. | | |
+| `Find.calendar.open` | {count, plural, =0 {No place open} one {# place open} other {# places open}} | {count, plural, =0 {විවෘත ස්ථාන නැත} one {ස්ථාන #ක් විවෘතයි} other {ස්ථාන #ක් විවෘතයි}} | {count, plural, =0 {திறந்த இடம் இல்லை} one {# இடம் திறந்துள்ளது} other {# இடங்கள் திறந்துள்ளன}} | | |
+| `Find.tabs.label` | Show the places as | ස්ථාන පෙන්වන ආකාරය | இடங்களைக் காட்டும் விதம் | | |
+| `Find.tabs.list` | List | ලැයිස්තුව | பட்டியல் | | |
+| `Find.tabs.map` | Map | සිතියම | வரைபடம் | | |
+| `Find.results.title` | Open on {date} | {date} දින විවෘත | {date} அன்று திறந்துள்ளவை | | |
+| `Find.results.count` | {count, plural, =0 {No places found.} one {# place found.} other {# places found.}} | {count, plural, =0 {ස්ථාන කිසිවක් හමු නොවීය.} one {ස්ථාන #ක් හමු විය.} other {ස්ථාන #ක් හමු විය.}} | {count, plural, =0 {இடங்கள் எதுவும் கிடைக்கவில்லை.} one {# இடம் கிடைத்தது.} other {# இடங்கள் கிடைத்தன.}} | | |
+| `Find.results.moreNearest` | These are the nearest 100. | මේ ළඟම ඇති ස්ථාන 100 යි. | இவை அருகிலுள்ள 100 இடங்கள். | | |
+| `Find.results.moreByName` | These are the first 100 by name. | මේ නම අනුව පළමු ස්ථාන 100 යි. | இவை பெயர் வரிசையில் முதல் 100 இடங்கள். | | |
+| `Find.results.none` | No place has a meal you can sponsor on {date} here. Try another day, another time of day or a wider area. | {date} දින මෙහි ඔබට අනුග්‍රහය දැක්විය හැකි ආහාර වේලක් ඇති ස්ථානයක් නැත. වෙනත් දිනයක්, වෙනත් වේලාවක් හෝ විශාල ප්‍රදේශයක් උත්සාහ කරන්න. | {date} அன்று இங்கு நீங்கள் அனுசரணை வழங்கக்கூடிய உணவு வேளை எந்த இடத்திலும் இல்லை. வேறு நாளையோ, வேறு நேரத்தையோ, பெரிய பகுதியையோ முயலுங்கள். | | |
+| `Find.results.distance` | {km} km away | කි.මී. {km}ක් දුරින් | {km} கி.மீ. தொலைவில் | | |
+| `Find.results.left` | {count, plural, one {# sponsor place left} other {# sponsor places left}} | {count, plural, one {අනුග්‍රාහක ස්ථාන #ක් ඉතිරියි} other {අනුග්‍රාහක ස්ථාන #ක් ඉතිරියි}} | {count, plural, one {# அனுசரணை இடம் மீதம்} other {# அனுசரணை இடங்கள் மீதம்}} | | |
+| `Find.results.book` | Book | වෙන් කරන්න | முன்பதிவு | | |
+| `Find.results.bookLabel` | Book {meal} at {place} | {place} හි {meal} වෙන් කරන්න | {place} இல் {meal} முன்பதிவு செய்யுங்கள் | | |
+| `Find.results.failed` | The places could not be loaded. | ස්ථාන පූරණය කළ නොහැකි විය. | இடங்களை ஏற்ற முடியவில்லை. | | |
+| `Find.results.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயலுங்கள் | | |
+| `Find.results.invalid` | This search cannot be run. | මෙම සෙවීම කළ නොහැක. | இந்தத் தேடலை இயக்க முடியாது. | | |
+| `Find.results.startAgain` | Start again | මුල සිට අරඹන්න | மீண்டும் தொடங்குங்கள் | | |
+| `Find.map.label` | Map of the places found | හමු වූ ස්ථානවල සිතියම | கண்டறியப்பட்ட இடங்களின் வரைபடம் | | |
+| `Find.map.searchHere` | Search this area | මෙම ප්‍රදේශයේ සොයන්න | இந்தப் பகுதியில் தேடுங்கள் | | |
+| `Find.map.outside` | This part of the map is outside Sri Lanka. | සිතියමේ මෙම කොටස ශ්‍රී ලංකාවෙන් පිටත ය. | வரைபடத்தின் இந்தப் பகுதி இலங்கைக்கு வெளியே உள்ளது. | | |
+
+## A meal's cost on the server-rendered page (2026-11-01, `Discover.costPerHead`, plan 06 B.4)
+
+The cost now carries its currency in the message (the number is filled in with plain digits), because the
+browser cannot format Sinhala currency the way the server does. Drafts; please check the currency's abbreviation.
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `Discover.costPerHead` | About Rs {cost} a person | එක් අයෙකුට ආසන්න වශයෙන් රු. {cost} | ஒருவருக்குச் சுமார் ரூ. {cost} | | |

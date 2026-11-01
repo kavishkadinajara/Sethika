@@ -79,9 +79,17 @@ export async function widerThanWindow(page: Page): Promise<string[]> {
     // A fixed box (the toasts' region, a sheet) sits on the window and never makes the page scroll.
     const fixed = (element: HTMLElement | null): boolean =>
       element !== null && (getComputedStyle(element).position === "fixed" || fixed(element.parentElement));
+    // Inside a box that clips its overflow and itself fits, nothing shows past the edge (a map's
+    // layers reach beyond its frame); whether that box hides something is clipsSideways' question.
+    const clipped = (element: HTMLElement): boolean => {
+      for (let box = element.parentElement; box && box !== document.body; box = box.parentElement) {
+        if (/hidden|clip/.test(getComputedStyle(box).overflowX) && box.getBoundingClientRect().right <= edge) return true;
+      }
+      return false;
+    };
     const past = Array.from(document.body.querySelectorAll<HTMLElement>("*")).filter((element) => {
       const box = element.getBoundingClientRect();
-      return box.width > 1 && box.right > edge && getComputedStyle(element).visibility !== "hidden" && !fixed(element);
+      return box.width > 1 && box.right > edge && getComputedStyle(element).visibility !== "hidden" && !fixed(element) && !clipped(element);
     });
     return past
       .filter((element) => !past.some((other) => other !== element && element.contains(other)))

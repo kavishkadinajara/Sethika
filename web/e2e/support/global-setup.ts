@@ -8,7 +8,7 @@ import { sql } from "./sql";
     keeps that dev-server race out of the results. A production build has no such step.      */
 const routes = [
   "/", "/login", "/login/otp", "/signup", "/forgot-password", "/stepup", "/select-institution", "/account/password",
-  "/apply", "/apply/new", "/apply/REQ-2026-000000", "/institutions", "/i/e2e-warm-up",
+  "/apply", "/apply/new", "/apply/REQ-2026-000000", "/find", "/institutions", "/i/e2e-warm-up",
   "/bookings/mine", "/bookings/slots", "/bookings/calendar", "/access/roles", "/access/members",
   "/admin/registrations", "/admin/registrations/REQ-2026-000000", "/admin/institutions", "/admin/users",
 ];

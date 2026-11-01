@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { FormError } from "@/components/auth/FormError";
 import { textLink } from "@/components/auth/links";
-import { EmptyState } from "@/components/bookings/InstitutionDirectory";
+import { EmptyState } from "@/components/bookings/EmptyState";
 import { useDates } from "@/components/bookings/useDates";
 import { useWide } from "@/components/bookings/useWide";
 import { Button } from "@/components/ui/button";
@@ -76,7 +76,7 @@ export function MyServices() {
       <div className="grid gap-5">
         <EmptyState>{t("none")}</EmptyState>
         <Button asChild className="justify-self-center">
-          <Link href="/institutions">{t("find")}</Link>
+          <Link href="/find">{t("find")}</Link>
         </Button>
       </div>
     );

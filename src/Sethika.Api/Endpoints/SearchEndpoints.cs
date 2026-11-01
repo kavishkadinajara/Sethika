@@ -1,5 +1,6 @@
 using System.Globalization;
 using Sethika.Api.RateLimiting;
+using Sethika.Application.Abstractions;
 using Sethika.Application.Bookings.Discovery;
 using Sethika.Domain.Bookings;
 using Sethika.Domain.Institutions;
@@ -20,6 +21,7 @@ internal static class SearchEndpoints
 
         search.MapGet("/", SearchAsync).RateLimitPerClient(BookingRateLimits.PublicReadPerClient);
         search.MapGet("/month", MonthAsync).RateLimitPerClient(BookingRateLimits.PublicReadPerClient);
+        search.MapGet("/lookups", LookupsAsync).RateLimitPerClient(BookingRateLimits.PublicReadPerClient);
 
         return app;
     }
@@ -77,6 +79,10 @@ internal static class SearchEndpoints
         var result = await search.MonthAsync(first, filters, cancellationToken);
         return result.Succeeded ? Results.Ok(result.View) : Invalid(result.Fields);
     }
+
+    /// <summary>The types and districts the search page offers (B.4), in all three languages: the page picks its own.</summary>
+    private static async Task<IResult> LookupsAsync(IDiscoveryQueries queries, CancellationToken cancellationToken) =>
+        Results.Ok(await queries.GetLookupsAsync(cancellationToken));
 
     /// <summary>The filters as sent; a point or radius that does not parse is added to <paramref name="invalid"/>.</summary>
     private static SearchFilters ReadFilters(string? time, string? type, string? near, string? radiusKm, string? district, List<string> invalid)
