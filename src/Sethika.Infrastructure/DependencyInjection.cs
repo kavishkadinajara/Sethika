@@ -74,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<IRegistrationReviewQueries, RegistrationReviewQueries>();
         services.AddScoped<IInstitutionBookingQueries, InstitutionBookingQueries>();
         services.AddScoped<IDonorBookingQueries, DonorBookingQueries>();
+        services.AddScoped<IMemorialQueries, MemorialQueries>();
         services.AddScoped<IBookingNotificationQueries, BookingNotificationQueries>();
         services.AddScoped<IServiceSetupQueries, ServiceSetupQueries>();
         services.AddScoped<IDonorAppointmentQueries, DonorAppointmentQueries>();
@@ -301,6 +302,7 @@ public static class DependencyInjection
         services.AddTransient<OutboxJob>();
         services.AddTransient<BookingReminderJob>();
         services.AddTransient<RecurringBookingJob>();
+        services.AddTransient<MemorialReminderJob>();
         services.AddTransient<AppointmentReminderJob>();
         services.AddTransient<GeoIndexRebuildJob>();
 

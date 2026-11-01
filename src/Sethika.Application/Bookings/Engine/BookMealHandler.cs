@@ -74,6 +74,12 @@ public sealed class BookMealHandler(
             invalid.Add("notes");
         }
 
+        // A booking for an observance names the plan and the observance, or neither.
+        if ((command.MemorialPlan is null) != string.IsNullOrWhiteSpace(command.MemorialRule))
+        {
+            invalid.Add(command.MemorialPlan is null ? "memorialPlan" : "memorialRule");
+        }
+
         if (invalid.Count > 0)
         {
             return BookMealResult.Invalid(invalid);
@@ -82,6 +88,28 @@ public sealed class BookMealHandler(
         if (await DonorAsync(donorId, cancellationToken).ConfigureAwait(false) is not { } donor)
         {
             return BookMealResult.Failed(BookMealResult.PhoneRequired);
+        }
+
+        Observance? observance = null;
+        if (command.MemorialPlan is { } plan)
+        {
+            observance = await ObservanceAsync(donorId, plan, command.MemorialRule!.Trim(), cancellationToken).ConfigureAwait(false);
+            if (observance is null)
+            {
+                return BookMealResult.Failed(BookMealResult.MemorialNotFound);
+            }
+
+            // The day is the observance's own, so the planner can tell it is booked.
+            if (MemorialObservances.NumberOn(observance.DateOfPassing, observance.Rule, command.Date) is null)
+            {
+                return BookMealResult.Failed(BookMealResult.NotAnObservance);
+            }
+
+            // Every year belongs to an observance kept every year; a 7th day comes once.
+            if (command.EveryYear && !observance.Rule.RepeatsAnnually)
+            {
+                return BookMealResult.Invalid(["everyYear"]);
+            }
         }
 
         // The lock is keyed by the slot's internal id, which never leaves the server.
@@ -124,6 +152,14 @@ public sealed class BookMealHandler(
         booking.InMemoryOf = Tidy(command.InMemoryOf);
         booking.Notes = Tidy(command.Notes);
 
+        if (observance is not null)
+        {
+            booking.Source = Booking.MemorialSource;
+            booking.MemorialPlanId = observance.PlanId;
+            booking.MemorialRuleId = observance.Rule.Id;
+        }
+
+        // After the plan is set: a yearly booking started here keeps the plan (H6).
         if (command.EveryYear)
         {
             await StartYearlyAsync(booking, slot.Id, command.Date, now, cancellationToken).ConfigureAwait(false);
@@ -235,7 +271,7 @@ public sealed class BookMealHandler(
         var (slot, refused) = await CheckAsync(yearly.MealSlotId, date, now, yearly.Headcount, yearly.FulfilmentMode, cancellationToken).ConfigureAwait(false);
         if (refused is not null)
         {
-            NotBooked(yearly, year, date, FullReason, now);
+            NotBooked(yearly, year, date, ClosedReason, now);
             return await SaveAsync(new RecurringYearResult(RecurringYearOutcome.NotBooked, refused, null), cancellationToken).ConfigureAwait(false);
         }
 
@@ -263,6 +299,7 @@ public sealed class BookMealHandler(
         var booking = await AddBookingAsync(slot, instance.Id, yearly.DonorUserId, donor, yearly.Headcount, yearly.FulfilmentMode, now, cancellationToken).ConfigureAwait(false);
         booking.Source = Booking.RecurringSource;
         booking.RecurringBookingId = yearly.Id;
+        booking.MemorialPlanId = yearly.MemorialPlanId;
         booking.OccasionLookupId = yearly.OccasionLookupId;
         booking.InMemoryOf = yearly.InMemoryOf;
 
@@ -386,7 +423,36 @@ public sealed class BookMealHandler(
         return donor is { PhoneConfirmed: true, PhoneNumber: { Length: > 0 } phone } ? new Donor(donor.FullName, phone) : null;
     }
 
+    /// <summary>
+    /// The donor's active plan <paramref name="planId"/> and its faith's active observance
+    /// <paramref name="rule"/>, or <see langword="null"/>. The donor id is checked as well as
+    /// Row-Level Security, so a staff session could not book for someone else's plan.
+    /// </summary>
+    private async Task<Observance?> ObservanceAsync(Guid donorId, Guid planId, string rule, CancellationToken cancellationToken)
+    {
+        var plan = await db.MemorialPlans
+            .AsNoTracking()
+            .Where(p => p.PublicId == planId && p.DonorUserId == donorId && p.IsActive)
+            .Select(p => new { p.Id, p.DateOfPassing, p.ReligionLookupId })
+            .SingleOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (plan is null)
+        {
+            return null;
+        }
+
+        var found = await db.MemorialRules
+            .AsNoTracking()
+            .SingleOrDefaultAsync(r => r.Code == rule && r.IsActive && r.ReligionLookupId == plan.ReligionLookupId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return found is null ? null : new Observance(plan.Id, plan.DateOfPassing, found);
+    }
+
     private static string? Tidy(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
     private sealed record Donor(string Name, string Phone);
+
+    private sealed record Observance(int PlanId, DateOnly DateOfPassing, MemorialRule Rule);
 }

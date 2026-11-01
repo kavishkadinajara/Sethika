@@ -75,6 +75,11 @@ public interface ISethikaDbContext
     // transaction, so two runs of the yearly job cannot both try it.
     DbSet<RecurringBooking> RecurringBookings { get; }
 
+    // The Memorial Dana Planner (plan 07, H6). Plans are the donor's alone (RLS, H13); rules are
+    // reference data the application only reads.
+    DbSet<MemorialPlan> MemorialPlans { get; }
+    DbSet<MemorialRule> MemorialRules { get; }
+
     // Religious services (Phase E). An appointment's leaders and history are reached through it.
     // Time blocks have a set of their own: handlers write and delete them beside the assignment or
     // leave they belong to, and their primary key is the overlap guarantee (V2).

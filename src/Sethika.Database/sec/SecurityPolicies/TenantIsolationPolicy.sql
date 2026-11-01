@@ -6,6 +6,10 @@ CREATE SECURITY POLICY sec.TenantIsolationPolicy
     ADD FILTER PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON booking.RecurringBookings,
     ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON booking.RecurringBookings AFTER INSERT,
     ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON booking.RecurringBookings AFTER UPDATE,
+    /* a memorial plan names someone's dead: its donor alone, and no institution (plan 07, H13) */
+    ADD FILTER PREDICATE sec.fn_Owner(DonorUserId) ON booking.MemorialPlans,
+    ADD BLOCK  PREDICATE sec.fn_Owner(DonorUserId) ON booking.MemorialPlans AFTER INSERT,
+    ADD BLOCK  PREDICATE sec.fn_Owner(DonorUserId) ON booking.MemorialPlans AFTER UPDATE,
     ADD FILTER PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Donations,
     ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Donations AFTER INSERT,
     ADD FILTER PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Pledges,

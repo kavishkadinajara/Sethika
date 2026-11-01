@@ -1194,3 +1194,55 @@ the app. Drafts, written by the developer; please check them, and keep each as s
 |---|---|---|---|---|---|
 | `RECURRING_FULL` | Sethika: {institution}, {date} {time}. Your yearly booking could not be made: every place is taken. Sign in to choose another day. | Sethika: {institution}, {date} {time}. වාර්ෂික වෙන්කිරීම කළ නොහැකි විය: ස්ථාන සියල්ල වෙන් කර ඇත. වෙනත් දිනයකට පිවිසෙන්න. | Sethika: {institution}, {date} {time}. வருடாந்த முன்பதிவு முடியவில்லை: இடங்கள் நிரம்பின. வேறு நாளுக்கு உள்நுழையவும். | | |
 | `RECURRING_CLOSED` | Sethika: {institution}, {date} {time}. Your yearly booking could not be made: the meal is not open that day. Sign in to choose another day. | Sethika: {institution}, {date} {time}. වාර්ෂික වෙන්කිරීම කළ නොහැකි විය: එදින මෙම ආහාර වේල නැත. වෙනත් දිනයකට පිවිසෙන්න. | Sethika: {institution}, {date} {time}. வருடாந்த முன்பதிவு முடியவில்லை: அன்று இந்த வேளை இல்லை. வேறு நாளுக்கு உள்நுழையவும். | | |
+
+## Memorial Dana Planner (2026-11-01, `core.LookupValues`, `core.MemorialRules`, `MEMORIAL_REMINDER`, plan 07 C.2)
+
+Seeded in `Scripts/Seed/13_MemorialDrafts.sql`. The religions' and relationships' Sinhala and Tamil
+names are drafts, written by the developer. The observance rules are drafts twice over: the names, and
+the custom itself (which days each faith keeps, and whether "the 7th day" counts the day of passing as
+the first). Every rule's name starts with `DRAFT - ` in all three languages until a reviewer confirms it.
+
+**Religions (`RELIGION`)**
+
+| Code | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `BUDDHISM` | Buddhism | බෞද්ධ | பௌத்தம் | | |
+| `HINDUISM` | Hinduism | හින්දු | இந்து | | |
+| `ISLAM` | Islam | ඉස්ලාම් | இஸ்லாம் | | |
+| `CHRISTIANITY` | Christianity | ක්‍රිස්තියානි | கிறிஸ்தவம் | | |
+
+**Relationships (`RELATIONSHIP`)**
+
+| Code | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `MOTHER` | Mother | මව | தாய் | | |
+| `FATHER` | Father | පියා | தந்தை | | |
+| `WIFE` | Wife | බිරිඳ | மனைவி | | |
+| `HUSBAND` | Husband | සැමියා | கணவர் | | |
+| `DAUGHTER` | Daughter | දියණිය | மகள் | | |
+| `SON` | Son | පුතා | மகன் | | |
+| `GRANDMOTHER` | Grandmother | ආච්චි | பாட்டி | | |
+| `GRANDFATHER` | Grandfather | සීයා | தாத்தா | | |
+| `SISTER` | Sister | සහෝදරිය | சகோதரி | | |
+| `BROTHER` | Brother | සහෝදරයා | சகோதரர் | | |
+| `RELATIVE` | Relative | ඥාතියා | உறவினர் | | |
+| `FRIEND` | Friend | මිතුරා | நண்பர் | | |
+
+**Observances (`core.MemorialRules`)**: the day is the date of passing plus the months, then the days.
+
+| Code | Months, days | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|---|
+| `BUDDHIST_7TH_DAY` | 0, 6 | DRAFT - 7th day almsgiving | DRAFT - සත්වන දින දානය | DRAFT - 7ஆம் நாள் தானம் | | |
+| `BUDDHIST_3_MONTHS` | 3, 0 | DRAFT - 3 months almsgiving | DRAFT - තෙමසේ දානය | DRAFT - 3 மாத தானம் | | |
+| `BUDDHIST_YEARLY` | 12, 0, every year | DRAFT - Yearly almsgiving | DRAFT - වාර්ෂික දානය | DRAFT - வருடாந்த தானம் | | |
+| `HINDU_31ST_DAY` | 0, 30 | DRAFT - 31st day | DRAFT - 31 වන දිනය | DRAFT - 31ஆம் நாள் | | |
+| `MUSLIM_40TH_DAY` | 0, 39 | DRAFT - 40th day | DRAFT - 40 වන දිනය | DRAFT - 40ஆம் நாள் | | |
+| `CHRISTIAN_40TH_DAY` | 0, 39 | DRAFT - 40th day | DRAFT - 40 වන දිනය | DRAFT - 40ஆம் நாள் | | |
+
+**The reminder text (`MEMORIAL_REMINDER`)**, sent a week before an observance with no booking.
+`{date}` and `{observance}` (the rule's name in the donor's language) are filled in by the app. The name
+of the person who died is never in the text.
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `MEMORIAL_REMINDER` | Sethika: {date}, {observance}. A memorial day in your plan is near and not booked yet. Sign in to find a place to give. | Sethika: {date}, {observance}. ඔබේ සමරු දිනයක් ළඟයි, තවම වෙන් කර නැත. ස්ථානයක් සොයන්න පිවිසෙන්න. | Sethika: {date}, {observance}. உங்கள் நினைவு நாள் நெருங்குகிறது, முன்பதிவு இல்லை. இடம் தேட உள்நுழையவும். | | |

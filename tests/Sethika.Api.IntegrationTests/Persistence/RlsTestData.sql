@@ -73,6 +73,10 @@ DELETE FROM booking.Bookings;
 -- Yearly bookings (plan 07) after the bookings that point at them, before their slot; and their texts' trail.
 DELETE FROM booking.RecurringBookings;
 DELETE FROM core.OutboxMessages WHERE AggregateType = 'RecurringBooking';
+-- Memorial plans after the bookings and yearly bookings made for them; and the rules a test added
+-- beside the seeded drafts, which are the seed's alone.
+DELETE FROM booking.MemorialPlans;
+DELETE FROM core.MemorialRules WHERE Code LIKE 'TEST[_]%';
 DELETE FROM booking.SlotInstances;
 DELETE FROM booking.BlockedDates;
 DELETE FROM booking.MealSlotSeasons;

@@ -5,6 +5,8 @@ namespace Sethika.Application.Bookings.Engine;
 /// <param name="Date">The slot-day, a Sri Lankan date.</param>
 /// <param name="Fulfilment">A <c>FulfilmentMode</c>: who provides the meal.</param>
 /// <param name="EveryYear">"Book this every year" (plan 07, H5): the same meal on the same day from next year on.</param>
+/// <param name="MemorialPlan">The donor's memorial plan this booking is for (H6), by its <c>PublicId</c>; with <paramref name="MemorialRule"/>.</param>
+/// <param name="MemorialRule">The observance's rule code; <paramref name="Date"/> must be one of its days.</param>
 public sealed record BookMealCommand(
     Guid MealSlot,
     DateOnly Date,
@@ -12,7 +14,9 @@ public sealed record BookMealCommand(
     string? Fulfilment,
     string? InMemoryOf,
     string? Notes,
-    bool EveryYear = false);
+    bool EveryYear = false,
+    Guid? MemorialPlan = null,
+    string? MemorialRule = null);
 
 /// <summary>What became of one year of a yearly booking (plan 07, H3, H4).</summary>
 public enum RecurringYearOutcome
@@ -61,6 +65,12 @@ public sealed record BookMealResult(string? Error, IReadOnlyList<string> Fields,
 
     /// <summary>The signed-in account has no confirmed phone, which a booking's texts go to.</summary>
     public const string PhoneRequired = "phone_required";
+
+    /// <summary>No active memorial plan of the donor's with that id, or no observance of its faith with that code.</summary>
+    public const string MemorialNotFound = "memorial_not_found";
+
+    /// <summary>The day is not one the observance falls on (plan 07, H6).</summary>
+    public const string NotAnObservance = "not_an_observance";
 
     public bool Succeeded => Error is null;
 

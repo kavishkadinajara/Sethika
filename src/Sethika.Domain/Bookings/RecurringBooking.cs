@@ -48,7 +48,7 @@ public class RecurringBooking
 
     /// <summary>
     /// The yearly booking of <paramref name="booking"/>, made on <paramref name="date"/>: the same meal
-    /// on the same day from the next year on (H5).
+    /// on the same day from the next year on (H5), for the same memorial plan when it was booked for one (H6).
     /// </summary>
     public static RecurringBooking From(Booking booking, int mealSlotId, DateOnly date, Guid publicId, DateTime now)
     {
@@ -60,6 +60,7 @@ public class RecurringBooking
             DonorUserId = booking.DonorUserId ?? throw new ArgumentException("A yearly booking needs the donor's account.", nameof(booking)),
             InstitutionId = booking.InstitutionId,
             MealSlotId = mealSlotId,
+            MemorialPlanId = booking.MemorialPlanId,
             RecurMonth = (byte)date.Month,
             RecurDay = (byte)date.Day,
             StartYear = (short)(date.Year + 1),

@@ -39,6 +39,7 @@ internal static class DonorBookingEndpoints
         BookingErrors.HeadcountOutOfRange,
         BookingErrors.FulfilmentNotOffered,
         BookingErrors.ReasonTooLong,
+        BookMealResult.NotAnObservance,
     };
 
     public static IEndpointRouteBuilder MapDonorBookingEndpoints(this IEndpointRouteBuilder app)
@@ -114,7 +115,9 @@ internal static class DonorBookingEndpoints
 
         var result = await handler.BookAsync(
             currentUser.UserId!.Value,
-            new BookMealCommand(body.MealSlot!.Value, date, body.Headcount!.Value, body.Fulfilment, body.InMemoryOf, body.Notes, body.EveryYear ?? false),
+            new BookMealCommand(
+                body.MealSlot!.Value, date, body.Headcount!.Value, body.Fulfilment, body.InMemoryOf, body.Notes, body.EveryYear ?? false,
+                body.MemorialPlan, body.MemorialRule),
             cancellationToken);
 
         if (result.Succeeded)
@@ -127,7 +130,9 @@ internal static class DonorBookingEndpoints
             return Results.Json(new { code = result.Error, fields = result.Fields }, statusCode: StatusCodes.Status400BadRequest);
         }
 
-        return ApiErrors.Error(StatusOf(result.Error!, BookMealResult.SlotNotFound), result.Error!);
+        return result.Error == BookMealResult.MemorialNotFound
+            ? ApiErrors.Error(StatusCodes.Status404NotFound, result.Error)
+            : ApiErrors.Error(StatusOf(result.Error!, BookMealResult.SlotNotFound), result.Error!);
     }
 
     private static async Task<IResult> ListMineAsync(ICurrentUserContext currentUser, IDonorBookingQueries queries, TimeProvider timeProvider, CancellationToken cancellationToken) =>
@@ -169,4 +174,15 @@ internal static class DonorBookingEndpoints
 /// <param name="Date"><c>yyyy-MM-dd</c>, the slot-day in Sri Lanka.</param>
 /// <param name="Fulfilment">A <c>FulfilmentMode</c> the slot offers.</param>
 /// <param name="EveryYear">Book the same meal on the same day every year from next year on (plan 07, H5).</param>
-internal sealed record BookingBody(Guid? MealSlot, string? Date, short? Headcount, string? Fulfilment, string? InMemoryOf, string? Notes, bool? EveryYear);
+/// <param name="MemorialPlan">A memorial plan's public id, when the booking is for one of its observances (H6).</param>
+/// <param name="MemorialRule">That observance's rule code, from the plan's observances.</param>
+internal sealed record BookingBody(
+    Guid? MealSlot,
+    string? Date,
+    short? Headcount,
+    string? Fulfilment,
+    string? InMemoryOf,
+    string? Notes,
+    bool? EveryYear,
+    Guid? MemorialPlan,
+    string? MemorialRule);

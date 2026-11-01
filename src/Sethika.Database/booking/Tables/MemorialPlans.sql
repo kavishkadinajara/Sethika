@@ -9,6 +9,15 @@ CREATE TABLE booking.MemorialPlans (
     PhotoFileId          BIGINT        NULL REFERENCES core.Files(Id),
     Notes                NVARCHAR(500) NULL,
     IsActive             BIT           NOT NULL DEFAULT 1,
-    CreatedAt            DATETIME2(3)  NOT NULL DEFAULT SYSUTCDATETIME()
+    CreatedAt            DATETIME2(3)  NOT NULL DEFAULT SYSUTCDATETIME(),
+    /* how the donor's screens and the API name a plan (plan 07); last, so adding it never rebuilds a table under RLS */
+    PublicId             UNIQUEIDENTIFIER NOT NULL
 );
+GO
+
+CREATE UNIQUE INDEX UX_MemorialPlans_PublicId ON booking.MemorialPlans(PublicId);
+GO
+
+/* a donor's plans, and the reminder job's active ones */
+CREATE INDEX IX_MemorialPlans_Donor ON booking.MemorialPlans(DonorUserId, IsActive);
 GO

@@ -23,4 +23,10 @@ internal static class BookingRateLimits
     /// platform-wide series, and the institution's attention. A household asks for a few a year.
     /// </summary>
     public static readonly RateLimitRule RequestServicePerUser = new("appointment-create-user", 10, TimeSpan.FromHours(1));
+
+    /// <summary>
+    /// Memorial plans made by one account (plan 07, H6). A family makes a handful; the limit keeps a
+    /// loop from filling the table and the reminder job's nightly read.
+    /// </summary>
+    public static readonly RateLimitRule MemorialPlanPerUser = new("memorial-create-user", 10, TimeSpan.FromHours(1));
 }

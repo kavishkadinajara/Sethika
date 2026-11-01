@@ -175,7 +175,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
             var after = await connection.QuerySingleAsync(Snapshot, transaction: transaction);
 
             Assert.Equal((IDictionary<string, object>)before, (IDictionary<string, object>)after);
-            Assert.Equal(44, (int)after.Permissions);
+            Assert.Equal(47, (int)after.Permissions);
         }
     }
 
@@ -312,7 +312,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
     // ------------------------------------------------------------------ system role grants (plan 02, B1)
 
     [Theory]
-    [InlineData("DONOR", "MYBOOKINGS.BOOKINGS.CREATE,MYBOOKINGS.BOOKINGS.EDIT,MYBOOKINGS.BOOKINGS.VIEW,MYSERVICES.APPOINTMENTS.CREATE,MYSERVICES.APPOINTMENTS.EDIT,MYSERVICES.APPOINTMENTS.VIEW,ONBOARDING.APPLICATION.CREATE,ONBOARDING.APPLICATION.EDIT,ONBOARDING.APPLICATION.VIEW")]
+    [InlineData("DONOR", "MYBOOKINGS.BOOKINGS.CREATE,MYBOOKINGS.BOOKINGS.EDIT,MYBOOKINGS.BOOKINGS.VIEW,MYMEMORIAL.PLANS.CREATE,MYMEMORIAL.PLANS.EDIT,MYMEMORIAL.PLANS.VIEW,MYSERVICES.APPOINTMENTS.CREATE,MYSERVICES.APPOINTMENTS.EDIT,MYSERVICES.APPOINTMENTS.VIEW,ONBOARDING.APPLICATION.CREATE,ONBOARDING.APPLICATION.EDIT,ONBOARDING.APPLICATION.VIEW")]
     [InlineData("PLATFORM_ADMIN", "ONBOARDING.REQUESTS.APPROVE,ONBOARDING.REQUESTS.EDIT,ONBOARDING.REQUESTS.REJECT,ONBOARDING.REQUESTS.VIEW,PLATFORM.INSTITUTIONS.EXECUTE,PLATFORM.INSTITUTIONS.VIEW,PLATFORM.USERS.CREATE,PLATFORM.USERS.EDIT,PLATFORM.USERS.VIEW")]
     [InlineData("PLATFORM_REVIEWER", "ONBOARDING.REQUESTS.EDIT,ONBOARDING.REQUESTS.VIEW,PLATFORM.INSTITUTIONS.VIEW,PLATFORM.USERS.VIEW")]
     public async Task EachSystemRoleHoldsExactlyItsGrants(string roleCode, string expected)
@@ -416,19 +416,23 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
         // Self scope, and only the donor level's ceiling. CK_RoleLevelPermissions_Scope lets a Self
         // permission sit at any level, so it is the seed alone that keeps "book a meal" out of an
         // institution role: staff holding it there would still book as themselves, not the donor.
+        // A memorial plan (plan 07, H6) is the donor's in the same way.
         await using var connection = new SqlConnection(database.ConnectionString);
 
         var scopes = await connection.QueryAsync<string>(
-            "SELECT Code + ' ' + Scope FROM auth.Permissions WHERE Code LIKE 'MYBOOKINGS.%' ORDER BY Code;");
+            "SELECT Code + ' ' + Scope FROM auth.Permissions WHERE Code LIKE 'MYBOOKINGS.%' OR Code LIKE 'MYMEMORIAL.%' ORDER BY Code;");
 
         var institutionLevels = await connection.ExecuteScalarAsync<int>(
             """
             SELECT COUNT(*) FROM auth.RoleLevelPermissions c
             JOIN auth.Permissions p ON p.Id = c.PermissionId
-            WHERE p.Code LIKE 'MYBOOKINGS.%' AND c.LevelScope <> 'Donor';
+            WHERE (p.Code LIKE 'MYBOOKINGS.%' OR p.Code LIKE 'MYMEMORIAL.%') AND c.LevelScope <> 'Donor';
             """);
 
-        Assert.Equal(["MYBOOKINGS.BOOKINGS.CREATE Self", "MYBOOKINGS.BOOKINGS.EDIT Self", "MYBOOKINGS.BOOKINGS.VIEW Self"], scopes);
+        Assert.Equal(
+            ["MYBOOKINGS.BOOKINGS.CREATE Self", "MYBOOKINGS.BOOKINGS.EDIT Self", "MYBOOKINGS.BOOKINGS.VIEW Self",
+             "MYMEMORIAL.PLANS.CREATE Self", "MYMEMORIAL.PLANS.EDIT Self", "MYMEMORIAL.PLANS.VIEW Self"],
+            scopes);
         Assert.Equal(0, institutionLevels);
     }
 

@@ -54,6 +54,12 @@
     is texted like any other booking. With a 20-character institution: en 140 and 149 (one segment),
     si 128-130 and ta 126-131 (two).
 
+    The memorial reminder (plan 07, H8), sent by the reminder job to a donor whose plan has an
+    observance within a week and no booking for it. It opens Sethika: {date}, {observance}, with the
+    observance's name in the donor's language from core.MemorialRules. The name of the person who
+    died is never sent: it is typed by the donor, and a placeholder never carries typed text. With
+    the longest draft rule name: en 138 (one segment), si 110 and ta 119 (two).
+
     The si and ta bodies are drafts until a native speaker signs off docs/translations-to-review.md.
 
     Saved as UTF-8 with a BOM so the Sinhala and Tamil survive the build on any machine's code page. */
@@ -133,7 +139,10 @@ USING (VALUES
  ('RECURRING_FULL', 'SMS', 'ta', N'Sethika: {institution}, {date} {time}. வருடாந்த முன்பதிவு முடியவில்லை: இடங்கள் நிரம்பின. வேறு நாளுக்கு உள்நுழையவும்.'),
  ('RECURRING_CLOSED', 'SMS', 'en', N'Sethika: {institution}, {date} {time}. Your yearly booking could not be made: the meal is not open that day. Sign in to choose another day.'),
  ('RECURRING_CLOSED', 'SMS', 'si', N'Sethika: {institution}, {date} {time}. වාර්ෂික වෙන්කිරීම කළ නොහැකි විය: එදින මෙම ආහාර වේල නැත. වෙනත් දිනයකට පිවිසෙන්න.'),
- ('RECURRING_CLOSED', 'SMS', 'ta', N'Sethika: {institution}, {date} {time}. வருடாந்த முன்பதிவு முடியவில்லை: அன்று இந்த வேளை இல்லை. வேறு நாளுக்கு உள்நுழையவும்.')
+ ('RECURRING_CLOSED', 'SMS', 'ta', N'Sethika: {institution}, {date} {time}. வருடாந்த முன்பதிவு முடியவில்லை: அன்று இந்த வேளை இல்லை. வேறு நாளுக்கு உள்நுழையவும்.'),
+ ('MEMORIAL_REMINDER', 'SMS', 'en', N'Sethika: {date}, {observance}. A memorial day in your plan is near and not booked yet. Sign in to find a place to give.'),
+ ('MEMORIAL_REMINDER', 'SMS', 'si', N'Sethika: {date}, {observance}. ඔබේ සමරු දිනයක් ළඟයි, තවම වෙන් කර නැත. ස්ථානයක් සොයන්න පිවිසෙන්න.'),
+ ('MEMORIAL_REMINDER', 'SMS', 'ta', N'Sethika: {date}, {observance}. உங்கள் நினைவு நாள் நெருங்குகிறது, முன்பதிவு இல்லை. இடம் தேட உள்நுழையவும்.')
 ) AS s(Code, Channel, Language, Body)
 ON t.Code = s.Code AND t.Channel = s.Channel AND t.Language = s.Language
 -- Compared as binary: under the database's case-insensitive collation a case-only edit would never

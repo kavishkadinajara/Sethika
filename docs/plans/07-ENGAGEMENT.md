@@ -5,7 +5,10 @@ Branch: `phase-c-engagement`, cut from `develop` once the Phase B pull request i
 merge `develop` in later; never rebase a pushed branch.
 
 Status: **drafted 2026-11-01; the user answered §8 the same day (co-sponsors in, email cut for now,
-the C# engine and the three packages OK, the draft rules OK). H1-H19 agreed. Nothing built.** Update this line and the §7 boxes whenever either changes; a fresh session trusts them.
+the C# engine and the three packages OK, the draft rules OK). H1-H19 agreed. C.1 done (2026-11-01,
+committed by the user). C.2 done 2026-11-01 (schema on `Sethika_Test` and the dev `Sethika`; the user
+kept the "day of passing is day 1" count, H24); H20-H27 recorded while building. Next: C.3.**
+Update this line and the §7 boxes whenever either changes; a fresh session trusts them.
 
 Decision numbers here are **H1, H2, …**. Plan 03 uses C1-C12 and E1-E35, Phase E V1-V39, plan 06 G1-G11.
 
@@ -79,6 +82,19 @@ Added outside the proposal text:
 | H18 | **Schema and RLS:** `BookingContributors` gains `InstitutionId` (composite FK `(BookingId, InstitutionId) → Bookings(Id, InstitutionId)`, CLAUDE.md's tenant rule) and `InvitedBy` (the booking's donor), and a filtered unique index on `(BookingId, UserId)`. A new predicate lets a row be seen by the institution, the contributor (`UserId`) and the donor who invited (`InvitedBy`). Two reads cannot run under the person's own session and use a narrow platform-scoped query instead, each documented and tested: the summary behind a token (looked up by its hash only), and a joined contributor's view of the booking itself (`Bookings` RLS shows it only to the donor and the institution) | The table is empty everywhere, so the columns cost nothing. A contributor must see the booking they joined without `Bookings`' RLS being widened for every query |
 | H19 | Joined contributors appear on the donor's booking ("shared with"), on the institution's booking detail (names only), and under "Shared with me" in the contributor's My bookings. A joined contributor gets the 18:00 reminder the day before, like the donor (`DedupKey` per contributor). Cancelling or rejecting the booking ends it for everyone; contributors see the state | The point of sharing a memorial dana is that the siblings come; the reminder is what makes them |
 
+Decided while building (recorded here so the report and DECISIONS.md match the code):
+
+| # | Decision | Why |
+|---|---|---|
+| H20 | (C.1) A yearly booking is named by a new `PublicId` column (appended last, so adding it never rebuilds a table under RLS), and copies the first booking's `FulfilmentMode` (a new column). A unique index `(DonorUserId, MealSlotId, RecurMonth, RecurDay) WHERE IsActive = 1` keeps one active yearly booking per donor, meal and day; "every year" on a day that already has one joins it | §3 left the id open. A booking number names a booking, not the promise behind many |
+| H21 | (C.1) The refusal text is two templates, `RECURRING_FULL` and `RECURRING_CLOSED` (H14's `RECURRING_NOT_BOOKED` split): full when every place was taken, closed for every other refusal | The donor's next step differs: another day at the same place, or another place |
+| H22 | (C.1) The year is claimed by a conditional `UPDATE` of `LastGeneratedYear` in the booking's own transaction. A busy slot lock, or the donor booking the same day at the same moment, claims nothing and the next run tries again; a day already past, a donor without a confirmed phone, or a day the donor already holds claims the year with no text | One try per year (H4) without losing a year to a lock that was busy for a second |
+| H23 | (C.2) A booking for an observance must fall on that observance's own day (`not_an_observance`, 400), on the donor's own active plan and an active rule of the plan's faith (`memorial_not_found`, 404 otherwise). "Every year" is allowed only for a yearly observance. An observance is **booked** when a live (requested or approved) booking for the plan is on its day; a yearly booking made from it carries the plan, and so does each year the job books | The planner can then tell what is booked without guessing which nearby day a booking meant. A donor who wants another day books it as an ordinary booking |
+| H24 | (C.2) "The 7th day" is the date of passing + 6 (the day of passing counted as the first), and the 31st and 40th days likewise + 30 and + 39; the month offsets add months first. Drafts, in the seed's comment and the translations list, for a reviewer to confirm per faith | H7: the offsets are data. The convention had to be one, stated, and changeable without code |
+| H25 | (C.2) The memorial reminder covers tomorrow to 7 days ahead, not exactly the 7th day, with `memorial:{plan}:{rule}:{date}` as the dedup key; it never carries the deceased's name (typed by the donor, and template values are never typed text) | A plan made 3 days before an observance, or a night the job did not run, still gets one text; never two |
+| H26 | (C.2) Archiving a plan stops its reminders and hides it; bookings and yearly bookings made from it stay until the donor cancels or stops them in My bookings | As H5: nothing an institution accepted is cancelled as a side effect |
+| H27 | (C.2) `RELATIONSHIP` values (mother, father, ...) are seeded as plain words, not drafts; the planner is a new donor screen `MYMEMORIAL.PLANS` (`/memorial`) under the BOOK module, `Self` scope, VIEW/CREATE/EDIT granted to the DONOR role. RLS: a new `sec.fn_Owner(DonorUserId)` (the donor and the platform, never an institution) with FILTER and BLOCK AFTER INSERT/UPDATE | Family words are not facts about a faith; the plan needs its own permissions so a role can never hold it by accident |
+
 ## 3. API
 
 - `POST /api/bookings` gains `everyYear: bool` (H5). `GET /api/bookings/recurring` (mine),
@@ -140,10 +156,23 @@ Added outside the proposal text:
 
 ## 7. Work breakdown
 
-- [ ] **C.1 Recurring bookings**: RLS, public id, `everyYear` on booking, the job, the refusal text, stop.
-  Tests and mutations as §4. ~0.75 day
-- [ ] **C.2 Memorial planner engine**: the seeds (H7), RLS, the domain function, the plan endpoints,
-  bookings from an observance, the reminder job. ~0.75 day
+- [x] **C.1 Recurring bookings**: RLS, public id, `everyYear` on booking, the job, the refusal text, stop.
+  Tests and mutations as §4. ~0.75 day. **Done 2026-11-01:** domain 15, integration 14
+  (`RecurringBookingTests`: the window's first day and the day before, rerun, two runs at once forced,
+  full and closed texted once per year, 29 February, stop, the donor's own booking winning a forced
+  race, past and no phone, HTTP and RLS); neighbours 84/84; 35/35 mutants killed (31 code, 2 API,
+  2 RLS predicates) plus a surviving control. Schema published to `Sethika_Test` and the dev `Sethika`.
+- [x] **C.2 Memorial planner engine**: the seeds (H7), RLS, the domain function, the plan endpoints,
+  bookings from an observance, the reminder job. ~0.75 day. **Done 2026-11-01 (H23-H27):** domain 39
+  (`MemorialObservancesTests`: months then days, month ends, 29 February, a yearly rule whose days
+  cross the year end in a leap year, the next yearly day), integration 12 (`MemorialPlanTests`: the
+  draft seeds and the form's lists, a plan's days and states, refusals with their fields, a new rule
+  row and a faith with none, booking an observance and its refusals, every year through the yearly
+  job, the reminder once a week ahead in the donor's language and not for a booked observance or an
+  archived plan, the host's job as the platform, archiving, RLS); neighbours 99/99; 59/59 mutants
+  killed (54 code incl. 4 API, 5 RLS/seed) plus a surviving control. Built in a separate worktree on
+  `Sethika_C2Test` while C.1's mutations ran, then moved in byte for byte; the memorial and neighbouring
+  test classes 59/59 again on `Sethika_Test`.
 - [ ] **C.3 Live slot updates**: the packages (Q4), the hub, the backplane, the outbox handler and wake,
   the two calendars. ~0.5 day
 - [ ] **C.4 Co-sponsors**: the schema change and predicate (H18), invite, the token summary, join,
