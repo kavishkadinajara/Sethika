@@ -19,13 +19,18 @@ export type NavIcon =
 /* Each key names its label in the Shell messages (sections.*, groups.*, items.*), so a menu entry
    without a translation is a type error. */
 export type SectionKey = "dashboard" | "giving" | "institution" | "platform";
-export type GroupKey = "book" | "apply" | "bookings" | "access" | "onboarding" | "administration";
+export type GroupKey = "book" | "request" | "apply" | "bookings" | "services" | "access" | "onboarding" | "administration";
 export type ItemKey =
   | "find"
   | "myBookings"
+  | "myServices"
   | "apply"
   | "calendar"
   | "slots"
+  | "serviceTypes"
+  | "leaders"
+  | "appointments"
+  | "schedule"
   | "roles"
   | "members"
   | "registrations"
@@ -70,6 +75,10 @@ export const navTree: readonly NavSection[] = [
         ],
       },
       {
+        key: "request",
+        items: [{ key: "myServices", href: "/services/mine", icon: "calendar", screen: "MYSERVICES.APPOINTMENTS" }],
+      },
+      {
         key: "apply",
         items: [{ key: "apply", href: "/apply", icon: "file", screen: "ONBOARDING.APPLICATION" }],
       },
@@ -84,6 +93,15 @@ export const navTree: readonly NavSection[] = [
         items: [
           { key: "calendar", href: "/bookings/calendar", icon: "calendar", screen: "BOOKINGS.CALENDAR", badge: "bookingsToAnswer" },
           { key: "slots", href: "/bookings/slots", icon: "bowl", screen: "BOOKINGS.SLOTS" },
+        ],
+      },
+      {
+        key: "services",
+        items: [
+          { key: "appointments", href: "/services/appointments", icon: "calendar", screen: "SERVICES.APPOINTMENTS" },
+          { key: "schedule", href: "/services/schedule", icon: "ticket", screen: "SERVICES.MYSCHEDULE" },
+          { key: "serviceTypes", href: "/services/types", icon: "file", screen: "SERVICES.TYPES" },
+          { key: "leaders", href: "/services/leaders", icon: "users", screen: "SERVICES.LEADERS" },
         ],
       },
       {

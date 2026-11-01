@@ -794,3 +794,321 @@ developer; please check them. `{from}–{to} of {total}` reads like "25–48 of 
 | `Admin.users.institutionHint` | Its people: anyone holding a role there now | එහි අය: දැනට එහි භූමිකාවක් දරන ඕනෑම අයෙක් | அதன் நபர்கள்: தற்போது அங்கு ஒரு பங்கை வகிக்கும் எவரும் | | |
 | `Admin.users.institutionClear` | Every institution | සියලු ආයතන | அனைத்து நிறுவனங்களும் | | |
 | `Admin.users.institutionNone` | No institution matches. | කිසිදු ආයතනයක් ගැළපෙන්නේ නැත. | எந்த நிறுவனமும் பொருந்தவில்லை. | | |
+
+## Religious service screens (2026-11-01, `Services`, `Shell`, Phase E 8.9)
+
+The services a place offers on its page and the request sheet, the donor's "My services", and the
+institution's service types, leaders (usual week and leave), appointments and a leader's own
+schedule. Drafts, written by the developer; please check them. `{...}` are filled in by the app
+(a name, a date, a number); `#` in a plural is the number.
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `Services.status.Requested` | Waiting for a reply | පිළිතුර බලාපොරොත්තුවෙන් | பதிலுக்காகக் காத்திருக்கிறது | | |
+| `Services.status.Approved` | Confirmed | තහවුරුයි | உறுதியானது | | |
+| `Services.status.Rejected` | Not accepted | පිළිගත්තේ නැත | ஏற்கப்படவில்லை | | |
+| `Services.status.Cancelled` | Cancelled | අවලංගුයි | ரத்து செய்யப்பட்டது | | |
+| `Services.status.Completed` | Held | පැවැත්වුණා | நடைபெற்றது | | |
+| `Services.duration.hours` | {count, plural, one {# hour} other {# hours}} | {count, plural, one {පැය #} other {පැය #}} | {count, plural, one {# மணி நேரம்} other {# மணி நேரம்}} | | |
+| `Services.duration.minutes` | {count} min | විනාඩි {count} | {count} நிமிடம் | | |
+| `Services.duration.hoursMinutes` | {hours, plural, one {# hour} other {# hours}} {minutes} min | {hours, plural, one {පැය #} other {පැය #}} විනාඩි {minutes} | {hours, plural, one {# மணி} other {# மணி}} {minutes} நிமிடம் | | |
+| `Services.errors.service_not_found` | This service is no longer offered. | මෙම සේවාව තවදුරටත් ලබා නොදේ. | இந்தச் சேவை இனி வழங்கப்படுவதில்லை. | | |
+| `Services.errors.service_inactive` | This service is not taking requests just now. | මෙම සේවාව දැනට ඉල්ලීම් භාර නොගනී. | இந்தச் சேவை தற்போது கோரிக்கைகளை ஏற்கவில்லை. | | |
+| `Services.errors.institution_not_active` | This place is not taking requests just now. | මෙම ස්ථානය දැනට ඉල්ලීම් භාර නොගනී. | இந்த இடம் தற்போது கோரிக்கைகளை ஏற்கவில்லை. | | |
+| `Services.errors.not_on_the_grid` | Please choose a start time on the quarter hour. | කරුණාකර විනාඩි 15 පරතරයකින් ආරම්භක වේලාවක් තෝරන්න. | கால் மணி இடைவெளியில் ஒரு தொடக்க நேரத்தைத் தேர்ந்தெடுங்கள். | | |
+| `Services.errors.location_not_offered` | This service is not held there. | මෙම සේවාව එහි පවත්වනු නොලැබේ. | இந்தச் சேவை அங்கே நடத்தப்படுவதில்லை. | | |
+| `Services.errors.address_required` | Please give the address where it will be held. | කරුණාකර එය පවත්වන ලිපිනය දෙන්න. | அது நடைபெறும் முகவரியைத் தாருங்கள். | | |
+| `Services.errors.too_soon` | That day is too soon to ask for. Please choose a later day. | එම දිනය ඉල්ලීමට ඉතා ළඟයි. කරුණාකර පසු දිනයක් තෝරන්න. | அந்த நாள் கோருவதற்கு மிக அருகில் உள்ளது. பிந்தைய நாளைத் தேர்ந்தெடுங்கள். | | |
+| `Services.errors.too_far` | That day is too far ahead to ask for yet. | එම දිනය ඉල්ලීමට තවම ඉතා දුරයි. | அந்த நாள் இன்னும் கோர முடியாத அளவுக்குத் தொலைவில் உள்ளது. | | |
+| `Services.errors.phone_required` | Your account needs a confirmed phone number before you can ask. | ඉල්ලීමට පෙර ඔබගේ ගිණුමට තහවුරු කළ දුරකථන අංකයක් අවශ්‍යයි. | கோருவதற்கு உங்கள் கணக்கில் உறுதிப்படுத்தப்பட்ட தொலைபேசி எண் தேவை. | | |
+| `Services.errors.invalid_details` | Some details need fixing. | සමහර විස්තර නිවැරදි කළ යුතුයි. | சில விவரங்களைத் திருத்த வேண்டும். | | |
+| `Services.errors.appointment_not_found` | We could not find this appointment. | මෙම සේවා වාරය සොයාගත නොහැකි විය. | இந்த நியமனத்தைக் கண்டறிய முடியவில்லை. | | |
+| `Services.errors.invalid_transition` | This appointment has already changed. The list has been refreshed. | මෙම සේවා වාරය දැනටමත් වෙනස් වී ඇත. ලැයිස්තුව යාවත්කාලීන කළා. | இந்த நியமனம் ஏற்கனவே மாறிவிட்டது. பட்டியல் புதுப்பிக்கப்பட்டது. | | |
+| `Services.errors.cancel_window_closed` | It is too late to cancel this yourself. Please call the institution. | මෙය ඔබටම අවලංගු කිරීමට ප්‍රමාද වැඩියි. කරුණාකර ආයතනයට කතා කරන්න. | இதை நீங்களே ரத்து செய்யும் நேரம் கடந்துவிட்டது. நிறுவனத்தை அழையுங்கள். | | |
+| `Services.errors.too_early` | It can be marked as held only once it has ended. | මෙය පැවැත්වූ බව සලකුණු කළ හැක්කේ එය අවසන් වූ පසු පමණි. | இது முடிந்த பின்னரே நடைபெற்றதாகக் குறிக்க முடியும். | | |
+| `Services.errors.already_over` | This appointment has already ended. | මෙම සේවා වාරය දැනටමත් අවසන්. | இந்த நியமனம் ஏற்கனவே முடிந்துவிட்டது. | | |
+| `Services.errors.reason_required` | Please give a reason. | කරුණාකර හේතුවක් දෙන්න. | காரணத்தைத் தாருங்கள். | | |
+| `Services.errors.reason_too_long` | Please keep the reason under 300 characters. | කරුණාකර හේතුව අක්ෂර 300කට අඩුවෙන් තබන්න. | காரணத்தை 300 எழுத்துகளுக்குள் வையுங்கள். | | |
+| `Services.errors.stale` | Someone else changed this just now. It has been refreshed; please check and try again. | වෙනත් කෙනෙක් මේ දැන් මෙය වෙනස් කළා. එය යාවත්කාලීන කළා; කරුණාකර පරීක්ෂා කර නැවත උත්සාහ කරන්න. | வேறொருவர் இப்போதுதான் இதை மாற்றினார். அது புதுப்பிக்கப்பட்டது; சரிபார்த்து மீண்டும் முயலுங்கள். | | |
+| `Services.errors.leader_not_free` | A leader you chose is not free at that time. | ඔබ තෝරාගත් ආගමික නායකයෙකු එම වේලාවේ නිදහස් නැත. | நீங்கள் தேர்ந்தெடுத்த ஒரு சமயத் தலைவர் அந்த நேரத்தில் இல்லை. | | |
+| `Services.errors.try_again` | Someone is assigning that leader right now. Please try again in a moment. | එම නායකයා මේ මොහොතේ වෙනත් අයෙකු පවරමින් සිටී. කරුණාකර මොහොතකින් නැවත උත්සාහ කරන්න. | அந்தத் தலைவரை இப்போது வேறொருவர் நியமித்துக்கொண்டிருக்கிறார். சிறிது நேரத்தில் மீண்டும் முயலுங்கள். | | |
+| `Services.errors.already_assigned` | That leader is already assigned. | එම නායකයා දැනටමත් පවරා ඇත. | அந்தத் தலைவர் ஏற்கனவே நியமிக்கப்பட்டுள்ளார். | | |
+| `Services.errors.too_many_leaders` | This service needs no more leaders. | මෙම සේවාවට තවත් නායකයින් අවශ්‍ය නැත. | இந்தச் சேவைக்கு மேலும் தலைவர்கள் தேவையில்லை. | | |
+| `Services.errors.not_assigned` | That leader is not assigned to this appointment. | එම නායකයා මෙම සේවා වාරයට පවරා නැත. | அந்தத் தலைவர் இந்த நியமனத்துக்கு நியமிக்கப்படவில்லை. | | |
+| `Services.errors.leader_unavailable` | That leader is not on your roster, or is inactive. | එම නායකයා ඔබගේ ලැයිස්තුවේ නැත, නැතහොත් අක්‍රියයි. | அந்தத் தலைவர் உங்கள் பட்டியலில் இல்லை, அல்லது செயலில் இல்லை. | | |
+| `Services.errors.not_a_leader` | Your account is not on this institution's roster of leaders. | ඔබගේ ගිණුම මෙම ආයතනයේ ආගමික නායක ලැයිස්තුවේ නැත. | உங்கள் கணக்கு இந்த நிறுவனத்தின் சமயத் தலைவர் பட்டியலில் இல்லை. | | |
+| `Services.errors.service_name_taken` | You already offer a service with that name. | ඔබ දැනටමත් එම නමින් සේවාවක් ලබා දෙයි. | அந்தப் பெயரில் ஏற்கனவே ஒரு சேவையை வழங்குகிறீர்கள். | | |
+| `Services.errors.service_type_not_found` | We could not find this service. | මෙම සේවාව සොයාගත නොහැකි විය. | இந்தச் சேவையைக் கண்டறிய முடியவில்லை. | | |
+| `Services.errors.leader_not_found` | We could not find this leader. | මෙම නායකයා සොයාගත නොහැකි විය. | இந்தத் தலைவரைக் கண்டறிய முடியவில்லை. | | |
+| `Services.errors.time_off_not_found` | This leave is no longer recorded. | මෙම නිවාඩුව තවදුරටත් වාර්තා වී නැත. | இந்த விடுப்பு இனி பதிவில் இல்லை. | | |
+| `Services.errors.account_not_found` | No Sethika account has that phone number. The leader can sign up first, or be added without one. | එම දුරකථන අංකයට Sethika ගිණුමක් නැත. නායකයාට පළමුව ලියාපදිංචි විය හැක, නැතහොත් ගිණුමක් නොමැතිව එක් කළ හැක. | அந்தத் தொலைபேசி எண்ணுக்கு Sethika கணக்கு இல்லை. தலைவர் முதலில் பதிவுசெய்யலாம், அல்லது கணக்கின்றிச் சேர்க்கலாம். | | |
+| `Services.errors.account_already_linked` | That account is already linked to another leader on your roster. | එම ගිණුම ඔබගේ ලැයිස්තුවේ වෙනත් නායකයෙකුට දැනටමත් සම්බන්ධයි. | அந்தக் கணக்கு உங்கள் பட்டியலில் உள்ள வேறொரு தலைவருடன் ஏற்கனவே இணைக்கப்பட்டுள்ளது. | | |
+| `Services.errors.time_off_clashes` | The leader is assigned to a service in that time. Reassign it first, then add the leave. | එම කාලයේ නායකයා සේවාවකට පවරා ඇත. පළමුව එය වෙනත් අයෙකුට පවරා, ඉන්පසු නිවාඩුව එක් කරන්න. | அந்த நேரத்தில் தலைவர் ஒரு சேவைக்கு நியமிக்கப்பட்டுள்ளார். முதலில் அதை வேறொருவருக்கு நியமித்து, பின்னர் விடுப்பைச் சேருங்கள். | | |
+| `Services.errors.time_off_overlaps` | The leader already has leave in that time. | එම කාලයේ නායකයාට දැනටමත් නිවාඩු ඇත. | அந்த நேரத்தில் தலைவருக்கு ஏற்கனவே விடுப்பு உள்ளது. | | |
+| `Services.errors.invalid_view` | That list is not available. | එම ලැයිස්තුව ලබා ගත නොහැක. | அந்தப் பட்டியல் கிடைக்கவில்லை. | | |
+| `Services.offered.title` | Religious services | ආගමික සේවා | சமயச் சேவைகள் | | |
+| `Services.offered.intro` | Ask them to hold a service for you. They confirm each request and send their religious leaders. | ඔබ වෙනුවෙන් සේවාවක් පැවැත්වීමට ඉල්ලන්න. ඔවුන් සෑම ඉල්ලීමක්ම තහවුරු කර ආගමික නායකයින් එවයි. | உங்களுக்காக ஒரு சேவையை நடத்தக் கோருங்கள். ஒவ்வொரு கோரிக்கையையும் அவர்கள் உறுதிப்படுத்தி, சமயத் தலைவர்களை அனுப்புவார்கள். | | |
+| `Services.offered.about` | About {duration} | ආසන්න වශයෙන් {duration} | சுமார் {duration} | | |
+| `Services.offered.where.AtInstitution` | Held at the institution | ආයතනයේදී පවත්වයි | நிறுவனத்தில் நடைபெறும் | | |
+| `Services.offered.where.AtDonorPlace` | Held at your home | ඔබගේ නිවසේදී පවත්වයි | உங்கள் வீட்டில் நடைபெறும் | | |
+| `Services.offered.where.Either` | At the institution or at your home | ආයතනයේදී හෝ ඔබගේ නිවසේදී | நிறுவனத்தில் அல்லது உங்கள் வீட்டில் | | |
+| `Services.offered.advance` | {min, plural, =0 {Can be asked for the same day} one {Ask at least a day ahead} other {Ask at least # days ahead}} | {min, plural, =0 {එදිනම ඉල්ලිය හැක} one {අවම වශයෙන් දිනකට පෙර ඉල්ලන්න} other {අවම වශයෙන් දින #කට පෙර ඉල්ලන්න}} | {min, plural, =0 {அதே நாளிலும் கோரலாம்} one {குறைந்தது ஒரு நாள் முன்பே கோருங்கள்} other {குறைந்தது # நாட்கள் முன்பே கோருங்கள்}} | | |
+| `Services.offered.ask` | Ask for this service | මෙම සේවාව ඉල්ලන්න | இந்தச் சேவையைக் கோருங்கள் | | |
+| `Services.sheet.signInFirst` | Sign in to ask for this service. It takes a minute, and we will bring you straight back here. | මෙම සේවාව ඉල්ලීමට පුරනය වන්න. එයට විනාඩියක් ගත වේ, අපි ඔබව නැවත කෙළින්ම මෙහි ගෙන එන්නෙමු. | இந்தச் சேவையைக் கோர உள்நுழையுங்கள். ஒரு நிமிடம் ஆகும்; உங்களை நேராக இங்கே திரும்பக் கொண்டு வருவோம். | | |
+| `Services.sheet.institutionSession` | You are signed in for an institution. To ask as yourself, sign out and sign in again without choosing an institution. | ඔබ ආයතනයක් වෙනුවෙන් පුරනය වී ඇත. ඔබ ලෙසම ඉල්ලීමට, ඉවත් වී ආයතනයක් නොතෝරා නැවත පුරනය වන්න. | நீங்கள் ஒரு நிறுவனத்துக்காக உள்நுழைந்துள்ளீர்கள். நீங்களாகவே கோர, வெளியேறி, நிறுவனத்தைத் தேர்ந்தெடுக்காமல் மீண்டும் உள்நுழையுங்கள். | | |
+| `Services.sheet.notAllowed` | This account cannot ask for services. | මෙම ගිණුමට සේවා ඉල්ලිය නොහැක. | இந்தக் கணக்கால் சேவைகளைக் கோர முடியாது. | | |
+| `Services.sheet.date` | Which day? | කුමන දිනයද? | எந்த நாள்? | | |
+| `Services.sheet.dateHint` | The days they take requests for. | ඔවුන් ඉල්ලීම් භාර ගන්නා දින. | அவர்கள் கோரிக்கைகளை ஏற்கும் நாட்கள். | | |
+| `Services.sheet.dateRequired` | Please choose a day. | කරුණාකර දිනයක් තෝරන්න. | ஒரு நாளைத் தேர்ந்தெடுங்கள். | | |
+| `Services.sheet.notOffered` | Not open for requests | ඉල්ලීම් සඳහා විවෘත නැත | கோரிக்கைகளுக்குத் திறக்கப்படவில்லை | | |
+| `Services.sheet.time` | Starting at | ආරම්භක වේලාව | தொடங்கும் நேரம் | | |
+| `Services.sheet.timeHint` | It would end at about {end}. | එය ආසන්න වශයෙන් {end}ට අවසන් වේ. | இது சுமார் {end} மணிக்கு முடியும். | | |
+| `Services.sheet.where` | Where? | කොහේද? | எங்கே? | | |
+| `Services.sheet.atInstitution` | At {institution} | {institution} හිදී | {institution} இல் | | |
+| `Services.sheet.atHome` | At my home | මගේ නිවසේදී | என் வீட்டில் | | |
+| `Services.sheet.address` | Address | ලිපිනය | முகவரி | | |
+| `Services.sheet.addressHint` | Where the leaders should come. Only the institution sees it. | නායකයින් පැමිණිය යුතු ස්ථානය. එය පෙනෙන්නේ ආයතනයට පමණි. | தலைவர்கள் வர வேண்டிய இடம். நிறுவனம் மட்டுமே இதைப் பார்க்கும். | | |
+| `Services.sheet.addressRequired` | Please give the address. | කරුණාකර ලිපිනය දෙන්න. | முகவரியைத் தாருங்கள். | | |
+| `Services.sheet.occasion` | Occasion (optional) | අවස්ථාව (අත්‍යවශ්‍ය නොවේ) | நிகழ்வு (விருப்பத்தேர்வு) | | |
+| `Services.sheet.occasionHint` | A house-warming, an anniversary, a remembrance... | ගෘහ ප්‍රවේශයක්, සංවත්සරයක්, සිහිකිරීමක්... | புதுமனை புகுவிழா, ஆண்டு நிறைவு, நினைவு நாள்... | | |
+| `Services.sheet.note` | A note for them (optional) | ඔවුන්ට සටහනක් (අත්‍යවශ්‍ය නොවේ) | அவர்களுக்கு ஒரு குறிப்பு (விருப்பத்தேர்வு) | | |
+| `Services.sheet.noteHint` | Anything they should know. | ඔවුන් දැනගත යුතු ඕනෑම දෙයක්. | அவர்கள் அறிய வேண்டிய எதுவும். | | |
+| `Services.sheet.approvalNote` | They confirm each request and assign their leaders. We will text you their reply. | ඔවුන් සෑම ඉල්ලීමක්ම තහවුරු කර නායකයින් පවරයි. ඔවුන්ගේ පිළිතුර අපි ඔබට කෙටි පණිවිඩයකින් දන්වන්නෙමු. | ஒவ்வொரு கோரிக்கையையும் அவர்கள் உறுதிப்படுத்தி, தலைவர்களை நியமிப்பார்கள். அவர்களின் பதிலைக் குறுஞ்செய்தி மூலம் அறிவிப்போம். | | |
+| `Services.sheet.submit` | Send request | ඉල්ලීම යවන්න | கோரிக்கையை அனுப்புங்கள் | | |
+| `Services.sheet.done` | Request sent | ඉල්ලීම යැවුණා | கோரிக்கை அனுப்பப்பட்டது | | |
+| `Services.sheet.appointmentNo` | Your request number | ඔබගේ ඉල්ලීම් අංකය | உங்கள் கோரிக்கை எண் | | |
+| `Services.sheet.doneNext` | We will text you when they reply. | ඔවුන් පිළිතුරු දුන් විට අපි ඔබට කෙටි පණිවිඩයක් එවන්නෙමු. | அவர்கள் பதிலளித்ததும் குறுஞ்செய்தி அனுப்புவோம். | | |
+| `Services.sheet.seeMine` | See my service requests | මගේ සේවා ඉල්ලීම් බලන්න | என் சேவைக் கோரிக்கைகளைப் பாருங்கள் | | |
+| `Services.sheet.close` | Close | වසන්න | மூடு | | |
+| `Services.mine.title` | My service requests | මගේ සේවා ඉල්ලීම් | என் சேவைக் கோரிக்கைகள் | | |
+| `Services.mine.intro` | The religious services you have asked for, and those still to come. | ඔබ ඉල්ලූ ආගමික සේවා සහ තවම ඉදිරියට ඇති ඒවා. | நீங்கள் கோரிய சமயச் சேவைகளும் இனி வரவிருப்பவையும். | | |
+| `Services.mine.loadFailed` | Could not load your requests. | ඔබගේ ඉල්ලීම් පූරණය කළ නොහැකි විය. | உங்கள் கோரிக்கைகளை ஏற்ற முடியவில்லை. | | |
+| `Services.mine.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயலுங்கள் | | |
+| `Services.mine.none` | You have not asked for a religious service yet. | ඔබ තවම ආගමික සේවාවක් ඉල්ලා නැත. | நீங்கள் இன்னும் எந்தச் சமயச் சேவையையும் கோரவில்லை. | | |
+| `Services.mine.find` | Find a place | ස්ථානයක් සොයන්න | ஓர் இடத்தைக் கண்டறியுங்கள் | | |
+| `Services.mine.upcoming` | Coming up | ඉදිරියට | வரவிருப்பவை | | |
+| `Services.mine.noneUpcoming` | Nothing coming up. | ඉදිරියට කිසිවක් නැත. | வரவிருப்பவை எதுவும் இல்லை. | | |
+| `Services.mine.past` | Earlier | පෙර | முந்தையவை | | |
+| `Services.mine.when` | {days, plural, =0 {Today} =1 {Tomorrow} other {In # days}} | {days, plural, =0 {අද} =1 {හෙට} other {දින #කින්}} | {days, plural, =0 {இன்று} =1 {நாளை} other {# நாட்களில்}} | | |
+| `Services.mine.atHome` | At your home | ඔබගේ නිවසේදී | உங்கள் வீட்டில் | | |
+| `Services.mine.atInstitution` | At the institution | ආයතනයේදී | நிறுவனத்தில் | | |
+| `Services.mine.rejectedBecause` | Not accepted: {reason} | පිළිගත්තේ නැත: {reason} | ஏற்கப்படவில்லை: {reason} | | |
+| `Services.mine.cancelledBecause` | Cancelled: {reason} | අවලංගු කළා: {reason} | ரத்து செய்யப்பட்டது: {reason} | | |
+| `Services.mine.waiting` | Waiting for their reply. We will text you. | ඔවුන්ගේ පිළිතුර බලාපොරොත්තුවෙන්. අපි ඔබට කෙටි පණිවිඩයක් එවන්නෙමු. | அவர்களின் பதிலுக்காகக் காத்திருக்கிறது. குறுஞ்செய்தி அனுப்புவோம். | | |
+| `Services.mine.cancel` | Cancel request | ඉල්ලීම අවලංගු කරන්න | கோரிக்கையை ரத்து செய்யுங்கள் | | |
+| `Services.mine.cancelSheet.title` | Cancel this request? | මෙම ඉල්ලීම අවලංගු කරන්නද? | இந்தக் கோரிக்கையை ரத்து செய்யவா? | | |
+| `Services.mine.cancelSheet.description` | {appointmentNo}. The leaders will be told they are not needed. | {appointmentNo}. නායකයින්ට ඔවුන් අවශ්‍ය නොවන බව දන්වනු ලැබේ. | {appointmentNo}. தலைவர்களுக்கு அவர்கள் தேவையில்லை என்று அறிவிக்கப்படும். | | |
+| `Services.mine.cancelSheet.reason` | Reason (optional) | හේතුව (අත්‍යවශ්‍ය නොවේ) | காரணம் (விருப்பத்தேர்வு) | | |
+| `Services.mine.cancelSheet.reasonHint` | The institution will see it. | ආයතනයට එය පෙනෙනු ඇත. | நிறுவனம் இதைப் பார்க்கும். | | |
+| `Services.mine.cancelSheet.keep` | Keep request | ඉල්ලීම තබා ගන්න | கோரிக்கையை வைத்திருங்கள் | | |
+| `Services.mine.cancelSheet.confirm` | Cancel request | ඉල්ලීම අවලංගු කරන්න | கோரிக்கையை ரத்து செய்யுங்கள் | | |
+| `Services.mine.cancelSheet.done` | {appointmentNo} is cancelled. | {appointmentNo} අවලංගු කළා. | {appointmentNo} ரத்து செய்யப்பட்டது. | | |
+| `Services.types.title` | Religious services | ආගමික සේවා | சமயச் சேவைகள் | | |
+| `Services.types.intro` | The services you hold for donors: what each is called, how long it takes, how many leaders it needs and where it is held. Donors see the active ones on your page. | පරිත්‍යාගශීලීන් සඳහා ඔබ පවත්වන සේවා: එක් එක් සේවාවේ නම, ගත වන කාලය, අවශ්‍ය නායකයින් ගණන සහ පවත්වන ස්ථානය. ක්‍රියාකාරී ඒවා ඔබගේ පිටුවේ පෙනේ. | நன்கொடையாளர்களுக்காக நீங்கள் நடத்தும் சேவைகள்: ஒவ்வொன்றின் பெயர், எடுக்கும் நேரம், தேவையான தலைவர்கள், நடைபெறும் இடம். செயலில் உள்ளவை உங்கள் பக்கத்தில் தெரியும். | | |
+| `Services.types.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயலுங்கள் | | |
+| `Services.types.heading` | Services offered | ලබා දෙන සේවා | வழங்கப்படும் சேவைகள் | | |
+| `Services.types.add` | Add a service | සේවාවක් එක් කරන්න | ஒரு சேவையைச் சேருங்கள் | | |
+| `Services.types.none` | You offer no services yet. Add the first one, in your own words. | ඔබ තවම සේවා ලබා නොදේ. පළමු සේවාව ඔබගේම වචනවලින් එක් කරන්න. | நீங்கள் இன்னும் சேவைகளை வழங்கவில்லை. முதல் சேவையை உங்கள் சொந்த வார்த்தைகளில் சேருங்கள். | | |
+| `Services.types.inactive` | Not offered | ලබා නොදේ | வழங்கப்படவில்லை | | |
+| `Services.types.leaders` | {count, plural, one {# leader} other {# leaders}} | {count, plural, one {නායකයින් #} other {නායකයින් #}} | {count, plural, one {# தலைவர்} other {# தலைவர்கள்}} | | |
+| `Services.types.where.AtInstitution` | Held here | මෙහිදී පවත්වයි | இங்கே நடைபெறும் | | |
+| `Services.types.where.AtDonorPlace` | Held at the donor's home | පරිත්‍යාගශීලියාගේ නිවසේදී පවත්වයි | நன்கொடையாளரின் வீட்டில் நடைபெறும் | | |
+| `Services.types.where.Either` | Here or at the donor's home | මෙහිදී හෝ පරිත්‍යාගශීලියාගේ නිවසේදී | இங்கே அல்லது நன்கொடையாளரின் வீட்டில் | | |
+| `Services.types.travel` | {duration} travel each way | එක් පැත්තකට ගමනට {duration} | ஒரு வழிக்கு {duration} பயணம் | | |
+| `Services.types.window` | Asked for {min}–{max} days ahead | දින {min}–{max}කට පෙර ඉල්ලිය හැක | {min}–{max} நாட்கள் முன்பே கோரலாம் | | |
+| `Services.types.edit` | Edit | සංස්කරණය | திருத்துங்கள் | | |
+| `Services.types.deactivate` | Stop offering | ලබා දීම නවත්වන්න | வழங்குவதை நிறுத்துங்கள் | | |
+| `Services.types.activate` | Offer again | නැවත ලබා දෙන්න | மீண்டும் வழங்குங்கள் | | |
+| `Services.types.form.newTitle` | Add a service | සේවාවක් එක් කරන්න | ஒரு சேவையைச் சேருங்கள் | | |
+| `Services.types.form.editTitle` | Edit service | සේවාව සංස්කරණය | சேவையைத் திருத்துங்கள் | | |
+| `Services.types.form.description` | Donors see the name, how long it takes and where it is held. | පරිත්‍යාගශීලීන්ට නම, ගත වන කාලය සහ පවත්වන ස්ථානය පෙනේ. | நன்கொடையாளர்கள் பெயர், எடுக்கும் நேரம், நடைபெறும் இடம் ஆகியவற்றைப் பார்ப்பார்கள். | | |
+| `Services.types.form.name` | Name | නම | பெயர் | | |
+| `Services.types.form.nameHint` | As donors know it, in English. | පරිත්‍යාගශීලීන් දන්නා ලෙස, ඉංග්‍රීසියෙන්. | நன்கொடையாளர்கள் அறிந்தபடி, ஆங்கிலத்தில். | | |
+| `Services.types.form.nameTaken` | You already offer a service with that name. | ඔබ දැනටමත් එම නමින් සේවාවක් ලබා දෙයි. | அந்தப் பெயரில் ஏற்கனவே ஒரு சேவையை வழங்குகிறீர்கள். | | |
+| `Services.types.form.nameSi` | Name in Sinhala | සිංහල නම | சிங்களப் பெயர் | | |
+| `Services.types.form.nameTa` | Name in Tamil | දෙමළ නම | தமிழ்ப் பெயர் | | |
+| `Services.types.form.descriptionLabel` | Description (optional) | විස්තරය (අත්‍යවශ්‍ය නොවේ) | விவரம் (விருப்பத்தேர்வு) | | |
+| `Services.types.form.descriptionHint` | A line for donors: what it involves. | පරිත්‍යාගශීලීන් සඳහා පේළියක්: එයට අයත් දේ. | நன்கொடையாளர்களுக்கு ஒரு வரி: இதில் என்ன அடங்கும். | | |
+| `Services.types.form.duration` | How long it takes | ගත වන කාලය | எடுக்கும் நேரம் | | |
+| `Services.types.form.leadersRequired` | Leaders needed | අවශ්‍ය නායකයින් | தேவையான தலைவர்கள் | | |
+| `Services.types.form.leadersHint` | From 1 to 20. | 1 සිට 20 දක්වා. | 1 முதல் 20 வரை. | | |
+| `Services.types.form.where` | Where it is held | පවත්වන ස්ථානය | நடைபெறும் இடம் | | |
+| `Services.types.form.buffer` | Travel time each way | එක් පැත්තකට ගමන් කාලය | ஒரு வழிக்கான பயண நேரம் | | |
+| `Services.types.form.bufferHint` | Kept free before and after a visit to a donor's home, so leaders are not sent across town back to back. | පරිත්‍යාගශීලියෙකුගේ නිවසට යාමට පෙර හා පසු නිදහස්ව තබයි, එවිට නායකයින් නගරය හරහා එක දිගට යවනු නොලැබේ. | நன்கொடையாளரின் வீட்டுக்குச் செல்வதற்கு முன்னும் பின்னும் விடுபட்டிருக்கும்; தலைவர்கள் நகரம் முழுவதும் தொடர்ந்து அனுப்பப்பட மாட்டார்கள். | | |
+| `Services.types.form.noBuffer` | None | නැත | இல்லை | | |
+| `Services.types.form.minAdvance` | At least, days ahead | අවම වශයෙන්, දින කීයකට පෙර | குறைந்தது, எத்தனை நாட்கள் முன்பு | | |
+| `Services.types.form.minAdvanceHint` | 0 lets donors ask for the same day. | 0 නම් එදිනම ඉල්ලිය හැක. | 0 என்றால் அதே நாளிலும் கோரலாம். | | |
+| `Services.types.form.maxAdvance` | At most, days ahead | උපරිම වශයෙන්, දින කීයකට පෙර | அதிகபட்சம், எத்தனை நாட்கள் முன்பு | | |
+| `Services.types.form.maxAdvanceHint` | How far ahead donors may ask. | පරිත්‍යාගශීලීන්ට කොපමණ කලින් ඉල්ලිය හැකිද. | நன்கொடையாளர்கள் எவ்வளவு முன்பே கோரலாம். | | |
+| `Services.types.form.fixFields` | Please fix the fields marked above. | කරුණාකර ඉහත සලකුණු කළ ක්ෂේත්‍ර නිවැරදි කරන්න. | மேலே குறிக்கப்பட்ட புலங்களைத் திருத்துங்கள். | | |
+| `Services.types.form.cancel` | Cancel | අවලංගු කරන්න | ரத்துசெய் | | |
+| `Services.types.form.save` | Save | සුරකින්න | சேமி | | |
+| `Services.types.form.create` | Add service | සේවාව එක් කරන්න | சேவையைச் சேருங்கள் | | |
+| `Services.types.form.errors.name` | Please give a name of up to 100 characters. | කරුණාකර අක්ෂර 100ක් දක්වා නමක් දෙන්න. | 100 எழுத்துகள் வரையான ஒரு பெயரைத் தாருங்கள். | | |
+| `Services.types.form.errors.nameSi` | Please keep this under 100 characters. | කරුණාකර අක්ෂර 100කට අඩුවෙන් තබන්න. | இதை 100 எழுத்துகளுக்குள் வையுங்கள். | | |
+| `Services.types.form.errors.nameTa` | Please keep this under 100 characters. | කරුණාකර අක්ෂර 100කට අඩුවෙන් තබන්න. | இதை 100 எழுத்துகளுக்குள் வையுங்கள். | | |
+| `Services.types.form.errors.description` | Please keep this under 300 characters. | කරුණාකර අක්ෂර 300කට අඩුවෙන් තබන්න. | இதை 300 எழுத்துகளுக்குள் வையுங்கள். | | |
+| `Services.types.form.errors.durationMinutes` | Please choose a length from 15 minutes to 12 hours. | කරුණාකර විනාඩි 15 සිට පැය 12 දක්වා කාලයක් තෝරන්න. | 15 நிமிடங்கள் முதல் 12 மணி நேரம் வரை தேர்ந்தெடுங்கள். | | |
+| `Services.types.form.errors.bufferMinutes` | Please choose up to 3 hours. | කරුණාකර පැය 3ක් දක්වා තෝරන්න. | 3 மணி நேரம் வரை தேர்ந்தெடுங்கள். | | |
+| `Services.types.form.errors.leadersRequired` | Please enter a number from 1 to 20. | කරුණාකර 1 සිට 20 දක්වා අංකයක් දෙන්න. | 1 முதல் 20 வரையான ஓர் எண்ணைத் தாருங்கள். | | |
+| `Services.types.form.errors.locationMode` | Please choose where it is held. | කරුණාකර පවත්වන ස්ථානය තෝරන්න. | நடைபெறும் இடத்தைத் தேர்ந்தெடுங்கள். | | |
+| `Services.types.form.errors.minAdvanceDays` | Please enter 0 or more days. | කරුණාකර දින 0ක් හෝ වැඩියෙන් දෙන්න. | 0 அல்லது அதற்கு மேற்பட்ட நாட்களைத் தாருங்கள். | | |
+| `Services.types.form.errors.maxAdvanceDays` | Please enter a number no smaller than the first. | කරුණාකර පළමු අංකයට වඩා අඩු නොවන අංකයක් දෙන්න. | முதல் எண்ணைவிடக் குறையாத ஓர் எண்ணைத் தாருங்கள். | | |
+| `Services.leaders.title` | Religious leaders | ආගමික නායකයින් | சமயத் தலைவர்கள் | | |
+| `Services.leaders.intro` | The monks, priests, kurukkal and moulavis who lead your services: how to reach them, their usual week and their leave. A leader need not have an account. | ඔබගේ සේවා මෙහෙයවන හාමුදුරුවරු, පූජකවරු, කුරුක්කල්වරු සහ මවුලවිවරු: ඔවුන් සම්බන්ධ කර ගන්නා ආකාරය, සාමාන්‍ය සතිය සහ නිවාඩු. නායකයෙකුට ගිණුමක් අවශ්‍ය නැත. | உங்கள் சேவைகளை நடத்தும் பிக்குகள், குருமார்கள், குருக்கள்மார், மௌலவிகள்: அவர்களைத் தொடர்புகொள்ளும் வழி, வழக்கமான வாரம், விடுப்பு. தலைவருக்குக் கணக்கு தேவையில்லை. | | |
+| `Services.leaders.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயலுங்கள் | | |
+| `Services.leaders.stillHolds` | Still assigned to: {appointments}. Reassign these on the appointments screen. | තවමත් පවරා ඇත: {appointments}. සේවා වාර තිරයේ මේවා වෙනත් අයට පවරන්න. | இன்னும் நியமிக்கப்பட்டுள்ளது: {appointments}. நியமனங்கள் திரையில் இவற்றை வேறொருவருக்கு நியமியுங்கள். | | |
+| `Services.leaders.dismiss` | Got it | හරි | சரி | | |
+| `Services.leaders.heading` | Roster | ලැයිස්තුව | பட்டியல் | | |
+| `Services.leaders.add` | Add a leader | නායකයෙකු එක් කරන්න | ஒரு தலைவரைச் சேருங்கள் | | |
+| `Services.leaders.none` | No leaders on your roster yet. | ඔබගේ ලැයිස්තුවේ තවම නායකයින් නැත. | உங்கள் பட்டியலில் இன்னும் தலைவர்கள் இல்லை. | | |
+| `Services.leaders.offRoster` | Off the roster | ලැයිස්තුවෙන් ඉවත් | பட்டியலில் இல்லை | | |
+| `Services.leaders.noPhone` | No phone | දුරකථනයක් නැත | தொலைபேசி இல்லை | | |
+| `Services.leaders.language.si` | Sinhala | සිංහල | சிங்களம் | | |
+| `Services.leaders.language.ta` | Tamil | දෙමළ | தமிழ் | | |
+| `Services.leaders.language.en` | English | ඉංග්‍රීසි | ஆங்கிலம் | | |
+| `Services.leaders.signsIn` | Signs in | පුරනය වේ | உள்நுழைகிறார் | | |
+| `Services.leaders.noAccount` | No account | ගිණුමක් නැත | கணக்கு இல்லை | | |
+| `Services.leaders.noWeek` | No usual week recorded | සාමාන්‍ය සතියක් වාර්තා කර නැත | வழக்கமான வாரம் பதிவில் இல்லை | | |
+| `Services.leaders.edit` | Edit | සංස්කරණය | திருத்துங்கள் | | |
+| `Services.leaders.week` | Usual week | සාමාන්‍ය සතිය | வழக்கமான வாரம் | | |
+| `Services.leaders.deactivate` | Take off roster | ලැයිස්තුවෙන් ඉවත් කරන්න | பட்டியலிலிருந்து நீக்குங்கள் | | |
+| `Services.leaders.activate` | Put back on roster | නැවත ලැයිස්තුවට | மீண்டும் பட்டியலில் சேருங்கள் | | |
+| `Services.leaders.leaveHeading` | Leave | නිවාඩු | விடுப்பு | | |
+| `Services.leaders.addLeave` | Add leave | නිවාඩුවක් එක් කරන්න | விடுப்பைச் சேருங்கள் | | |
+| `Services.leaders.noLeave` | No leave coming up. | ඉදිරියට නිවාඩු නැත. | வரவிருக்கும் விடுப்பு இல்லை. | | |
+| `Services.leaders.removeLeave` | Remove | ඉවත් කරන්න | நீக்குங்கள் | | |
+| `Services.leaders.form.newTitle` | Add a leader | නායකයෙකු එක් කරන්න | ஒரு தலைவரைச் சேருங்கள் | | |
+| `Services.leaders.form.editTitle` | Edit leader | නායකයා සංස්කරණය | தலைவரைத் திருத்துங்கள் | | |
+| `Services.leaders.form.description` | Texts about their services go to this phone, in this language. | ඔවුන්ගේ සේවා පිළිබඳ කෙටි පණිවිඩ මෙම දුරකථනයට, මෙම භාෂාවෙන් යැවේ. | அவர்களின் சேவைகள் பற்றிய குறுஞ்செய்திகள் இந்தத் தொலைபேசிக்கு, இந்த மொழியில் அனுப்பப்படும். | | |
+| `Services.leaders.form.title` | Title | ගෞරව නාමය | பட்டம் | | |
+| `Services.leaders.form.titleHint` | Ven., Rev., Fr., Moulavi... | පූජ්‍ය, ගරු, පියතුමා, මවුලවි... | வண., அருட்திரு, அருட்தந்தை, மௌலவி... | | |
+| `Services.leaders.form.displayName` | Name | නම | பெயர் | | |
+| `Services.leaders.form.nameSi` | Name in Sinhala | සිංහල නම | சிங்களப் பெயர் | | |
+| `Services.leaders.form.nameTa` | Name in Tamil | දෙමළ නම | தமிழ்ப் பெயர் | | |
+| `Services.leaders.form.phone` | Phone (optional) | දුරකථනය (අත්‍යවශ්‍ය නොවේ) | தொலைபேசி (விருப்பத்தேர்வு) | | |
+| `Services.leaders.form.phoneHint` | Assignments and reminders are texted here. | පැවරීම් සහ සිහිකැඳවීම් මෙයට කෙටි පණිවිඩයෙන් යැවේ. | நியமனங்களும் நினைவூட்டல்களும் இங்கே குறுஞ்செய்தியாக அனுப்பப்படும். | | |
+| `Services.leaders.form.language` | Texts in | පණිවිඩ භාෂාව | குறுஞ்செய்தி மொழி | | |
+| `Services.leaders.form.languageHint` | If they sign in, their account's language is used instead. | ඔවුන් පුරනය වන්නේ නම්, ඔවුන්ගේ ගිණුමේ භාෂාව භාවිත වේ. | அவர்கள் உள்நுழைந்தால், அவர்களின் கணக்கின் மொழி பயன்படுத்தப்படும். | | |
+| `Services.leaders.form.linkAccount` | Signs in to Sethika | Sethika වෙත පුරනය වේ | Sethika-வில் உள்நுழைகிறார் | | |
+| `Services.leaders.form.linkAccountHint` | Links the account with this phone number, so they can answer from their own schedule. | මෙම දුරකථන අංකයේ ගිණුම සම්බන්ධ කරයි, එවිට ඔවුන්ට තමන්ගේම කාලසටහනෙන් පිළිතුරු දිය හැක. | இந்தத் தொலைபேசி எண்ணின் கணக்கை இணைக்கும்; அவர்கள் தங்கள் சொந்த அட்டவணையிலிருந்து பதிலளிக்கலாம். | | |
+| `Services.leaders.form.cancel` | Cancel | අවලංගු කරන්න | ரத்துசெய் | | |
+| `Services.leaders.form.save` | Save | සුරකින්න | சேமி | | |
+| `Services.leaders.form.create` | Add leader | නායකයා එක් කරන්න | தலைவரைச் சேருங்கள் | | |
+| `Services.leaders.form.errors.displayName` | Please give a name of up to 150 characters. | කරුණාකර අක්ෂර 150ක් දක්වා නමක් දෙන්න. | 150 எழுத்துகள் வரையான ஒரு பெயரைத் தாருங்கள். | | |
+| `Services.leaders.form.errors.nameSi` | Please keep this under 150 characters. | කරුණාකර අක්ෂර 150කට අඩුවෙන් තබන්න. | இதை 150 எழுத்துகளுக்குள் வையுங்கள். | | |
+| `Services.leaders.form.errors.nameTa` | Please keep this under 150 characters. | කරුණාකර අක්ෂර 150කට අඩුවෙන් තබන්න. | இதை 150 எழுத்துகளுக்குள் வையுங்கள். | | |
+| `Services.leaders.form.errors.title` | Please keep this under 40 characters. | කරුණාකර අක්ෂර 40කට අඩුවෙන් තබන්න. | இதை 40 எழுத்துகளுக்குள் வையுங்கள். | | |
+| `Services.leaders.form.errors.phone` | Please give a Sri Lankan mobile number; one is needed to link an account. | කරුණාකර ශ්‍රී ලංකා ජංගම අංකයක් දෙන්න; ගිණුමක් සම්බන්ධ කිරීමට එය අවශ්‍යයි. | இலங்கைக் கைபேசி எண்ணைத் தாருங்கள்; கணக்கை இணைக்க அது தேவை. | | |
+| `Services.leaders.form.errors.language` | Please choose a language. | කරුණාකර භාෂාවක් තෝරන්න. | ஒரு மொழியைத் தேர்ந்தெடுங்கள். | | |
+| `Services.leaders.weekSheet.title` | {leader}: usual week | {leader}: සාමාන්‍ය සතිය | {leader}: வழக்கமான வாரம் | | |
+| `Services.leaders.weekSheet.description` | When they are normally available. Only a guide when assigning: it never stops an assignment. | ඔවුන් සාමාන්‍යයෙන් නිදහස් වේලාවන්. පැවරීමේදී මඟපෙන්වීමක් පමණි: එය කිසි විටෙක පැවරීමක් නවත්වන්නේ නැත. | அவர்கள் வழக்கமாகக் கிடைக்கும் நேரங்கள். நியமிக்கும்போது ஒரு வழிகாட்டல் மட்டுமே: இது ஒருபோதும் நியமனத்தைத் தடுக்காது. | | |
+| `Services.leaders.weekSheet.none` | No times recorded. | වේලාවන් වාර්තා කර නැත. | நேரங்கள் பதிவில் இல்லை. | | |
+| `Services.leaders.weekSheet.day` | Day | දිනය | நாள் | | |
+| `Services.leaders.weekSheet.from` | From | සිට | முதல் | | |
+| `Services.leaders.weekSheet.to` | To | දක්වා | வரை | | |
+| `Services.leaders.weekSheet.remove` | Remove this time | මෙම වේලාව ඉවත් කරන්න | இந்த நேரத்தை நீக்குங்கள் | | |
+| `Services.leaders.weekSheet.addSpan` | Add a time | වේලාවක් එක් කරන්න | ஒரு நேரத்தைச் சேருங்கள் | | |
+| `Services.leaders.weekSheet.invalid` | Each time must end after it starts, and two times on one day must not overlap. | සෑම වේලාවක්ම ආරම්භයට පසු අවසන් විය යුතු අතර, එකම දිනයේ වේලාවන් දෙකක් එකිනෙක ගැටිය නොයුතුය. | ஒவ்வொரு நேரமும் தொடங்கிய பின்னரே முடிய வேண்டும்; ஒரே நாளின் இரு நேரங்கள் ஒன்றின்மேல் ஒன்று வரக்கூடாது. | | |
+| `Services.leaders.weekSheet.cancel` | Cancel | අවලංගු කරන්න | ரத்துசெய் | | |
+| `Services.leaders.weekSheet.save` | Save week | සතිය සුරකින්න | வாரத்தைச் சேமி | | |
+| `Services.leaders.leaveSheet.title` | Add leave | නිවාඩුවක් එක් කරන්න | விடுப்பைச் சேருங்கள் | | |
+| `Services.leaders.leaveSheet.description` | The leader cannot be assigned during leave. At most 31 days at a time. | නිවාඩු කාලයේ නායකයා පැවරිය නොහැක. වරකට උපරිම දින 31කි. | விடுப்பின்போது தலைவரை நியமிக்க முடியாது. ஒரு முறைக்கு அதிகபட்சம் 31 நாட்கள். | | |
+| `Services.leaders.leaveSheet.leader` | Leader | නායකයා | தலைவர் | | |
+| `Services.leaders.leaveSheet.from` | From | සිට | முதல் | | |
+| `Services.leaders.leaveSheet.fromTime` | Time | වේලාව | நேரம் | | |
+| `Services.leaders.leaveSheet.to` | Until | දක්වා | வரை | | |
+| `Services.leaders.leaveSheet.toTime` | Time | වේලාව | நேரம் | | |
+| `Services.leaders.leaveSheet.invalidFrom` | Please choose a start on the quarter hour. | කරුණාකර විනාඩි 15 පරතරයක ආරම්භයක් තෝරන්න. | கால் மணி இடைவெளியில் ஒரு தொடக்கத்தைத் தேர்ந்தெடுங்கள். | | |
+| `Services.leaders.leaveSheet.invalidTo` | Please choose an end after the start, at most 31 days later, not already past. | කරුණාකර ආරම්භයට පසු, දින 31ක් ඇතුළත, තවම ගත නොවූ අවසානයක් තෝරන්න. | தொடக்கத்துக்குப் பின், 31 நாட்களுக்குள், இன்னும் கடந்துபோகாத ஒரு முடிவைத் தேர்ந்தெடுங்கள். | | |
+| `Services.leaders.leaveSheet.reason` | Reason (optional) | හේතුව (අත්‍යවශ්‍ය නොවේ) | காரணம் (விருப்பத்தேர்வு) | | |
+| `Services.leaders.leaveSheet.reasonHint` | Only your staff see it. | එය පෙනෙන්නේ ඔබගේ කාර්ය මණ්ඩලයට පමණි. | உங்கள் பணியாளர்கள் மட்டுமே இதைப் பார்ப்பார்கள். | | |
+| `Services.leaders.leaveSheet.cancel` | Cancel | අවලංගු කරන්න | ரத்துசெய் | | |
+| `Services.leaders.leaveSheet.add` | Add leave | නිවාඩුව එක් කරන්න | விடுப்பைச் சேருங்கள் | | |
+| `Services.agenda.title` | Service appointments | සේවා වාර | சேவை நியமனங்கள் | | |
+| `Services.agenda.intro` | Requests from donors, day by day: assign leaders to accept one, and follow their answers. | පරිත්‍යාගශීලීන්ගේ ඉල්ලීම්, දිනෙන් දින: ඉල්ලීමක් පිළිගැනීමට නායකයින් පවරා, ඔවුන්ගේ පිළිතුරු බලන්න. | நன்கொடையாளர்களின் கோரிக்கைகள், நாள்தோறும்: ஒன்றை ஏற்கத் தலைவர்களை நியமித்து, அவர்களின் பதில்களைப் பின்தொடருங்கள். | | |
+| `Services.agenda.viewLabel` | Show | පෙන්වන්න | காட்டு | | |
+| `Services.agenda.views.upcoming` | Coming up | ඉදිරියට | வரவிருப்பவை | | |
+| `Services.agenda.views.waiting` | Waiting for you | ඔබ බලාපොරොත්තුවෙන් | உங்களுக்காகக் காத்திருப்பவை | | |
+| `Services.agenda.views.needs-leaders` | Needs leaders | නායකයින් අවශ්‍යයි | தலைவர்கள் தேவை | | |
+| `Services.agenda.views.history` | Earlier | පෙර | முந்தையவை | | |
+| `Services.agenda.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயலுங்கள் | | |
+| `Services.agenda.empty.upcoming` | Nothing coming up. | ඉදිරියට කිසිවක් නැත. | வரவிருப்பவை எதுவும் இல்லை. | | |
+| `Services.agenda.empty.waiting` | No requests waiting. | බලාපොරොත්තුවෙන් ඉල්ලීම් නැත. | காத்திருக்கும் கோரிக்கைகள் இல்லை. | | |
+| `Services.agenda.empty.needs-leaders` | Every appointment has its leaders. | සෑම සේවා වාරයකටම නායකයින් ඇත. | ஒவ்வொரு நியமனத்துக்கும் தலைவர்கள் உள்ளனர். | | |
+| `Services.agenda.empty.history` | Nothing yet. | තවම කිසිවක් නැත. | இன்னும் எதுவும் இல்லை. | | |
+| `Services.agenda.assigned` | Leaders assigned to {appointmentNo}. | {appointmentNo} වෙත නායකයින් පැවරුවා. | {appointmentNo} க்குத் தலைவர்கள் நியமிக்கப்பட்டனர். | | |
+| `Services.agenda.needs` | {count, plural, one {Needs # more leader} other {Needs # more leaders}} | {count, plural, one {තවත් නායකයින් #ක් අවශ්‍යයි} other {තවත් නායකයින් #ක් අවශ්‍යයි}} | {count, plural, one {இன்னும் # தலைவர் தேவை} other {இன்னும் # தலைவர்கள் தேவை}} | | |
+| `Services.agenda.atDonor` | At the donor's home: {address} | පරිත්‍යාගශීලියාගේ නිවසේදී: {address} | நன்கொடையாளரின் வீட்டில்: {address} | | |
+| `Services.agenda.atInstitution` | Here, at the institution | මෙහිදී, ආයතනයේදී | இங்கே, நிறுவனத்தில் | | |
+| `Services.agenda.rejectedBecause` | Not accepted: {reason} | පිළිගත්තේ නැත: {reason} | ஏற்கப்படவில்லை: {reason} | | |
+| `Services.agenda.cancelledBecause` | Cancelled: {reason} | අවලංගු කළා: {reason} | ரத்து செய்யப்பட்டது: {reason} | | |
+| `Services.agenda.response.Pending` | Not answered yet | තවම පිළිතුරු දී නැත | இன்னும் பதில் இல்லை | | |
+| `Services.agenda.response.Accepted` | Accepted | පිළිගත්තා | ஏற்றுக்கொண்டார் | | |
+| `Services.agenda.response.Declined` | Declined | ප්‍රතික්ෂේප කළා | மறுத்தார் | | |
+| `Services.agenda.onBehalf` | answered for them | ඔවුන් වෙනුවෙන් පිළිතුරු දුන්නා | அவர் சார்பில் பதிலளிக்கப்பட்டது | | |
+| `Services.agenda.acceptFor` | Accept for them | ඔවුන් වෙනුවෙන් පිළිගන්න | அவர் சார்பில் ஏற்றுக்கொள்ளுங்கள் | | |
+| `Services.agenda.acceptedFor` | Accepted for {leader}. | {leader} වෙනුවෙන් පිළිගත්තා. | {leader} சார்பில் ஏற்றுக்கொள்ளப்பட்டது. | | |
+| `Services.agenda.declineFor` | Decline for them | ඔවුන් වෙනුවෙන් ප්‍රතික්ෂේප කරන්න | அவர் சார்பில் மறுங்கள் | | |
+| `Services.agenda.remove` | Remove | ඉවත් කරන්න | நீக்குங்கள் | | |
+| `Services.agenda.removed` | {leader} was taken off. | {leader} ඉවත් කළා. | {leader} நீக்கப்பட்டார். | | |
+| `Services.agenda.assignApprove` | Assign leaders and accept | නායකයින් පවරා පිළිගන්න | தலைவர்களை நியமித்து ஏற்றுக்கொள்ளுங்கள் | | |
+| `Services.agenda.assignMore` | Assign leaders | නායකයින් පවරන්න | தலைவர்களை நியமியுங்கள் | | |
+| `Services.agenda.reject` | Reject | ප්‍රතික්ෂේප කරන්න | நிராகரியுங்கள் | | |
+| `Services.agenda.complete` | Mark as held | පැවැත්වූ බව සලකුණු කරන්න | நடைபெற்றதாகக் குறியுங்கள் | | |
+| `Services.agenda.completed` | {appointmentNo} is marked as held. | {appointmentNo} පැවැත්වූ බව සලකුණු කළා. | {appointmentNo} நடைபெற்றதாகக் குறிக்கப்பட்டது. | | |
+| `Services.agenda.cancel` | Cancel | අවලංගු කරන්න | ரத்துசெய் | | |
+| `Services.agenda.assignSheet.title` | Assign leaders | නායකයින් පවරන්න | தலைவர்களை நியமியுங்கள் | | |
+| `Services.agenda.assignSheet.description` | {appointmentNo}. {count, plural, one {Choose # more leader.} other {Choose up to # leaders.}} Each is texted and asked to accept. | {appointmentNo}. {count, plural, one {තවත් නායකයින් #ක් තෝරන්න.} other {නායකයින් #ක් දක්වා තෝරන්න.}} එක් එක් අයට කෙටි පණිවිඩයක් යවා පිළිගැනීමට ඉල්ලනු ලැබේ. | {appointmentNo}. {count, plural, one {இன்னும் # தலைவரைத் தேர்ந்தெடுங்கள்.} other {# தலைவர்கள் வரை தேர்ந்தெடுங்கள்.}} ஒவ்வொருவருக்கும் குறுஞ்செய்தி அனுப்பி ஏற்கக் கேட்கப்படும். | | |
+| `Services.agenda.assignSheet.none` | No leaders on the roster yet. | ලැයිස්තුවේ තවම නායකයින් නැත. | பட்டியலில் இன்னும் தலைவர்கள் இல்லை. | | |
+| `Services.agenda.assignSheet.assigned` | Already assigned | දැනටමත් පවරා ඇත | ஏற்கனவே நியமிக்கப்பட்டுள்ளார் | | |
+| `Services.agenda.assignSheet.onLeave` | On leave then | එම කාලයේ නිවාඩුවේ | அப்போது விடுப்பில் | | |
+| `Services.agenda.assignSheet.elsewhere` | At another service then | එම කාලයේ වෙනත් සේවාවක | அப்போது வேறொரு சேவையில் | | |
+| `Services.agenda.assignSheet.outsideWeek` | Free, but outside their usual week | නිදහස්, නමුත් සාමාන්‍ය සතියෙන් පිටත | கிடைப்பார், ஆனால் வழக்கமான வாரத்துக்கு வெளியே | | |
+| `Services.agenda.assignSheet.free` | Free | නිදහස් | கிடைப்பார் | | |
+| `Services.agenda.assignSheet.cancel` | Cancel | අවලංගු කරන්න | ரத்துசெய் | | |
+| `Services.agenda.assignSheet.assign` | {count, plural, =0 {Assign} one {Assign # leader} other {Assign # leaders}} | {count, plural, =0 {පවරන්න} one {නායකයින් # පවරන්න} other {නායකයින් # පවරන්න}} | {count, plural, =0 {நியமியுங்கள்} one {# தலைவரை நியமியுங்கள்} other {# தலைவர்களை நியமியுங்கள்}} | | |
+| `Services.agenda.reasonSheet.reason` | Reason | හේතුව | காரணம் | | |
+| `Services.agenda.reasonSheet.reasonOptional` | Reason (optional) | හේතුව (අත්‍යවශ්‍ය නොවේ) | காரணம் (விருப்பத்தேர்வு) | | |
+| `Services.agenda.reasonSheet.reasonRequired` | Please give a reason. | කරුණාකර හේතුවක් දෙන්න. | காரணத்தைத் தாருங்கள். | | |
+| `Services.agenda.reasonSheet.keep` | Go back | ආපසු | திரும்பு | | |
+| `Services.agenda.reasonSheet.reject.title` | Reject this request? | මෙම ඉල්ලීම ප්‍රතික්ෂේප කරන්නද? | இந்தக் கோரிக்கையை நிராகரிக்கவா? | | |
+| `Services.agenda.reasonSheet.reject.description` | {appointmentNo}. The donor is texted, and sees your reason when they sign in. | {appointmentNo}. පරිත්‍යාගශීලියාට කෙටි පණිවිඩයක් යැවෙන අතර, පුරනය වූ විට ඔබගේ හේතුව පෙනේ. | {appointmentNo}. நன்கொடையாளருக்குக் குறுஞ்செய்தி அனுப்பப்படும்; உள்நுழையும்போது உங்கள் காரணத்தைப் பார்ப்பார். | | |
+| `Services.agenda.reasonSheet.reject.hint` | Written for the donor. | පරිත්‍යාගශීලියා සඳහා ලියන්න. | நன்கொடையாளருக்காக எழுதுங்கள். | | |
+| `Services.agenda.reasonSheet.reject.confirm` | Reject request | ඉල්ලීම ප්‍රතික්ෂේප කරන්න | கோரிக்கையை நிராகரியுங்கள் | | |
+| `Services.agenda.reasonSheet.reject.done` | {appointmentNo} was rejected. | {appointmentNo} ප්‍රතික්ෂේප කළා. | {appointmentNo} நிராகரிக்கப்பட்டது. | | |
+| `Services.agenda.reasonSheet.cancel.title` | Cancel this appointment? | මෙම සේවා වාරය අවලංගු කරන්නද? | இந்த நியமனத்தை ரத்து செய்யவா? | | |
+| `Services.agenda.reasonSheet.cancel.description` | {appointmentNo}. The donor and every leader still assigned are texted. | {appointmentNo}. පරිත්‍යාගශීලියාට සහ තවමත් පවරා ඇති සෑම නායකයෙකුටම කෙටි පණිවිඩ යැවේ. | {appointmentNo}. நன்கொடையாளருக்கும் இன்னும் நியமிக்கப்பட்டுள்ள ஒவ்வொரு தலைவருக்கும் குறுஞ்செய்தி அனுப்பப்படும். | | |
+| `Services.agenda.reasonSheet.cancel.hint` | Written for the donor. | පරිත්‍යාගශීලියා සඳහා ලියන්න. | நன்கொடையாளருக்காக எழுதுங்கள். | | |
+| `Services.agenda.reasonSheet.cancel.confirm` | Cancel appointment | සේවා වාරය අවලංගු කරන්න | நியமனத்தை ரத்து செய்யுங்கள் | | |
+| `Services.agenda.reasonSheet.cancel.done` | {appointmentNo} was cancelled. | {appointmentNo} අවලංගු කළා. | {appointmentNo} ரத்து செய்யப்பட்டது. | | |
+| `Services.agenda.reasonSheet.decline.title` | Decline for this leader? | මෙම නායකයා වෙනුවෙන් ප්‍රතික්ෂේප කරන්නද? | இந்தத் தலைவர் சார்பில் மறுக்கவா? | | |
+| `Services.agenda.reasonSheet.decline.description` | {leader} cannot come to {appointmentNo}. Their time is freed, and the appointment needs another leader. | {leader} ට {appointmentNo} වෙත පැමිණිය නොහැක. ඔවුන්ගේ කාලය නිදහස් වන අතර, සේවා වාරයට වෙනත් නායකයෙකු අවශ්‍ය වේ. | {leader} அவர்களால் {appointmentNo} க்கு வர இயலாது. அவர்களின் நேரம் விடுவிக்கப்படும்; நியமனத்துக்கு வேறொரு தலைவர் தேவைப்படும். | | |
+| `Services.agenda.reasonSheet.decline.hint` | For your own records. | ඔබගේම වාර්තා සඳහා. | உங்கள் சொந்தப் பதிவுக்காக. | | |
+| `Services.agenda.reasonSheet.decline.confirm` | Decline for them | ඔවුන් වෙනුවෙන් ප්‍රතික්ෂේප කරන්න | அவர் சார்பில் மறுங்கள் | | |
+| `Services.agenda.reasonSheet.decline.done` | The decline is recorded for {appointmentNo}. | {appointmentNo} සඳහා ප්‍රතික්ෂේපය වාර්තා කළා. | {appointmentNo} க்கான மறுப்பு பதிவுசெய்யப்பட்டது. | | |
+| `Services.schedule.title` | My schedule | මගේ කාලසටහන | என் அட்டவணை | | |
+| `Services.schedule.intro` | The services you are assigned to that are still to come. Please answer each, so the institution knows who is coming. | ඔබ පවරා ඇති, තවම ඉදිරියට ඇති සේවා. කවුරුන් පැමිණෙනවාදැයි ආයතනය දැන ගැනීමට, කරුණාකර එක් එක් එකට පිළිතුරු දෙන්න. | தாங்கள் நியமிக்கப்பட்டுள்ள, இனி வரவிருக்கும் சேவைகள். யார் வருகிறார்கள் என்று நிறுவனம் அறிய, ஒவ்வொன்றுக்கும் பதிலளியுங்கள். | | |
+| `Services.schedule.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயலுங்கள் | | |
+| `Services.schedule.none` | Nothing assigned to you yet. | ඔබට තවම කිසිවක් පවරා නැත. | தங்களுக்கு இன்னும் எதுவும் நியமிக்கப்படவில்லை. | | |
+| `Services.schedule.response.Pending` | Please answer | කරුණාකර පිළිතුරු දෙන්න | பதிலளியுங்கள் | | |
+| `Services.schedule.response.Accepted` | You accepted | පිළිගත්තා | ஏற்றுக்கொண்டீர்கள் | | |
+| `Services.schedule.atDonor` | At the donor's home: {address} | පරිත්‍යාගශීලියාගේ නිවසේදී: {address} | நன்கொடையாளரின் வீட்டில்: {address} | | |
+| `Services.schedule.atInstitution` | At the institution | ආයතනයේදී | நிறுவனத்தில் | | |
+| `Services.schedule.accept` | Accept | පිළිගන්න | ஏற்றுக்கொள்ளுங்கள் | | |
+| `Services.schedule.decline` | I cannot come | පැමිණිය නොහැක | வர இயலாது | | |
+| `Services.schedule.acceptedToast` | You accepted {appointmentNo}. | {appointmentNo} පිළිගත්තා. | {appointmentNo} ஏற்றுக்கொள்ளப்பட்டது. | | |
+| `Services.schedule.declinedToast` | The institution is told you cannot come to {appointmentNo}. | {appointmentNo} වෙත පැමිණිය නොහැකි බව ආයතනයට දැන්වුවා. | {appointmentNo} க்குத் தாங்கள் வர இயலாது என்று நிறுவனத்துக்கு அறிவிக்கப்பட்டது. | | |
+| `Services.schedule.declineSheet.title` | Cannot come? | පැමිණිය නොහැකිද? | வர இயலாதா? | | |
+| `Services.schedule.declineSheet.description` | {appointmentNo}. Your time is freed and the institution assigns someone else. | {appointmentNo}. ඔබගේ කාලය නිදහස් වන අතර ආයතනය වෙනත් අයෙකු පවරයි. | {appointmentNo}. தங்கள் நேரம் விடுவிக்கப்படும்; நிறுவனம் வேறொருவரை நியமிக்கும். | | |
+| `Services.schedule.declineSheet.reason` | Reason (optional) | හේතුව (අත්‍යවශ්‍ය නොවේ) | காரணம் (விருப்பத்தேர்வு) | | |
+| `Services.schedule.declineSheet.reasonHint` | The institution will see it. | ආයතනයට එය පෙනෙනු ඇත. | நிறுவனம் இதைப் பார்க்கும். | | |
+| `Services.schedule.declineSheet.keep` | Go back | ආපසු | திரும்பு | | |
+| `Services.schedule.declineSheet.confirm` | I cannot come | පැමිණිය නොහැක | வர இயலாது | | |
+| `Shell.groups.request` | Religious services | ආගමික සේවා | சமயச் சேவைகள் | | |
+| `Shell.groups.services` | Religious services | ආගමික සේවා | சமயச் சேவைகள் | | |
+| `Shell.items.myServices` | My service requests | මගේ සේවා ඉල්ලීම් | என் சேவைக் கோரிக்கைகள் | | |
+| `Shell.items.serviceTypes` | Services offered | ලබා දෙන සේවා | வழங்கப்படும் சேவைகள் | | |
+| `Shell.items.leaders` | Religious leaders | ආගමික නායකයින් | சமயத் தலைவர்கள் | | |
+| `Shell.items.appointments` | Service appointments | සේවා වාර | சேவை நியமனங்கள் | | |
+| `Shell.items.schedule` | My schedule | මගේ කාලසටහන | என் அட்டவணை | | |

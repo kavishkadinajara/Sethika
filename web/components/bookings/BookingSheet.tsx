@@ -3,20 +3,17 @@
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { FormError } from "@/components/auth/FormError";
-import { PersonalSwitch } from "@/components/shell/PersonalSwitch";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { CheckCircleIcon } from "@/components/ui/icons";
 import { Input, inputClasses } from "@/components/ui/input";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Spinner } from "@/components/ui/spinner";
 import { Link } from "@/i18n/navigation";
-import { useSession } from "@/lib/auth/useSession";
 import { book, type BookingFailure } from "@/lib/bookings/api";
 import { localName } from "@/lib/bookings/names";
 import type { BookingStatus, DayAvailability, FulfilmentMode, PublicInstitution, PublicMealSlot } from "@/lib/bookings/types";
-import { usePermissions } from "@/lib/permissions/usePermissions";
 import { cn } from "@/lib/utils";
+import { DonorSheetGate } from "./DonorSheetGate";
 import { useBookingError } from "./useBookingError";
 import { useWide } from "./useWide";
 import { useDates } from "./useDates";
@@ -85,45 +82,17 @@ export function BookingSheet({ institution, slot, day, onClose, onBooked, onTake
 /** Booking needs a donor's own session (plan 02, B1); say how to get one, and come back here. */
 function Gate({ institution, slot, date, children }: { institution: PublicInstitution; slot: PublicMealSlot; date: string; children: ReactNode }) {
   const t = useTranslations("Discover.sheet");
-  const session = useSession();
-  const { can, isLoading } = usePermissions();
-
-  if (session.status === "loading" || (session.status === "authenticated" && isLoading)) {
-    return (
-      <div className="flex justify-center py-12 text-brand">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (session.status !== "authenticated") {
-    const back = `/i/${institution.slug}?slot=${encodeURIComponent(slot.publicId)}&date=${date}`;
-    const next = `?next=${encodeURIComponent(back)}`;
-    return (
-      <SheetBody className="grid gap-4">
-        <p className="text-fg">{t("signInFirst")}</p>
-        <div className="flex flex-wrap gap-3">
-          <Button asChild>
-            <Link href={`/login${next}`}>{t("signIn")}</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href={`/signup${next}`}>{t("createAccount")}</Link>
-          </Button>
-        </div>
-      </SheetBody>
-    );
-  }
-
-  if (session.activeInstitution)
-    return (
-      <SheetBody className="text-fg">
-        <p>{t("institutionSession")}</p>
-        <PersonalSwitch className="mt-4" />
-      </SheetBody>
-    );
-  if (!can("MYBOOKINGS.BOOKINGS.CREATE")) return <SheetBody className="text-fg">{t("notAllowed")}</SheetBody>;
-
-  return <>{children}</>;
+  return (
+    <DonorSheetGate
+      back={`/i/${institution.slug}?slot=${encodeURIComponent(slot.publicId)}&date=${date}`}
+      permission="MYBOOKINGS.BOOKINGS.CREATE"
+      signInFirst={t("signInFirst")}
+      institutionSession={t("institutionSession")}
+      notAllowed={t("notAllowed")}
+    >
+      {children}
+    </DonorSheetGate>
+  );
 }
 
 function BookingForm({

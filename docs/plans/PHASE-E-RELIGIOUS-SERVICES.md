@@ -249,9 +249,16 @@ active service types, shown on `/i/{slug}` beside its meals.
       `AppointmentSmsHandler` and the texts in `AppointmentCancelledHandler` (V27); `AppointmentTexts`;
       `IUserTextMessages.SendToPhoneAsync` for leaders without an account; `AppointmentReminders` +
       `AppointmentReminderJob` at 18:00 Colombo (V35-V39). Tests: `AppointmentSmsTests` (9).
-- [ ] **8.9 Screens**: `/services/types`, `/services/leaders`, `/services/appointments` (agenda +
+- [x] **8.9 Screens**: `/services/types`, `/services/leaders`, `/services/appointments` (agenda +
       assign sheet), `/services/schedule`, the request sheet on `/i/[slug]`, `/services/mine`.
-      Playwright, desktop + 320 px, si/ta, `clipsSideways`. ~1 day
+      Playwright, desktop + 320 px, si/ta, `clipsSideways`. ~1 day. Built as: `ServicesOffered` +
+      `ServiceRequestSheet` on the institution page (`?service=` opens it; the sign-in gate shared
+      with the booking sheet as `DonorSheetGate`), `MyServices`, `ServiceTypesScreen`,
+      `LeadersScreen` (roster, usual week, leave), `AppointmentsScreen` (the four views, assign
+      sheet, reasons), `ScheduleScreen`; `web/lib/services` (API client, Colombo times, tested in
+      Vitest); `Services` messages in en/si/ta (in `docs/translations-to-review.md`); sidebar items
+      under Giving and the institution. Tests: `e2e/services/services.spec.ts` (5 scenarios, 3 also
+      at 320 px; the si/ta screens and the request form checked for clipping).
 - [ ] **8.10 Done**: §9, `docs/DECISIONS.md` (V1-V15 summary, the cut list), the PR.
 
 About **4.75 days** estimated. Order: 8.1 → 8.2 → 8.3 → **8.6 first among the APIs** (the report's

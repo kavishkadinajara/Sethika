@@ -26,6 +26,12 @@ describe("visible menu", () => {
     expect(keys(visibleNav(donor))).toEqual(["dashboard[]", "giving[find,myBookings,apply]"]);
   });
 
+  it("gives a donor who may ask for services their requests, in a group of its own", () => {
+    const donor = holding("MYBOOKINGS.BOOKINGS.VIEW", "MYSERVICES.APPOINTMENTS.VIEW");
+    const giving = visibleNav(donor).find((s) => s.key === "giving");
+    expect(giving?.groups.map((g) => `${g.key}[${g.items.map((i) => i.key).join(",")}]`)).toEqual(["book[find,myBookings]", "request[myServices]"]);
+  });
+
   it("drops a link whose VIEW is missing, and a group left empty by that", () => {
     const noApplying = holding("MYBOOKINGS.BOOKINGS.VIEW");
     const giving = visibleNav(noApplying).find((s) => s.key === "giving");
@@ -35,6 +41,12 @@ describe("visible menu", () => {
   it("shows an institution's screens only for the VIEW actually held", () => {
     const staff = holding("BOOKINGS.CALENDAR.VIEW");
     expect(keys(visibleNav(staff))).toContain("institution[calendar]");
+  });
+
+  it("gives a leader only their schedule, and an owner the services without the schedule", () => {
+    expect(keys(visibleNav(holding("SERVICES.MYSCHEDULE.VIEW")))).toContain("institution[schedule]");
+    const owner = holding("SERVICES.APPOINTMENTS.VIEW", "SERVICES.TYPES.VIEW", "SERVICES.LEADERS.VIEW");
+    expect(keys(visibleNav(owner))).toContain("institution[appointments,serviceTypes,leaders]");
   });
 
   it("needs VIEW, not another action on the same screen", () => {

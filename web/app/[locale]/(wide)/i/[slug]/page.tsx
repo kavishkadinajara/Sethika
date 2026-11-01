@@ -16,7 +16,7 @@ export default function Page({ params }: PageProps<"/[locale]/i/[slug]">) {
   const messages = useMessages();
 
   return (
-    <NextIntlClientProvider messages={pickMessages(messages, [...sharedClientNamespaces, "Discover", "Booking"])}>
+    <NextIntlClientProvider messages={pickMessages(messages, [...sharedClientNamespaces, "Discover", "Booking", "Services"])}>
       {/* The page reads ?slot=&date= (a donor back from signing in), which needs a boundary. */}
       <Suspense
         fallback={

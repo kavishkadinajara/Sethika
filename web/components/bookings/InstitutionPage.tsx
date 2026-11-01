@@ -4,6 +4,7 @@ import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FormError } from "@/components/auth/FormError";
+import { ServicesOffered } from "@/components/services/ServicesOffered";
 import { textLink } from "@/components/auth/links";
 import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
@@ -188,6 +189,8 @@ export function InstitutionPage({ slug }: { slug: string }) {
           )}
         </>
       )}
+
+      <ServicesOffered institution={institution} />
     </div>
   );
 

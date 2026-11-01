@@ -1,3 +1,5 @@
+import type { PublicServiceType } from "@/lib/services/types";
+
 /*  The booking API's shapes (DonorBookingEndpoints.cs, InstitutionBookingEndpoints.cs), as JSON
     sends them. Dates are "yyyy-MM-dd" and times "HH:mm", both Colombo wall time; ids are the
     public ones (a slot's publicId, a booking's bookingNo), never the database's.               */
@@ -46,6 +48,8 @@ export type PublicInstitution = PublicInstitutionSummary & {
   latitude: number;
   longitude: number;
   slots: PublicMealSlot[];
+  /** Religious services it takes requests for; empty while its SERVICES module is off (V25, V26). */
+  services: PublicServiceType[];
 };
 
 /** Why a day cannot be booked (BookingErrors in the domain). */
