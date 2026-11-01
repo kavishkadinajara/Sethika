@@ -122,7 +122,7 @@ public sealed class HangfireJobsTests(SethikaTestDatabase database) : IAsyncLife
             using (var storage = host.Services.GetRequiredService<JobStorage>().GetConnection())
             {
                 var jobs = storage.GetRecurringJobs().OrderBy(j => j.Id, StringComparer.Ordinal).ToList();
-                Assert.Equal(3, jobs.Count);
+                Assert.Equal(4, jobs.Count);
 
                 var services = jobs[0];
                 Assert.Equal((AppointmentReminderJob.RecurringJobId, "0 18 * * *", typeof(AppointmentReminderJob)), (services.Id, services.Cron, services.Job?.Type));
@@ -134,7 +134,13 @@ public sealed class HangfireJobsTests(SethikaTestDatabase database) : IAsyncLife
                 Assert.Equal(TimeSpan.FromHours(5.5), TimeZoneInfo.FindSystemTimeZoneById(reminders.TimeZoneId).BaseUtcOffset);
                 Assert.Equal(TimeSpan.FromHours(5.5), TimeZoneInfo.FindSystemTimeZoneById(services.TimeZoneId).BaseUtcOffset);
 
-                var outbox = jobs[2];
+                // 03:00 in Colombo (plan 06, G5), and triggered once as the host started.
+                var geo = jobs[2];
+                Assert.Equal((GeoIndexRebuildJob.RecurringJobId, "0 3 * * *", typeof(GeoIndexRebuildJob)), (geo.Id, geo.Cron, geo.Job?.Type));
+                Assert.Equal(TimeSpan.FromHours(5.5), TimeZoneInfo.FindSystemTimeZoneById(geo.TimeZoneId).BaseUtcOffset);
+                Assert.NotNull(geo.LastJobId);
+
+                var outbox = jobs[3];
                 Assert.Equal((OutboxJob.RecurringJobId, Cron.Minutely(), typeof(OutboxJob)), (outbox.Id, outbox.Cron, outbox.Job?.Type));
             }
 

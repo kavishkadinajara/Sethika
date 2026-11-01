@@ -54,6 +54,9 @@ public sealed class EndpointPolicyTests(SethikaTestDatabase database)
         "GET /api/institutions",
         "GET /api/institutions/{slug}",
         "GET /api/institutions/{slug}/availability",
+
+        // Searching across institutions (plan 06, G8): no account needed to look for a place to give.
+        "GET /api/search",
     ];
 
     private WebApplicationFactory<Program> Host() =>

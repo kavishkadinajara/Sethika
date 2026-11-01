@@ -1,7 +1,10 @@
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Sethika.Application.Abstractions;
 using Sethika.Domain.Bookings;
+using Sethika.Domain.Core;
+using Sethika.Domain.Institutions;
 
 namespace Sethika.Application.Bookings.Slots;
 
@@ -26,6 +29,9 @@ public sealed class SlotManagementHandler(ISethikaDbContext db, TimeProvider tim
 
     /// <summary>The longest block one request may add; a longer closure is several blocks.</summary>
     public const int MaxBlockDays = 366;
+
+    /// <summary>The outbox event of <see cref="SetListedAsync"/> changing the listing.</summary>
+    public const string ListingChangedEvent = "InstitutionListingChanged";
 
     /// <summary>The fulfilment a slot may offer: caterers are cut from plan 03 (§4).</summary>
     private static readonly string[] OfferableFulfilment = [FulfilmentMode.DonorBrings, FulfilmentMode.InstitutionPrepares];
@@ -240,10 +246,21 @@ public sealed class SlotManagementHandler(ISethikaDbContext db, TimeProvider tim
 
         if (institution.IsPubliclyListed != listed)
         {
-            // Not a permission, so no PermissionsVersion bump: only the list reads it.
+            // Not a permission, so no PermissionsVersion bump: only the list and the search read it.
+            var now = timeProvider.GetUtcNow().UtcDateTime;
             institution.IsPubliclyListed = listed;
-            institution.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
+            institution.UpdatedAt = now;
             institution.UpdatedBy = userId;
+
+            // The geo index follows from the outbox, in the same transaction as the change (plan 06, G5).
+            db.OutboxMessages.Add(new OutboxMessage
+            {
+                EventType = ListingChangedEvent,
+                AggregateType = nameof(Institution),
+                AggregateId = institution.InstitutionCode,
+                Payload = JsonSerializer.Serialize(new { institutionId, listed }),
+                OccurredAt = now,
+            });
 
             try
             {

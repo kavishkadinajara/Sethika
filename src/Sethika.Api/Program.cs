@@ -113,6 +113,7 @@ app.MapLegalEndpoints();
 app.MapMeEndpoints();
 app.MapInstitutionBookingEndpoints();
 app.MapDonorBookingEndpoints();
+app.MapSearchEndpoints();
 app.MapServiceSetupEndpoints();
 app.MapDonorAppointmentEndpoints();
 app.MapInstitutionAppointmentEndpoints();

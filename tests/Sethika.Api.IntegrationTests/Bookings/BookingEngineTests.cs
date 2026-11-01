@@ -29,7 +29,8 @@ namespace Sethika.Api.IntegrationTests.Bookings;
 /// separate connection: the callers' reads pass it, their conditional UPDATEs queue behind it, and
 /// <c>sys.dm_tran_locks</c> shows when all of them are waiting.</item>
 /// </list>
-/// The database runs without RCSI, so a plain exclusive lock would stop the readers as well.
+/// An update lock, not an exclusive one: it leaves the readers alone whether or not the database runs
+/// with READ_COMMITTED_SNAPSHOT (it does, as Azure SQL does).
 /// </remarks>
 [Collection(SethikaDatabaseCollection.Name)]
 public sealed class BookingEngineTests(SethikaTestDatabase database) : IAsyncLifetime

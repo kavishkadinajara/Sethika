@@ -56,6 +56,7 @@ public static class DependencyInjection
         services.AddScoped<BookingDecisionHandler>();
         services.AddScoped<SlotManagementHandler>();
         services.AddScoped<AvailabilityCalendar>();
+        services.AddScoped<AvailabilitySearch>();
         services.AddScoped<TodaysTable>();
         services.AddScoped<BookingReminders>();
         services.AddScoped<AssignLeadersHandler>();
@@ -70,6 +71,7 @@ public static class DependencyInjection
         services.AddScoped<IOutboxHandler, BookingSmsHandler>();
         services.AddScoped<IOutboxHandler, AppointmentCancelledHandler>();
         services.AddScoped<IOutboxHandler, AppointmentSmsHandler>();
+        services.AddScoped<IOutboxHandler, InstitutionGeoHandler>();
 
         return services;
     }

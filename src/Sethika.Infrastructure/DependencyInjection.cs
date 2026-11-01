@@ -79,6 +79,7 @@ public static class DependencyInjection
         services.AddScoped<IDonorAppointmentQueries, DonorAppointmentQueries>();
         services.AddScoped<IAppointmentQueries, AppointmentQueries>();
         services.AddScoped<IAppointmentNotificationQueries, AppointmentNotificationQueries>();
+        services.AddScoped<IDiscoveryQueries, DiscoveryQueries>();
 
         return services;
     }
@@ -127,6 +128,11 @@ public static class DependencyInjection
         // Leader assignment's lock (Phase E, V3), on the same store. Timings from LeaderLocks.
         services.AddOptions<LeaderLockOptions>().BindConfiguration(LeaderLockOptions.SectionName);
         services.AddSingleton<ILeaderLocks, RedisLeaderLocks>();
+
+        // The search's geo index (plan 06, G4). Scoped, not singleton: a rebuild reads SQL Server
+        // through the connection factory, which stamps the scope's session context.
+        services.AddOptions<GeoIndexOptions>().BindConfiguration(GeoIndexOptions.SectionName);
+        services.AddScoped<IInstitutionGeoIndex, RedisInstitutionGeoIndex>();
 
         return services;
     }
@@ -295,6 +301,7 @@ public static class DependencyInjection
         services.AddTransient<OutboxJob>();
         services.AddTransient<BookingReminderJob>();
         services.AddTransient<AppointmentReminderJob>();
+        services.AddTransient<GeoIndexRebuildJob>();
 
         var jobs = configuration.GetSection(JobsOptions.SectionName).Get<JobsOptions>() ?? new JobsOptions();
         if (!jobs.Enabled)
