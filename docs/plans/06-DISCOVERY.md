@@ -4,7 +4,7 @@ Branch: `rcsi-on` for now (RCSI first, then this phase on the same branch), cut 
 `phase-e-donor` at 10f870c (Phase E on `develop`).
 
 Status: **G1-G11 agreed by the user 2026-11-01. B.1 built and committed by the user (7954b8c,
-together with RCSI and the Phase E report draft). B.2 committed by the user (46dbc4f), B.3 (e75b479). B.4 built, not committed. B.5 not started.** Last updated 2026-11-01. Update this line and the §7 boxes whenever
+together with RCSI and the Phase E report draft). B.2 committed by the user (46dbc4f), B.3 (e75b479), B.4 (f11a7b0, 7104b7b). B.5 done: every check green, the pull request ready for the user. Phase B is finished.** Last updated 2026-11-01. Update this line and the §7 boxes whenever
 either changes; a fresh session trusts them.
 
 Decision numbers here are **G1, G2, …** (Geo / discovery). Plan 03 uses E1-E35 and Phase E V1-V39.
@@ -111,7 +111,7 @@ Proposal v3, "Cross-Institution Availability Search" and Phase B:
 - [x] **B.1 Search engine**: the batch availability query, the time-of-day rule, `GeoIndex`
       (Redis GEO + SQL fallback + spatial index), the rebuild job and the outbox handler,
       `GET /api/search`, the search log. Tests and mutations as §4. ~0.5 day
-      Built 2026-11-01, not committed: `MealTimes`, `GeoPoint` (Domain); `AvailabilitySearch`,
+      Built 2026-11-01: `MealTimes`, `GeoPoint` (Domain); `AvailabilitySearch`,
       `InstitutionGeoHandler`, the `InstitutionListingChanged` outbox message in `SetListedAsync`
       (Application); `DiscoveryQueries` (one batch, `core.IntList`), `RedisInstitutionGeoIndex`,
       `GeoIndexRebuildJob` (Infrastructure); `SearchEndpoints`. Tests: 11 domain
@@ -127,7 +127,7 @@ Proposal v3, "Cross-Institution Availability Search" and Phase B:
       logged), `/month` on `SearchEndpoints` with the filters read once for both. Tests: 4 month
       tests (each day's count equals a hand count and the day search's result count; filters and
       Redis down; days gone count none; refusals and no log row) and one rate-limit test for both
-      endpoints, which shared nothing before. `SearchEndpointsTests` 20/20.
+      endpoints, which shared nothing before. `SearchEndpointsTests` 20/20. Mutations 10/10 killed.
 - [x] **B.3 Public pages**: `/i/[slug]` on the server (G9), JSON-LD, `sitemap.xml`, `robots.txt`.
       ~0.25 day
       Built 2026-11-01: the page is a server component that reads the institution once per request
@@ -175,7 +175,12 @@ Proposal v3, "Cross-Institution Availability Search" and Phase B:
       box that clips it and itself fits (the map's layers). Mutations 30/30 killed (4 integration,
       7 vitest, 19 Playwright; controls survived); two survivors were equivalent (the map's
       "fitting" flag and a first fit to the island) and that code was removed.
-- [ ] **B.5 Done**: decisions into `docs/DECISIONS.md`, the report chapter, the full test runs, the PR.
+- [x] **B.5 Done**: decisions into `docs/DECISIONS.md`, the report chapter, the full test runs, the PR.
+      Done 2026-11-01: DECISIONS.md ("Discovery (Phase B)", D11 for RCSI, the plan row, the unseeded
+      si/ta names), `docs/report/PHASE-B.md`. Full `dotnet test` 1016/1016 (249 + 71 + 696, RCSI on),
+      full e2e 109/109, vitest 219/219, lint, tsc and `npm run build` clean (`/sitemap.xml` dynamic),
+      `dotnet format --verify-no-changes` clean, SqlPackage script against dev = 24 seed MERGEs only.
+      Mutations across the phase: 89/89 killed.
 
 **If time runs out, cut in this order:** the search log, the month view (G6; the list and the map
 stay), "search this area" (near me and districts stay). Never cut the SQL fallback or its tests.

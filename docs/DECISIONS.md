@@ -39,6 +39,7 @@ Decisions made while planning the project, with the reasoning behind each.
 | D8 | Transactional outbox | No lost SMS/events if the app crashes after commit |
 | D9 | Dynamic data masking on NIC/phone/email; PDPA consents with versioned legal texts | Privacy and legal proof |
 | D10 | CHECK constraints are always named, and never use `IN` or `BETWEEN`; masking functions are written with SQL Server's own spacing | Keeps `dotnet build` → SqlPackage publish a true no-op when nothing changed (see below) |
+| D11 | `READ_COMMITTED_SNAPSHOT` is on in every database (`<ReadCommittedSnapshot>` in the SQL project, 2026-11-01) | Azure SQL runs with it on. With it off locally, plain reads waited for writers, so a race that only shows when they stop waiting could not be found before production, and a read under a write could deadlock (seen on the admin institution list). Sethika's guarantees rest on conditional writes, keys, `UPDLOCK` and `RowVersion` rather than on a plain read waiting; the one test that relied on a read queueing now holds an `UPDLOCK` instead, and the 230 race-class tests passed with it on |
 
 ### D10 — keeping the dacpac deploy convergent
 DacFx compares its model against what SQL Server *stored*, so any expression the server rewrites on the
@@ -162,7 +163,7 @@ Full reasoning in `docs/plans/03-BOOKING.md` §2; choices made while building ar
 | C7 | `BookingNo` is platform-wide per year (`BK-2026-000123`), drawn inside the booking transaction | A rolled-back booking leaves a gap, as with registration numbers (B5) |
 | C8 | `booking.SlotInstances` has **no** RLS | See the exposure below |
 | C9 | `booking.MealSlots.PublicId` (UUID v7, unique) | A slot is addressed from the donor's side, and URLs never carry `Id` |
-| C10 | Discovery is a shared link `/i/{slug}` plus a plain `/institutions` list of `Active` and `IsPubliclyListed` institutions; both anonymous and rate-limited | Search, GEO and the map are Phase B. An institution is listed only once its Owner turns it on |
+| C10 | Discovery is a shared link `/i/{slug}` plus a plain `/institutions` list of `Active` and `IsPubliclyListed` institutions; both anonymous and rate-limited. **Superseded by Phase B:** the list became the search page `/find`, and `/institutions` redirects there (G11) | Search, GEO and the map are Phase B. An institution is listed only once its Owner turns it on |
 | C11 | SMS to the donor through the outbox, in their language, with `DedupKey`: received/confirmed, approved, rejected, cancelled, and a reminder at 18:00 Colombo the day before | The institution gets no SMS (cost); its calendar shows the waiting requests |
 | C12 / E32 | Sethika's own month grid (`BowlCalendar`), not FullCalendar | A CSS grid with Intl names and keyboard navigation did what was needed without a dependency |
 
@@ -177,6 +178,29 @@ says so.
 recurring bookings and the Memorial Dana Planner (Phase C); staff booking on behalf of a donor; the
 donor CRM (`InstitutionDonors`); a seasons screen (the rule is enforced, seasons have no UI); caterer
 fulfilment; SignalR live updates (Phase C); availability alerts; search, GEO and the map (Phase B).
+
+## Discovery (Phase B)
+
+Full reasoning in `docs/plans/06-DISCOVERY.md` §2 (G1-G11). All four promises of the proposal (its §0)
+are built; nothing on the cut order was cut.
+
+| # | Decision | Why |
+|---|----------|-----|
+| G1 | A search takes a date (Colombo), a time of day, an optional institution type, and where: near a point within 5, 10, 25 or 50 km, in a district, or anywhere. It answers the institutions with a slot that can be booked that day, nearest first (else by name), at most 100 | The proposal's question, word for word: "which institutions near Galle have a free lunch slot on 14 March?" |
+| G2 | The time of day comes from the slot's start time: morning before 10:30, midday until 15:00, evening after | Slots have no meal type, and dana times are fixed by custom; the boundaries live in one place (`MealTimes`) |
+| G3 | Where comes from the browser's location, the map's centre ("search this area") or a district; no geocoding. The browser's position is rounded to 3 decimals (about 100 m) before it is sent and is never stored | A geocoder is an outside service with its own terms, and district centre coordinates would be invented reference data |
+| G4, G5 | **SQL Server is the truth, the Redis GEO set is an index of it.** `GEORADIUS` (the local Redis is 3.2) or, when Redis is down or the key is missing, `Location.STDistance` under the existing spatial index only fetch candidates from a circle 2 % wider; SQL re-checks `Active` and listed, and one haversine (`GeoPoint.DistanceKmTo`) decides who is inside and in what order. The set is rebuilt at start and nightly (`MULTI/EXEC` of `DEL` + `GEOADD`) and kept current by an outbox handler on listing changes | Redis and SQL Server measure on different earths (a sphere and WGS 84, 0.12 % apart near Colombo): if each decided, the answer at the edge would depend on whether Redis was up. As with the booking lock (C2), Redis makes it fast and SQL makes it correct |
+| G6 | "One calendar": `GET /api/search/month` counts, for each day, the institutions a day search would answer | The proposal's calendar; it reuses G1's judgement for every day |
+| G7 | Every slot-day is judged by `MealSlotRules.Openings`, from one batch read for all candidates (`core.IntList`); results are not cached | The search, an institution's calendar and the booking engine cannot disagree, and a cached "free" would send donors to a full slot |
+| G8 | The search endpoints are anonymous and rate-limited per client, and answer only what the public page shows; each day search logs one row in `booking.AvailabilitySearches` with no user and no coordinates | Searching needs no account; the log is the demand signal for Phase D without knowing where a donor stood |
+| G9 | `/i/[slug]` renders on the server: the institution in the HTML, its metadata (canonical, `hreflang` en/si/ta, Open Graph), schema.org JSON-LD, a dynamic `sitemap.xml` and a `robots.txt` that keeps the signed-in screens out | Promise 1: a search engine reads HTML, not the API |
+| G10 | The map is Leaflet with OpenStreetMap tiles and our own numbered markers, loaded in the browser only | In the stack already; one package, no wrapper. Production would move to a tile provider |
+| G11 | The search page is `/find`: filters in the address (back undoes a filter; the phone's List/Map tab does not), list and map side by side on a wide screen, tabs on a phone; `/institutions` is a permanent redirect to it | One place to look; a search can be shared as a link |
+
+**Cut from Phase B, and the report says so:** geocoding typed place names, routes and directions;
+marker clustering (results are capped at 100); searching for religious services across institutions;
+availability alerts and the demand heat map (the search log is kept for them); a production tile
+provider.
 
 ## Religious services (Phase E)
 
@@ -216,6 +240,7 @@ the row is seeded as a visibly marked draft and listed here until someone confir
 | Reviewer checklist items | `12_OnboardingDrafts.sql` | `DRAFT` in every question | the platform's reviewers |
 | Religious service suggestions per institution type (name, duration, leaders needed) | not seeded (V4): each institution types its own | — | real institutions of each faith, if suggestions are ever added |
 | SMS texts for religious services (Sinhala and Tamil) | `11_NotifyTemplates.sql` | listed in `docs/translations-to-review.md` | a Sinhala and a Tamil reviewer |
+| Sinhala and Tamil names of districts and institution types | not seeded: `NameSi`/`NameTa` are `NULL`, so the search page shows the English name in every language | — | a Sinhala and a Tamil reviewer |
 
 The registration reject reasons in the same seed are Sethika's own review policy, not facts about
 institutions, and are not drafts. Every row is read from the tables at run time, so a confirmed list
@@ -239,4 +264,5 @@ tables above once the code exists and the choice has held.
 | `docs/plans/04-UI-SHELL.md` — the app shell, dashboards, access screens, staff invitations | `ui-ux-overhaul`, `access-hardening` | Merged into `develop` (PR #13, #14) |
 | `docs/plans/05-REDESIGN.md` — true-black dark theme, living sidebar, Day Ledger dashboards, every screen on the new base | `redesign` | Merged into `develop` (PR #31) on 2026-11-01 |
 | `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` — religious services, leader roster, conflict-free assignment | `phase-e-religious-services`, `phase-e-donor` | Done. 8.1-8.4 and 8.6 merged (PR #12); 8.5 and 8.7-8.10 (donor requests, assignment endpoints, texts and reminders, screens) pushed to `develop` on 2026-11-01 without a pull request, described in `docs/plans/PHASE-E-DELIVERY.md`; decisions summarised above under "Religious services (Phase E)" |
+| `docs/plans/06-DISCOVERY.md` — public institution pages, cross-institution search, Redis GEO, the month view and the map | `rcsi-on` (with `READ_COMMITTED_SNAPSHOT`, D11) | B.1-B.4 built and committed; decisions summarised above under "Discovery (Phase B)" |
 | `docs/plans/PHASE-F-MOBILE.md` — donor mobile app (Expo), mobile sessions, push notifications | `ccr-79f10240-uk4n3v`, `mobile-booking` | F.1-F.4 merged (PR #9, #11: scaffold, mobile sessions, browse and book, my bookings); phone walk-through owed; F.5 push notifications next (S8) |
