@@ -178,6 +178,32 @@ recurring bookings and the Memorial Dana Planner (Phase C); staff booking on beh
 donor CRM (`InstitutionDonors`); a seasons screen (the rule is enforced, seasons have no UI); caterer
 fulfilment; SignalR live updates (Phase C); availability alerts; search, GEO and the map (Phase B).
 
+## Religious services (Phase E)
+
+Full reasoning in `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` §2 (V1-V16) and §10 (V17-V39, decided
+while building). All six promises of proposal v3 (its §0a) are built; nothing on the cut order was cut.
+
+| # | Decision | Why |
+|---|----------|-----|
+| V1, V21 | A leader is a person record (`org.ReligiousLeaders`) with an **optional** account, linked by phone number; an administrator can answer on their behalf | Many leaders (elderly monks, visiting clergy) never log in |
+| V2, V3 | **A leader can never be in two places at once:** every assignment and every leave period writes 15-minute rows to `booking.LeaderTimeBlocks`, whose primary key is `(LeaderId, BlockStart)`, so an overlap is a key violation (2627). A Redis lock `lock:leader:{id}`, taken in ascending id order, comes first; without Redis the key still holds | "No two intervals overlap" cannot be a constraint, "no two rows share a key" can. The database is the guarantee, as in C2; the fixed lock order means two admins cannot deadlock. The report sets it beside the booking engine as the second concurrency pattern (counted inventory vs interval overlap) |
+| V4 | Service types are typed by each institution; **no seeded suggestions per faith** | Which services a faith offers, and for how long, are facts nobody has confirmed (CLAUDE.md) |
+| V5, V7, V11, V28 | Times in UTC, shown in Asia/Colombo, on a 15-minute grid (05:00-21:00 offered); an at-home service adds the type's travel buffer to the blocks; the donor sends a Colombo date and start time | UTC+05:30 keeps the grid aligned in both; back-to-back home visits across town are refused |
+| V6, V32 | Appointment `Requested → Approved → Completed`, or `Rejected` / `Cancelled`; "needs leaders" is computed, not stored; the institution's agenda has four fixed views (upcoming, waiting, needs leaders, history) | No status that can disagree with its rows; an agenda answers "what needs me" and fits 320 px (no time grid, V10) |
+| V9, V16, V27 | RLS: appointments are `fn_TenantOrOwner` like bookings, the roster and blocks `fn_Tenant`. A donor's cancel frees the leaders' blocks through the outbox (platform session), and every `AppointmentCancelled` message does so idempotently | The donor's session cannot see the roster, and opening it would expose it. A stale block can only refuse an assignment, never allow a double one |
+| V12, V26 | Module `SERVICES` is on by default for the four religious institution types only; switched off, the page lists no services and requests are refused | Care homes have no religious leaders |
+| V13 | A donor may cancel until the end of the day before (Colombo) | The same rule as meals |
+| V17-V20, V22, V23 | Leave is at most 31 days, written from the current block on; leave over an appointment is refused naming it (`time_off_clashes`). Weekly hours only filter the picker (`null` = never recorded); taking a leader off the roster names their appointments and changes none | Weekly hours are a filter, not a guarantee, so last write wins; the institution decides what to do with a leader's appointments |
+| V30, V31, V33, V34 | Remove, respond, reject, cancel and complete take no lock (they only free time) but always write the appointment row, so two changes meet on `RowVersion` (409 `stale`). A leader answers from their own schedule, found through their roster row in the session's institution | A decline cannot slip past a cancellation; a loser frees nothing |
+| V14, V15, V35-V39 | SMS through the outbox: the donor on request, approval, rejection, cancellation and the reminder; a leader on assignment, removal, cancellation and the reminder while still expected. Reminders at 18:00 Colombo the day before, in their own Hangfire job, with `DedupKey`s | The institution gets no texts, as with bookings. A leader without a phone is skipped, not failed |
+| V25, V29 | Services ride on the existing public page (`GET /api/institutions/{slug}`); requests are limited to 10 per donor per hour | No new anonymous endpoint; each request takes a number from a platform-wide series |
+
+**Cut from Phase E, and the report says so** (its §6): searching for services across institutions
+and on the map; leaders shared by several institutions; assigning leaders to meal bookings; automatic
+assignment (the picker only filters); live SignalR updates; a time-grid calendar; per-faith seeded
+service types; a platform action to enable `SERVICES` for institutions approved before Phase E;
+inviting a leader to create an account from the roster.
+
 ## Unconfirmed reference data (seeded as drafts)
 CLAUDE.md forbids inventing facts about real institutions. Where the flow cannot run without a row,
 the row is seeded as a visibly marked draft and listed here until someone confirms or replaces it.
@@ -188,7 +214,8 @@ the row is seeded as a visibly marked draft and listed here until someone confir
 | Institution declaration | `09_LegalDocuments.sql` | `0.1-draft` in title and body | a legal reviewer |
 | Document types and the documents each institution type must upload | `12_OnboardingDrafts.sql` | `DRAFT` in every name and instruction | real institutions of each type |
 | Reviewer checklist items | `12_OnboardingDrafts.sql` | `DRAFT` in every question | the platform's reviewers |
-| Religious service suggestions per institution type (name, duration, leaders needed) — Phase E, not seeded yet | to be written | `DRAFT` in every name | real institutions of each faith |
+| Religious service suggestions per institution type (name, duration, leaders needed) | not seeded (V4): each institution types its own | — | real institutions of each faith, if suggestions are ever added |
+| SMS texts for religious services (Sinhala and Tamil) | `11_NotifyTemplates.sql` | listed in `docs/translations-to-review.md` | a Sinhala and a Tamil reviewer |
 
 The registration reject reasons in the same seed are Sethika's own review policy, not facts about
 institutions, and are not drafts. Every row is read from the tables at run time, so a confirmed list
@@ -209,5 +236,7 @@ tables above once the code exists and the choice has held.
 | `docs/plans/01-AUTH.md` — authentication, MFA step-up, i18n foundation, design system | `2-authentication-and-i18n-foundation` | Merged into `develop` (PR #4, #5); browser walk-throughs still owed — see its status line |
 | `docs/plans/02-ONBOARDING.md` — institution onboarding and approval, outbox processor | `3-institution-onboarding` | Merged into `develop` (PR #6, #7 Text.lk) on 2026-10-23 |
 | `docs/plans/03-BOOKING.md` — meal slots, the booking engine (Redis lock + conditional UPDATE + CHECKs), donor booking, reminders | `5-booking-engine` | 5.1-5.7 built (engine, institution and donor APIs, SMS and reminders, screens); decisions summarised above under "Booking (plan 03)", the rest in its §8 |
-| `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` — religious services, leader roster, conflict-free assignment | not cut yet | Designed (S4); build after the booking engine |
-| `docs/plans/PHASE-F-MOBILE.md` — donor mobile app (Expo), mobile sessions, push notifications | `ccr-79f10240-uk4n3v` | F.1–F.2 built (app scaffold, mobile sessions); phone walk-through owed; F.3+ follow the API (S8) |
+| `docs/plans/04-UI-SHELL.md` — the app shell, dashboards, access screens, staff invitations | `ui-ux-overhaul`, `access-hardening` | Merged into `develop` (PR #13, #14) |
+| `docs/plans/05-REDESIGN.md` — true-black dark theme, living sidebar, Day Ledger dashboards, every screen on the new base | `redesign` | Merged into `develop` (PR #31) on 2026-11-01 |
+| `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` — religious services, leader roster, conflict-free assignment | `phase-e-religious-services`, `phase-e-donor` | 8.1-8.4 and 8.6 merged (PR #12); 8.5 and 8.7-8.9 (donor requests, assignment endpoints, texts and reminders, screens) on `phase-e-donor`; decisions summarised above under "Religious services (Phase E)" |
+| `docs/plans/PHASE-F-MOBILE.md` — donor mobile app (Expo), mobile sessions, push notifications | `ccr-79f10240-uk4n3v`, `mobile-booking` | F.1-F.4 merged (PR #9, #11: scaffold, mobile sessions, browse and book, my bookings); phone walk-through owed; F.5 push notifications next (S8) |

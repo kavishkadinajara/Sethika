@@ -3,7 +3,7 @@
 Branch: `phase-e-religious-services`, cut on 2026-10-25 from `develop` at 59b10ab (plan 03 merged,
 PR #10).
 
-Status: **started 2026-10-25; §8 boxes show what is built.** Added to scope on 2026-10-23 after the
+Status: **built 2026-10-25 → 2026-11-01; all of §8 done, the PR into `develop` is the last step.** Added to scope on 2026-10-23 after the
 supervisor's feedback on the proposal: *"add a few more functions to the scope, like coordination of
 religious leaders and making appointments"*. Proposal v3 (`docs/proposal/Sethika_Project_Proposal.docx`)
 promises it as **Phase E**. It reuses the booking engine's patterns (Redis lock, a write the database
@@ -12,7 +12,7 @@ refuses when it would be wrong, outbox, number series).
 Deadline is about **2026-11-06** and the report needs the last week, so this plan aims at
 **~4 working days (2026-10-25 → 10-29)**. Plan 03 was estimated at 6.25 days and took three; this
 one is estimated the same way. If it runs over, the cut order is in §8.
-Last updated 2026-11-01 (8.1-8.8 built, on branch `phase-e-donor`, cut from `develop` at 3c74dc1; the full `dotnet test` runs once before the PR). Update this line and the §8 boxes whenever either changes. A fresh session
+Last updated 2026-11-01 (8.1-8.10 built; 8.5-8.10 on branch `phase-e-donor`, cut from `develop` at 3c74dc1; full `dotnet test` 973/973; e2e 87/92, the 5 shell failures fixed and that spec rerun 22/22). Update this line and the §8 boxes whenever either changes. A fresh session
 trusts them and will rebuild anything they claim is missing.
 
 The mobile app's F.3/F.4 (`docs/plans/PHASE-F-MOBILE.md`) are being built at the same time on the
@@ -227,7 +227,7 @@ active service types, shown on `/i/{slug}` beside its meals.
       endpoint); `POST /api/appointments`, `GET /api/appointments/mine`,
       `POST /api/appointments/{no}/cancel` on `MYSERVICES.APPOINTMENTS.*`; `SriLankaTime.ToUtc`
       (Colombo date + time to UTC); `APPOINTMENT` series (`APT`); `AppointmentCancelledHandler`
-      releases the blocks (V16, V27). Tests: `DonorAppointmentEndpointsTests` (19, real SQL and
+      releases the blocks (V16, V27). Tests: `DonorAppointmentEndpointsTests` (21, real SQL and
       Redis, the cancel race forced with `UPDLOCK`), `SriLankaTimeTests` (9).
 - [x] **8.6 Assign engine**: `ILeaderLocks` on the extracted Redis lease; `AssignLeadersHandler`.
       (Built without an HTTP endpoint, and **remove is not built**: only the domain's
@@ -259,7 +259,12 @@ active service types, shown on `/i/{slug}` beside its meals.
       Vitest); `Services` messages in en/si/ta (in `docs/translations-to-review.md`); sidebar items
       under Giving and the institution. Tests: `e2e/services/services.spec.ts` (5 scenarios, 3 also
       at 320 px; the si/ta screens and the request form checked for clipping).
-- [ ] **8.10 Done**: §9, `docs/DECISIONS.md` (V1-V15 summary, the cut list), the PR.
+- [x] **8.10 Done**: §9, `docs/DECISIONS.md` (V1-V15 summary, the cut list), the PR. Done as: full
+      `dotnet test` 973/973 (227 + 71 + 675); `dotnet format --verify-no-changes`, `npm run lint`,
+      `npm test` (196), `npm run build` clean; full e2e 87/92, the 5 failures the shell spec's donor
+      menu counting 4 items before "My service requests" (fixed; shell spec 22/22); a second
+      `SqlPackage /Action:Script` shows seed MERGEs only. `docs/DECISIONS.md` summarises V1-V39 with
+      the cut list (§6; nothing on the cut order was cut).
 
 About **4.75 days** estimated. Order: 8.1 → 8.2 → 8.3 → **8.6 first among the APIs** (the report's
 second concurrency pattern) → 8.4 → 8.5 → 8.7 → 8.8 → 8.9.
