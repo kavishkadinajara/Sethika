@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { hasLocale, NextIntlClientProvider, useMessages, useTranslations } from "next-intl";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { UsersScreen } from "@/components/admin/UsersScreen";
 import { pickMessages, sharedClientNamespaces } from "@/i18n/pick";
@@ -28,7 +29,10 @@ export default function Page({ params }: PageProps<"/[locale]/admin/users">) {
         <p className="max-w-3xl text-muted">{t("intro")}</p>
       </header>
       <AdminGate permission="PLATFORM.USERS.VIEW">
-        <UsersScreen />
+        {/* The list's filters, order and page are in the address; on a static page that waits for the browser. */}
+        <Suspense>
+          <UsersScreen />
+        </Suspense>
       </AdminGate>
     </NextIntlClientProvider>
   );

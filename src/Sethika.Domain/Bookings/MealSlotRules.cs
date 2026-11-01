@@ -50,8 +50,7 @@ public static class MealSlotRules
             return BookingErrors.NotOnThisDay;
         }
 
-        var ownSeasons = seasons.Where(s => s.MealSlotId == slot.Id).ToList();
-        if (ownSeasons.Count > 0 && !ownSeasons.Any(s => s.Covers(date)))
+        if (!InSeason(slot, seasons, date))
         {
             return BookingErrors.OutOfSeason;
         }
@@ -77,6 +76,26 @@ public static class MealSlotRules
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="slot"/> is laid on <paramref name="date"/> at all: active, on that
+    /// weekday, and inside one of its seasons if it has any. The day as the institution plans it,
+    /// before blocks, the advance window or the places left; today's table asks it (plan 05, R2).
+    /// </summary>
+    public static bool Serves(MealSlot slot, IEnumerable<MealSlotSeason> seasons, DateOnly date)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+        ArgumentNullException.ThrowIfNull(seasons);
+
+        return slot.IsActive && slot.RunsOn(date) && InSeason(slot, seasons, date);
+    }
+
+    /// <summary>A slot's own seasons cover <paramref name="date"/>; a slot with none runs all year.</summary>
+    private static bool InSeason(MealSlot slot, IEnumerable<MealSlotSeason> seasons, DateOnly date)
+    {
+        var own = seasons.Where(s => s.MealSlotId == slot.Id).ToList();
+        return own.Count == 0 || own.Any(s => s.Covers(date));
     }
 
     /// <summary>

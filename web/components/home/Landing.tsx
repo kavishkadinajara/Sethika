@@ -62,8 +62,10 @@ export function Landing() {
         <figure
           className={cn(
             "relative animate-rise overflow-hidden rounded-bowl p-6 text-ivory shadow-lift [animation-delay:80ms] motion-reduce:animate-none sm:p-8",
-            // A brand panel (DESIGN.md): Estate Green in both themes, a tonal gradient of its own green.
+            // A brand panel in light (a tonal gradient of Estate Green); in true-black dark (plan 05,
+            // R1) a surface with a hairline, so no green field sits on the black.
             "bg-[linear-gradient(150deg,#1f7356_0%,var(--color-estate)_45%,#0f3d2e_100%)]",
+            "dark:border dark:border-hairline dark:bg-surface dark:bg-none",
             "before:absolute before:-top-px before:left-6 before:h-[3px] before:w-14 before:rounded-b-full before:bg-accent sm:before:left-8",
           )}
         >

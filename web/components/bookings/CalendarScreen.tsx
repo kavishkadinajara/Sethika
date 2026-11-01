@@ -1,7 +1,8 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { FormError } from "@/components/auth/FormError";
 import { textLink } from "@/components/auth/links";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { addDays, colomboToday, firstOfMonth, lastOfMonth, monthOf } from "@/lib
 import { inLocale } from "@/lib/bookings/names";
 import type { CalendarBooking, Decision, SlotDay } from "@/lib/bookings/types";
 import { usePermissions } from "@/lib/permissions/usePermissions";
+import { markShellStale } from "@/lib/shell/summary";
 import { cn, focusRing } from "@/lib/utils";
 import { BookingStatusBadge } from "./BookingStatusBadge";
 import { Bowl } from "./Bowl";
@@ -25,6 +27,8 @@ import { useDates } from "./useDates";
 /** How far ahead the "to decide" tray looks: the API's widest read (§8, E19). */
 const TRAY_DAYS = 62;
 const MAX_REASON = 300;
+
+const isIsoDate = (value: string | null): value is string => value !== null && /^\d{4}-\d{2}-\d{2}$/.test(value);
 
 /**
  * The institution's calendar (plan 03, 5.7). Requests waiting for an answer come first, in a tray
@@ -38,8 +42,23 @@ export function CalendarScreen() {
   const dates = useDates();
   const today = colomboToday();
 
-  const [month, setMonth] = useState(monthOf(today));
-  const [selected, setSelected] = useState<string | null>(today);
+  // `?date=` opens on a day and `&booking=` marks one booking on it: the palette's jump (plan 05, X3).
+  const params = useSearchParams();
+  const asked = isIsoDate(params.get("date")) ? params.get("date") : null;
+  const focus = params.get("booking");
+
+  const [month, setMonth] = useState(monthOf(asked ?? today));
+  const [selected, setSelected] = useState<string | null>(asked ?? today);
+
+  // A jump made while the calendar is open changes the query, not the component: follow it.
+  const [followed, setFollowed] = useState(asked);
+  if (asked !== followed) {
+    setFollowed(asked);
+    if (asked) {
+      setMonth(monthOf(asked));
+      setSelected(asked);
+    }
+  }
   const [days, setDays] = useState<SlotDay[] | null>(null);
   const [waiting, setWaiting] = useState<SlotDay[] | null>(null);
   const [failure, setFailure] = useState<BookingFailure | null>(null);
@@ -67,10 +86,11 @@ export function CalendarScreen() {
     void loadWaiting();
   }, [loadWaiting]);
 
-  /** After any decision: both views may have changed. */
+  /** After any decision: both views may have changed, and so may the sidebar's count and table. */
   const reload = () => {
     void loadWaiting();
     void loadMonth(month);
+    markShellStale();
   };
 
   const onDate = (date: string) => days?.filter((d) => d.date === date) ?? [];
@@ -118,7 +138,7 @@ export function CalendarScreen() {
         </Card>
 
         <section aria-live="polite" className="grid gap-4">
-          {selected && <DayPanel date={selected} days={selectedDays} onDecided={reload} />}
+          {selected && <DayPanel date={selected} days={selectedDays} focus={focus} onDecided={reload} />}
         </section>
       </div>
     </div>
@@ -183,7 +203,7 @@ function Tray({ days, onDecided }: { days: SlotDay[] | null; onDecided: () => vo
   );
 }
 
-function DayPanel({ date, days, onDecided }: { date: string; days: SlotDay[]; onDecided: () => void }) {
+function DayPanel({ date, days, focus, onDecided }: { date: string; days: SlotDay[]; focus: string | null; onDecided: () => void }) {
   const t = useTranslations("Calendar");
   const locale = useLocale();
   const dates = useDates();
@@ -207,7 +227,7 @@ function DayPanel({ date, days, onDecided }: { date: string; days: SlotDay[]; on
             <ul className="grid gap-3">
               {day.bookings.map((booking) => (
                 <li key={booking.bookingNo}>
-                  <BookingItem day={day} booking={booking} onDecided={onDecided} />
+                  <BookingItem day={day} booking={booking} focused={booking.bookingNo === focus} onDecided={onDecided} />
                 </li>
               ))}
             </ul>
@@ -218,9 +238,29 @@ function DayPanel({ date, days, onDecided }: { date: string; days: SlotDay[]; on
   );
 }
 
-/** One booking, and the decisions its status and the caller's permissions allow. */
-function BookingItem({ day, booking, showWhen = false, onDecided }: { day: SlotDay; booking: CalendarBooking; showWhen?: boolean; onDecided: () => void }) {
+/**
+ * One booking, and the decisions its status and the caller's permissions allow. The dashboard's
+ * "Waiting for you" (plan 05, R4) uses it too, so a decision there is the calendar's own call.
+ * `focused` marks the booking a jump opened the calendar on, and brings it into view.
+ */
+export function BookingItem({
+  day,
+  booking,
+  showWhen = false,
+  focused = false,
+  onDecided,
+}: {
+  day: SlotDay;
+  booking: CalendarBooking;
+  showWhen?: boolean;
+  focused?: boolean;
+  onDecided: () => void;
+}) {
   const t = useTranslations("Calendar.booking");
+  const article = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (focused) article.current?.scrollIntoView({ block: "center" });
+  }, [focused]);
   const fulfilment = useTranslations("Booking.fulfilment");
   const locale = useLocale();
   const dates = useDates();
@@ -257,7 +297,11 @@ function BookingItem({ day, booking, showWhen = false, onDecided }: { day: SlotD
   }
 
   return (
-    <article className="grid gap-2 rounded-cup border border-hairline bg-surface p-4">
+    <article
+      ref={article}
+      aria-current={focused ? "true" : undefined}
+      className={cn("grid gap-2 rounded-cup border border-hairline bg-surface p-4", focused && "border-accent ring-2 ring-accent/60")}
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="grid min-w-0 gap-0.5">
           {showWhen && (

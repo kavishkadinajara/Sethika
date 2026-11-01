@@ -10,16 +10,19 @@ import {
 import type {
   Availability,
   BlockedDate,
+  BookingPlace,
   BookingRequest,
   BookingStatus,
   Decision,
   DonorBooking,
   InstitutionMealSlot,
+  LedgerEntry,
   Listing,
   MealSlotInput,
   PublicInstitution,
   PublicInstitutionSummary,
   SlotDay,
+  TodaysTable,
 } from "./types";
 
 /*  Typed calls to the booking API (plan 03, 5.5 and 5.4). The same `{ code, fields }` refusal as
@@ -115,6 +118,21 @@ export async function getCalendar(from: string, to: string, status?: BookingStat
   const query = new URLSearchParams({ from, to });
   if (status) query.set("status", status);
   return json(await send(`${INSTITUTION}/bookings?${query}`, { method: "GET" }));
+}
+
+/** Today's meals, booked or not, with the places taken and the requests to answer. */
+export async function getToday(): Promise<BookingResult<TodaysTable>> {
+  return json(await send(`${INSTITUTION}/today`, { method: "GET" }));
+}
+
+/** The latest ten changes of the institution's bookings, newest first. */
+export async function getLedger(): Promise<BookingResult<LedgerEntry[]>> {
+  return json(await send(`${INSTITUTION}/ledger`, { method: "GET" }));
+}
+
+/** A booking by its number, as typed: 404 `booking_not_found` when the institution has none by it. */
+export async function findBooking(bookingNo: string): Promise<BookingResult<BookingPlace>> {
+  return json(await send(`${INSTITUTION}/bookings/${encodeURIComponent(bookingNo.trim())}`, { method: "GET" }));
 }
 
 export async function decide(bookingNo: string, decision: Decision, reason?: string): Promise<BookingResult<{ status: BookingStatus }>> {

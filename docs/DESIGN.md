@@ -8,8 +8,9 @@ and every state can be seen at `/design`, `/si/design` and `/ta/design`.
 ## The base: warm and calm
 
 - Light: **Rice Ivory** canvas, **Deep Ink** text, **Estate Green** for actions, **Offering Gold**
-  sparingly. Dark: the same roles on a Deep Ink canvas (see below).
-- No grey anywhere: neutrals (`muted`, `line`, `hairline`, `subtle`) are tinted toward the green.
+  sparingly. Dark: a **true black** canvas, ivory text, **Offering Gold** for actions (see below).
+- No cool grey anywhere: neutrals (`muted`, `line`, `hairline`, `subtle`) are warm, tinted toward
+  the green in light and toward ivory in dark.
 - No gradients, no glass, no stock photos, no decorative illustrations in the UI chrome.
 - Faith-neutral: no religion's symbols, colours or vocabulary in shared UI (CLAUDE.md).
 
@@ -25,8 +26,14 @@ Sethika follows the device's light or dark setting by default. The `ThemeSwitche
   Each has a light and a dark value in `globals.css`, with measured contrast in its header.
 - The brand colours (`estate`, `gold`, `ink`, `ivory`) are fixed and are for places where the
   brand itself is the point, such as a panel that is Estate Green in both themes.
-- Dark is built on **Deep Ink** as the canvas; the greens lighten (the primary becomes a soft
-  mint with dark text) so they still read on it. Gold stays gold.
+- Dark is **true black** (plan 05, R1; the user, 2026-10-31: "no green, full black"). Canvas
+  `#000`, surfaces `#0C0C0C` and `#161616`, ivory text. **Offering Gold is the primary and the
+  brand colour** (filled actions, links, headings, the focus outline), with near-black text on it.
+  Green appears only as the success status. Depth is a faint light top edge plus a black shadow; a
+  green-tinted shadow reads as mud on black. A brand panel that is Estate Green in light becomes a
+  surface with a hairline in dark, never a green field on the black.
+- Measured on the dark canvas: text 18.6:1, muted 7.9, gold 9.5, input borders 3.7 (3.4 on a
+  surface), near-black on gold 8.9. The full table is in the header of `globals.css`.
 - Avoid `dark:`. If a token cannot express a difference, `dark:` works and honours the switcher
   (it is redefined in `globals.css`), but add a token first.
 
@@ -44,8 +51,9 @@ Sethika follows the device's light or dark setting by default. The `ThemeSwitche
 2. **The offering glow.** One focus style everywhere (`focusRing` in `lib/utils.ts`): an
    Estate Green outline carries the contrast, a soft gold halo carries the brand. Never
    remove it and never invent another.
-3. **Warm depth.** Elevation is a green-tinted shadow (`shadow-lift`), never grey. One level
-   only, for cards and toasts; sheets have their own.
+3. **Warm depth.** Elevation is a green-tinted shadow (`shadow-lift`) in light, never grey; in
+   dark, a faint light top edge and a black shadow. One level only, for cards and toasts; sheets
+   have their own.
 4. **Two voices.** Outfit does the work: every label, button and number. Fraunces italic is
    the human voice: the tagline, a brand eyebrow, later the gratitude wall and empty states.
    Never Fraunces on a control.
@@ -53,26 +61,61 @@ Sethika follows the device's light or dark setting by default. The `ThemeSwitche
 **The rim mark.** A short 3px line on the top edge, the bowl's rim. Gold on the one card that
 matters most on a screen; in the status colour on a toast. Never more than one gold rim per view.
 
-## The app shell (plan 04, 2026-10-25)
+## The app shell (plan 04, 2026-10-25; the living sidebar, plan 05, 2026-10-31)
 
 Every screen that is not a sign-in form sits in one shell (`components/shell/AppShell.tsx`):
 
-- **Top bar**: brand, who the session acts as (the context chip, which also switches between the
-  person's own account and their institutions), language, account menu. Signed out: the public
+- **Top bar**: brand, language, account menu; on phones, the menu button. Signed out: the public
   links instead.
-- **The rail**: a floating column of section icons, shaped like the bowl, with a flyout that opens
-  beside it on the section's modules (an accordion) and their screens. Below `lg` the same tree is
-  in a sheet from the left. The section and the link the user is on carry the gold rim.
-- **Full width.** The page uses the whole width beside the rail; lists add columns as the screen
+- **The living sidebar** (`Sidebar.tsx`, `lg` and up, 17 rem): from the top, the **institution
+  card** (initials in a bowl-shaped tile with the gold rim, the name; it is the context switcher),
+  **Jump to** (`Ctrl K` / `⌘K`, a combobox over the screens the person may view), **the menu**
+  (every link visible under its module's name; the link the user is on carries the rim on its
+  left edge), and **today's table** for those who read the calendar (each of today's meals as a
+  bowl that fills as sponsors take its places). A link may carry a **gold count badge**: requests
+  to answer, registrations waiting, invitations; zero shows nothing. The counts and the table are
+  read every minute while the tab is visible, on focus, and right after a decision on the screen.
+- **It folds** to a column of icons (kept per browser); folded, each control's name shows beside it
+  on hover and focus. Tooltips and menus are portalled, so nothing of the sidebar is trapped in its
+  own stacking context or scroll box. Below `lg` the same body opens in a sheet from the left.
+- **During a switch** the menu of the old context stays (dimmed, `aria-busy`) until the new one's
+  permissions arrive: the sidebar never blinks out.
+- **Full width.** The page uses the whole width beside the sidebar; lists add columns as the screen
   grows (`lg:grid-cols-2 2xl:grid-cols-3`), forms and paragraphs keep a readable width of their
   own (`max-w-3xl`, `max-w-prose`).
-- **Brand panels may carry a tonal gradient of their own green** (the rail, the dashboard's
-  greeting, the landing page's picture): Estate Green from a lighter to a darker shade, never a
-  second hue, never glass. This relaxes "no gradients" for these three places only.
+- **Brand panels may carry a tonal gradient of their own green** in light (the landing page's
+  picture): Estate Green from a lighter to a darker shade, never a second hue, never glass. In
+  dark they are plain surfaces (R1). The plan 04 rail and its panel are gone, and so is the
+  dashboard's greeting panel.
 - The menu is the RBAC catalogue's shape filtered by `.VIEW` permissions (`lib/shell/nav.ts`);
-  hiding a link is UX only.
+  hiding a link is UX only, and so is hiding a count: the API sends only the counts the caller's
+  permissions allow.
 - **Toasts sit top right, under the bar.** At the bottom they covered the save bars and primary
   buttons placed where the thumb reaches (found by the access e2e test on a 320 px phone).
+
+## The dashboard: the Day Ledger (plan 05, 2026-10-31)
+
+The signed-in home page reads like a ledger of the day, one for each kind of session
+(`components/home/*Day.tsx`):
+
+- **The frame.** A large date in Fraunces italic (the weekday over the day and month), and beside
+  it **one sentence that says what today needs**, composed from data by `lib/dashboard/sentence.ts`:
+  requests to answer first, then the next meal and the places still open; for a donor, their next
+  meal to give; for the platform, the review queue and its oldest. Never decoration: a number the
+  session may not see is never in it, and while its data loads it is a quiet placeholder.
+- **The panels** are bowl cards, each behind the permission of the screen it summarises; a panel
+  the session may not see is not drawn and its data is not asked for. Each title is a heading and
+  each panel a named region; a link at the right goes to the full screen.
+- **Today's table as a timeline**, 05:00 to 21:00: a bowl at each meal's time, as full as its
+  places, a gold dot where a request waits, a gold **now** needle. The line is a picture
+  (`aria-hidden`); the list under it says the same in words, in the sidebar's own phrases.
+- **The month, bowl by bowl**: a small grid of bowls, today ringed in gold, each day a link to that
+  day on the calendar.
+- **Ledger lines**: a time (or a short date, if not today) in a narrow tabular column, then a
+  sentence, then the number. No status chip: the sentence names the change, and a chip would read
+  as the booking's status now. Lists, not tables: they reflow on a phone.
+- A decision taken on the dashboard is the calendar's own control (`BookingItem`); afterwards the
+  sentence, the panels and the sidebar's counts all move together.
 
 ## Motion
 

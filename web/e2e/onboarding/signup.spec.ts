@@ -42,10 +42,14 @@ test("a new person signs up with a texted code and can then register an institut
   for (const box of await page.getByRole("checkbox").all()) await expect(box).toBeChecked();
   await page.getByRole("button", { name: "Create account" }).click();
 
-  // Signed in at once, and allowed to apply.
+  // Signed in at once, and allowed to apply: the sidebar's "Register an institution" section (in
+  // the menu sheet on a phone) leads there; the dashboard says only what today needs (plan 05, X3).
   await page.waitForURL((url) => !url.pathname.endsWith("/signup"));
   await page.goto("/");
-  await page.getByRole("link", { name: "Register an institution" }).click();
+  const small = (page.viewportSize()?.width ?? 1280) < 1024;
+  if (small) await page.getByRole("button", { name: "Open the menu" }).click();
+  const menu = small ? page.getByRole("dialog", { name: "Main menu" }) : page.getByRole("complementary", { name: "Sidebar" });
+  await menu.getByRole("link", { name: "My applications" }).click();
   await expect(page.getByText("You have not applied yet.")).toBeVisible();
   expect(await scrollsSideways(page)).toBe(false);
 });

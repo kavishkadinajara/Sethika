@@ -614,3 +614,151 @@ an edit sent without the role's version, and taking away an institution's only o
 | `Access.errors.changed_meanwhile` | Someone else changed this role while you were editing it. Reload the page to see their change, then make yours again. | ඔබ සංස්කරණය කරන අතරතුර වෙනත් අයෙක් මෙම භූමිකාව වෙනස් කළා. ඔවුන්ගේ වෙනස බැලීමට පිටුව නැවත පූරණය කර, ඔබේ වෙනස නැවත කරන්න. | நீங்கள் திருத்திக்கொண்டிருந்தபோது வேறொருவர் இந்தப் பங்கை மாற்றினார். அவர்களின் மாற்றத்தைக் காண பக்கத்தை மீண்டும் ஏற்றி, உங்கள் மாற்றத்தை மீண்டும் செய்யுங்கள். | | |
 | `Access.errors.invalid_version` | Reload the page, then make your change again. | පිටුව නැවත පූරණය කර, ඔබේ වෙනස නැවත කරන්න. | பக்கத்தை மீண்டும் ஏற்றி, உங்கள் மாற்றத்தை மீண்டும் செய்யுங்கள். | | |
 | `Access.errors.last_owner` | This is the institution's only owner. Make someone else an owner first. | මෙය ආයතනයේ එකම හිමිකරු ය. මුලින්ම වෙනත් අයෙකු හිමිකරුවෙකු කරන්න. | இது நிறுவனத்தின் ஒரே உரிமையாளர். முதலில் வேறொருவரை உரிமையாளராக்குங்கள். | | |
+
+## The living sidebar (2026-10-31, `Shell`, plan 05 X2)
+
+The new sidebar's words: folding it, the count beside a link, jump-to (`Ctrl K`), and today's
+table. Drafts, written by the developer; please check them.
+
+Questions for the reviewers:
+
+1. `අද දවසේ ආහාර වේල්` / `இன்றைய உணவு` for "Today's table" (the day's meals and how full each
+   is). Kept faith-neutral on purpose (`දානය` would read as Buddhist); does it read naturally?
+2. `වෙත යන්න` / `இதற்குச் செல்` as the name of a search box that takes you to a screen.
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `Shell.sidebar` | Sidebar | පැති තීරුව | பக்கப்பட்டி | | |
+| `Shell.fold` | Fold the sidebar | පැති තීරුව හකුළන්න | பக்கப்பட்டியைச் சுருக்கு | | |
+| `Shell.unfold` | Open the sidebar | පැති තීරුව විවෘත කරන්න | பக்கப்பட்டியைத் திற | | |
+| `Shell.badge` | # waiting | #ක් රැඳී සිටී | # காத்திருக்கிறது / காத்திருக்கின்றன | | |
+| `Shell.jump.title` | Jump to | වෙත යන්න | இதற்குச் செல் | | |
+| `Shell.jump.placeholder` | Type a screen's name | තිරයක නම ටයිප් කරන්න | ஒரு திரையின் பெயரைத் தட்டச்சு செய்யுங்கள் | | |
+| `Shell.jump.results` | Screens | තිර | திரைகள் | | |
+| `Shell.jump.count` | # screen(s) | තිර # | # திரை / திரைகள் | | |
+| `Shell.jump.nothing` | No screen matches “{query}”. | “{query}” ට ගැළපෙන තිරයක් නැත. | “{query}” உடன் பொருந்தும் திரை இல்லை. | | |
+| `Shell.jump.keys` | ↑ ↓ to move · Enter to open · Esc to close | ↑ ↓ ගමන් කිරීමට · Enter විවෘත කිරීමට · Esc වැසීමට | ↑ ↓ நகர · Enter திறக்க · Esc மூட | | |
+| `Shell.today.title` | Today's table | අද දවසේ ආහාර වේල් | இன்றைய உணவு | | |
+| `Shell.today.none` | No meals today. | අද ආහාර වේල් නැත. | இன்று உணவு வேளைகள் இல்லை. | | |
+| `Shell.today.places` | {booked} of {max} taken | {max} න් {booked}ක් වෙන් වී ඇත | {max} இல் {booked} பதிவாகியுள்ளன | | |
+| `Shell.today.full` | Every place taken | සියලු ස්ථාන වෙන් වී ඇත | எல்லா இடங்களும் பதிவாகிவிட்டன | | |
+| `Shell.today.closed` | Closed today | අද වසා ඇත | இன்று மூடப்பட்டுள்ளது | | |
+| `Shell.today.requested` | # to answer | පිළිතුරු දීමට # | # பதில் தேவை | | |
+
+## The Day Ledger dashboard (2026-10-31, `Dashboard`, `Shell.jump`, plan 05 X3)
+
+The new dashboard's words: the one sentence that says what today needs, the panels' titles, the
+ledger's lines, and jump-to opening a booking by its number. Drafts, written by the developer;
+please check them. `{…}` are filled in by the app: a meal's name, a place's name, a time, a date in
+words, or a number.
+
+Questions for the reviewers:
+
+1. `මාසය, බඳුනෙන් බඳුනට` / `மாதம், கிண்ணம் கிண்ணமாக` for "Month, bowl by bowl" (each day of the
+   month drawn as a bowl as full as its places). Does the picture carry over, or is a plain
+   "This month" better?
+2. `ලේඛනය` / `பதிவேடு` for "The ledger" (the latest changes of the bookings, newest first).
+3. The ledger's lines put the donor's name, the meal and the date into one sentence
+   (`{donor} ගේ {date} {meal} තහවුරු කළා.`). Do they read naturally with real names and dates?
+4. `ඔබ ආහාර දෙන ස්ථාන` / `நீங்கள் உணவு வழங்கும் இடங்கள்` for "Places you give to": kept
+   faith-neutral on purpose (`දන් දෙන` would read as Buddhist).
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `Dashboard.sentence.waitingAndNext` | {count, plural, one {# booking waits} other {# bookings wait}} for your answer, and next on the table is {meal} at {time}. | {count, plural, one {වෙන්කිරීම් #ක්} other {වෙන්කිරීම් #ක්}} ඔබේ පිළිතුර බලාපොරොත්තුවෙන්; මීළඟට {time} ට {meal}. | {count, plural, one {# முன்பதிவு உங்கள் பதிலுக்காகக் காத்திருக்கிறது} other {# முன்பதிவுகள் உங்கள் பதிலுக்காகக் காத்திருக்கின்றன}}; அடுத்தது {time} மணிக்கு {meal}. | | |
+| `Dashboard.sentence.waiting` | {count, plural, one {# booking waits} other {# bookings wait}} for your answer. | {count, plural, one {වෙන්කිරීම් #ක්} other {වෙන්කිරීම් #ක්}} ඔබේ පිළිතුර බලාපොරොත්තුවෙන්. | {count, plural, one {# முன்பதிவு உங்கள் பதிலுக்காகக் காத்திருக்கிறது.} other {# முன்பதிவுகள் உங்கள் பதிலுக்காகக் காத்திருக்கின்றன.}} | | |
+| `Dashboard.sentence.institutionPlain` | Everything you look after is in the menu. | ඔබ බලාගන්නා සියල්ල මෙනුවේ ඇත. | நீங்கள் கவனிக்கும் அனைத்தும் பட்டியலில் உள்ளன. | | |
+| `Dashboard.sentence.noMeals` | No meals are on the table today. | අද ආහාර වේල් නැත. | இன்று உணவு வேளைகள் இல்லை. | | |
+| `Dashboard.sentence.mealsOver` | Today's meals have all begun; the calendar holds what comes next. | අද දවසේ ආහාර වේල් සියල්ල ආරම්භ වී ඇත; ඊළඟට එන දේ දින දර්ශනයේ ඇත. | இன்றைய உணவு வேளைகள் அனைத்தும் தொடங்கிவிட்டன; அடுத்து வருவது நாட்காட்டியில் உள்ளது. | | |
+| `Dashboard.sentence.nextWithOpen` | Next on the table is {meal} at {time}, and {open, plural, one {# place is} other {# places are}} still open today. | මීළඟට {time} ට {meal}; අද තවම {open, plural, one {ස්ථාන #ක්} other {ස්ථාන #ක්}} විවෘතයි. | அடுத்தது {time} மணிக்கு {meal}; இன்று இன்னும் {open, plural, one {# இடம் திறந்துள்ளது} other {# இடங்கள் திறந்துள்ளன}}. | | |
+| `Dashboard.sentence.nextAllGiven` | Next on the table is {meal} at {time}, and every meal still to come has its sponsor. | මීළඟට {time} ට {meal}; ඉදිරියට ඇති සෑම ආහාර වේලකටම දායකයෙක් සිටී. | அடுத்தது {time} மணிக்கு {meal}; வரவிருக்கும் ஒவ்வொரு உணவு வேளைக்கும் ஒரு நன்கொடையாளர் உள்ளார். | | |
+| `Dashboard.sentence.donorPlain` | Find a place, and give a meal on a day that matters to you. | ස්ථානයක් සොයා, ඔබට වැදගත් දිනයක ආහාර වේලක් දෙන්න. | ஓர் இடத்தைக் கண்டறிந்து, உங்களுக்கு முக்கியமான ஒரு நாளில் உணவு வழங்குங்கள். | | |
+| `Dashboard.sentence.nothingBooked` | You have no meal booked yet. Find a place, and choose a day. | ඔබ තවම ආහාර වේලක් වෙන් කර නැත. ස්ථානයක් සොයා දිනයක් තෝරන්න. | நீங்கள் இன்னும் எந்த உணவு வேளையையும் முன்பதிவு செய்யவில்லை. ஓர் இடத்தைக் கண்டறிந்து ஒரு நாளைத் தேர்ந்தெடுங்கள். | | |
+| `Dashboard.sentence.givingToday` | Today you give {meal} at {place}, at {time}. | අද {time} ට ඔබ {place} හි {meal} දෙනවා. | இன்று {time} மணிக்கு {place} இல் நீங்கள் {meal} வழங்குகிறீர்கள். | | |
+| `Dashboard.sentence.givingTomorrow` | Tomorrow you give {meal} at {place}, at {time}. | හෙට {time} ට ඔබ {place} හි {meal} දෙනවා. | நாளை {time} மணிக்கு {place} இல் நீங்கள் {meal} வழங்குகிறீர்கள். | | |
+| `Dashboard.sentence.givingLater` | Your next meal to give is {meal} at {place}, on {date} at {time}. | ඔබේ මීළඟ ආහාර වේල: {date} {time} ට {place} හි {meal}. | நீங்கள் வழங்கும் அடுத்த உணவு: {date} {time} மணிக்கு {place} இல் {meal}. | | |
+| `Dashboard.sentence.askedToday` | Your meal today, {meal} at {place} at {time}, is still waiting for their answer. | අද {time} ට {place} හි ඔබේ {meal} තවම ඔවුන්ගේ පිළිතුර බලාපොරොත්තුවෙන්. | இன்று {time} மணிக்கு {place} இல் உங்கள் {meal} இன்னும் அவர்களின் பதிலுக்காகக் காத்திருக்கிறது. | | |
+| `Dashboard.sentence.askedTomorrow` | Your meal tomorrow, {meal} at {place} at {time}, is still waiting for their answer. | හෙට {time} ට {place} හි ඔබේ {meal} තවම ඔවුන්ගේ පිළිතුර බලාපොරොත්තුවෙන්. | நாளை {time} மணிக்கு {place} இல் உங்கள் {meal} இன்னும் அவர்களின் பதிலுக்காகக் காத்திருக்கிறது. | | |
+| `Dashboard.sentence.askedLater` | Your next meal, {meal} at {place} on {date}, is still waiting for their answer. | {date} {place} හි ඔබේ {meal} තවම ඔවුන්ගේ පිළිතුර බලාපොරොත්තුවෙන්. | {date} அன்று {place} இல் உங்கள் {meal} இன்னும் அவர்களின் பதிலுக்காகக் காத்திருக்கிறது. | | |
+| `Dashboard.sentence.platformPlain` | Every institution on Sethika, in one place. | Sethika හි සෑම ආයතනයක්ම, එක තැනක. | Sethika இல் உள்ள ஒவ்வொரு நிறுவனமும், ஒரே இடத்தில். | | |
+| `Dashboard.sentence.queueClear` | No registration is waiting for a review. | සමාලෝචනය සඳහා කිසිදු ලියාපදිංචියක් රැඳී නැත. | மதிப்பாய்வுக்காக எந்தப் பதிவும் காத்திருக்கவில்லை. | | |
+| `Dashboard.sentence.queue` | {count, plural, one {# registration waits} other {# registrations wait}} for a review; the oldest has waited {days, plural, =0 {since today} one {# day} other {# days}}. | {count, plural, one {ලියාපදිංචි #ක්} other {ලියාපදිංචි #ක්}} සමාලෝචනය බලාපොරොත්තුවෙන්; පැරණිතම එක {days, plural, =0 {අද සිට} one {දින #ක් සිට} other {දින #ක් සිට}} රැඳී සිටී. | {count, plural, one {# பதிவு மதிப்பாய்வுக்காகக் காத்திருக்கிறது} other {# பதிவுகள் மதிப்பாய்வுக்காகக் காத்திருக்கின்றன}}; பழையது {days, plural, =0 {இன்று முதல்} one {# நாளாக} other {# நாட்களாக}} காத்திருக்கிறது. | | |
+| `Dashboard.panels.today` | Today's table | අද දවසේ ආහාර වේල් | இன்றைய உணவு | | |
+| `Dashboard.panels.openDay` | Open today | අද දිනය විවෘත කරන්න | இன்றைத் திற | | |
+| `Dashboard.panels.waiting` | Waiting for you | ඔබ බලාපොරොත්තුවෙන් | உங்களுக்காகக் காத்திருப்பவை | | |
+| `Dashboard.panels.allWaiting` | All {count} on the calendar | දින දර්ශනයේ සියල්ල ({count}) | நாட்காட்டியில் அனைத்தும் ({count}) | | |
+| `Dashboard.panels.nothingWaiting` | Nothing is waiting for an answer. | පිළිතුරක් බලාපොරොත්තුවෙන් කිසිවක් නැත. | பதிலுக்காக எதுவும் காத்திருக்கவில்லை. | | |
+| `Dashboard.panels.ledger` | The ledger | ලේඛනය | பதிவேடு | | |
+| `Dashboard.panels.month` | Month, bowl by bowl | මාසය, බඳුනෙන් බඳුනට | மாதம், கிண்ணம் கிண்ணமாக | | |
+| `Dashboard.panels.openCalendar` | Open the calendar | දින දර්ශනය විවෘත කරන්න | நாட்காட்டியைத் திற | | |
+| `Dashboard.panels.stale` | Some of today's figures could not be read. | අද දවසේ සමහර තොරතුරු කියවිය නොහැකි විය. | இன்றைய சில விவரங்களைப் படிக்க முடியவில்லை. | | |
+| `Dashboard.panels.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயலுங்கள் | | |
+| `Dashboard.panels.yourTable` | Your table | ඔබේ ආහාර වේල් | உங்கள் உணவு வேளைகள் | | |
+| `Dashboard.panels.allBookings` | All my bookings | මගේ සියලු වෙන්කිරීම් | எனது அனைத்து முன்பதிவுகளும் | | |
+| `Dashboard.panels.nothingComing` | No meal to give yet. | තවම දීමට ආහාර වේලක් නැත. | வழங்க இன்னும் உணவு வேளை இல்லை. | | |
+| `Dashboard.panels.places` | Places you give to | ඔබ ආහාර දෙන ස්ථාන | நீங்கள் உணவு வழங்கும் இடங்கள் | | |
+| `Dashboard.panels.queue` | Waiting for a review | සමාලෝචනය බලාපොරොත්තුවෙන් | மதிப்பாய்வுக்காகக் காத்திருப்பவை | | |
+| `Dashboard.panels.allQueue` | All {count} in the queue | පෝලිමේ සියල්ල ({count}) | வரிசையில் அனைத்தும் ({count}) | | |
+| `Dashboard.panels.openQueue` | Open the queue | පෝලිම විවෘත කරන්න | வரிசையைத் திற | | |
+| `Dashboard.panels.queueClear` | The queue is clear. | පෝලිම හිස්ය. | வரிசை காலியாக உள்ளது. | | |
+| `Dashboard.panels.waited` | {days, plural, =0 {today} one {# day} other {# days}} | {days, plural, =0 {අද} one {දින #} other {දින #}} | {days, plural, =0 {இன்று} one {# நாள்} other {# நாட்கள்}} | | |
+| `Dashboard.panels.decisions` | Latest decisions | නවතම තීරණ | சமீபத்திய முடிவுகள் | | |
+| `Dashboard.panels.noDecisions` | No application has been decided yet. | තවම කිසිදු අයදුම්පතක් තීරණය කර නැත. | இன்னும் எந்த விண்ணப்பமும் முடிவு செய்யப்படவில்லை. | | |
+| `Dashboard.panels.institutions` | Institutions by status | තත්ත්වය අනුව ආයතන | நிலை வாரியாக நிறுவனங்கள் | | |
+| `Dashboard.panels.openInstitutions` | All institutions | සියලු ආයතන | அனைத்து நிறுவனங்களும் | | |
+| `Dashboard.timeline.now` | Now | දැන් | இப்போது | | |
+| `Dashboard.month.day` | {taken} of {places} places taken. | ස්ථාන {places} න් {taken}ක් වෙන් වී ඇත. | {places} இடங்களில் {taken} பதிவாகியுள்ளன. | | |
+| `Dashboard.month.waiting` | {count, plural, one {# request waits.} other {# requests wait.}} | {count, plural, one {ඉල්ලීම් #ක් රැඳී ඇත.} other {ඉල්ලීම් #ක් රැඳී ඇත.}} | {count, plural, one {# கோரிக்கை காத்திருக்கிறது.} other {# கோரிக்கைகள் காத்திருக்கின்றன.}} | | |
+| `Dashboard.month.nothing` | Nothing booked. | කිසිවක් වෙන් කර නැත. | எதுவும் பதிவு செய்யப்படவில்லை. | | |
+| `Dashboard.ledger.none` | No booking has changed yet. | තවම කිසිදු වෙන්කිරීමක් වෙනස් වී නැත. | இன்னும் எந்த முன்பதிவும் மாறவில்லை. | | |
+| `Dashboard.ledger.line.Requested` | {donor} booked {meal} for {date}. | {donor} {date} සඳහා {meal} වෙන් කළා. | {donor} {date} க்கு {meal} முன்பதிவு செய்தார். | | |
+| `Dashboard.ledger.line.Approved` | {donor}'s {meal} on {date} was confirmed. | {donor} ගේ {date} {meal} තහවුරු කළා. | {donor} இன் {date} {meal} உறுதி செய்யப்பட்டது. | | |
+| `Dashboard.ledger.line.Rejected` | {donor}'s {meal} on {date} was not accepted. | {donor} ගේ {date} {meal} පිළිගත්තේ නැත. | {donor} இன் {date} {meal} ஏற்கப்படவில்லை. | | |
+| `Dashboard.ledger.line.Cancelled` | {donor}'s {meal} on {date} was cancelled. | {donor} ගේ {date} {meal} අවලංගු කළා. | {donor} இன் {date} {meal} ரத்து செய்யப்பட்டது. | | |
+| `Dashboard.ledger.line.Completed` | {donor}'s {meal} on {date} was served. | {donor} ගේ {date} {meal} සපයා අවසන්. | {donor} இன் {date} {meal} வழங்கப்பட்டது. | | |
+| `Dashboard.ledger.line.NoShow` | {donor}'s {meal} on {date} did not happen. | {donor} ගේ {date} {meal} සිදු නොවීය. | {donor} இன் {date} {meal} நடைபெறவில்லை. | | |
+| `Dashboard.status.Onboarding` | Onboarding | ඇතුළත් වෙමින් | இணைகிறது | | |
+| `Dashboard.status.Active` | Active | ක්‍රියාත්මකයි | செயலில் | | |
+| `Dashboard.status.Suspended` | Suspended | අත්හිටුවා ඇත | இடைநிறுத்தப்பட்டது | | |
+| `Dashboard.status.Deactivated` | Deactivated | අක්‍රියයි | செயலிழக்கப்பட்டது | | |
+| `Dashboard.decision.Approved` | {name} was approved. | {name} අනුමත කළා. | {name} அங்கீகரிக்கப்பட்டது. | | |
+| `Dashboard.decision.Rejected` | {name} was not accepted. | {name} පිළිගත්තේ නැත. | {name} ஏற்கப்படவில்லை. | | |
+| `Shell.jump.booking` | Open booking {bookingNo} | {bookingNo} වෙන්කිරීම විවෘත කරන්න | {bookingNo} முன்பதிவைத் திற | | |
+| `Shell.jump.bookingHint` | On its day in the calendar | දින දර්ශනයේ එහි දිනයේ | நாட்காட்டியில் அதன் நாளில் | | |
+| `Shell.jump.bookingMissing` | This institution has no booking {bookingNo}. | මෙම ආයතනයට {bookingNo} වෙන්කිරීමක් නැත. | இந்த நிறுவனத்திடம் {bookingNo} முன்பதிவு இல்லை. | | |
+| `Shell.jump.bookingFailed` | The booking could not be looked up. Please try again. | වෙන්කිරීම සෙවිය නොහැකි විය. නැවත උත්සාහ කරන්න. | முன்பதிவைத் தேட முடியவில்லை. மீண்டும் முயலுங்கள். | | |
+
+## The platform lists' filters and pages (2026-11-01, `Admin`, `Errors`, plan 05 X4)
+
+The users and institutions lists now show a page at a time, with filters, an order and the page
+in the address; and a step-up that was closed says nothing changed. Drafts, written by the
+developer; please check them. `{from}–{to} of {total}` reads like "25–48 of 312".
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `Admin.list.all` | All | සියල්ල | அனைத்தும் | | |
+| `Admin.list.showing` | {from}–{to} of {total} | {total} න් {from}–{to} | {total} இல் {from}–{to} | | |
+| `Admin.list.noneOf` | None of {total} | {total} න් කිසිවක් නැත | {total} இல் எதுவும் இல்லை | | |
+| `Admin.list.pages` | Pages | පිටු | பக்கங்கள் | | |
+| `Admin.list.previous` | Previous | පෙර | முந்தையது | | |
+| `Admin.list.next` | Next | ඊළඟ | அடுத்தது | | |
+| `Admin.list.page` | Page {page} of {count} | {count} න් {page} වන පිටුව | {count} இல் பக்கம் {page} | | |
+| `Admin.users.kind` | Kind of account | ගිණුමේ වර්ගය | கணக்கின் வகை | | |
+| `Admin.users.statusLabel` | Status | තත්ත්වය | நிலை | | |
+| `Admin.users.sort` | Order | අනුපිළිවෙළ | வரிசை | | |
+| `Admin.users.sortNewest` | Newest first | නවතම මුලින් | புதியவை முதலில் | | |
+| `Admin.users.sortName` | By name | නම අනුව | பெயர் வாரியாக | | |
+| `Admin.institutions.statusLabel` | Status | තත්ත්වය | நிலை | | |
+| `Admin.institutions.type` | Type | වර්ගය | வகை | | |
+| `Admin.institutions.allTypes` | All types | සියලු වර්ග | அனைத்து வகைகளும் | | |
+| `Admin.institutions.district` | District | දිස්ත්‍රික්කය | மாவட்டம் | | |
+| `Admin.institutions.allDistricts` | All districts | සියලු දිස්ත්‍රික්ක | அனைத்து மாவட்டங்களும் | | |
+| `Admin.institutions.sort` | Order | අනුපිළිවෙළ | வரிசை | | |
+| `Admin.institutions.sortName` | By name | නම අනුව | பெயர் வாரியாக | | |
+| `Admin.institutions.sortNewest` | Newest first | නවතම මුලින් | புதியவை முதலில் | | |
+| `Admin.institutions.list` | Institutions | ආයතන | நிறுவனங்கள் | | |
+| `Errors.stepup_required` | Nothing was changed: the extra check was not finished. | කිසිවක් වෙනස් නොවීය: අමතර තහවුරු කිරීම අවසන් කළේ නැත. | எதுவும் மாற்றப்படவில்லை: கூடுதல் சரிபார்ப்பு முடிக்கப்படவில்லை. | | |
+| `Admin.users.institution` | Institution | ආයතනය | நிறுவனம் | | |
+| `Admin.users.institutionHint` | Its people: anyone holding a role there now | එහි අය: දැනට එහි භූමිකාවක් දරන ඕනෑම අයෙක් | அதன் நபர்கள்: தற்போது அங்கு ஒரு பங்கை வகிக்கும் எவரும் | | |
+| `Admin.users.institutionClear` | Every institution | සියලු ආයතන | அனைத்து நிறுவனங்களும் | | |
+| `Admin.users.institutionNone` | No institution matches. | කිසිදු ආයතනයක් ගැළපෙන්නේ නැත. | எந்த நிறுவனமும் பொருந்தவில்லை. | | |

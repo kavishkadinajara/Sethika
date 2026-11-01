@@ -52,7 +52,7 @@ test("a reviewer starts a review, judges the documents, answers the checklist an
 
   // The dashboard leads to the queue, where the new application waits.
   await page.goto("/");
-  await page.getByRole("main").getByRole("link", { name: /Registration requests/ }).click();
+  await page.getByRole("main").getByRole("link", { name: /in the queue$/ }).click();
   await expect(page.getByRole("heading", { name: "Institution applications" })).toBeVisible();
   const row = page.locator("li").filter({ hasText: requestNo });
   await expect(row.getByText("Submitted", { exact: true })).toBeVisible();

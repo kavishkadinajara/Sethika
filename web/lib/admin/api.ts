@@ -1,5 +1,7 @@
 import { empty, json, jsonBody, send, type OnboardingFailure, type OnboardingResult } from "@/lib/onboarding/api";
-import type { AdminInstitution, AdminUser, PlatformRole } from "./types";
+import type { Lookups } from "@/lib/onboarding/types";
+import { toApiQuery, type InstitutionQuery, type UserQuery } from "./list-query";
+import type { AdminInstitution, AdminPage, AdminUser, InstitutionStatusCount, PlatformRole, RegistrationDecision } from "./types";
 
 /*  Typed calls to the platform administration endpoints (plan 04, U4). Entering an institution
     is two steps (Y1a): this asks for a support ticket, behind a step-up that apiFetch handles,
@@ -11,16 +13,33 @@ export type AdminResult<T = void> = OnboardingResult<T>;
 const BASE = "/api/admin";
 const part = (value: string) => encodeURIComponent(value);
 
-export async function listInstitutions(search: string): Promise<AdminResult<AdminInstitution[]>> {
-  return json(await send(`${BASE}/institutions?search=${part(search)}`, { method: "GET" }));
+/** One page of the institutions the query picks (plan 05, X4). */
+export async function listInstitutions(query: InstitutionQuery): Promise<AdminResult<AdminPage<AdminInstitution>>> {
+  return json(await send(`${BASE}/institutions?${toApiQuery(query)}`, { method: "GET" }));
+}
+
+/** The names behind the type and district codes the institutions list filters by. */
+export async function getInstitutionLookups(language: string): Promise<AdminResult<Lookups>> {
+  return json(await send(`${BASE}/institutions/lookups?language=${part(language)}`, { method: "GET" }));
+}
+
+/** Every institution status with how many are in it: the platform dashboard (plan 05, R4). */
+export async function getInstitutionStatuses(): Promise<AdminResult<InstitutionStatusCount[]>> {
+  return json(await send(`${BASE}/institutions/statuses`, { method: "GET" }));
+}
+
+/** The latest ten approvals and rejections, newest first: the platform dashboard's ledger. */
+export async function listDecided(): Promise<AdminResult<RegistrationDecision[]>> {
+  return json(await send(`${BASE}/registrations/decided`, { method: "GET" }));
 }
 
 export async function requestSupport(slug: string): Promise<AdminResult> {
   return empty(await send(`${BASE}/institutions/${part(slug)}/support`, { method: "POST" }));
 }
 
-export async function listUsers(search: string): Promise<AdminResult<AdminUser[]>> {
-  return json(await send(`${BASE}/users?search=${part(search)}`, { method: "GET" }));
+/** One page of the accounts the query picks (plan 05, X4). */
+export async function listUsers(query: UserQuery): Promise<AdminResult<AdminPage<AdminUser>>> {
+  return json(await send(`${BASE}/users?${toApiQuery(query)}`, { method: "GET" }));
 }
 
 export async function createUser(input: { fullName: string; phone: string; language: string }): Promise<AdminResult<{ id: string }>> {

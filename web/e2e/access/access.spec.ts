@@ -94,8 +94,8 @@ test("an owner makes a role, invites someone into it, and they accept and find i
   await card.getByRole("button", { name: "Accept" }).click();
   await card.getByRole("button", { name: `Open ${institution.name}` }).click();
   await expect(helperPage.getByText(`Here is ${institution.name} at a glance.`)).toBeVisible();
-  await expect(helperPage.getByRole("main").getByRole("link", { name: /Booking calendar/ })).toBeVisible();
-  await expect(helperPage.getByRole("main").getByRole("link", { name: /Roles/ })).toHaveCount(0);
+  // The role reads the calendar, so the dashboard lays today's table (plan 05, R4).
+  await expect(helperPage.getByRole("main").getByRole("heading", { name: "Today's table" })).toBeVisible();
   await context.close();
 
   // The owner's staff list now has them, holding the new role.

@@ -14,6 +14,7 @@ using Sethika.Application.Bookings.Discovery;
 using Sethika.Application.Bookings.Engine;
 using Sethika.Application.Bookings.Notifications;
 using Sethika.Application.Bookings.Slots;
+using Sethika.Application.Bookings.Today;
 using Sethika.Application.Onboarding.Applying;
 using Sethika.Application.Onboarding.Approval;
 using Sethika.Application.Onboarding.Notifications;
@@ -55,6 +56,7 @@ public static class DependencyInjection
         services.AddScoped<BookingDecisionHandler>();
         services.AddScoped<SlotManagementHandler>();
         services.AddScoped<AvailabilityCalendar>();
+        services.AddScoped<TodaysTable>();
         services.AddScoped<BookingReminders>();
         services.AddScoped<AssignLeadersHandler>();
         services.AddScoped<ServiceSetupHandler>();

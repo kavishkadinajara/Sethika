@@ -10,9 +10,10 @@ export default function Home({ params }: PageProps<"/[locale]">) {
   const messages = useMessages();
 
   return (
-    // Booking for the dates in words (useDates), Shell for the greeting's context line, Access
-    // for the invitations card.
-    <NextIntlClientProvider messages={pickMessages(messages, [...sharedClientNamespaces, "Dashboard", "Shell", "Booking", "Access"])}>
+    // Booking for the dates in words (useDates) and the statuses, Calendar for deciding a request
+    // in "Waiting for you", Shell for today's table in the sidebar's words, Access for the
+    // invitations card.
+    <NextIntlClientProvider messages={pickMessages(messages, [...sharedClientNamespaces, "Dashboard", "Calendar", "Shell", "Booking", "Access"])}>
       <HomeScreen landing={<Landing />} />
     </NextIntlClientProvider>
   );

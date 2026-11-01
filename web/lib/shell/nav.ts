@@ -32,25 +32,32 @@ export type ItemKey =
   | "institutions"
   | "users";
 
+/** A count from GET /api/me/summary (plan 05, R3) that a link may carry as a badge. */
+export type BadgeKey = "bookingsToAnswer" | "registrationsWaiting" | "invitations";
+
+/** The counts as the API sends them: null where the caller may not see the screen counted. */
+export type ShellSummary = Record<BadgeKey, number | null>;
+
 /**
  * One screen. `screen` is its code in auth.Screens (10_RbacCatalogue.sql) and the link shows when
  * the user holds `<screen>.VIEW`; a screen with no code is public (anyone signed in sees it).
  * `href` must equal the catalogue's Route, which nav.test.ts checks against the seed.
  */
-export type NavItem = { key: ItemKey; href: string; icon: NavIcon; screen?: string };
+export type NavItem = { key: ItemKey; href: string; icon: NavIcon; screen?: string; badge?: BadgeKey };
 
-/** A module of the catalogue: a group in the flyout's accordion. */
+/** A module of the catalogue: a headed group in the sidebar. */
 export type NavGroup = { key: GroupKey; items: NavItem[] };
 
-/** A portal of the catalogue: one icon on the rail. A section with an href is a plain link. */
-export type NavSection = { key: SectionKey; icon: NavIcon; href?: string; groups: NavGroup[] };
+/** A portal of the catalogue: a part of the sidebar. A section with an href is a plain link. */
+export type NavSection = { key: SectionKey; icon: NavIcon; href?: string; badge?: BadgeKey; groups: NavGroup[] };
 
 /**
- * The menu (plan 04, W2): rail section = portal, group = module, link = screen. Only built
- * screens are listed; add a screen here in the same change that builds it.
+ * The menu (plan 04, W2; plan 05, R2): section = portal, group = module, link = screen. Only
+ * built screens are listed; add a screen here in the same change that builds it. A badge names the
+ * count beside the link: invitations wait on the dashboard (InvitationsCard).
  */
 export const navTree: readonly NavSection[] = [
-  { key: "dashboard", icon: "dashboard", href: "/", groups: [] },
+  { key: "dashboard", icon: "dashboard", href: "/", badge: "invitations", groups: [] },
   {
     key: "giving",
     icon: "giving",
@@ -75,7 +82,7 @@ export const navTree: readonly NavSection[] = [
       {
         key: "bookings",
         items: [
-          { key: "calendar", href: "/bookings/calendar", icon: "calendar", screen: "BOOKINGS.CALENDAR" },
+          { key: "calendar", href: "/bookings/calendar", icon: "calendar", screen: "BOOKINGS.CALENDAR", badge: "bookingsToAnswer" },
           { key: "slots", href: "/bookings/slots", icon: "bowl", screen: "BOOKINGS.SLOTS" },
         ],
       },
@@ -95,7 +102,7 @@ export const navTree: readonly NavSection[] = [
       {
         key: "onboarding",
         items: [
-          { key: "registrations", href: "/admin/registrations", icon: "inbox", screen: "ONBOARDING.REQUESTS" },
+          { key: "registrations", href: "/admin/registrations", icon: "inbox", screen: "ONBOARDING.REQUESTS", badge: "registrationsWaiting" },
         ],
       },
       {
@@ -130,11 +137,70 @@ export function isActive(href: string, pathname: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** The section whose screen the user is on, for the rail's highlight. */
+/** The section whose screen the user is on. */
 export function activeSectionKey(sections: readonly NavSection[], pathname: string): SectionKey | null {
   for (const section of sections) {
     if (section.href !== undefined && isActive(section.href, pathname)) return section.key;
     if (section.groups.some((group) => group.items.some((item) => isActive(item.href, pathname)))) return section.key;
   }
   return null;
+}
+
+/** The number a badge shows, or null for none: a count the caller may not see, or nothing waiting. */
+export function badgeCount(summary: ShellSummary | null, key: BadgeKey | undefined): number | null {
+  if (summary === null || key === undefined) return null;
+  const count = summary[key];
+  return count !== null && count > 0 ? count : null;
+}
+
+/** A place the jump palette offers: a screen the user may view, under its label in their language. */
+export type JumpTarget = { key: SectionKey | ItemKey; href: string; icon: NavIcon; label: string; group: string };
+
+/** Every link of the (already filtered) menu, once each, in menu order. */
+export function jumpTargets(
+  sections: readonly NavSection[],
+  label: (kind: "sections" | "items" | "groups", key: string) => string,
+): JumpTarget[] {
+  return sections.flatMap((section) => [
+    ...(section.href === undefined
+      ? []
+      : [{ key: section.key, href: section.href, icon: section.icon, label: label("sections", section.key), group: label("sections", section.key) }]),
+    ...section.groups.flatMap((group) =>
+      group.items.map((item) => ({
+        key: item.key,
+        href: item.href,
+        icon: item.icon,
+        label: label("items", item.key),
+        group: label("groups", group.key),
+      })),
+    ),
+  ]);
+}
+
+/**
+ * The targets matching what was typed: every word must appear in the label or its group, case and
+ * accents ignored (Sinhala and Tamil have no case and keep their marks). Labels that start with the
+ * query come first; otherwise menu order holds. An empty query lists everything.
+ */
+export function matchJump(targets: readonly JumpTarget[], query: string): JumpTarget[] {
+  const words = fold(query).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [...targets];
+
+  const matches = targets.filter((target) => {
+    const text = fold(`${target.label} ${target.group}`);
+    return words.every((word) => text.includes(word));
+  });
+  const first = fold(query.trim());
+  return [
+    ...matches.filter((target) => fold(target.label).startsWith(first)),
+    ...matches.filter((target) => !fold(target.label).startsWith(first)),
+  ];
+}
+
+/** Lower case without Latin accents; the combining marks of Sinhala and Tamil are letters, not accents. */
+function fold(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase();
 }

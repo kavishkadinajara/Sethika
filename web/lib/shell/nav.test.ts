@@ -1,7 +1,16 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { activeSectionKey, isActive, navTree, visibleNav, type NavSection } from "./nav";
+import {
+  activeSectionKey,
+  badgeCount,
+  isActive,
+  jumpTargets,
+  matchJump,
+  navTree,
+  visibleNav,
+  type NavSection,
+} from "./nav";
 
 const holding =
   (...codes: string[]) =>
@@ -87,4 +96,70 @@ describe("the menu agrees with the RBAC catalogue (10_RbacCatalogue.sql)", () =>
       expect(seed).toContain(`('${screen}.VIEW',`);
     },
   );
+});
+
+describe("badges", () => {
+  const summary = { bookingsToAnswer: 3, registrationsWaiting: 0, invitations: null };
+
+  it("shows a count only when something waits", () => {
+    expect(badgeCount(summary, "bookingsToAnswer")).toBe(3);
+    expect(badgeCount(summary, "registrationsWaiting")).toBeNull();
+  });
+
+  it("shows nothing for a count the caller may not see, or before the counts arrive", () => {
+    expect(badgeCount(summary, "invitations")).toBeNull();
+    expect(badgeCount(null, "bookingsToAnswer")).toBeNull();
+    expect(badgeCount(summary, undefined)).toBeNull();
+  });
+
+  it("puts each count on the screen it counts", () => {
+    const badges = navTree.flatMap((s) => [
+      ...(s.badge ? [`${s.key}:${s.badge}`] : []),
+      ...s.groups.flatMap((g) => g.items.filter((i) => i.badge).map((i) => `${i.key}:${i.badge}`)),
+    ]);
+    expect(badges).toEqual(["dashboard:invitations", "calendar:bookingsToAnswer", "registrations:registrationsWaiting"]);
+  });
+});
+
+describe("jump to", () => {
+  const english: Record<string, string> = {
+    "sections.dashboard": "Dashboard",
+    "items.find": "Find a place to give",
+    "items.myBookings": "My bookings",
+    "items.calendar": "Booking calendar",
+    "items.slots": "Meals and days",
+    "groups.book": "Meals",
+    "groups.bookings": "Bookings",
+  };
+  const label = (kind: string, key: string) => english[`${kind}.${key}`] ?? `${kind}.${key}`;
+  const targets = jumpTargets(
+    visibleNav(holding("MYBOOKINGS.BOOKINGS.VIEW", "BOOKINGS.CALENDAR.VIEW", "BOOKINGS.SLOTS.VIEW")),
+    label,
+  );
+  const found = (query: string) => matchJump(targets, query).map((t) => t.key);
+
+  it("offers every screen the user may view, once, in menu order", () => {
+    expect(targets.map((t) => t.key)).toEqual(["dashboard", "find", "myBookings", "calendar", "slots"]);
+    expect(found("")).toEqual(["dashboard", "find", "myBookings", "calendar", "slots"]);
+  });
+
+  it("never offers a screen the menu hides", () => {
+    expect(found("role")).toEqual([]);
+    expect(found("registration")).toEqual([]);
+  });
+
+  it("matches every word, in the label or its group, whatever the case", () => {
+    expect(found("BOOKING")).toEqual(["calendar", "myBookings", "slots"]);
+    expect(found("cal book")).toEqual(["calendar"]);
+  });
+
+  it("puts labels that start with the query first", () => {
+    expect(found("meals")).toEqual(["slots", "find", "myBookings"]);
+  });
+
+  it("ignores Latin accents, and leaves Sinhala marks alone", () => {
+    const sinhala = matchJump([{ ...targets[3]!, label: "වෙන්කිරීම් දින දර්ශනය", group: "වෙන්කිරීම්" }], "දින");
+    expect(sinhala).toHaveLength(1);
+    expect(matchJump([{ ...targets[0]!, label: "Café" }], "cafe")).toHaveLength(1);
+  });
 });

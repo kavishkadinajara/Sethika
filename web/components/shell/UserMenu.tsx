@@ -67,7 +67,7 @@ export function UserMenu() {
       >
         <span
           aria-hidden
-          className="grid size-9 shrink-0 place-items-center rounded-full bg-estate text-sm font-semibold text-ivory ring-2 ring-accent/70"
+          className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-on-primary ring-2 ring-accent/70"
         >
           {initials(name) || "·"}
         </span>

@@ -14,6 +14,17 @@ public sealed record ReviewQueueItem(
 /// <summary>A page of the queue, and how many there are in all.</summary>
 public sealed record ReviewQueuePage(IReadOnlyList<ReviewQueueItem> Items, int Total, int Page, int PageSize);
 
+/// <summary>An application decided, as the platform dashboard's ledger lists it (plan 05, R4).</summary>
+/// <param name="Status">Approved or Rejected.</param>
+/// <param name="Institution">The slug of the institution an approval made; null for a rejection.</param>
+public sealed record ReviewDecisionItem(
+    string RequestNo,
+    string ProposedName,
+    string InstitutionType,
+    string Status,
+    DateTime DecidedAt,
+    string? Institution);
+
 /// <summary>A document the application's institution type provides, uploaded or not.</summary>
 public sealed record ReviewRequiredDocument(string Code, string Name, bool IsMandatory);
 
@@ -42,6 +53,9 @@ public interface IRegistrationReviewQueries
     /// UnderReview and InfoRequested.
     /// </summary>
     Task<ReviewQueuePage> ListAsync(string? status, int page, int pageSize, CancellationToken cancellationToken = default);
+
+    /// <summary>The latest <paramref name="take"/> approvals and rejections, newest decision first.</summary>
+    Task<IReadOnlyList<ReviewDecisionItem>> ListDecidedAsync(int take, CancellationToken cancellationToken = default);
 
     Task<ReviewView?> GetAsync(string requestNo, CancellationToken cancellationToken = default);
 

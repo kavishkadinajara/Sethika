@@ -7,16 +7,17 @@ import { FormError } from "@/components/auth/FormError";
 import { menuContent, menuItem } from "@/components/shell/menu-styles";
 import { initials } from "@/components/shell/useProfile";
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
 import { CloseIcon, InstitutionIcon, PlusIcon, ShieldIcon } from "@/components/ui/icons";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
 import { grantPlatformRole, listPlatformRoles, listUsers, revokePlatformRole, setUserSuspended, type AdminResult } from "@/lib/admin/api";
-import type { AdminUser, PlatformRole } from "@/lib/admin/types";
+import { parseUserQuery, userKinds, userStatuses, type UserQuery } from "@/lib/admin/list-query";
+import type { AdminPage, AdminUser, PlatformRole } from "@/lib/admin/types";
 import { usePermissions } from "@/lib/permissions/usePermissions";
 import { cn, focusRing } from "@/lib/utils";
 import { CreateUserSheet } from "./CreateUserSheet";
+import { InstitutionFilter } from "./InstitutionFilter";
+import { FilterChips, ListCount, ListSearch, ListSelect, Pager, useListQuery } from "./ListControls";
 import { useAdminError } from "./useAdminError";
 
 const statusTone: Record<AdminUser["status"], string> = {
@@ -27,7 +28,8 @@ const statusTone: Record<AdminUser["status"], string> = {
 };
 
 /**
- * Every account on Sethika (plan 04, Y5): who they are, where they work and with which roles,
+ * Every account on Sethika (plan 04, Y5), a page at a time, narrowed by kind, status and institution and
+ * ordered newest first or by name, all kept in the address (plan 05, X4): who they are, where they work and with which roles,
  * their platform roles; making an account for someone who cannot sign up (Y6), suspending one,
  * and giving or taking platform roles below the caller's own rank. Every write needs a step-up,
  * which apiFetch asks for; none is offered on the caller's own row.
@@ -40,30 +42,27 @@ export function UsersScreen() {
   const { can, userId } = usePermissions();
   const mayEdit = can("PLATFORM.USERS.EDIT");
 
-  const [search, setSearch] = useState("");
-  const [users, setUsers] = useState<AdminUser[] | null>(null);
+  const [query, setQuery] = useListQuery<UserQuery>(parseUserQuery, "newest");
+  const [page, setPage] = useState<AdminPage<AdminUser> | null>(null);
   const [roles, setRoles] = useState<PlatformRole[]>([]);
   const [failure, setFailure] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const load = useCallback(
-    async (term: string) => {
-      const result = await listUsers(term);
-      if (result.ok) {
-        setUsers(result.value);
-        setFailure(null);
-      } else {
-        setFailure(errorMessage(result.failure));
-      }
-    },
-    [errorMessage],
-  );
+  const load = useCallback(async () => {
+    const result = await listUsers(query);
+    if (result.ok) {
+      setPage(result.value);
+      setFailure(null);
+    } else {
+      setFailure(errorMessage(result.failure));
+    }
+  }, [query, errorMessage]);
 
   useEffect(() => {
-    const timer = setTimeout(() => void load(search.trim()), 250);
-    return () => clearTimeout(timer);
-  }, [search, load]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, [load]);
 
   useEffect(() => {
     void listPlatformRoles().then((result) => {
@@ -80,7 +79,7 @@ export function UsersScreen() {
       return;
     }
     toast({ variant: "success", title: done });
-    await load(search.trim());
+    await load();
   }
 
   const roleName = (code: string) => roles.find((r) => r.code === code)?.name ?? code;
@@ -88,10 +87,9 @@ export function UsersScreen() {
   return (
     <div className="grid gap-6">
       <div className="flex flex-wrap items-end gap-4">
-        <div className="w-full max-w-xl">
-          <Field label={t("search")} description={t("searchHint")}>
-            <Input type="search" value={search} onChange={(event) => setSearch(event.target.value)} autoComplete="off" />
-          </Field>
+        <div className="grid min-w-0 flex-1 basis-full gap-4 md:basis-0 md:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
+          <ListSearch label={t("search")} hint={t("searchHint")} value={query.search} onSearch={(search) => setQuery({ search })} />
+          <InstitutionFilter value={query.institution} onChange={(institution) => setQuery({ institution })} />
         </div>
         {can("PLATFORM.USERS.CREATE") && (
           <Button onClick={() => setCreating(true)}>
@@ -101,23 +99,49 @@ export function UsersScreen() {
         )}
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,14rem)] lg:items-start">
+        <FilterChips
+          label={t("kind")}
+          options={userKinds.map((kind) => ({ value: kind, label: t(`type.${kind}`) }))}
+          value={query.kind}
+          onChange={(kind) => setQuery({ kind })}
+        />
+        <FilterChips
+          label={t("statusLabel")}
+          options={userStatuses.map((status) => ({ value: status, label: t(`status.${status}`) }))}
+          value={query.status}
+          onChange={(status) => setQuery({ status })}
+        />
+        <ListSelect
+          label={t("sort")}
+          options={[
+            { value: "newest", label: t("sortNewest") },
+            { value: "name", label: t("sortName") },
+          ]}
+          value={query.sort}
+          onChange={(sort) => setQuery({ sort: sort === "name" ? "name" : "newest" })}
+        />
+      </div>
+
       <FormError>{failure}</FormError>
 
-      {users === null ? (
+      {page !== null && <ListCount page={page.page} shown={page.items.length} total={page.total} />}
+
+      {page === null ? (
         <div className="flex justify-center py-16 text-brand">
           <Spinner />
         </div>
-      ) : users.length === 0 ? (
+      ) : page.items.length === 0 ? (
         <p className="text-muted">{t("empty")}</p>
       ) : (
-        <ul aria-label={t("list")} className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-          {users.map((user) => {
+        <ul aria-label={t("list")} className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+          {page.items.map((user) => {
             const isMe = user.id === userId;
             const addable = roles.filter((r) => r.canManage && !user.platformRoles.includes(r.code));
             return (
               <li key={user.id} className="grid content-start gap-3 rounded-bowl border border-hairline bg-surface p-5 shadow-lift">
                 <div className="flex items-start gap-3">
-                  <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-estate font-semibold text-ivory">
+                  <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-primary font-semibold text-on-primary">
                     {initials(user.fullName)}
                   </span>
                   <div className="grid min-w-0 flex-1 gap-0.5">
@@ -138,7 +162,15 @@ export function UsersScreen() {
                       <li key={institution.slug} className="flex items-start gap-2 text-fg">
                         <InstitutionIcon className="mt-0.5 size-4 shrink-0 text-muted" />
                         <span>
-                          {institution.name} <span className="text-muted">· {institution.roles.join(", ")}</span>
+                          {/* Its name narrows the list to its people. */}
+                          <button
+                            type="button"
+                            onClick={() => setQuery({ institution: institution.slug })}
+                            className={cn("text-left font-medium text-brand underline-offset-4 hover:underline", focusRing)}
+                          >
+                            {institution.name}
+                          </button>{" "}
+                          <span className="text-muted">· {institution.roles.join(", ")}</span>
                         </span>
                       </li>
                     ))}
@@ -150,7 +182,7 @@ export function UsersScreen() {
                     {user.platformRoles.map((code) => {
                       const removable = mayEdit && !isMe && (roles.find((r) => r.code === code)?.canManage ?? false);
                       return (
-                        <li key={code} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-estate/10 py-1 pr-1 pl-3 text-sm font-medium text-brand">
+                        <li key={code} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-primary/10 py-1 pr-1 pl-3 text-sm font-medium text-brand">
                           <ShieldIcon className="size-4 shrink-0" />
                           {roleName(code)}
                           {removable ? (
@@ -230,13 +262,15 @@ export function UsersScreen() {
         </ul>
       )}
 
+      {page !== null && <Pager page={page.page} total={page.total} onPage={(next) => setQuery({ page: next })} />}
+
       {creating && (
         <CreateUserSheet
           onClose={() => setCreating(false)}
           onCreated={(name) => {
             setCreating(false);
             toast({ variant: "success", title: tCreate("created", { name }) });
-            void load(search.trim());
+            void load();
           }}
         />
       )}

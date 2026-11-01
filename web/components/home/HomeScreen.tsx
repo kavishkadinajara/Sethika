@@ -28,7 +28,7 @@ export function HomeScreen({ landing }: { landing: ReactNode }) {
 function DashboardPlaceholder() {
   return (
     <div aria-hidden className="hidden gap-10 session:grid">
-      <div className="h-44 animate-pulse rounded-bowl bg-estate/80 motion-reduce:animate-none" />
+      <div className="h-44 animate-pulse rounded-bowl bg-subtle motion-reduce:animate-none" />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {[0, 1, 2].map((i) => (
           <div key={i} className="h-24 animate-pulse rounded-bowl border border-hairline bg-surface motion-reduce:animate-none" />

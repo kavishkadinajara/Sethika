@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Access.Language;
 using Sethika.Application.Access.Roles;
+using Sethika.Domain.Bookings;
 
 namespace Sethika.Api.Endpoints;
 
@@ -19,6 +20,7 @@ internal static class MeEndpoints
 
         me.MapGet(string.Empty, GetProfileAsync);
         me.MapGet("/permissions", GetPermissionsAsync);
+        me.MapGet("/summary", GetSummaryAsync);
         me.MapPut("/language", SetLanguageAsync);
 
         // Invitations onto an institution's staff, addressed to this account (plan 04, X1-X4).
@@ -89,6 +91,43 @@ internal static class MeEndpoints
             isPlatform = currentUser.IsPlatform,
             permissions = effective.Codes.OrderBy(c => c, StringComparer.Ordinal),
         });
+    }
+
+    /// <summary>The counts beside the sidebar's links (plan 05, R3).</summary>
+    /// <remarks>
+    /// A count is read only when the caller holds the permission of the screen it counts, and is
+    /// <c>null</c> (no badge) otherwise: a count is itself information, so it is guarded like the
+    /// screen. Never cached; the sidebar asks again on focus and once a minute.
+    /// </remarks>
+    private static async Task<IResult> GetSummaryAsync(
+        HttpContext httpContext,
+        ICurrentUserContext currentUser,
+        IPermissionService permissions,
+        IShellQueries shell,
+        IAccessQueries access,
+        TimeProvider timeProvider,
+        CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        var held = await permissions.GetEffectivePermissionsAsync(userId, currentUser.InstitutionId, cancellationToken);
+        var today = SriLankaTime.Today(timeProvider.GetUtcNow().UtcDateTime);
+
+        int? bookingsToAnswer = currentUser.InstitutionId is { } institutionId && held.Allows("BOOKINGS.CALENDAR.APPROVE")
+            ? await shell.CountBookingsToAnswerAsync(institutionId, today, cancellationToken)
+            : null;
+
+        int? registrationsWaiting = held.Allows("ONBOARDING.REQUESTS.VIEW")
+            ? await shell.CountRegistrationsWaitingAsync(cancellationToken)
+            : null;
+
+        var invitations = (await access.GetMyInvitationsAsync(userId, cancellationToken)).Count;
+
+        httpContext.Response.Headers.CacheControl = "no-store";
+        return Results.Ok(new { bookingsToAnswer, registrationsWaiting, invitations });
     }
 
     /// <summary>The caller's invitations still waiting for an answer.</summary>
