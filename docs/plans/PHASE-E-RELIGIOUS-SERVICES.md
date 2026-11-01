@@ -12,7 +12,7 @@ refuses when it would be wrong, outbox, number series).
 Deadline is about **2026-11-06** and the report needs the last week, so this plan aims at
 **~4 working days (2026-10-25 → 10-29)**. Plan 03 was estimated at 6.25 days and took three; this
 one is estimated the same way. If it runs over, the cut order is in §8.
-Last updated 2026-11-01 (8.1-8.6 built; 8.5 on branch `phase-e-donor`, cut from `develop` at 3c74dc1; 8.6's remove and the assign endpoint move to 8.7). Update this line and the §8 boxes whenever either changes. A fresh session
+Last updated 2026-11-01 (8.1-8.7 built, on branch `phase-e-donor`, cut from `develop` at 3c74dc1). Update this line and the §8 boxes whenever either changes. A fresh session
 trusts them and will rebuild anything they claim is missing.
 
 The mobile app's F.3/F.4 (`docs/plans/PHASE-F-MOBILE.md`) are being built at the same time on the
@@ -236,8 +236,14 @@ active service types, shown on `/i/{slug}` beside its meals.
       leader to overlapping times, exactly one succeeds; again with the lock bypassed, the PK still
       stops it; two admins assigning `{A,B}` and `{B,A}` do not deadlock. Mutations: drop the PK ⇒
       must fail; drop the 2627 mapping; lock order reversed. ~0.75 day
-- [ ] **8.7 Assign / remove endpoints** (remove = `Removed` + delete that leader's blocks), **respond,
-      reject, cancel, complete**. (Time-off clashes were built in 8.4.) ~0.5 day
+- [x] **8.7 Assign / remove endpoints** (remove = `Removed` + delete that leader's blocks), **respond,
+      reject, cancel, complete**. (Time-off clashes were built in 8.4.) ~0.5 day. Built as
+      `InstitutionAppointmentEndpoints`: `GET /api/institution/appointments?view=` (V32),
+      `POST .../{no}/leaders` (assign), `DELETE .../{no}/leaders/{leader}`,
+      `POST .../{no}/leaders/{leader}/respond` (on behalf), `.../reject`, `.../cancel`, `.../complete`;
+      `GET /api/institution/schedule` and `POST /api/institution/schedule/{no}/respond` for a leader
+      (V33). One change path in `AppointmentDecisionHandler` (V30, V31). Tests:
+      `InstitutionAppointmentEndpointsTests` (15; the cancel/decline race forced with `UPDLOCK`).
 - [ ] **8.8 Texts and the reminder job** with `DedupKey` (V14, V15). ~0.25 day
 - [ ] **8.9 Screens**: `/services/types`, `/services/leaders`, `/services/appointments` (agenda +
       assign sheet), `/services/schedule`, the request sheet on `/i/[slug]`, `/services/mine`.
@@ -282,3 +288,8 @@ Never cut the overlap guarantee or its concurrency tests.
 | V27 | **Every** `AppointmentCancelled` message releases the appointment's blocks (`AppointmentCancelledHandler`), not only the donor's; the handler refuses (throws, so it is retried and logged) an appointment that is not `Cancelled`. Texts for the event (8.8) go in the same handler, since the outbox allows one handler per event type. | One rule, and idempotent: after an institution's cancel (8.7, blocks deleted in its own transaction) the message finds nothing. The status check means a stray message can never free a live appointment's time. |
 | V28 | A request sends the Colombo **date** and **start time** (`yyyy-MM-dd`, `HH:mm`); `SriLankaTime.ToUtc` makes the instant. Appointments come back in UTC, like leave (`TimeOffView`). | What a donor picks on the calendar; before 05:30 Colombo the UTC date is the day before, so the date cannot be carried over. |
 | V29 | Requests are limited to **10 per donor per hour** (`appointment-create-user`). | Each takes a number from a platform-wide series and the institution's attention; a household asks for a few a year. |
+| V30 | Remove, respond, reject, cancel and complete take **no leader lock**. | They only free time. A block deleted a moment early can only let through an assignment that is genuinely free; the key (V2) still guards every insert. |
+| V31 | Every change writes the appointment's row, even when only a leader's row changes, and deletes the freed blocks in the **same transaction** after the save. Two changes at once: one wins, the other is 409 `stale`. | Two changes then always meet on `RowVersion` (as assign does), so a decline cannot slip past a cancellation, and a loser frees nothing. |
+| V32 | The agenda has four fixed views: `upcoming` (default; requested or approved, not over, soonest first), `waiting`, `needs-leaders` (live leaders < required, not over), `history` (over or ended in a status, latest first). At most 200, no paging yet. Leaders removed are hidden; those who declined are listed after the live ones. Each view is its own SQL text, chosen in C#. | V10's "what needs me". Nothing the caller sends is written into SQL. |
+| V33 | A leader's schedule: approved appointments not yet over where their answer is `Pending` or `Accepted`. Their own answer finds them by the account's roster row **in the session's institution**; none is 403 `not_a_leader`. A leader not on the roster, named by an admin, is 409 `not_assigned` like one not assigned. | What they still have to attend or answer. The roster link is V21's; the session's institution keeps one roster from answering for another. |
+| V34 | New outbox events: `AppointmentRejected`, `LeaderDeclined`, `LeaderRemoved` (payload names the leader's internal id; texts in 8.8). Accepting and completing write none. | Each is someone to tell; an acceptance and a completion change nothing anyone waits for. |

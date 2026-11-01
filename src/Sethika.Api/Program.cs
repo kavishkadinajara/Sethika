@@ -115,6 +115,7 @@ app.MapInstitutionBookingEndpoints();
 app.MapDonorBookingEndpoints();
 app.MapServiceSetupEndpoints();
 app.MapDonorAppointmentEndpoints();
+app.MapInstitutionAppointmentEndpoints();
 
 app.Run();
 
