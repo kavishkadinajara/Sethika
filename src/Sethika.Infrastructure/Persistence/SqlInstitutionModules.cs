@@ -1,3 +1,5 @@
+using System.Data;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Sethika.Application.Abstractions;
 
@@ -10,9 +12,25 @@ namespace Sethika.Infrastructure.Persistence;
 /// Set-based because every source is a table: the module catalogue, the type's defaults and the
 /// plan's modules. A module in more than one is enabled once, as Default if any default source
 /// names it. Modules of other portals (the donor and admin portals) are never an institution's.
+/// <c>org.InstitutionModules</c> has no Row-Level Security, so a donor's request reads it too.
 /// </remarks>
 public sealed class SqlInstitutionModules(SethikaDbContext context) : IInstitutionModules
 {
+    public async Task<bool> IsOnAsync(int institutionId, string moduleCode, CancellationToken cancellationToken = default)
+    {
+        var code = new SqlParameter("code", SqlDbType.VarChar, 50) { Value = moduleCode };
+
+        var on = await context.Database.SqlQuery<int>(
+            $"""
+            SELECT COUNT(*) AS Value
+            FROM org.InstitutionModules AS im
+            JOIN auth.Modules AS m ON m.Id = im.ModuleId
+            WHERE im.InstitutionId = {institutionId} AND im.IsEnabled = 1 AND m.Code = {code} AND m.IsActive = 1
+            """).SingleAsync(cancellationToken).ConfigureAwait(false);
+
+        return on > 0;
+    }
+
     public Task<int> EnableForNewInstitutionAsync(
         int institutionId,
         short institutionTypeId,

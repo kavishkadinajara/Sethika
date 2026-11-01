@@ -17,6 +17,9 @@ public sealed record NumberSeriesDefinition(string Code, string Prefix, byte Pad
 
     /// <summary>Meal bookings' <c>BookingNo</c> (plan 03, C7), one series for the whole platform.</summary>
     public static NumberSeriesDefinition Booking { get; } = new("BOOKING", "BK", 6);
+
+    /// <summary>Service appointments' <c>AppointmentNo</c> (Phase E), one series for the whole platform like bookings.</summary>
+    public static NumberSeriesDefinition Appointment { get; } = new("APPOINTMENT", "APT", 6);
 }
 
 /// <summary>

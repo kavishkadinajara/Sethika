@@ -28,4 +28,14 @@ public static class SriLankaTime
 
     /// <summary>Today's date in Colombo at the UTC instant <paramref name="utcNow"/>.</summary>
     public static DateOnly Today(DateTime utcNow) => DateOnly.FromDateTime(FromUtc(utcNow));
+
+    /// <summary>
+    /// The UTC instant of <paramref name="time"/> on <paramref name="date"/> in Colombo: what a donor
+    /// picks on a calendar, as it is stored.
+    /// </summary>
+    /// <remarks>
+    /// Before 05:30 in Colombo the UTC date is the day before, so the date is not simply carried over.
+    /// </remarks>
+    public static DateTime ToUtc(DateOnly date, TimeOnly time) =>
+        TimeZoneInfo.ConvertTimeToUtc(date.ToDateTime(time, DateTimeKind.Unspecified), Zone);
 }

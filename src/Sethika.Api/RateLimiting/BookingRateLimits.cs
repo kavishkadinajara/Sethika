@@ -17,4 +17,10 @@ internal static class BookingRateLimits
     /// lock (§8, E11) and will send an SMS (5.6), so booking and cancelling in a loop is bounded here.
     /// </summary>
     public static readonly RateLimitRule CreatePerUser = new("booking-create-user", 20, TimeSpan.FromHours(1));
+
+    /// <summary>
+    /// Service requests made by one account (Phase E). The same reasons as a booking: a number from a
+    /// platform-wide series, and the institution's attention. A household asks for a few a year.
+    /// </summary>
+    public static readonly RateLimitRule RequestServicePerUser = new("appointment-create-user", 10, TimeSpan.FromHours(1));
 }

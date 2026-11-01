@@ -61,6 +61,28 @@ public sealed class DonorBookingQueries(IDbConnectionFactory connections) : IDon
         FROM booking.MealSlots AS s
         WHERE s.InstitutionId = @institutionId AND s.IsActive = 1
         ORDER BY s.SortOrder, s.StartTime, s.Name;
+
+        SELECT t.PublicId AS PublicId, t.Name AS Name, t.NameSi AS NameSi, t.NameTa AS NameTa,
+               t.Description AS Description, t.DurationMinutes AS DurationMinutes,
+               t.LocationMode AS LocationMode, t.MinAdvanceDays AS MinAdvanceDays,
+               t.MaxAdvanceDays AS MaxAdvanceDays
+        FROM booking.ServiceTypes AS t
+        WHERE t.InstitutionId = @institutionId AND t.IsActive = 1
+          AND {ServicesOnSql}
+        ORDER BY t.Name;
+        """;
+
+    /// <summary>
+    /// The institution <c>t.InstitutionId</c> has its <c>SERVICES</c> module on (V12): a care home never
+    /// has, and an institution that turns it off stops taking requests without retiring each type.
+    /// </summary>
+    internal const string ServicesOnSql =
+        """
+        EXISTS (SELECT 1
+                FROM org.InstitutionModules AS im
+                JOIN auth.Modules AS m ON m.Id = im.ModuleId
+                WHERE im.InstitutionId = t.InstitutionId AND im.IsEnabled = 1
+                  AND m.Code = 'SERVICES' AND m.IsActive = 1)
         """;
 
     // Every season of the slots, not only the month's: a slot with a season elsewhere in the year is
@@ -139,6 +161,7 @@ public sealed class DonorBookingQueries(IDbConnectionFactory connections) : IDon
 
         var institution = await reader.ReadSingleOrDefaultAsync<ProfileRow>().ConfigureAwait(false);
         var slots = await reader.ReadAsync<PublicSlotRow>().ConfigureAwait(false);
+        var services = await reader.ReadAsync<PublicServiceTypeView>().ConfigureAwait(false);
 
         return institution is null
             ? null
@@ -151,7 +174,8 @@ public sealed class DonorBookingQueries(IDbConnectionFactory connections) : IDon
                 [.. slots.Select(r => new PublicMealSlotView(
                     r.PublicId, r.Name, r.NameSi, r.NameTa, r.StartTime, r.EndTime, r.DaysOfWeekMask,
                     r.BookingMode, r.MaxSponsors, r.MinHeadcount, r.MaxHeadcount, r.EstimatedCostPerHead,
-                    r.MinAdvanceDays, r.MaxAdvanceDays, r.RequiresApproval, Fulfilment(r.AllowedFulfilment)))]);
+                    r.MinAdvanceDays, r.MaxAdvanceDays, r.RequiresApproval, Fulfilment(r.AllowedFulfilment)))],
+                [.. services]);
     }
 
     public async Task<AvailabilitySource?> GetAvailabilitySourceAsync(string slug, DateOnly first, DateOnly last, CancellationToken cancellationToken = default)

@@ -76,6 +76,7 @@ public static class DependencyInjection
         services.AddScoped<IDonorBookingQueries, DonorBookingQueries>();
         services.AddScoped<IBookingNotificationQueries, BookingNotificationQueries>();
         services.AddScoped<IServiceSetupQueries, ServiceSetupQueries>();
+        services.AddScoped<IDonorAppointmentQueries, DonorAppointmentQueries>();
 
         return services;
     }

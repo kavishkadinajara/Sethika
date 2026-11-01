@@ -12,7 +12,7 @@ refuses when it would be wrong, outbox, number series).
 Deadline is about **2026-11-06** and the report needs the last week, so this plan aims at
 **~4 working days (2026-10-25 → 10-29)**. Plan 03 was estimated at 6.25 days and took three; this
 one is estimated the same way. If it runs over, the cut order is in §8.
-Last updated 2026-10-25 (8.1-8.4 and 8.6 built; 8.6's remove and the assign endpoint move to 8.7). Update this line and the §8 boxes whenever either changes. A fresh session
+Last updated 2026-11-01 (8.1-8.6 built; 8.5 on branch `phase-e-donor`, cut from `develop` at 3c74dc1; 8.6's remove and the assign endpoint move to 8.7). Update this line and the §8 boxes whenever either changes. A fresh session
 trusts them and will rebuild anything they claim is missing.
 
 The mobile app's F.3/F.4 (`docs/plans/PHASE-F-MOBILE.md`) are being built at the same time on the
@@ -222,8 +222,13 @@ active service types, shown on `/i/{slug}` beside its meals.
 - [x] **8.4 Roster and types API**: leaders (list, create, edit, deactivate, weekly hours), time off
       (add with clash 409, remove), service types (list, create, edit, deactivate); Dapper lists, EF
       commands; the leader picker (`GET /api/institution/appointments/{no}/candidates`). ~0.5 day
-- [ ] **8.5 Donor**: public service types on `/api/institutions/{slug}`; request; my appointments;
-      cancel. ~0.5 day
+- [x] **8.5 Donor**: public service types on `/api/institutions/{slug}`; request; my appointments;
+      cancel. ~0.5 day. Built as: `services` on the existing page (V25, so no new anonymous
+      endpoint); `POST /api/appointments`, `GET /api/appointments/mine`,
+      `POST /api/appointments/{no}/cancel` on `MYSERVICES.APPOINTMENTS.*`; `SriLankaTime.ToUtc`
+      (Colombo date + time to UTC); `APPOINTMENT` series (`APT`); `AppointmentCancelledHandler`
+      releases the blocks (V16, V27). Tests: `DonorAppointmentEndpointsTests` (19, real SQL and
+      Redis, the cancel race forced with `UPDLOCK`), `SriLankaTimeTests` (9).
 - [x] **8.6 Assign engine**: `ILeaderLocks` on the extracted Redis lease; `AssignLeadersHandler`.
       (Built without an HTTP endpoint, and **remove is not built**: only the domain's
       `ServiceAppointment.Remove`. Both move to 8.7. The picker query was built in 8.4.) **Concurrency tests against real SQL Server and
@@ -272,3 +277,8 @@ Never cut the overlap guarantee or its concurrency tests.
 | V22 | Weekly hours are replaced whole (`PUT .../weekly-hours`), with no version: last write wins. Overlapping spans on one day are refused. | Only a filter (V2): a lost edit never lets a leader be double-booked. |
 | V23 | Taking a leader off the roster names their upcoming live assignments and changes none. | The same rule as deactivating a meal slot (plan 03): the institution decides. |
 | V24 | The test reseed (`RlsTestData.sql`) clears every Phase E table first. | A leader left by a failed test would otherwise block `DELETE FROM org.Institutions` for every later test. |
+| V25 | An institution's active services ride on its public page, `GET /api/institutions/{slug}` (`services`, beside `slots`), not a separate endpoint. Only what the donor chooses by: name, description, duration, where, advance window. No buffer, no leader count. | `/i/[slug]` shows them beside its meals, so one read serves the page; no new anonymous endpoint to review. Buffer and leaders are the institution's planning. |
+| V26 | With `SERVICES` switched off (or never on, V12), the page lists no services and a request is refused `service_inactive`, whatever the types say. Checked on `org.InstitutionModules`, which has no RLS. | Switching the module off must stop requests without retiring each type, and a care home never gets them. |
+| V27 | **Every** `AppointmentCancelled` message releases the appointment's blocks (`AppointmentCancelledHandler`), not only the donor's; the handler refuses (throws, so it is retried and logged) an appointment that is not `Cancelled`. Texts for the event (8.8) go in the same handler, since the outbox allows one handler per event type. | One rule, and idempotent: after an institution's cancel (8.7, blocks deleted in its own transaction) the message finds nothing. The status check means a stray message can never free a live appointment's time. |
+| V28 | A request sends the Colombo **date** and **start time** (`yyyy-MM-dd`, `HH:mm`); `SriLankaTime.ToUtc` makes the instant. Appointments come back in UTC, like leave (`TimeOffView`). | What a donor picks on the calendar; before 05:30 Colombo the UTC date is the day before, so the date cannot be carried over. |
+| V29 | Requests are limited to **10 per donor per hour** (`appointment-create-user`). | Each takes a number from a platform-wide series and the institution's attention; a household asks for a few a year. |
