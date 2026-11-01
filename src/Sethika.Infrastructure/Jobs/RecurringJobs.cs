@@ -27,6 +27,16 @@ internal sealed class RecurringJobs(IRecurringJobManager jobs) : IHostedService
             AppointmentReminderJob.Cron,
             new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(SriLankaTime.ZoneId) });
 
+        jobs.AddOrUpdate<GeoIndexRebuildJob>(
+            GeoIndexRebuildJob.RecurringJobId,
+            job => job.RunAsync(CancellationToken.None),
+            GeoIndexRebuildJob.Cron,
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(SriLankaTime.ZoneId) });
+
+        // And now, so a host whose Redis was flushed or down searches through the index again within
+        // moments of starting, not after the night.
+        jobs.Trigger(GeoIndexRebuildJob.RecurringJobId);
+
         return Task.CompletedTask;
     }
 

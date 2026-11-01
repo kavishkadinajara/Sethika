@@ -1,13 +1,23 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
-const query = "(min-width: 40rem)";
+/** Whether the window matches the media `query`. The server renders as if it did not. */
+export function useMediaQuery(query: string): boolean {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const media = window.matchMedia(query);
+      media.addEventListener("change", onChange);
+      return () => media.removeEventListener("change", onChange);
+    },
+    [query],
+  );
 
-function subscribe(onChange: () => void) {
-  const media = window.matchMedia(query);
-  media.addEventListener("change", onChange);
-  return () => media.removeEventListener("change", onChange);
+  return useSyncExternalStore(
+    subscribe,
+    () => window.matchMedia(query).matches,
+    () => false,
+  );
 }
 
 /**
@@ -15,9 +25,5 @@ function subscribe(onChange: () => void) {
  * not from the bottom where a thumb reaches it. The server renders the phone's.
  */
 export function useWide(): boolean {
-  return useSyncExternalStore(
-    subscribe,
-    () => window.matchMedia(query).matches,
-    () => false,
-  );
+  return useMediaQuery("(min-width: 40rem)");
 }

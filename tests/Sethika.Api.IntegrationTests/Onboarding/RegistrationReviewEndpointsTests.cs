@@ -545,14 +545,14 @@ public sealed class RegistrationReviewEndpointsTests(SethikaTestDatabase databas
         var codes = await MandatoryCodesAsync();
         var reviewer = Reviewer();
 
-        // Hold the application's row so both reads queue behind it and then see the same version.
-        // That needs locking reads (READ_COMMITTED_SNAPSHOT off, as locally). Azure SQL turns it on:
-        // there the reads would not queue, and the RowVersion would still let no update be lost.
+        // Hold an update lock on the application's row: both reads pass it and see the same version
+        // (READ_COMMITTED_SNAPSHOT is on, as in Azure SQL), and both saves queue behind it. The lock
+        // changes nothing, so when it opens the first save wins and the RowVersion refuses the second.
         await using var holder = new SqlConnection(database.ConnectionString);
         await holder.OpenAsync();
         await holder.ExecuteAsync("EXEC sys.sp_set_session_context @key = N'IsPlatform', @value = 1;");
         await using var hold = (SqlTransaction)await holder.BeginTransactionAsync();
-        await holder.ExecuteAsync("UPDATE org.RegistrationRequests SET UpdatedAt = UpdatedAt WHERE RequestNo = 'REQ-TEST-R50';", transaction: hold);
+        await holder.ExecuteAsync("SELECT Id FROM org.RegistrationRequests WITH (UPDLOCK, ROWLOCK) WHERE RequestNo = 'REQ-TEST-R50';", transaction: hold);
 
         var both = codes.Take(2)
             .Select(code => Task.Run(() => reviewer.PutAsJsonAsync($"{Base}/REQ-TEST-R50/documents/{code}/verification", new { verified = true })))

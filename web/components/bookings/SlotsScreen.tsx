@@ -26,7 +26,7 @@ import { localName } from "@/lib/bookings/names";
 import type { BlockedDate, InstitutionMealSlot, Listing } from "@/lib/bookings/types";
 import { usePermissions } from "@/lib/permissions/usePermissions";
 import { cn, focusRing } from "@/lib/utils";
-import { EmptyState } from "./InstitutionDirectory";
+import { EmptyState } from "./EmptyState";
 import { SlotFormSheet } from "./SlotFormSheet";
 import { Switch } from "./Switch";
 import { useBookingError } from "./useBookingError";

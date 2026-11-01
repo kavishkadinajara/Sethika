@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import net from "node:net";
 
 /*  Signups, sign-ins and new applications are rate limited per client and per account, and
@@ -38,6 +39,33 @@ export function clearRateLimits(): Promise<number> {
       if (lines[0] !== "+OK") return reject(new Error(`SELECT ${db}: ${lines[0]}`));
       if (!lines[1].startsWith(":")) return reject(new Error(`Clearing rate limits: ${lines[1]}`));
       resolve(Number(lines[1].slice(1)));
+    });
+  });
+}
+
+/**
+ * How many requests from `subject` the API has counted under the rule `rule` this window: the
+ * counter's key as RateLimitKey.cs builds it (the first 128 bits of the subject's SHA-256).
+ */
+export function rateLimitCount(rule: string, subject: string): Promise<number> {
+  const key = `rl:${rule}:${createHash("sha256").update(subject, "utf8").digest("hex").slice(0, 32)}`;
+  return new Promise((resolve, reject) => {
+    const socket = net.createConnection({ host, port });
+    let received = "";
+    socket.setTimeout(5000, () => socket.destroy(new Error(`Redis at ${host}:${port} did not answer.`)));
+    socket.on("error", reject);
+    socket.on("connect", () => socket.write(command("SELECT", db) + command("GET", key)));
+    socket.on("data", (chunk) => {
+      received += chunk.toString("utf8");
+      const lines = received.split("\r\n");
+      if (lines[0] !== "+OK") return reject(new Error(`SELECT ${db}: ${lines[0]}`));
+      if (lines[1] === "$-1") {
+        socket.end();
+        return resolve(0);
+      }
+      if (lines.length < 4) return;
+      socket.end();
+      resolve(Number(lines[2]));
     });
   });
 }

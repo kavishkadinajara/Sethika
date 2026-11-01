@@ -67,7 +67,7 @@ export function DonorDay() {
             </Panel>
           )}
           <Link
-            href="/institutions"
+            href="/find"
             className={cn(
               "flex items-center gap-4 rounded-bowl border border-hairline bg-surface p-5 shadow-lift transition-colors hover:border-line",
               focusRing,

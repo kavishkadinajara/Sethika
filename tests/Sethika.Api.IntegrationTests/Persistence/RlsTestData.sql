@@ -75,6 +75,9 @@ DELETE FROM booking.BlockedDates;
 DELETE FROM booking.MealSlotSeasons;
 DELETE FROM booking.MealSlots;
 DELETE FROM core.OutboxMessages WHERE AggregateType = 'Booking';
+-- What the search's tests leave (plan 06): listing messages for the geo index, and the search log.
+DELETE FROM core.OutboxMessages WHERE AggregateType = 'Institution';
+DELETE FROM booking.AvailabilitySearches;
 -- What an approval creates beside the institution (plan 02, B6); its roles went with IsSystem = 0.
 DELETE FROM org.InstitutionMembers;
 DELETE FROM org.InstitutionDocuments;

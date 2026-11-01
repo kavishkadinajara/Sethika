@@ -263,47 +263,6 @@ public sealed class DonorBookingQueries(IDbConnectionFactory connections) : IDon
         public string AllowedFulfilment { get; init; } = null!;
     }
 
-    /// <summary>What <see cref="MealSlotRules"/> reads of a slot. <c>TIME</c> arrives as a <see cref="TimeSpan"/>.</summary>
-    private sealed class SlotRuleRow
-    {
-        public int Id { get; init; }
-        public Guid PublicId { get; init; }
-        public int InstitutionId { get; init; }
-        public string Name { get; init; } = null!;
-        public TimeSpan StartTime { get; init; }
-        public TimeSpan EndTime { get; init; }
-        public byte DaysOfWeekMask { get; init; }
-        public string BookingMode { get; init; } = null!;
-        public byte MaxSponsors { get; init; }
-        public short MinHeadcount { get; init; }
-        public short MaxHeadcount { get; init; }
-        public short MinAdvanceDays { get; init; }
-        public short MaxAdvanceDays { get; init; }
-        public bool RequiresApproval { get; init; }
-        public string AllowedFulfilment { get; init; } = null!;
-        public bool IsActive { get; init; }
-
-        public MealSlot ToMealSlot() => new()
-        {
-            Id = Id,
-            PublicId = PublicId,
-            InstitutionId = InstitutionId,
-            Name = Name,
-            StartTime = TimeOnly.FromTimeSpan(StartTime),
-            EndTime = TimeOnly.FromTimeSpan(EndTime),
-            DaysOfWeekMask = DaysOfWeekMask,
-            BookingMode = BookingMode,
-            MaxSponsors = MaxSponsors,
-            MinHeadcount = MinHeadcount,
-            MaxHeadcount = MaxHeadcount,
-            MinAdvanceDays = MinAdvanceDays,
-            MaxAdvanceDays = MaxAdvanceDays,
-            RequiresApproval = RequiresApproval,
-            AllowedFulfilment = AllowedFulfilment,
-            IsActive = IsActive,
-        };
-    }
-
     private sealed class MineRow
     {
         public string BookingNo { get; init; } = null!;

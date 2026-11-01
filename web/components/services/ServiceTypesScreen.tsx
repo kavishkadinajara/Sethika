@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { FormError } from "@/components/auth/FormError";
 import { textLink } from "@/components/auth/links";
-import { EmptyState } from "@/components/bookings/InstitutionDirectory";
+import { EmptyState } from "@/components/bookings/EmptyState";
 import { useWide } from "@/components/bookings/useWide";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";

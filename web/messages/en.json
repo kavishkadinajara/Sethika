@@ -1,6 +1,7 @@
 {
   "Metadata": {
-    "title": "Sethika"
+    "title": "Sethika",
+    "institution": "{name}, {city}. Sponsor a meal here through Sethika."
   },
   "Brand": {
     "name": "Sethika",
@@ -980,11 +981,6 @@
   },
   "Discover": {
     "directoryTitle": "Find a place to give",
-    "directoryIntro": "Temples, kovils, mosques, churches and care homes that welcome meal sponsors. Choose one to see its meals and open days.",
-    "filter": "Search",
-    "filterHint": "By name, type, town or district, in any language.",
-    "noneListed": "No places are listed yet. Soon, they will be.",
-    "noneMatch": "Nothing matches that search.",
     "loadFailed": "Could not load this.",
     "retry": "Try again",
     "notFound": "We could not find this place. The link may be old.",
@@ -997,7 +993,7 @@
     "exclusive": "One sponsor gives the whole meal",
     "shared": "Shared by up to {count} sponsors",
     "people": "{min}–{max} people",
-    "costPerHead": "About {cost} a person",
+    "costPerHead": "About Rs {cost} a person",
     "dietary": "Food notes:",
     "placesLeft": "{count, plural, one {# place left} other {# places left}}",
     "open": "Open",
@@ -1051,6 +1047,65 @@
       "thanks": "Thank you for feeding others.",
       "seeMine": "See my bookings",
       "close": "Close"
+    }
+  },
+  "Find": {
+    "title": "Find a place to give",
+    "intro": "Choose a day and where to look. Every place shown has a meal you can sponsor that day.",
+    "where": {
+      "label": "Where",
+      "near": "Near me",
+      "locating": "Finding you…",
+      "district": "In a district",
+      "anywhere": "Anywhere",
+      "districtLabel": "District",
+      "chooseDistrict": "Choose a district",
+      "radius": "Within",
+      "km": "{km} km",
+      "denied": "Location is turned off for Sethika. Allow it in your browser, or choose a district.",
+      "outside": "You seem to be outside Sri Lanka. Choose a district instead.",
+      "unavailable": "Your location could not be found. Try again, or choose a district."
+    },
+    "time": {
+      "label": "Time of day",
+      "any": "Any time",
+      "morning": "Morning",
+      "midday": "Midday",
+      "evening": "Evening"
+    },
+    "type": {
+      "label": "Kind of place",
+      "all": "Every kind"
+    },
+    "calendar": {
+      "title": "Choose a day",
+      "hint": "Each day shows how many places have a meal open.",
+      "open": "{count, plural, =0 {No place open} one {# place open} other {# places open}}"
+    },
+    "tabs": {
+      "label": "Show the places as",
+      "list": "List",
+      "map": "Map"
+    },
+    "results": {
+      "title": "Open on {date}",
+      "count": "{count, plural, =0 {No places found.} one {# place found.} other {# places found.}}",
+      "moreNearest": "These are the nearest 100.",
+      "moreByName": "These are the first 100 by name.",
+      "none": "No place has a meal you can sponsor on {date} here. Try another day, another time of day or a wider area.",
+      "distance": "{km} km away",
+      "left": "{count, plural, one {# sponsor place left} other {# sponsor places left}}",
+      "book": "Book",
+      "bookLabel": "Book {meal} at {place}",
+      "failed": "The places could not be loaded.",
+      "retry": "Try again",
+      "invalid": "This search cannot be run.",
+      "startAgain": "Start again"
+    },
+    "map": {
+      "label": "Map of the places found",
+      "searchHere": "Search this area",
+      "outside": "This part of the map is outside Sri Lanka."
     }
   },
   "MyBookings": {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FormError } from "@/components/auth/FormError";
@@ -16,7 +16,7 @@ import { cn, focusRing } from "@/lib/utils";
 import { Bowl } from "./Bowl";
 import { BookingSheet } from "./BookingSheet";
 import { BowlCalendar, type DayView } from "./BowlCalendar";
-import { EmptyState } from "./InstitutionDirectory";
+import { EmptyState } from "./EmptyState";
 import { useBookingError } from "./useBookingError";
 import { useDates } from "./useDates";
 
@@ -24,17 +24,20 @@ import { useDates } from "./useDates";
  * An institution's own page (plan 03, C10): who they are, the meals they offer, and a month of
  * each meal's days as bowls - empty, filling, full. Choosing an open day opens the booking form.
  * Anyone can look; booking asks for a sign-in, and comes back here to the same meal and day.
+ *
+ * `initial` is the institution as the server read it (plan 06, G9): rendered at once, in the
+ * server's HTML too, and not fetched again. Without it the page loads the institution itself.
  */
-export function InstitutionPage({ slug }: { slug: string }) {
+export function InstitutionPage({ slug, initial = null }: { slug: string; initial?: PublicInstitution | null }) {
   const t = useTranslations("Discover");
   const locale = useLocale();
   const errorMessage = useBookingError();
   const dates = useDates();
   const search = useSearchParams();
 
-  const [institution, setInstitution] = useState<PublicInstitution | null>(null);
+  const [institution, setInstitution] = useState<PublicInstitution | null>(initial);
   const [failure, setFailure] = useState<BookingFailure | null>(null);
-  const [slotId, setSlotId] = useState<string | null>(search.get("slot"));
+  const [slotId, setSlotId] = useState<string | null>(() => (initial ? slotFor(initial, search.get("slot")) : search.get("slot")));
   const [month, setMonth] = useState(() => monthOf(validDate(search.get("date")) ?? colomboToday()));
   const [months, setMonths] = useState<Record<string, Availability>>({});
   const [monthFailed, setMonthFailed] = useState(false);
@@ -53,7 +56,7 @@ export function InstitutionPage({ slug }: { slug: string }) {
       return;
     }
     setInstitution(result.value);
-    setSlotId((current) => (result.value.slots.some((s) => s.publicId === current) ? current : (result.value.slots[0]?.publicId ?? null)));
+    setSlotId((current) => slotFor(result.value, current));
   }, [slug]);
 
   const loadMonth = useCallback(
@@ -67,10 +70,10 @@ export function InstitutionPage({ slug }: { slug: string }) {
   );
 
   useEffect(() => {
-    // Loading the page's data is what this component is for.
+    // Loading the page's data is what this component is for, unless the server already did.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [load]);
+    if (!initial) void load();
+  }, [load, initial]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -241,11 +244,17 @@ function Profile({ institution }: { institution: PublicInstitution }) {
   );
 }
 
+/**
+ * The cost's digits. The card renders on the server too (plan 06, G9), and Node knows Sinhala's
+ * currency format while Chromium does not ("රු." against "LKR"): the page would not hydrate. Plain
+ * English digits read the same in both, and the message carries the currency in each language.
+ */
+const costFormat = new Intl.NumberFormat("en", { maximumFractionDigits: 2 });
+
 /** The meals on offer as a choice of cards; each says what sponsoring it means. */
 function SlotChooser({ slots, selected, onSelect }: { slots: PublicMealSlot[]; selected: string | null; onSelect: (id: string) => void }) {
   const t = useTranslations("Discover");
   const locale = useLocale();
-  const formatter = useFormatter();
   const dates = useDates();
 
   return (
@@ -296,7 +305,7 @@ function SlotChooser({ slots, selected, onSelect }: { slots: PublicMealSlot[]; s
               </span>
               {slot.estimatedCostPerHead !== null && (
                 <span className="text-sm text-muted">
-                  {t("costPerHead", { cost: formatter.number(slot.estimatedCostPerHead, { style: "currency", currency: "LKR", minimumFractionDigits: 0, maximumFractionDigits: 2 }) })}
+                  {t("costPerHead", { cost: costFormat.format(slot.estimatedCostPerHead) })}
                 </span>
               )}
             </button>
@@ -330,6 +339,11 @@ function Legend({ shared }: { shared: boolean }) {
       </li>
     </ul>
   );
+}
+
+/** The meal to show: the one named, if the institution has it, else its first. */
+function slotFor(institution: PublicInstitution, wanted: string | null): string | null {
+  return institution.slots.some((s) => s.publicId === wanted) ? wanted : (institution.slots[0]?.publicId ?? null);
 }
 
 function validDate(value: string | null): string | null {

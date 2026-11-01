@@ -3,7 +3,8 @@
 Branch: `phase-e-religious-services`, cut on 2026-10-25 from `develop` at 59b10ab (plan 03 merged,
 PR #10).
 
-Status: **built 2026-10-25 → 2026-11-01; all of §8 done, the PR into `develop` is the last step.** Added to scope on 2026-10-23 after the
+Status: **built 2026-10-25 → 2026-11-01; all of §8 done and on `develop`** (8.5-8.10 were pushed
+to `develop` directly, without a pull request: their description is `PHASE-E-DELIVERY.md`). Added to scope on 2026-10-23 after the
 supervisor's feedback on the proposal: *"add a few more functions to the scope, like coordination of
 religious leaders and making appointments"*. Proposal v3 (`docs/proposal/Sethika_Project_Proposal.docx`)
 promises it as **Phase E**. It reuses the booking engine's patterns (Redis lock, a write the database
@@ -264,7 +265,7 @@ active service types, shown on `/i/{slug}` beside its meals.
       `npm test` (196), `npm run build` clean; full e2e 87/92, the 5 failures the shell spec's donor
       menu counting 4 items before "My service requests" (fixed; shell spec 22/22); a second
       `SqlPackage /Action:Script` shows seed MERGEs only. `docs/DECISIONS.md` summarises V1-V39 with
-      the cut list (§6; nothing on the cut order was cut).
+      the cut list (§6; nothing on the cut order was cut). No pull request: see `PHASE-E-DELIVERY.md`.
 
 About **4.75 days** estimated. Order: 8.1 → 8.2 → 8.3 → **8.6 first among the APIs** (the report's
 second concurrency pattern) → 8.4 → 8.5 → 8.7 → 8.8 → 8.9.

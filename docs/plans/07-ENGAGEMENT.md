@@ -1,0 +1,176 @@
+# Plan 07 — Phase C: recurring bookings, the Memorial Dana Planner, live slot updates
+
+Branch: `phase-c-engagement`, cut from `develop` once the Phase B pull request is merged
+(`git switch -c phase-c-engagement develop`). If C starts before that merge, cut it from `rcsi-on` and
+merge `develop` in later; never rebase a pushed branch.
+
+Status: **drafted 2026-11-01; the user answered §8 the same day (co-sponsors in, email cut for now,
+the C# engine and the three packages OK, the draft rules OK). H1-H19 agreed. Nothing built.** Update this line and the §7 boxes whenever either changes; a fresh session trusts them.
+
+Decision numbers here are **H1, H2, …**. Plan 03 uses C1-C12 and E1-E35, Phase E V1-V39, plan 06 G1-G11.
+
+## 0. What the proposal promises (the report must match this list)
+
+Proposal v3, Phase C "Engagement" ("Forgotten commitments"):
+
+1. **Recurring yearly bookings.** "For occasions that repeat every year, such as a parent's memorial
+   dana, a donor can create a recurring booking, and a scheduled job reserves the slot for each
+   coming year and notifies both sides."
+2. **Real-time slot updates across open calendars.** "When a slot is booked, SignalR pushes the
+   change to every open calendar so users always see current availability." Technology list: "SignalR
+   with a Redis backplane for live slot updates; Hangfire for reminders and recurring bookings."
+3. **SMS and email reminders.** "Background jobs send SMS and email confirmations and reminders
+   before each sponsorship." The SMS half was built in Phase A (plan 03, C11); email was not (Q2).
+4. **Donor profiles.** "Donors keep a profile with their booking and donation history and their
+   preferred institutions." Booking history exists (`/bookings/mine`); donation history is Phase D;
+   preferred institutions are new.
+
+Added outside the proposal text:
+
+5. **The Memorial Dana Planner** (CLAUDE.md, Phase C). The user decided on 2026-10-31: build the engine,
+   seed the rules as `DRAFT`, and make it configuration-driven so that it fits every religion (rules are
+   data per faith; no faith in code).
+6. **Co-sponsors** (`BookingContributors`, CLAUDE.md). Not in the proposal (Q1).
+
+## 1. What already exists
+
+- Tables, from the first schema, never used: `booking.RecurringBookings` (slot, `RecurMonth`/`RecurDay`,
+  `StartYear`/`EndYear`, `Headcount`, `InMemoryOf`, `MemorialPlanId`, `LastGeneratedYear`, `IsActive`),
+  `booking.MemorialPlans` (donor, deceased's name, relationship, `DateOfPassing`, religion, photo,
+  notes), `core.MemorialRules` (per religion: `OffsetDays`, `OffsetMonths`, `RepeatsAnnually`, names in
+  three languages), `booking.BookingContributors`, `auth.DonorProfiles`, `auth.FavoriteInstitutions`,
+  `core.SpecialDays`. `booking.Bookings` already has `RecurringBookingId`, `MemorialPlanId`,
+  `MemorialRuleId` and `Source` values `Recurring` and `Memorial`. **No schema design is needed**; RLS
+  and seeds are (H13, H7).
+- None of those tables is in `sec.TenantIsolationPolicy`. `RecurringBookings` has `InstitutionId`;
+  `MemorialPlans` and `FavoriteInstitutions` belong to a donor only.
+- `core.LookupTypes` has `RELIGION`, `RELATIONSHIP` and `OCCASION`, but **no values** are seeded.
+- The booking engine: `BookMealHandler.BookAsync` (Redis lock, fresh read, `MealSlotRules.CanBook`,
+  conditional `UPDATE`, CHECKs, outbox `BookingRequested`/`BookingConfirmed`), `BookingDecisionHandler`,
+  the 18:00 `BookingReminderJob`, `BookingSmsHandler` with `DedupKey`s. Slots have `MinAdvanceDays`
+  and `MaxAdvanceDays` (default 365) and `RequiresApproval`.
+- The outbox runs every minute (`OutboxJob`, Hangfire). Hangfire 1.8 on SQL Server storage, 2 workers.
+- **No SignalR and no email** anywhere in the code. `auth.Users.Email` is optional at sign-up and
+  never confirmed (`EmailConfirmed` is always 0); sign-in and every text are by phone.
+- Screens: `InstitutionPage` + `BowlCalendar` + `BookingSheet` (donor), `CalendarScreen` (institution),
+  `MyBookings`, the donor's home `DonorDay`, the search page `/find` (Phase B).
+
+## 2. Decisions
+
+| # | Decision | Why |
+|---|---|---|
+| H1 | Phase C delivers: recurring yearly bookings (H2-H5), the Memorial Dana Planner (H6-H8), live slot updates (H9-H11), preferred institutions (H12) and co-sponsors (H16-H19, the user, Q1). **Email is cut for now** (the user, Q2): every confirmation and reminder already goes by SMS in the donor's language; email is built on the hardening day only if time is left, and the report says so otherwise | The proposal's Phase C row plus the user's planner and co-sponsor decisions |
+| H2 | **A recurring booking is a promise to try every year, not a held slot.** A `RecurringBookings` row (slot, month and day, headcount, "in memory of", years). Each year's booking is an ordinary booking with `Source = 'Recurring'` and `RecurringBookingId`, made by the same engine, approved, cancelled and reminded like any other | One engine, one judge (C4, G7). Nothing is reserved that the institution cannot see in its calendar, and the overbooking guarantee (C2) covers recurring bookings with no new code |
+| H3 | A daily Hangfire job `recurring-bookings` (00:30 Colombo, platform scope) books each active recurring booking's next occurrence **on the first day it enters the slot's booking window** (`date − MaxAdvanceDays ≤ today`), one at a time, through `BookMealHandler`'s own path (lock, rules, conditional `UPDATE`, outbox). `LastGeneratedYear` is written in the same transaction, so a year is tried once and a rerun is a no-op. **Not a stored procedure** (Q3) | The volume is one booking per recurring booking per year. A procedure would have to re-implement `MealSlotRules`, skip the Redis lock and write its own outbox rows. CLAUDE.md allows procedures for set-based jobs; it does not require one here |
+| H4 | When a year cannot be booked (slot off, not on that weekday, out of season, blocked, full, institution not active, no confirmed phone), the donor gets one SMS naming the date and the reason, with a link to `/find?date=` for that day. No daily retries. "Both sides" on success: the donor's usual SMS, and the request in the institution's calendar and "today" (institutions get no SMS, C11) | A retry loop would compete with other donors for weeks and text the donor repeatedly; Phase B already answers "where else can I give that day?" |
+| H5 | Created two ways: "Book this every year" in the booking sheet (this year's booking now, then yearly from next year), and from a yearly memorial observance (H6). Month and day are taken from the date; 29 February books 28 February in a common year; `EndYear` optional. The donor stops it from My bookings (`IsActive = 0`, history kept); a year already booked stays and is cancelled the usual way | The smallest change to the existing flow. Stopping must never silently cancel a booking the institution has already accepted |
+| H6 | **Memorial Dana Planner.** The donor enters the deceased's name, relationship (optional), date of passing and religion. A pure domain function computes the observances from `core.MemorialRules` (date of passing + `OffsetMonths` + `OffsetDays`; `RepeatsAnnually` gives each year's date). Each upcoming observance offers "Find a place" (`/find?date=`); a booking made from it carries `MemorialPlanId`, `MemorialRuleId` and `Source = 'Memorial'`; a yearly observance offers "every year", which creates a `RecurringBookings` row with `MemorialPlanId` | Configuration, not code: a faith, or an institution's custom, is a row. The planner reuses the search (Phase B) and the engine instead of a second booking path |
+| H7 | **Seeded as drafts** (the user, 2026-10-31): `RELIGION` values Buddhism, Hinduism, Islam, Christianity (Sinhala and Tamil names as drafts), and `core.MemorialRules` exactly as the table's own comment lists them (Buddhist 7th day, 3 months, yearly; Hindu 31st day; Muslim 40th day; Christian 40th day). Every rule's name starts with `DRAFT`; listed in DECISIONS.md's unconfirmed reference data | CLAUDE.md forbids inventing these facts. Even "the 7th day" is ambiguous (date of passing + 6 or + 7?): the offsets are data a reviewer corrects without a code change |
+| H8 | A memorial reminder: one SMS to the donor 7 days before each upcoming observance that has no booking linked to it yet, from a daily job, `DedupKey memorial:{plan}:{rule}:{date}` | The planner's point is not to forget; one text, never two |
+| H9 | **Live updates (SignalR).** Hub `/hubs/availability`, anonymous (availability is public). A calendar joins the group of one institution (`institution:{slug}`). The message is a hint, `AvailabilityChanged { dates }`; the calendar refetches its month from the API | One source of truth, the API (G7). A lost or late hint costs freshness, never correctness: the engine still refuses a full slot |
+| H10 | **Through the outbox** (CLAUDE.md): every change of a slot-day's places (book, reject, cancel, a blocked date added or removed, a slot changed) already writes an outbox message in its transaction; a new handler sends the hint. The endpoints wake the outbox job right after commit (a Hangfire enqueue), so a calendar hears within about a second; if the wake fails, the minute run delivers. Redis backplane (`Microsoft.AspNetCore.SignalR.StackExchangeRedis`) with a channel prefix from configuration; tests use their own prefix, like `GeoIndex:Key` | The proposal names the backplane, and Azure App Service scales out: a booking on one instance must reach a calendar on another. Redis pub/sub channels ignore the database number, so the prefix keeps Sethika (and its tests) apart from other projects on the same Redis |
+| H11 | Live: the institution's public page calendar and the institution's booking calendar. On reconnect a calendar refetches. `/find`'s month counts are not live | The two calendars the proposal means ("every open calendar"); counts across all institutions would need a broadcast to every searcher |
+| H12 | **Preferred institutions:** a heart on `/i/[slug]` for a signed-in donor (`auth.FavoriteInstitutions`) and "My places" on the donor's home. Booking history is My bookings; donation history comes with Phase D | The proposal's donor profile, at the smallest size that is real |
+| H13 | **RLS** for the new rows: `RecurringBookings` by `fn_TenantOrOwner(InstitutionId, DonorUserId)`; `MemorialPlans` and `FavoriteInstitutions` by owner only (a new predicate or the same function with no tenant). The jobs run as the platform | A donor's plans and the names of their dead are theirs alone; the institution sees a recurring booking aimed at it |
+| H14 | Texts (en/si/ta, drafts in `docs/translations-to-review.md`): `RECURRING_NOT_BOOKED`, `MEMORIAL_REMINDER`; the yearly booking itself uses the existing booking texts | Nothing new for what is already a booking |
+| H15 | New packages (Q4, agreed): `Microsoft.AspNetCore.SignalR.StackExchangeRedis` (API), `@microsoft/signalr` (web), `Microsoft.AspNetCore.SignalR.Client` (integration tests only). SignalR's server is part of ASP.NET Core | Each is Microsoft's own package for exactly this; no alternative avoids them |
+| H16 | **Co-sponsors.** The donor of a future `Requested` or `Approved` booking invites people to share it: a name, an optional note ("brings dessert"), and Sethika makes a link `/share/{token}` (32 random bytes; only the SHA-256 is stored in `InviteTokenHash`). **The donor sends the link themselves** (WhatsApp, a text); Sethika texts no one it was not asked to by that person. At most 10 invitations per booking | A number typed by someone else is not consent to be texted. The link is a bearer secret, so only its hash is kept, like the refresh tokens |
+| H17 | Opening the link shows the booking's public summary (institution, meal, date, the donor's display name, "in memory of"). A signed-in person joins or declines; joining sets `UserId`, `Status = 'Joined'`, `JoinedAt`. The donor cannot join their own booking, and one person joins a booking once. A cancelled, rejected or past booking shows its state and cannot be joined. The donor can withdraw an invitation that is still `Invited` | The flow of any invitation link; a link that outlives its booking must say so rather than fail |
+| H18 | **Schema and RLS:** `BookingContributors` gains `InstitutionId` (composite FK `(BookingId, InstitutionId) → Bookings(Id, InstitutionId)`, CLAUDE.md's tenant rule) and `InvitedBy` (the booking's donor), and a filtered unique index on `(BookingId, UserId)`. A new predicate lets a row be seen by the institution, the contributor (`UserId`) and the donor who invited (`InvitedBy`). Two reads cannot run under the person's own session and use a narrow platform-scoped query instead, each documented and tested: the summary behind a token (looked up by its hash only), and a joined contributor's view of the booking itself (`Bookings` RLS shows it only to the donor and the institution) | The table is empty everywhere, so the columns cost nothing. A contributor must see the booking they joined without `Bookings`' RLS being widened for every query |
+| H19 | Joined contributors appear on the donor's booking ("shared with"), on the institution's booking detail (names only), and under "Shared with me" in the contributor's My bookings. A joined contributor gets the 18:00 reminder the day before, like the donor (`DedupKey` per contributor). Cancelling or rejecting the booking ends it for everyone; contributors see the state | The point of sharing a memorial dana is that the siblings come; the reminder is what makes them |
+
+## 3. API
+
+- `POST /api/bookings` gains `everyYear: bool` (H5). `GET /api/bookings/recurring` (mine),
+  `POST /api/bookings/recurring/{id}/stop`. A recurring booking is addressed by a public id, never `Id`
+  (a `PublicId` column is needed, or the first yearly booking's `BookingNo`: decided in C.1).
+- `GET /api/memorial/religions` (religions with active rules), `GET/POST /api/memorial/plans`,
+  `GET /api/memorial/plans/{id}` (with its observances), `POST /api/memorial/plans/{id}/archive`.
+  Bookings made from an observance send `memorialPlan` and `memorialRule`.
+- `PUT/DELETE /api/me/places/{slug}`, `GET /api/me/places`.
+- `POST /api/bookings/{no}/contributors` (the donor invites: `{ name, note }` → `{ link }`),
+  `DELETE /api/bookings/{no}/contributors/{id}` (withdraw), `GET /api/share/{token}` (anonymous summary,
+  rate-limited), `POST /api/share/{token}/join`, `POST /api/share/{token}/decline`,
+  `GET /api/bookings/shared` (bookings I joined).
+- Hub `/hubs/availability`: `Watch(slug)`, `Unwatch(slug)`; server message `AvailabilityChanged`.
+- Every endpoint gets its policy and goes into `EndpointPolicyTests`; the hub is anonymous and
+  rate-limited per connection attempt.
+
+## 4. Tests (what must be proved)
+
+- **Recurring:** the job books next year's occurrence on the day it enters the window and not the day
+  before; a rerun books nothing twice; each refusal reason texts the donor once and books nothing; 29
+  February; stopping keeps a year already booked; two job runs at once (forced, as in Phase E) still
+  give one booking; the yearly booking is refused like any other when the slot is full.
+- **Planner:** the observance dates from the rules (months then days; month ends; leap years); a new
+  rule row changes the dates with no code change; RLS: another donor and an institution see no plan.
+- **Co-sponsors:** invite, open, join, decline, withdraw; a token that does not exist, a used one, one
+  for a cancelled or past booking; the donor cannot join their own; one person joins once; the 11th
+  invitation is refused; RLS from each session (donor, contributor, institution, another donor, another
+  institution); the token summary shows nothing beyond H17's fields; the joined contributor's reminder,
+  sent once.
+- **Live:** a client connected to the hub hears `AvailabilityChanged` after a booking, a rejection, a
+  cancellation and a blocked date; **two API hosts on one Redis**: a booking on host A reaches a client
+  on host B (the backplane); a client watching another institution hears nothing.
+- **Mutations:** the window check, `LastGeneratedYear`, the refusal text, the observance arithmetic, the
+  group name, the outbox wake, the channel prefix, each RLS predicate.
+- **Browser** (desktop and 320 px, en/si/ta): a donor books "every year" and sees it under My
+  bookings; a memorial plan shows its observances and books one from `/find`; two browsers on one
+  institution's page, one books, the other's calendar changes without a reload; the heart and My places.
+
+## 5. Screens
+
+- Booking sheet: "Book this every year". My bookings: a "Every year" section with stop.
+- `/memorial` (donor): plans, a plan's observances with dates and their state (booked, to book, past),
+  "Find a place" and "every year".
+- The public page and the institution's calendar refresh live. The heart on `/i/[slug]`; My places on
+  the donor's home.
+- A booking in My bookings: "Share this dana" (name, note → a link to copy or share), the invited and
+  joined people, withdraw. `/share/[token]`: the summary, join or decline (sign-in first if needed).
+  My bookings: "Shared with me". The institution's booking detail: "Shared with".
+
+## 6. Out of scope (the report says so)
+
+- Email confirmations and reminders (the user, Q2): built on the hardening day only if time is left.
+- Texting an invitation to a co-sponsor (H16); contributors' shares of a cost or a donation.
+- Live counts on `/find`; live updates in the mobile app; SignalR for anything but availability.
+- Confirmed memorial rules and religion names (drafts until a reviewer confirms them, H7).
+- `core.SpecialDays` (poya, festivals): still unseeded (CLAUDE.md's open items); nothing here reads it.
+- The waitlist and availability alerts (designed, optional).
+
+## 7. Work breakdown
+
+- [ ] **C.1 Recurring bookings**: RLS, public id, `everyYear` on booking, the job, the refusal text, stop.
+  Tests and mutations as §4. ~0.75 day
+- [ ] **C.2 Memorial planner engine**: the seeds (H7), RLS, the domain function, the plan endpoints,
+  bookings from an observance, the reminder job. ~0.75 day
+- [ ] **C.3 Live slot updates**: the packages (Q4), the hub, the backplane, the outbox handler and wake,
+  the two calendars. ~0.5 day
+- [ ] **C.4 Co-sponsors**: the schema change and predicate (H18), invite, the token summary, join,
+  decline, withdraw, shared with me, the contributor's reminder. ~0.75 day
+- [ ] **C.5 Screens**: every-year in the sheet and My bookings, `/memorial`, sharing and `/share/[token]`,
+  the heart and My places; en/si/ta; Playwright desktop + 320 px. ~1 day
+- [ ] **C.6 Done**: DECISIONS.md, `docs/report/PHASE-C.md`, the full runs, the PR.
+
+**If time runs out, cut in this order:** preferred institutions (H12), the memorial reminder (H8), the
+contributor's reminder (H19), the institution's calendar going live (the public page stays live).
+Never cut the engine path for yearly bookings, the co-sponsor RLS tests or the two-host backplane test.
+
+## 8. Questions for the user (answered 2026-11-01)
+
+Answers: **Q1 build co-sponsors in Phase C** (against the recommendation; H16-H19); **Q2 cut email for
+now**, revisit on the hardening day; **Q3 OK**; **Q4 OK**; **Q5 OK**, the drafts as listed.
+
+- **Q1 Co-sponsors.** Not in the proposal. Shared slots already let several families sponsor one meal,
+  each with their own booking. Co-sponsors (one booking, invited contributors) need an invite link,
+  a join flow and an RLS answer for a contributor who is neither the donor nor the institution.
+  Recommendation: **cut**, and the report says so.
+- **Q2 Email.** The proposal says "SMS and email". Email needs a confirmation step (no address is
+  confirmed today), a provider (SMTP in production, a console sender in development, like SMS) and
+  three-language templates. Recommendation: **cut** for now and say so in the report (every text
+  already goes by SMS in the donor's language); build it on the hardening day only if time is left.
+  The alternative is about half a day.
+- **Q3** The yearly job uses the C# engine, not a stored procedure (H3). OK?
+- **Q4** The three packages in H15. OK?
+- **Q5** The memorial rules and religion names as drafts exactly as H7 lists them. OK, or different
+  rules per faith?

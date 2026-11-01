@@ -7,6 +7,9 @@
     <DSP>Microsoft.Data.Tools.Schema.Sql.Sql160DatabaseSchemaProvider</DSP>
     <ModelCollation>1033, CI</ModelCollation>
     <DefaultCollation>SQL_Latin1_General_CP1_CI_AS</DefaultCollation>
+    <!-- Azure SQL runs with READ_COMMITTED_SNAPSHOT on; local databases match it, so a race that only
+         shows when plain reads stop waiting for writers is found here, not in production. -->
+    <ReadCommittedSnapshot>True</ReadCommittedSnapshot>
     <TreatTSqlWarningsAsErrors>false</TreatTSqlWarningsAsErrors>
     <ProjectGuid>{00000000-0000-0000-0000-000000000000}</ProjectGuid>
   </PropertyGroup>
