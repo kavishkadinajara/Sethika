@@ -195,7 +195,7 @@ public sealed class BookMealHandler(
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
         var claimed = await db.RecurringBookings
-            .Where(r => r.Id == recurringId && r.IsActive && (r.LastGeneratedYear == null || r.LastGeneratedYear < year))
+            .Where(r => r.Id == recurringId && r.IsActive)
             .ExecuteUpdateAsync(set => set.SetProperty(r => r.LastGeneratedYear, (short)year), cancellationToken)
             .ConfigureAwait(false);
 

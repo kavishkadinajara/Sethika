@@ -452,6 +452,16 @@ public sealed class RecurringBookingTests(SethikaTestDatabase database) : IAsync
         var sent = Assert.Single(await SentToAsync(phone));
         Assert.Equal(await ExpectedAsync(RecurringBookingSmsHandler.FullTemplate, "en", Day, "Alpha Temple"), sent.Body);
         Assert.Equal($"{RecurringBookingSmsHandler.FullTemplate}:{publicId}:{Day.Year}", sent.DedupKey);
+
+        // Full again the next year: a text of its own, under that year's key.
+        var nextYear = RecurringBooking.OccursIn((byte)Day.Month, (byte)Day.Day, Day.Year + 1);
+        Assert.True((await BookAsync(other, slot, nextYear, today: nextYear.AddDays(-60))).Succeeded);
+        Assert.Equal(1, (await RunAtAsync(nextYear.AddDays(-60))).NotBooked);
+        await Processor().RunAsync();
+
+        Assert.Equal(
+            [$"{RecurringBookingSmsHandler.FullTemplate}:{publicId}:{Day.Year}", $"{RecurringBookingSmsHandler.FullTemplate}:{publicId}:{Day.Year + 1}"],
+            (await SentToAsync(phone)).Select(s => s.DedupKey));
     }
 
     [Fact]
@@ -505,6 +515,13 @@ public sealed class RecurringBookingTests(SethikaTestDatabase database) : IAsync
         var (yearly, publicId) = await YearlyOnAsync(donor, slotId, Day);
         Assert.Equal(1, (await RunAtAsync(Day.AddDays(-60))).Booked);
 
+        // Row-Level Security aside (the platform sees every row), only the donor's own id stops it.
+        var (other, _) = await DonorAsync();
+        await using (var platform = ContextFor(TestCurrentUserContext.Platform()))
+        {
+            Assert.Equal(RecurringBookingHandler.NotFound, await new RecurringBookingHandler(platform).StopAsync(publicId, other));
+        }
+
         await using (var context = ContextFor(TestCurrentUserContext.ForUser(donor)))
         {
             Assert.Null(await new RecurringBookingHandler(context).StopAsync(publicId, donor));
@@ -541,6 +558,46 @@ public sealed class RecurringBookingTests(SethikaTestDatabase database) : IAsync
     }
 
     [Fact]
+    public async Task ADonorBookingTheDayAtTheSameMomentWins_AndTheJobGivesBackTheYearAndThePlace()
+    {
+        var (donor, _) = await DonorAsync();
+        var (third, _) = await DonorAsync();
+        var (slotId, slot) = await SlotAsync();
+        var (yearly, _) = await YearlyOnAsync(donor, slotId, Day);
+        var opens = Day.AddDays(-60);
+        Assert.True((await BookAsync(third, slot, Day, opens)).Succeeded);
+        var instance = await ScalarAsync<long>(
+            "SELECT Id FROM booking.SlotInstances WHERE MealSlotId = @slotId AND SlotDate = @day;",
+            new { slotId, day = Day.ToDateTime(TimeOnly.MinValue) });
+
+        // The donor's own booking queues on the slot-day first, then the job, which has already looked
+        // for the donor's booking and not found it: the donor wins, and the job's save collides.
+        await using var holder = await PlatformConnectionAsync();
+        await using var hold = (SqlTransaction)await holder.BeginTransactionAsync();
+        await holder.ExecuteAsync("SELECT Id FROM booking.SlotInstances WITH (UPDLOCK, ROWLOCK) WHERE Id = @instance;", new { instance }, hold);
+
+        await using var observer = new SqlConnection(database.ConnectionString);
+        await observer.OpenAsync();
+        var own = Task.Run(() => BookAsync(donor, slot, Day, opens));
+        await WaitForWaitersAsync(observer, "booking.SlotInstances", 1);
+        var job = Task.Run(() => BookYearAtAsync(yearly, Day.Year, opens));
+        await WaitForWaitersAsync(observer, "booking.SlotInstances", 2);
+        await hold.CommitAsync();
+
+        Assert.True((await own).Succeeded);
+        Assert.Equal(RecurringYearOutcome.Busy, (await job).Outcome);
+
+        // Nothing of the job's attempt stayed: not the year, not the place it took.
+        Assert.Equal(Day.Year - 1, await LastYearOfAsync(yearly));
+        Assert.Equal(2, await ScalarAsync<int>("SELECT BookedSponsors FROM booking.SlotInstances WHERE Id = @instance;", new { instance }));
+
+        // The next run finds the donor's own booking and leaves the year at that.
+        Assert.Equal(RecurringYearOutcome.AlreadyHeld, (await BookYearAtAsync(yearly, Day.Year, opens)).Outcome);
+        Assert.Equal(Day.Year, await LastYearOfAsync(yearly));
+        Assert.Empty(await BookingsOfAsync(yearly));
+    }
+
+    [Fact]
     public async Task AYearWhoseDayHasPassed_OrWhoseDonorHasNoConfirmedPhone_IsClaimedAndLeft()
     {
         var (late, _) = await DonorAsync();
@@ -559,6 +616,21 @@ public sealed class RecurringBookingTests(SethikaTestDatabase database) : IAsync
         Assert.Empty(await BookingsOfAsync(noPhone));
         Assert.Equal<(int?, int?)>((Today.AddDays(-3).Year, Day.Year), (await LastYearOfAsync(past), await LastYearOfAsync(noPhone)));
         Assert.Equal((0, 0), (await NotMadeMessagesAsync(pastId), await NotMadeMessagesAsync(noPhoneId)));
+    }
+
+    [Fact]
+    public void TheHostTextsAYearNotBooked_AndRunsTheJobsWorkInItsOwnTypes()
+    {
+        using var scope = _host.Services.CreateScope();
+
+        var handlers = scope.ServiceProvider.GetServices<IOutboxHandler>().ToList();
+        Assert.IsType<RecurringBookingSmsHandler>(Assert.Single(handlers, h => h.EventTypes.Contains(BookMealHandler.YearNotBookedEvent)));
+
+        // A booked year is texted by the booking texts, like any other booking.
+        Assert.IsType<BookingSmsHandler>(Assert.Single(handlers, h => h.EventTypes.Contains(BookMealHandler.RequestedEvent)));
+
+        Assert.NotNull(scope.ServiceProvider.GetService<RecurringBookingRun>());
+        Assert.NotNull(scope.ServiceProvider.GetService<RecurringBookingHandler>());
     }
 
     // ------------------------------------------------------------------ starting one
