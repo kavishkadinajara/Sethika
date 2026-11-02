@@ -45,6 +45,11 @@ const bookingCodes = [
   "link_not_found",
   "own_booking",
   "already_joined",
+  // asking for a regular donor's day (plan 08)
+  "day_not_held",
+  "day_request_open",
+  "day_request_answered",
+  "day_request_not_found",
   // the institution's slots
   "slot_name_taken",
   "blocked_date_not_found",

@@ -97,6 +97,10 @@ public sealed record AvailabilitySource(
 /// <summary>One of the signed-in donor's bookings.</summary>
 /// <param name="CanCancel">Whether the donor may still cancel it themselves (Q1).</param>
 /// <param name="Yearly">The active yearly booking it belongs to (plan 07, H5), or <see langword="null"/>.</param>
+/// <param name="Regular">
+/// One of the donor's regular days, set up by the institution (plan 08, K3). Only whether it is: the
+/// donor's session does not read the sponsorship itself (K16).
+/// </param>
 public sealed record DonorBookingView(
     string BookingNo,
     string Status,
@@ -119,7 +123,8 @@ public sealed record DonorBookingView(
     string? RejectReason,
     string? CancelReason,
     bool CanCancel,
-    Guid? Yearly);
+    Guid? Yearly,
+    bool Regular);
 
 /// <summary>One of the signed-in donor's active yearly bookings (plan 07, H5).</summary>
 /// <param name="NextDate">The day it books next, or <see langword="null"/> after its last year.</param>

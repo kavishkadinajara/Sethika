@@ -1,7 +1,7 @@
 # Plan 08 — Standing sponsors: the institution's own regular donors
 
-Status: **agreed 2026-11-02 (answers in §8). K.1-K.3 built 2026-11-02** on `standing-sponsors` (from develop
-f2a7be5, after PR #34); K.4 to do. Asked for by
+Status: **agreed 2026-11-02 (answers in §8). K.1-K.4 built 2026-11-02** on `standing-sponsors` (from develop
+f2a7be5, after PR #34); K24 and K14 wait for the user (K34). Asked for by
 the user on 2026-11-02 (after C.5): "an institution must be able to set up dana dates itself, for a donor,
 on a specific day, daily, weekly, monthly, yearly, every 2 or 3 months, every other month - any scenario.
 People give like that today." Decision numbers here are **K1, K2, …**.
@@ -68,6 +68,10 @@ Branch: after Phase C's pull request, `git switch -c standing-sponsors develop`.
 | K28 | (K.3) **A block over standing days** runs in the block's own transaction. Each sponsorship it touches is taken under its row lock, in id order; every day of its pattern from today (today included) to the block's end is recorded `Blocked`, booked or not, so a day beyond the booking window is never booked later and lifting the block brings nothing back; a day swapped in (`MovedFrom`) is let go and its change becomes the block. Each sponsor gets one text per block naming the first and last day let go. The answer adds `standingDays`; ordinary bookings are still only named (Q4) | Scenario 6; a block and the night's run at once (forced) leave the day let go whichever goes first |
 | K29 | (K.3) **Swaps** (`POST /api/institution/sponsorships/swap`, `BOOKINGS.SPONSORS.EDIT`): the same meal, and neither day one the other already gives. Both slot-days' Redis locks in date order, both row locks in id order. *This time*: both days must be booked (`day_not_booked`); the two bookings are cancelled and each sponsor booked on the other's day through the engine, approved; four changes are recorded (`MovedTo` on each own day, `MovedFrom` on the day given instead, each naming its booking); refused when any of the days has a change (`day_already_changed`). *From now on*: each sponsorship ends (`EndBefore`: its end the day before its day, unless that is before it began) and a new one gives its meal on the other's pattern from the other's day (`TakingOver`), which keeps an every-N-months pattern in its months; booked days from those days on move in the same transaction, the job books the rest; refused for a `Once`, or when either has a change from its day on (that change would have no owner). Both texted: `STANDING_SWAPPED` / `STANDING_SWAPPED_ON` (the second added to K10's list) | Scenario 7; forced race: two staff swapping the same day with different partners at once, one wins |
 | K30 | (K.3) **Texts** go through the outbox: `StandingTextDue` (template, sponsorship, the day it is about, a block's last day or a swap's old day, and a dedup key of template, sponsorship and what makes the change one of a kind) and `DayRequestAnswered` (request, given or not), sent by `StandingSmsHandler`. A linked donor is texted as their account; one without an account at the institution's phone in the donor book's language, only with consent (Q2); otherwise not at all. Setting one up now texts `STANDING_CREATED` once, naming the first day, and a skip `STANDING_SKIPPED`; ending texts nothing (K10 lists no text for it). 24 drafts (en/si/ta) in the seed and `docs/translations-to-review.md`; English fits one segment with a 20-character institution | K10 and Q2 |
+| K31 | (K.4) **The form's preview is the server's** (`POST /api/institution/sponsorships/preview`, `BOOKINGS.SPONSORS.CREATE`, writes nothing): the slot and the pattern only, checked by the create handler's own rules (same `fields`), laid out by the arithmetic the night's run books by (`NextDays`, 12 days), each day in the window judged by `AvailabilityCalendar`'s rule (new `DaysAsync`, one read for the whole range): `free`, `clash` + the refusal code (`held` = another regular donor has it), or `later` (beyond the window). The screen asks 350 ms after the last change and drops older answers | One judge (C4): a TypeScript copy of the pattern arithmetic and the engine's rules would drift. Saving still answers with what became of each day (K9), since a day can go between preview and save |
+| K32 | (K.4) **Marks for the screens**: a calendar booking carries `standing` (its sponsorship's `PublicId`, null otherwise), so staff see "Regular donor" and the month a ringed dot; a donor's own booking carries only `regular` (a bool from `Bookings.StandingSponsorshipId`), because the donor's session reads no sponsorship (K16) | The narrowest read that tells each side what it needs |
+| K33 | (K.4) **A held day on `/i/[slug]`** is a gold full bowl that can be chosen ("held by a regular donor: you can ask for it"); it opens the ask sheet, not the booking sheet, also when the address names it (back from signing in). The headcount is the slot's range, since the day's own places are the regular donor's until given. `day_not_held` closes the sheet and reads the month again. The institution's tray lists open requests beside booking requests; when several regular donors hold the day, staff choose whose | K6, K26, K27 on screen |
+| K34 | (K.4) **Not built, waiting for the user** (they need the platform's reach): a linked sponsor's own "I can't give that day" in My bookings (K24) and linking at sign-up or sign-in (K14). Until then a linked sponsor sees their standing days in My bookings marked "A regular day the institution set up for you" and asks the institution by phone; the ordinary donor cancel still applies to those bookings (a cancelled standing day is never booked again, K20, but nobody is texted) | The user asked to be asked first (2026-11-02) |
 
 ## 3. API (sketch)
 
@@ -149,7 +153,21 @@ Branch: after Phase C's pull request, `git switch -c standing-sponsors develop`.
   killed (domain 9, integration 34; three first failed to build and were rewritten to compile). Neighbours
   (standing, schema, donor book, donor and institution booking endpoints, policy, live, search, EF mapping,
   booking SMS, RBAC catalogue, OTP templates, yearly) 166/166. Not yet: withdrawing a request; screens (K.4).
-- [ ] **K.4** Screens + e2e. ~0.5
+- [x] **K.4** Screens + e2e. ~0.5
+  Built 2026-11-02 (K31-K34). API: `POST /api/institution/sponsorships/preview` (`StandingSponsorshipPreview`,
+  `AvailabilityCalendar.DaysAsync`); calendar bookings carry `standing`, a donor's bookings `regular`. Screens:
+  `/bookings/sponsors` (each donor's arrangements; `NewSponsorshipSheet`: meal, pattern picker, live preview of
+  the next 12 days and clashes, what became of each day; `SponsorshipSheet`: next days, skip, end, swap this time
+  or from now on), the calendar (ringed dot and "Regular donor" on standing days; `DayRequestTray` beside the
+  booking requests, give / keep, whose day when several), `/i/[slug]` (held day = gold bowl, `AskDaySheet`), My
+  bookings (regular-day mark, `MyDayRequests`). en/si/ta (181 strings, drafts in `docs/translations-to-review.md`).
+  Found in the browser and fixed: the Tamil page heading was wider than a 320 px phone; the month-day chips
+  overlapped at 320 px; a field's error stayed after it was fixed. Tests: integration `StandingSponsorshipTests` +4
+  (preview, pattern, refusals, marks), vitest `pattern.test.ts` 12 (248 in all), e2e `sponsors/standing.spec.ts`
+  4 scenarios x desktop + 320 px = 7 runs, 7/7, with `donor-book.spec.ts` 5/5. Mutants 21/21 killed: C# 10 (one
+  first failed to build and was rewritten to compile; one equivalent dropped before running), web 11.
+  Neighbours (standing, donor book, donor and institution booking endpoints, search, live, yearly, co-sponsors,
+  endpoint policy) 157/157; build, ESLint, tsc and `dotnet format` clean. Not built: K24, K14 (K34).
 
 ## 8. Questions for the user (answered 2026-11-02)
 

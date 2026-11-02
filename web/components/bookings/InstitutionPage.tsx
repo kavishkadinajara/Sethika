@@ -15,6 +15,7 @@ import { touchesMonth } from "@/lib/bookings/live";
 import { inLocale, localName } from "@/lib/bookings/names";
 import type { Availability, DayAvailability, PublicInstitution, PublicMealSlot } from "@/lib/bookings/types";
 import { cn, focusRing } from "@/lib/utils";
+import { AskDaySheet } from "./AskDaySheet";
 import { Bowl } from "./Bowl";
 import { BookingSheet } from "./BookingSheet";
 import { BowlCalendar, type DayView } from "./BowlCalendar";
@@ -26,7 +27,8 @@ import { useLiveAvailability } from "./useLiveAvailability";
 
 /**
  * An institution's own page (plan 03, C10): who they are, the meals they offer, and a month of
- * each meal's days as bowls - empty, filling, full. Choosing an open day opens the booking form.
+ * each meal's days as bowls - empty, filling, full. Choosing an open day opens the booking form; a
+ * day a regular donor holds opens a request for it instead (plan 08, K6).
  * Anyone can look; booking asks for a sign-in, and comes back here to the same meal and day.
  *
  * `initial` is the institution as the server read it (plan 06, G9): rendered at once, in the
@@ -98,6 +100,8 @@ export function InstitutionPage({ slug, initial = null }: { slug: string; initia
 
   const slot = institution?.slots.find((s) => s.publicId === slotId) ?? null;
   const days = months[month]?.slots.find((s) => s.mealSlot === slotId)?.days ?? null;
+  // A held day chosen (or named in the address, back from signing in): it is asked for, not booked.
+  const held = date !== null && !chosen && days?.find((d) => d.date === date)?.reason === "held" ? date : null;
 
   // A day named in the address (a donor back from signing in) opens its sheet once it is loaded.
   useEffect(() => {
@@ -193,6 +197,19 @@ export function InstitutionPage({ slug, initial = null }: { slug: string; initia
             </Card>
           )}
 
+          {slot && held && institution && (
+            <AskDaySheet
+              institution={institution}
+              slot={slot}
+              date={held}
+              onClose={() => choose(null)}
+              onMoved={() => {
+                choose(null);
+                refresh();
+              }}
+            />
+          )}
+
           {slot && chosen && (
             <BookingSheet
               institution={institution}
@@ -224,6 +241,14 @@ export function InstitutionPage({ slug, initial = null }: { slug: string; initia
       return {
         content: <Bowl fill={taken} className="text-brand" />,
         label: `${long}. ${meal.bookingMode === "Shared" ? t("placesLeft", { count: found.sponsors }) : t("open")}`,
+        disabled: false,
+      };
+    }
+
+    if (found.reason === "held") {
+      return {
+        content: <Bowl fill={1} className="text-accent" />,
+        label: `${long}. ${t("heldAsk")}`,
         disabled: false,
       };
     }
@@ -350,6 +375,9 @@ function Legend({ shared }: { shared: boolean }) {
       )}
       <li className="flex items-center gap-2">
         <Bowl fill={1} className="text-muted" /> {t("full")}
+      </li>
+      <li className="flex items-center gap-2">
+        <Bowl fill={1} className="text-accent" /> {t("held")}
       </li>
       <li className="flex items-center gap-2">
         <span aria-hidden className="w-7 text-center font-medium">

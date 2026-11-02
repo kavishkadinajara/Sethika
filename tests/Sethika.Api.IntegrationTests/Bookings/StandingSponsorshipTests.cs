@@ -248,7 +248,7 @@ public sealed class StandingSponsorshipTests(SethikaTestDatabase database) : IAs
         return (id, publicId);
     }
 
-    private HttpClient ClientFor(Guid userId, int institutionId)
+    private HttpClient ClientFor(Guid userId, int? institutionId)
     {
         var tokens = _host.Services.GetRequiredService<ITokenService>().Issue(new TokenSubject(userId, institutionId, IsPlatform: false));
         var client = _host.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
@@ -794,6 +794,128 @@ public sealed class StandingSponsorshipTests(SethikaTestDatabase database) : IAs
         Assert.Equal(BookingStatus.Cancelled, days[1].GetProperty("bookingStatus").GetString());
         Assert.Equal((firstNo, BookingStatus.Cancelled), (days[0].GetProperty("bookingNo").GetString(), days[0].GetProperty("bookingStatus").GetString()));
         Assert.Equal(BookingStatus.Approved, days[2].GetProperty("bookingStatus").GetString());
+    }
+
+    // ------------------------------------------------------------------ the form's preview (K9) and the screens' markers
+
+    private const string Preview = Sponsorships + "/preview";
+
+    [Fact]
+    public async Task ThePreview_LaysOutTheNextDays_WithEachClash_AndWritesNothing()
+    {
+        // A 5-day window, one sponsor a day: + 3 held by another regular donor, + 4 blocked, + 6 on beyond the window.
+        var (_, slot) = await SlotAsync(maxAdvance: 5, maxSponsors: 1);
+        await CreateAsync(Body(await DonorAsync(), slot, StandingPattern.Once, Today.AddDays(3)));
+        await ExecuteAsync(
+            "INSERT booking.BlockedDates (InstitutionId, DateFrom, DateTo, Reason, CreatedBy) VALUES (@alpha, @day, @day, N'Kathina', @by);",
+            new { alpha = database.AlphaInstitutionId, day = Today.AddDays(4).ToDateTime(TimeOnly.MinValue), by = SethikaTestDatabase.AlphaUserId });
+        var sponsorships = await ScalarAsync<int>("SELECT COUNT(*) FROM booking.StandingSponsorships;", new { });
+        var bookings = await ScalarAsync<int>("SELECT COUNT(*) FROM booking.Bookings;", new { });
+
+        // Only the slot and the pattern are read: no donor, no meal.
+        var response = await SendAsync(Alpha(), HttpMethod.Post, Preview, new { mealSlot = slot, pattern = StandingPattern.Daily, startDate = Iso(Today) });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var days = (await BodyOf(response)).GetProperty("days").EnumerateArray().ToArray();
+        Assert.Equal(StandingSponsorshipReader.NextDayCount, days.Length);
+        Assert.Equal(
+            [
+                (Iso(Today), "clash", BookingErrors.TooSoon),
+                (Iso(Today.AddDays(1)), "free", null),
+                (Iso(Today.AddDays(2)), "free", null),
+                (Iso(Today.AddDays(3)), "clash", BookingErrors.Held),
+                (Iso(Today.AddDays(4)), "clash", BookingErrors.DateBlocked),
+                (Iso(Today.AddDays(5)), "free", null),
+                (Iso(Today.AddDays(6)), "later", null),
+            ],
+            days.Take(7).Select(d => (d.GetProperty("date").GetString(), d.GetProperty("state").GetString(), d.GetProperty("reason").GetString())).ToArray());
+        Assert.All(days.Skip(7), d => Assert.Equal("later", d.GetProperty("state").GetString()));
+
+        Assert.Equal(sponsorships, await ScalarAsync<int>("SELECT COUNT(*) FROM booking.StandingSponsorships;", new { }));
+        Assert.Equal(bookings, await ScalarAsync<int>("SELECT COUNT(*) FROM booking.Bookings;", new { }));
+    }
+
+    [Fact]
+    public async Task ThePreview_FollowsThePattern_AndSkipsDaysAMonthDoesNotHave()
+    {
+        var (_, slot) = await SlotAsync(maxAdvance: 365);
+
+        // The 31st every other month from a 31-day month: the months between are skipped, and so is any
+        // 31-day-less month that falls on the pattern.
+        var start = new DateOnly(Today.Year + 1, 1, 1);
+        var response = await SendAsync(Alpha(), HttpMethod.Post, Preview, new
+        {
+            mealSlot = slot,
+            pattern = StandingPattern.Monthly,
+            monthInterval = 2,
+            monthDays = Ints(31),
+            startDate = Iso(start),
+            endDate = Iso(start.AddYears(2)),
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var dates = (await BodyOf(response)).GetProperty("days").EnumerateArray().Select(d => d.GetProperty("date").GetString()!).ToArray();
+
+        // January, March, May, July; September and November have 30 days. Then the same next year.
+        var y = start.Year;
+        Assert.Equal(
+            [$"{y}-01-31", $"{y}-03-31", $"{y}-05-31", $"{y}-07-31", $"{y + 1}-01-31", $"{y + 1}-03-31", $"{y + 1}-05-31", $"{y + 1}-07-31"],
+            dates);
+    }
+
+    [Fact]
+    public async Task ThePreview_IsRefusedFieldByField_ForAnotherInstitutionsSlot_AndForStaff()
+    {
+        var (_, slot) = await SlotAsync();
+        var (_, betaSlot) = await SlotAsync(institutionId: database.BetaInstitutionId);
+
+        await AssertFieldsAsync(await SendAsync(Alpha(), HttpMethod.Post, Preview, new { mealSlot = slot, pattern = StandingPattern.Weekly, startDate = Iso(Today) }), "weekDays");
+        await AssertFieldsAsync(await SendAsync(Alpha(), HttpMethod.Post, Preview, new { mealSlot = slot, pattern = StandingPattern.Daily, startDate = Iso(Today.AddDays(-1)) }), "startDate");
+        await AssertFieldsAsync(await SendAsync(Alpha(), HttpMethod.Post, Preview, new { mealSlot = betaSlot, pattern = StandingPattern.Daily, startDate = Iso(Today) }), "mealSlot");
+
+        // Previewing is part of setting one up (CREATE): staff read only (K11).
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await SendAsync(Alpha(_alphaStaff), HttpMethod.Post, Preview, new { mealSlot = slot, pattern = StandingPattern.Daily, startDate = Iso(Today) })).StatusCode);
+    }
+
+    [Fact]
+    public async Task AStandingDay_IsMarkedOnTheCalendar_AndInTheLinkedDonorsBookings()
+    {
+        var phone = RandomPhone();
+        var account = await UserAsync("Donor", phone);
+        await ExecuteAsync(
+            "INSERT auth.UserRoles (UserId, RoleId, InstitutionId, IsActive) SELECT @account, r.Id, NULL, 1 FROM auth.Roles r WHERE r.Code = 'DONOR' AND r.InstitutionId IS NULL;",
+            new { account });
+        var donor = await DonorAsync(userId: account, phone: phone);
+        var (_, slot) = await SlotAsync();
+        var day = Today.AddDays(3);
+        var created = await CreateAsync(Body(donor, slot, StandingPattern.Once, day));
+
+        // An ordinary booking on the same day: the account's own, made by the donor.
+        var ordinary = await SendAsync(ClientFor(account, null), HttpMethod.Post, "/api/bookings", new
+        {
+            mealSlot = slot,
+            date = Iso(day.AddDays(1)),
+            headcount = 10,
+            fulfilment = FulfilmentMode.DonorBrings,
+        });
+        Assert.Equal(HttpStatusCode.Created, ordinary.StatusCode);
+        var ordinaryNo = (await BodyOf(ordinary)).GetProperty("bookingNo").GetString();
+
+        var calendar = (await BodyOf(await SendAsync(Alpha(_alphaStaff), HttpMethod.Get, $"/api/institution/bookings?from={Iso(day)}&to={Iso(day.AddDays(1))}")))
+            .EnumerateArray()
+            .Where(d => d.GetProperty("mealSlot").GetGuid() == slot)
+            .SelectMany(d => d.GetProperty("bookings").EnumerateArray())
+            .ToDictionary(b => b.GetProperty("bookingNo").GetString()!, b => b.GetProperty("standing"));
+        var standingNo = (await BookingsOfAsync(created.Id))[0].BookingNo;
+        Assert.Equal(created.PublicId, calendar[standingNo].GetGuid());
+        Assert.Equal(JsonValueKind.Null, calendar[ordinaryNo!].ValueKind);
+
+        var mine = (await BodyOf(await SendAsync(ClientFor(account, null), HttpMethod.Get, "/api/bookings/mine")))
+            .EnumerateArray()
+            .ToDictionary(b => b.GetProperty("bookingNo").GetString()!, b => b.GetProperty("regular").GetBoolean());
+        Assert.Equal(new Dictionary<string, bool> { [standingNo] = true, [ordinaryNo!] = false }, mine);
     }
 
     [Fact]

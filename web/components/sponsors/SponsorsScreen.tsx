@@ -13,13 +13,18 @@ import { Field } from "@/components/ui/field";
 import { Input, inputClasses } from "@/components/ui/input";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
-import type { BookingFailure } from "@/lib/bookings/api";
+import { listSlots, type BookingFailure } from "@/lib/bookings/api";
+import type { InstitutionMealSlot } from "@/lib/bookings/types";
 import { usePermissions } from "@/lib/permissions/usePermissions";
 import { colomboParts } from "@/lib/services/time";
-import { createDonor, listDonors, updateDonor } from "@/lib/sponsors/api";
+import { createDonor, listDonors, listSponsorships, updateDonor } from "@/lib/sponsors/api";
 import { localPhone, searchDonors } from "@/lib/sponsors/donors";
-import type { Donor, DonorLanguage } from "@/lib/sponsors/types";
+import { byDonor } from "@/lib/sponsors/pattern";
+import type { Donor, DonorLanguage, Sponsorship } from "@/lib/sponsors/types";
 import { cn, focusRing } from "@/lib/utils";
+import { NewSponsorshipSheet } from "./NewSponsorshipSheet";
+import { usePatternSummary } from "./PatternSummary";
+import { SponsorshipSheet } from "./SponsorshipSheet";
 import { useSponsorError } from "./useSponsorError";
 
 const LANGUAGES: DonorLanguage[] = ["si", "ta", "en"];
@@ -28,8 +33,9 @@ const MAX_NOTES = 500;
 /**
  * The institution's donor book (plan 08, K1): the people who give regularly, many of whom never use
  * the app. Staff add them, change their details and record whether they agreed to receive texts
- * (Q2). A person whose phone is a Sethika account's is linked by the server (K14). Standing
- * sponsorships come in K.2.
+ * (Q2). A person whose phone is a Sethika account's is linked by the server (K14). Each card lists the
+ * person's regular arrangements (K2); one opens with its next days, to skip a day, end it or swap a
+ * day (K5, K8), and a new one is set up from the card with a preview of its days (K9).
  */
 export function SponsorsScreen() {
   const t = useTranslations("Sponsors.book");
@@ -43,10 +49,17 @@ export function SponsorsScreen() {
   const [failure, setFailure] = useState<BookingFailure | null>(null);
   const [editing, setEditing] = useState<Donor | "new" | null>(null);
   const [query, setQuery] = useState("");
+  const [sponsorships, setSponsorships] = useState<Sponsorship[]>([]);
+  const [slots, setSlots] = useState<InstitutionMealSlot[]>([]);
+  const [settingUp, setSettingUp] = useState<Donor | null>(null);
+  const [opened, setOpened] = useState<string | null>(null);
 
+  // The book decides the page; the arrangements and meals are beside it, left out if they cannot be read.
   const load = useCallback(async () => {
     setFailure(null);
-    const result = await listDonors();
+    const [result, sponsorshipsResult, slotsResult] = await Promise.all([listDonors(), listSponsorships(), listSlots()]);
+    if (sponsorshipsResult.ok) setSponsorships(sponsorshipsResult.value);
+    if (slotsResult.ok) setSlots(slotsResult.value);
     if (!result.ok) return setFailure(result.failure);
     setDonors(result.value);
   }, []);
@@ -58,6 +71,8 @@ export function SponsorsScreen() {
   }, [load]);
 
   const found = useMemo(() => (donors ? searchDonors(donors, query) : []), [donors, query]);
+  const arrangements = useMemo(() => byDonor(sponsorships), [sponsorships]);
+  const summary = usePatternSummary();
 
   if (failure && !donors) {
     return (
@@ -118,11 +133,41 @@ export function SponsorsScreen() {
                     </p>
                     <p className="text-sm text-muted">{t("sponsorships", { count: donor.activeSponsorships })}</p>
                     {donor.notes && <p className="whitespace-pre-line break-words text-sm text-fg">{donor.notes}</p>}
-                    {canEdit && (
-                      <div className="pt-1">
-                        <Button variant="outline" onClick={() => setEditing(donor)} aria-label={t("editNamed", { name: donor.fullName })}>
-                          {t("edit")}
-                        </Button>
+                    {(arrangements.get(donor.publicId)?.length ?? 0) > 0 && (
+                      <ul className="grid gap-1.5 pt-1" aria-label={t("arrangementsOf", { name: donor.fullName })}>
+                        {arrangements.get(donor.publicId)!.map((s) => (
+                          <li key={s.publicId}>
+                            <button
+                              type="button"
+                              onClick={() => setOpened(s.publicId)}
+                              className={cn(
+                                "grid w-full gap-0.5 rounded-cup border border-hairline bg-subtle/40 px-3 py-2 text-left text-sm hover:border-brand",
+                                focusRing,
+                                s.status === "Ended" && "opacity-70",
+                              )}
+                            >
+                              <span className="font-medium text-brand">
+                                {s.mealSlotName}
+                                {s.status === "Ended" && <span className="font-normal text-muted"> · {t("ended")}</span>}
+                              </span>
+                              <span className="break-words text-fg">{summary(s)}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {(canEdit || (canCreate && donor.isActive)) && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {canCreate && donor.isActive && (
+                          <Button variant="outline" onClick={() => setSettingUp(donor)} aria-label={t("setUpNamed", { name: donor.fullName })}>
+                            {t("setUp")}
+                          </Button>
+                        )}
+                        {canEdit && (
+                          <Button variant="ghost" onClick={() => setEditing(donor)} aria-label={t("editNamed", { name: donor.fullName })}>
+                            {t("edit")}
+                          </Button>
+                        )}
                       </div>
                     )}
                   </article>
@@ -132,6 +177,10 @@ export function SponsorsScreen() {
           )}
         </>
       )}
+
+      {settingUp && <NewSponsorshipSheet donor={settingUp} slots={slots} onClose={() => setSettingUp(null)} onSaved={() => void load()} />}
+
+      {opened && <SponsorshipSheet publicId={opened} all={sponsorships} onClose={() => setOpened(null)} onChanged={() => void load()} />}
 
       {editing && (
         <DonorSheet

@@ -24,7 +24,8 @@ export default function Page({ params }: PageProps<"/[locale]/bookings/sponsors"
   return (
     <NextIntlClientProvider messages={pickMessages(messages, [...sharedClientNamespaces, "Sponsors", "Booking"])}>
       <header className="mb-8 grid gap-2">
-        <h1 className="text-3xl font-semibold text-brand">{t("title")}</h1>
+        {/* "Regular donors" in Tamil is one word wider than a 320 px phone: it may break inside. */}
+        <h1 className="text-3xl font-semibold text-brand [overflow-wrap:anywhere]">{t("title")}</h1>
         <p className="max-w-3xl text-muted">{t("intro")}</p>
       </header>
       <InstitutionGate permission="BOOKINGS.SPONSORS.VIEW">

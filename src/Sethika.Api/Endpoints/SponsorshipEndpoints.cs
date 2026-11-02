@@ -34,6 +34,7 @@ internal static class SponsorshipEndpoints
 
         sponsorships.MapGet("/", ListAsync).WithMetadata(new HasPermissionAttribute(SponsorsView));
         sponsorships.MapPost("/", CreateAsync).WithMetadata(new HasPermissionAttribute(SponsorsCreate)).WakesOutbox();
+        sponsorships.MapPost("/preview", PreviewAsync).WithMetadata(new HasPermissionAttribute(SponsorsCreate));
         sponsorships.MapGet("/{publicId:guid}", GetAsync).WithMetadata(new HasPermissionAttribute(SponsorsView));
         sponsorships.MapPost("/{publicId:guid}/end", EndAsync).WithMetadata(new HasPermissionAttribute(SponsorsEdit)).WakesOutbox();
         sponsorships.MapPost("/{publicId:guid}/skip", SkipAsync).WithMetadata(new HasPermissionAttribute(SponsorsEdit)).WakesOutbox();
@@ -74,6 +75,20 @@ internal static class SponsorshipEndpoints
 
         var days = result.Days.Select(d => new { date = d.Date, outcome = OutcomeName(d.Outcome), error = d.Error, bookingNo = d.BookingNo });
         return Results.Json(new { publicId = result.PublicId, version = result.Version, days, later = result.Later }, statusCode: StatusCodes.Status201Created);
+    }
+
+    /// <summary>The next days a sponsorship would have, and their clashes, before it is saved (K9). Writes nothing.</summary>
+    private static async Task<IResult> PreviewAsync([FromBody] SponsorshipInput body, ICurrentUserContext currentUser, StandingSponsorshipPreview preview, CancellationToken cancellationToken)
+    {
+        if (currentUser.InstitutionId is not { } institutionId)
+        {
+            return NoInstitution();
+        }
+
+        var result = await preview.PreviewAsync(institutionId, body, cancellationToken);
+        return result.Succeeded
+            ? Results.Ok(new { days = result.Days })
+            : Results.Json(new { code = result.Error, fields = result.Fields }, statusCode: StatusCodes.Status400BadRequest);
     }
 
     private static async Task<IResult> EndAsync(Guid publicId, [FromBody] EndBody body, ICurrentUserContext currentUser, StandingSponsorshipHandler handler, CancellationToken cancellationToken)

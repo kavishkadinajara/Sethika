@@ -57,12 +57,14 @@ public sealed class InstitutionBookingQueries(IDbConnectionFactory connections) 
                b.BookingNo AS BookingNo, b.Status AS Status, b.DonorName AS DonorName, b.DonorPhone AS DonorPhone,
                b.Headcount AS Headcount, b.FulfilmentMode AS FulfilmentMode, b.InMemoryOf AS InMemoryOf,
                b.Notes AS Notes, b.CreatedAt AS CreatedAt, b.RejectReason AS RejectReason,
-               b.CancelReason AS CancelReason
+               b.CancelReason AS CancelReason, ss.PublicId AS Standing
         FROM booking.SlotInstances AS si
         JOIN booking.MealSlots AS s ON s.Id = si.MealSlotId AND s.InstitutionId = si.InstitutionId
         LEFT JOIN booking.Bookings AS b
           ON b.SlotInstanceId = si.Id AND b.InstitutionId = si.InstitutionId
          AND (@status IS NULL OR b.Status = @status)
+        LEFT JOIN booking.StandingSponsorships AS ss
+          ON ss.Id = b.StandingSponsorshipId AND ss.InstitutionId = b.InstitutionId
         WHERE si.InstitutionId = @institutionId
           AND si.SlotDate >= @first AND si.SlotDate <= @last
           AND (@status IS NULL OR b.Id IS NOT NULL)
@@ -187,7 +189,7 @@ public sealed class InstitutionBookingQueries(IDbConnectionFactory connections) 
                         .Select(r => new CalendarBookingView(
                             r.BookingNo!, r.Status!, r.DonorName!, r.DonorPhone!, r.Headcount!.Value,
                             r.FulfilmentMode!, r.InMemoryOf, r.Notes, r.CreatedAt!.Value, r.RejectReason,
-                            r.CancelReason))]);
+                            r.CancelReason, r.Standing))]);
             })];
     }
 
@@ -292,6 +294,7 @@ public sealed class InstitutionBookingQueries(IDbConnectionFactory connections) 
         public DateTime? CreatedAt { get; init; }
         public string? RejectReason { get; init; }
         public string? CancelReason { get; init; }
+        public Guid? Standing { get; init; }
     }
 
     /// <summary>What today's table reads of a slot. <c>TIME</c> arrives as a <see cref="TimeSpan"/>.</summary>

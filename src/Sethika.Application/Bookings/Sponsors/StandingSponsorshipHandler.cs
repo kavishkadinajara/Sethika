@@ -345,7 +345,7 @@ public sealed class StandingSponsorshipHandler(
     /// The pattern and its dates, as <c>CK_Standing_Shape</c> wants them: each pattern's own fields and
     /// no others, so a field sent for another pattern is refused rather than quietly dropped.
     /// </summary>
-    private static void ApplyPattern(SponsorshipInput input, StandingSponsorship sponsorship, DateOnly today, List<string> invalid)
+    internal static void ApplyPattern(SponsorshipInput input, StandingSponsorship sponsorship, DateOnly today, List<string> invalid)
     {
         var pattern = input.Pattern?.Trim();
         if (pattern is null || !StandingPattern.All.Contains(pattern, StringComparer.Ordinal))

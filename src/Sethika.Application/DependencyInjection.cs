@@ -77,6 +77,7 @@ public static class DependencyInjection
         services.AddScoped<DonorBookHandler>();
         services.AddScoped<StandingDayBooker>();
         services.AddScoped<StandingSponsorshipHandler>();
+        services.AddScoped<StandingSponsorshipPreview>();
         services.AddScoped<StandingSponsorshipReader>();
         services.AddScoped<StandingBookingRun>();
         services.AddScoped<DayRequestHandler>();

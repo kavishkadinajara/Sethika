@@ -924,7 +924,11 @@
       "invitation_answered": "This invitation has already been answered.",
       "link_not_found": "This link is not valid, or the invitation was withdrawn.",
       "own_booking": "This is your own booking: you do not need to join it.",
-      "already_joined": "You have already joined this booking."
+      "already_joined": "You have already joined this booking.",
+      "day_not_held": "This day is no longer held by a regular donor. The calendar has been refreshed.",
+      "day_request_open": "You have already asked for this day. We will text you their answer.",
+      "day_request_answered": "This request has already been answered.",
+      "day_request_not_found": "This request could not be found."
     },
     "gate": {
       "signInFirst": "Sign in with the account you use for your institution.",
@@ -1020,13 +1024,15 @@
       "date_blocked": "Closed this day",
       "too_soon": "Too soon to book",
       "too_far": "Too far ahead",
-      "slot_full": "Full"
+      "slot_full": "Full",
+      "held": "Held by a regular donor"
     },
     "legend": {
       "open": "Open",
       "filling": "Some places taken",
       "full": "Full",
-      "notOffered": "A plain date is not open"
+      "notOffered": "A plain date is not open",
+      "held": "Held by a regular donor: ask"
     },
     "sheet": {
       "title": "Sponsor {meal}",
@@ -1074,6 +1080,26 @@
       "kept": "{name} is in My places.",
       "letGo": "{name} is no longer in My places.",
       "failed": "That did not work. Please try again."
+    },
+    "heldAsk": "Held by a regular donor. You can ask for it.",
+    "ask": {
+      "title": "Ask for {date}",
+      "explain": "A regular donor gives on this day. The institution decides whether to give it to you. Asking holds nothing.",
+      "signInFirst": "Sign in to ask for this day. You will come back here.",
+      "institutionSession": "You are signed in for an institution. Switch to your own account to ask.",
+      "notAllowed": "This account cannot ask for days.",
+      "headcount": "People you would feed",
+      "headcountHint": "Between {min} and {max}.",
+      "headcountRange": "Enter a number between {min} and {max}.",
+      "fulfilment": "Who provides the meal",
+      "note": "A note for the institution (optional)",
+      "noteHint": "For example, why this day matters to you.",
+      "cancel": "Cancel",
+      "send": "Ask for this day",
+      "done": "Asked: {requestNo}",
+      "doneNext": "We will text you their answer. Your requests are in My bookings.",
+      "myBookings": "My bookings",
+      "close": "Close"
     }
   },
   "Find": {
@@ -1209,6 +1235,18 @@
         "Joined": "Joined",
         "Declined": "Declined"
       }
+    },
+    "regular": "A regular day the institution set up for you",
+    "requests": {
+      "title": "Days I asked for",
+      "status": {
+        "Open": "Waiting for their answer",
+        "Given": "Given to you",
+        "Declined": "Kept with the regular donor",
+        "Withdrawn": "Withdrawn"
+      },
+      "booking": "Booked as {bookingNo}",
+      "declinedBecause": "Their reason: {reason}"
     }
   },
   "Slots": {
@@ -1365,7 +1403,25 @@
         "complete": "{bookingNo} marked as served.",
         "no-show": "{bookingNo} marked as not happened."
       },
-      "sharedWith": "Shared with: {names}"
+      "sharedWith": "Shared with: {names}",
+      "standing": "Regular donor"
+    },
+    "standingDot": "A regular donor's day",
+    "standingLabel": "{count, plural, one {# regular donor.} other {# regular donors.}}",
+    "dayRequests": {
+      "heading": "Asked for a regular donor's day",
+      "intro": "Giving the day lets the regular donor's day go and books the person who asked.",
+      "asks": "{name} asks for this day",
+      "heldBy": "Held by {name}",
+      "whose": "Whose day to give",
+      "give": "Give them the day",
+      "decline": "Keep it",
+      "declineReason": "Why? They read this when they sign in.",
+      "declineHint": "Optional. It is not texted.",
+      "confirmDecline": "Keep it with the regular donor",
+      "back": "Back",
+      "given": "{requestNo}: the day is {name}'s now. Both have been told.",
+      "declined": "{requestNo}: kept with the regular donor. {name} has been told."
     }
   },
   "Access": {
@@ -2079,7 +2135,11 @@
         "si": "Sinhala",
         "ta": "Tamil",
         "en": "English"
-      }
+      },
+      "setUp": "Set up regular days",
+      "setUpNamed": "Set up regular days for {name}",
+      "arrangementsOf": "{name}'s regular days",
+      "ended": "Ended"
     },
     "form": {
       "newTitle": "Add a donor",
@@ -2110,7 +2170,154 @@
       "donor_not_found": "This donor is no longer in your book.",
       "donor_phone_taken": "Someone in your donor book already has this number.",
       "donor_account_taken": "The Sethika account with this number is already linked to another person in your book. Check that person’s number.",
-      "stale": "Someone changed this donor while you were editing. Close and open it again."
+      "stale": "Someone changed this donor while you were editing. Close and open it again.",
+      "sponsorship_not_found": "These regular days are no longer here.",
+      "sponsorship_ended": "These regular days have ended.",
+      "day_already_changed": "That day has already been let go or swapped.",
+      "day_not_booked": "Both days must be booked to swap this time only."
+    },
+    "pattern": {
+      "Once": "Once, on {date}",
+      "Daily": "Every day",
+      "Weekly": "Every {days}",
+      "Monthly": "{interval, plural, =1 {Every month} =2 {Every other month} other {Every # months}}, on {count, plural, one {day} other {days}} {days}",
+      "Yearly": "Every year on {date}",
+      "from": "from {date}",
+      "until": "until {date}"
+    },
+    "new": {
+      "title": "Regular days for {name}",
+      "description": "Each day is booked for them and accepted at once. A day already taken or closed is listed, not booked.",
+      "noSlots": "Add a meal first, on the Meals screen.",
+      "meal": "Meal",
+      "pattern": "How often",
+      "patterns": {
+        "Once": "One day",
+        "Daily": "Every day",
+        "Weekly": "Every week",
+        "Monthly": "Every month",
+        "Yearly": "Every year"
+      },
+      "weekDays": "On these days of the week",
+      "monthDays": "On these days of the month",
+      "monthDaysHint": "A day a month does not have (the 31st in April) is skipped that month.",
+      "interval": "Repeat",
+      "intervals": "{n, plural, =1 {Every month} =2 {Every other month} other {Every # months}}",
+      "intervalHint": "Counted from the month it starts.",
+      "yearDate": "On this day each year",
+      "yearHint": "29 February is given only in leap years.",
+      "yearMonth": "Month",
+      "yearDay": "Day",
+      "onDate": "Day",
+      "startDate": "First day",
+      "endDate": "Last day (optional)",
+      "endHint": "Leave empty for no end.",
+      "preview": "Next days",
+      "previewHint": "As the calendar stands now.",
+      "previewWaiting": "Choose the days to see them here.",
+      "previewFailed": "Could not show the days. You can still save.",
+      "previewNone": "These choices give no days.",
+      "free": "Free",
+      "later": "Booked when it opens",
+      "headcount": "People to feed",
+      "headcountHint": "Between {min} and {max} for this meal.",
+      "fulfilment": "Who provides the meal",
+      "inMemoryOf": "In memory of (optional)",
+      "notes": "Notes (optional)",
+      "cancel": "Cancel",
+      "create": "Set up",
+      "errors": {
+        "donor": "This donor is no longer in your book.",
+        "mealSlot": "Choose a meal.",
+        "pattern": "These choices give no days.",
+        "weekDays": "Choose at least one day of the week.",
+        "monthDays": "Choose at least one day of the month.",
+        "monthInterval": "Choose how often.",
+        "yearMonth": "Choose a month.",
+        "yearDay": "That month has no such day.",
+        "startDate": "Choose today or a later day.",
+        "endDate": "The last day must be on or after the first.",
+        "headcount": "Enter a number of people this meal allows.",
+        "fulfilment": "Choose who provides the meal.",
+        "inMemoryOf": "Up to 200 letters.",
+        "notes": "Up to 500 letters."
+      },
+      "done": {
+        "booked": "{count, plural, =0 {No day booked yet} one {# day booked} other {# days booked}}",
+        "notBooked": "Not booked:",
+        "later": "{count, plural, one {# more day is being booked now.} other {# more days are being booked now.}}",
+        "close": "Close"
+      }
+    },
+    "clash": {
+      "slot_inactive": "Meal not offered",
+      "institution_not_active": "Not taking bookings",
+      "not_on_this_day": "Meal not served that day",
+      "out_of_season": "Out of season",
+      "date_blocked": "Closed that day",
+      "too_soon": "Too soon for this meal's notice",
+      "too_far": "Too far ahead",
+      "slot_full": "Full",
+      "held": "Held by another regular donor",
+      "alreadyHeld": "Already theirs that day",
+      "alreadyDone": "Already booked",
+      "ended": "Ended",
+      "busy": "Busy: tried again tonight"
+    },
+    "detail": {
+      "loading": "Regular days",
+      "title": "{name}'s regular days",
+      "retry": "Try again",
+      "people": "{count, plural, one {# person} other {# people}}",
+      "inMemoryOf": "In memory of {name}",
+      "endedOn": "Ended on {date}",
+      "nextDays": "Next days",
+      "noDays": "No more days.",
+      "state": {
+        "booked": "Booked",
+        "cancelled": "Cancelled on the calendar",
+        "open": "Not booked yet: tried again tonight",
+        "upcoming": "Booked when it opens",
+        "Skipped": "Cannot give",
+        "Released": "Given to someone who asked",
+        "Blocked": "Closed by you",
+        "MovedTo": "Swapped away",
+        "MovedFrom": "Swapped in"
+      },
+      "skip": "Cannot give",
+      "skipNamed": "{date}: cannot give",
+      "skipTitle": "Cannot give on {date}?",
+      "skipExplain": "The day opens for others and they are told, if they get texts.",
+      "reason": "Reason (optional)",
+      "reasonHint": "Your staff see it.",
+      "skipConfirm": "Let the day go",
+      "skipped": "{date} is let go.",
+      "end": "End",
+      "endTitle": "End these regular days?",
+      "endExplain": "Every booked day after today is let go. Today's meal stays.",
+      "endReasonHint": "Shown on the cancelled days.",
+      "endConfirm": "End",
+      "ended": "These regular days have ended.",
+      "swap": "Swap a day",
+      "back": "Back",
+      "close": "Close"
+    },
+    "swap": {
+      "title": "Swap a day",
+      "description": "Two regular donors of the same meal give on each other's day. Both are told.",
+      "noPartner": "No other regular donor gives this meal.",
+      "when": "For how long",
+      "once": "This time only",
+      "onceHint": "Both days must be booked.",
+      "permanent": "From now on",
+      "permanentHint": "From the chosen days, each gives on the other's days.",
+      "own": "{name}'s day",
+      "partner": "With",
+      "partnerDay": "Their day",
+      "choose": "Choose a day",
+      "confirm": "Swap",
+      "done": "Swapped.",
+      "back": "Back"
     }
   }
 }

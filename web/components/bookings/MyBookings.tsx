@@ -15,9 +15,12 @@ import { cancelMyBooking, listMyBookings, listSharedWithMe, listYearly, type Boo
 import { asDate, colomboToday, daysBetween } from "@/lib/bookings/calendar";
 import { inLocale } from "@/lib/bookings/names";
 import type { DonorBooking, SharedBooking, YearlyBooking } from "@/lib/bookings/types";
+import { listMyDayRequests } from "@/lib/sponsors/api";
+import type { MyDayRequest } from "@/lib/sponsors/types";
 import { cn, focusRing } from "@/lib/utils";
 import { BookingStatusBadge } from "./BookingStatusBadge";
 import { EmptyState } from "./EmptyState";
+import { MyDayRequests } from "./MyDayRequests";
 import { ShareSheet } from "./ShareSheet";
 import { SharedWithMe } from "./SharedWithMe";
 import { YearlyBookings } from "./YearlyBookings";
@@ -38,6 +41,7 @@ export function MyBookings() {
   const [failed, setFailed] = useState(false);
   const [yearly, setYearly] = useState<YearlyBooking[]>([]);
   const [shared, setShared] = useState<SharedBooking[]>([]);
+  const [requests, setRequests] = useState<MyDayRequest[]>([]);
   const [cancelling, setCancelling] = useState<DonorBooking | null>(null);
   const [sharing, setSharing] = useState<DonorBooking | null>(null);
 
@@ -45,8 +49,9 @@ export function MyBookings() {
   // sections beside them, left out if they cannot be read.
   const load = useCallback(async () => {
     setFailed(false);
-    const [result, yearlyResult, sharedResult] = await Promise.all([listMyBookings(), listYearly(), listSharedWithMe()]);
+    const [result, yearlyResult, sharedResult, requestsResult] = await Promise.all([listMyBookings(), listYearly(), listSharedWithMe(), listMyDayRequests()]);
     if (yearlyResult.ok) setYearly(yearlyResult.value);
+    if (requestsResult.ok) setRequests(requestsResult.value);
     if (sharedResult.ok) setShared(sharedResult.value);
     if (result.ok) setBookings(result.value);
     else setFailed(true);
@@ -77,7 +82,7 @@ export function MyBookings() {
     );
   }
 
-  if (bookings.length === 0 && yearly.length === 0 && shared.length === 0) {
+  if (bookings.length === 0 && yearly.length === 0 && shared.length === 0 && requests.length === 0) {
     return (
       <div className="grid gap-5">
         <EmptyState>{t("none")}</EmptyState>
@@ -96,6 +101,7 @@ export function MyBookings() {
   return (
     <div className="grid gap-10">
       <Section title={t("upcoming")} empty={t("noneUpcoming")} bookings={upcoming} today={today} onCancel={setCancelling} onShare={setSharing} />
+      {requests.length > 0 && <MyDayRequests requests={requests} />}
       {yearly.length > 0 && <YearlyBookings yearly={yearly} onStopped={() => void load()} />}
       {shared.length > 0 && <SharedWithMe shared={shared} />}
       {past.length > 0 && <Section title={t("past")} bookings={past} today={today} onCancel={setCancelling} onShare={setSharing} />}
@@ -190,6 +196,7 @@ function BookingCard({ booking, today, onCancel, onShare }: { booking: DonorBook
           {t("people", { count: booking.headcount })} · {fulfilment(booking.fulfilmentMode)} · {booking.bookingNo}
         </p>
         {booking.yearly && live && <p className="text-sm font-medium text-brand">{t("partOfYearly")}</p>}
+        {booking.regular && <p className="text-sm font-medium text-brand">{t("regular")}</p>}
 
         {booking.inMemoryOf && <p className="font-tagline text-base italic text-fg">{t("inMemoryOf", { name: booking.inMemoryOf })}</p>}
 

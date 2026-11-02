@@ -97,7 +97,9 @@ export type DayRefusal =
   | "date_blocked"
   | "too_soon"
   | "too_far"
-  | "slot_full";
+  | "slot_full"
+  /** Full only through a regular donor's day: it can be asked for (plan 08, K6, K25). */
+  | "held";
 
 export type DayAvailability = {
   date: string;
@@ -154,6 +156,8 @@ export type DonorBooking = {
   canCancel: boolean;
   /** The active yearly booking it belongs to, or null (H5). */
   yearly: string | null;
+  /** One of the donor's regular days, set up by the institution (plan 08, K3). */
+  regular: boolean;
 };
 
 /** One of the donor's active yearly bookings (GET /api/bookings/recurring). */
@@ -335,6 +339,8 @@ export type CalendarBooking = {
   createdAt: string;
   rejectReason: string | null;
   cancelReason: string | null;
+  /** A regular donor's day (plan 08, K3): its sponsorship's publicId; null for any other booking. */
+  standing: string | null;
 };
 
 /** A slot on a day that has been booked: its places and the bookings that took them. */

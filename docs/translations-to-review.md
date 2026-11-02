@@ -1403,3 +1403,193 @@ short as it can be (SMS segments).
 | `STANDING_SWAPPED_ON` | Sethika: {institution}, {date} {time}. Your regular days were swapped with another donor's: from {date} on, you give on their days. | Sethika: {institution}, {date} {time}. ඔබේ නිත්‍ය දින තවත් නිත්‍ය දායකයෙකුගේ දින සමඟ මාරු කළා: {date} සිට ඔබ දානය දෙන්නේ ඔවුන්ගේ දිනවලයි. | Sethika: {institution}, {date} {time}. உங்கள் வழக்கமான நாட்கள் மற்றொரு வழக்கமான நன்கொடையாளரின் நாட்களுடன் மாற்றப்பட்டன: {date} முதல் அவர்களின் நாட்களில் வழங்குவீர்கள். | | |
 | `DAY_REQUEST_GIVEN` | Sethika {bookingNo}: {institution}, {date} {time}. The institution gave you the day you asked for; it is booked for you. | Sethika {bookingNo}: {institution}, {date} {time}. ඔබ ඉල්ලූ දිනය ආයතනය ඔබට ලබා දුන්නා; එය ඔබට වෙන් කර ඇත. | Sethika {bookingNo}: {institution}, {date} {time}. நீங்கள் கேட்ட நாளை நிறுவனம் உங்களுக்கு வழங்கியது; அது உங்களுக்கு முன்பதிவு செய்யப்பட்டது. | | |
 | `DAY_REQUEST_DECLINED` | Sethika {requestNo}: {institution}, {date} {time}. The institution could not give you the day you asked for. Sign in to see why. | Sethika {requestNo}: {institution}, {date} {time}. ඔබ ඉල්ලූ දිනය ලබා දීමට ආයතනයට නොහැකි විය. හේතුව බැලීමට පිවිසෙන්න. | Sethika {requestNo}: {institution}, {date} {time}. நீங்கள் கேட்ட நாளை நிறுவனத்தால் வழங்க இயலவில்லை. காரணத்தைப் பார்க்க உள்நுழையவும். | | |
+
+## Standing sponsor screens (2026-11-02, `Sponsors`, `Calendar`, `Discover`, `MyBookings`, `Booking.errors`, plan 08 K.4)
+
+Setting up a regular donor's days (pattern picker, preview, result), an arrangement's days (skip, end, swap), the
+calendar's regular donors and asked-for days, asking for a held day, and My bookings' requests. Drafts by Claude;
+`{...}` are filled in by the app, and `{x, plural, ...}` keeps its structure.
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `Sponsors.book.setUp` | Set up regular days | නිත්‍ය දින සකසන්න | வழக்கமான நாட்களை அமைக்கவும் | | |
+| `Sponsors.book.setUpNamed` | Set up regular days for {name} | {name} සඳහා නිත්‍ය දින සකසන්න | {name} க்கு வழக்கமான நாட்களை அமைக்கவும் | | |
+| `Sponsors.book.arrangementsOf` | {name}'s regular days | {name} ගේ නිත්‍ය දින | {name} இன் வழக்கமான நாட்கள் | | |
+| `Sponsors.book.ended` | Ended | අවසන් | முடிந்தது | | |
+| `Sponsors.pattern.Once` | Once, on {date} | එක් වරක්, {date} | ஒரு முறை, {date} | | |
+| `Sponsors.pattern.Daily` | Every day | සෑම දිනකම | ஒவ்வொரு நாளும் | | |
+| `Sponsors.pattern.Weekly` | Every {days} | සෑම {days} | ஒவ்வொரு {days} | | |
+| `Sponsors.pattern.Monthly` | {interval, plural, =1 {Every month} =2 {Every other month} other {Every # months}}, on {count, plural, one {day} other {days}} {days} | {interval, plural, =1 {සෑම මසකම} =2 {මාස දෙකකට වරක්} other {මාස #කට වරක්}}, {count, plural, one {දිනය} other {දින}} {days} | {interval, plural, =1 {ஒவ்வொரு மாதமும்} =2 {இரண்டு மாதங்களுக்கு ஒருமுறை} other {# மாதங்களுக்கு ஒருமுறை}}, {count, plural, one {நாள்} other {நாட்கள்}} {days} | | |
+| `Sponsors.pattern.Yearly` | Every year on {date} | සෑම වසරකම {date} | ஒவ்வொரு ஆண்டும் {date} | | |
+| `Sponsors.pattern.from` | from {date} | {date} සිට | {date} முதல் | | |
+| `Sponsors.pattern.until` | until {date} | {date} දක්වා | {date} வரை | | |
+| `Sponsors.new.title` | Regular days for {name} | {name} ගේ නිත්‍ය දින | {name} இன் வழக்கமான நாட்கள் | | |
+| `Sponsors.new.description` | Each day is booked for them and accepted at once. A day already taken or closed is listed, not booked. | සෑම දිනයක්ම ඔවුන් සඳහා වෙන් කර වහාම පිළිගැනේ. දැනටමත් ගත් හෝ වසා ඇති දිනයක් ලැයිස්තුගත කෙරේ, වෙන් නොකෙරේ. | ஒவ்வொரு நாளும் அவர்களுக்காக முன்பதிவு செய்யப்பட்டு உடனே ஏற்கப்படும். ஏற்கனவே எடுக்கப்பட்ட அல்லது மூடிய நாள் பட்டியலிடப்படும், முன்பதிவு செய்யப்படாது. | | |
+| `Sponsors.new.noSlots` | Add a meal first, on the Meals screen. | පළමුව ආහාර වේල් තිරයෙන් ආහාර වේලක් එක් කරන්න. | முதலில் உணவுகள் திரையில் ஒரு உணவைச் சேர்க்கவும். | | |
+| `Sponsors.new.meal` | Meal | ආහාර වේල | உணவு | | |
+| `Sponsors.new.pattern` | How often | කොපමණ වාරයක් | எத்தனை முறை | | |
+| `Sponsors.new.patterns.Once` | One day | එක් දිනක් | ஒரு நாள் | | |
+| `Sponsors.new.patterns.Daily` | Every day | සෑම දිනකම | ஒவ்வொரு நாளும் | | |
+| `Sponsors.new.patterns.Weekly` | Every week | සෑම සතියකම | ஒவ்வொரு வாரமும் | | |
+| `Sponsors.new.patterns.Monthly` | Every month | සෑම මසකම | ஒவ்வொரு மாதமும் | | |
+| `Sponsors.new.patterns.Yearly` | Every year | සෑම වසරකම | ஒவ்வொரு ஆண்டும் | | |
+| `Sponsors.new.weekDays` | On these days of the week | සතියේ මෙම දිනවල | வாரத்தின் இந்த நாட்களில் | | |
+| `Sponsors.new.monthDays` | On these days of the month | මාසයේ මෙම දිනවල | மாதத்தின் இந்த நாட்களில் | | |
+| `Sponsors.new.monthDaysHint` | A day a month does not have (the 31st in April) is skipped that month. | මාසයක නැති දිනයක් (අප්‍රේල් 31) එම මාසයේ මඟ හැරේ. | ஒரு மாதத்தில் இல்லாத நாள் (ஏப்ரல் 31) அந்த மாதம் தவிர்க்கப்படும். | | |
+| `Sponsors.new.interval` | Repeat | නැවත | மீண்டும் | | |
+| `Sponsors.new.intervals` | {n, plural, =1 {Every month} =2 {Every other month} other {Every # months}} | {n, plural, =1 {සෑම මසකම} =2 {මාස දෙකකට වරක්} other {මාස #කට වරක්}} | {n, plural, =1 {ஒவ்வொரு மாதமும்} =2 {இரண்டு மாதங்களுக்கு ஒருமுறை} other {# மாதங்களுக்கு ஒருமுறை}} | | |
+| `Sponsors.new.intervalHint` | Counted from the month it starts. | ආරම්භ වන මාසයේ සිට ගණන් කෙරේ. | தொடங்கும் மாதத்திலிருந்து கணக்கிடப்படும். | | |
+| `Sponsors.new.yearDate` | On this day each year | සෑම වසරකම මෙම දිනයේ | ஒவ்வொரு ஆண்டும் இந்த நாளில் | | |
+| `Sponsors.new.yearHint` | 29 February is given only in leap years. | පෙබරවාරි 29 ලබා දෙන්නේ අධික අවුරුදුවල පමණි. | பிப்ரவரி 29 நெட்டாண்டுகளில் மட்டுமே. | | |
+| `Sponsors.new.yearMonth` | Month | මාසය | மாதம் | | |
+| `Sponsors.new.yearDay` | Day | දිනය | நாள் | | |
+| `Sponsors.new.onDate` | Day | දිනය | நாள் | | |
+| `Sponsors.new.startDate` | First day | පළමු දිනය | முதல் நாள் | | |
+| `Sponsors.new.endDate` | Last day (optional) | අවසන් දිනය (අවශ්‍ය නම්) | கடைசி நாள் (விருப்பம்) | | |
+| `Sponsors.new.endHint` | Leave empty for no end. | අවසානයක් නැත්නම් හිස්ව තබන්න. | முடிவு இல்லையெனில் காலியாக விடவும். | | |
+| `Sponsors.new.preview` | Next days | ඊළඟ දින | அடுத்த நாட்கள் | | |
+| `Sponsors.new.previewHint` | As the calendar stands now. | දින දර්ශනය දැන් පවතින ආකාරයට. | நாட்காட்டி இப்போது உள்ளபடி. | | |
+| `Sponsors.new.previewWaiting` | Choose the days to see them here. | මෙහි දැකීමට දින තෝරන්න. | இங்கே பார்க்க நாட்களைத் தேர்ந்தெடுக்கவும். | | |
+| `Sponsors.new.previewFailed` | Could not show the days. You can still save. | දින පෙන්විය නොහැකි විය. ඔබට තවමත් සුරැකිය හැක. | நாட்களைக் காட்ட முடியவில்லை. நீங்கள் இன்னும் சேமிக்கலாம். | | |
+| `Sponsors.new.previewNone` | These choices give no days. | මෙම තේරීම් කිසිදු දිනයක් නොදෙයි. | இந்தத் தேர்வுகள் எந்த நாளையும் தரவில்லை. | | |
+| `Sponsors.new.free` | Free | නිදහස් | காலியாக உள்ளது | | |
+| `Sponsors.new.later` | Booked when it opens | විවෘත වූ විට වෙන් කෙරේ | திறக்கும்போது முன்பதிவு செய்யப்படும் | | |
+| `Sponsors.new.headcount` | People to feed | ආහාර දිය යුතු පිරිස | உணவளிக்க வேண்டியவர்கள் | | |
+| `Sponsors.new.headcountHint` | Between {min} and {max} for this meal. | මෙම වේල සඳහා {min} සිට {max} දක්වා. | இந்த உணவுக்கு {min} முதல் {max} வரை. | | |
+| `Sponsors.new.fulfilment` | Who provides the meal | ආහාරය සපයන්නේ කවුද | உணவை யார் வழங்குகிறார் | | |
+| `Sponsors.new.inMemoryOf` | In memory of (optional) | සිහිවීම පිණිස (අවශ්‍ය නම්) | நினைவாக (விருப்பம்) | | |
+| `Sponsors.new.notes` | Notes (optional) | සටහන් (අවශ්‍ය නම්) | குறிப்புகள் (விருப்பம்) | | |
+| `Sponsors.new.cancel` | Cancel | අවලංගු කරන්න | ரத்து செய் | | |
+| `Sponsors.new.create` | Set up | සකසන්න | அமைக்கவும் | | |
+| `Sponsors.new.errors.donor` | This donor is no longer in your book. | මෙම දායකයා තවදුරටත් ඔබේ පොතේ නැත. | இந்த நன்கொடையாளர் இனி உங்கள் பதிவேட்டில் இல்லை. | | |
+| `Sponsors.new.errors.mealSlot` | Choose a meal. | ආහාර වේලක් තෝරන්න. | ஒரு உணவைத் தேர்ந்தெடுக்கவும். | | |
+| `Sponsors.new.errors.pattern` | These choices give no days. | මෙම තේරීම් කිසිදු දිනයක් නොදෙයි. | இந்தத் தேர்வுகள் எந்த நாளையும் தரவில்லை. | | |
+| `Sponsors.new.errors.weekDays` | Choose at least one day of the week. | සතියේ අවම වශයෙන් එක් දිනයක් තෝරන්න. | வாரத்தின் குறைந்தது ஒரு நாளைத் தேர்ந்தெடுக்கவும். | | |
+| `Sponsors.new.errors.monthDays` | Choose at least one day of the month. | මාසයේ අවම වශයෙන් එක් දිනයක් තෝරන්න. | மாதத்தின் குறைந்தது ஒரு நாளைத் தேர்ந்தெடுக்கவும். | | |
+| `Sponsors.new.errors.monthInterval` | Choose how often. | කොපමණ වාරයක්දැයි තෝරන්න. | எத்தனை முறை என்பதைத் தேர்ந்தெடுக்கவும். | | |
+| `Sponsors.new.errors.yearMonth` | Choose a month. | මාසයක් තෝරන්න. | ஒரு மாதத்தைத் தேர்ந்தெடுக்கவும். | | |
+| `Sponsors.new.errors.yearDay` | That month has no such day. | එම මාසයේ එවැනි දිනයක් නැත. | அந்த மாதத்தில் அப்படி ஒரு நாள் இல்லை. | | |
+| `Sponsors.new.errors.startDate` | Choose today or a later day. | අද හෝ පසු දිනයක් තෝරන්න. | இன்று அல்லது பிந்தைய நாளைத் தேர்ந்தெடுக்கவும். | | |
+| `Sponsors.new.errors.endDate` | The last day must be on or after the first. | අවසන් දිනය පළමු දිනයට සමාන හෝ පසු විය යුතුය. | கடைசி நாள் முதல் நாளுக்குச் சமமாகவோ பின்னரோ இருக்க வேண்டும். | | |
+| `Sponsors.new.errors.headcount` | Enter a number of people this meal allows. | මෙම වේලට ඉඩ දෙන පිරිසක් ඇතුළත් කරන්න. | இந்த உணவு அனுமதிக்கும் எண்ணிக்கையை உள்ளிடவும். | | |
+| `Sponsors.new.errors.fulfilment` | Choose who provides the meal. | ආහාරය සපයන්නේ කවුදැයි තෝරන්න. | உணவை யார் வழங்குகிறார் என்பதைத் தேர்ந்தெடுக்கவும். | | |
+| `Sponsors.new.errors.inMemoryOf` | Up to 200 letters. | අකුරු 200ක් දක්වා. | 200 எழுத்துகள் வரை. | | |
+| `Sponsors.new.errors.notes` | Up to 500 letters. | අකුරු 500ක් දක්වා. | 500 எழுத்துகள் வரை. | | |
+| `Sponsors.new.done.booked` | {count, plural, =0 {No day booked yet} one {# day booked} other {# days booked}} | {count, plural, =0 {තවම දිනයක් වෙන් කර නැත} one {දින # ක් වෙන් කෙරිණි} other {දින # ක් වෙන් කෙරිණි}} | {count, plural, =0 {இன்னும் எந்த நாளும் முன்பதிவு செய்யப்படவில்லை} one {# நாள் முன்பதிவு செய்யப்பட்டது} other {# நாட்கள் முன்பதிவு செய்யப்பட்டன}} | | |
+| `Sponsors.new.done.notBooked` | Not booked: | වෙන් නොකළ දින: | முன்பதிவு செய்யப்படாதவை: | | |
+| `Sponsors.new.done.later` | {count, plural, one {# more day is being booked now.} other {# more days are being booked now.}} | {count, plural, one {තවත් දින #ක් දැන් වෙන් කෙරේ.} other {තවත් දින #ක් දැන් වෙන් කෙරේ.}} | {count, plural, one {மேலும் # நாள் இப்போது முன்பதிவு செய்யப்படுகிறது.} other {மேலும் # நாட்கள் இப்போது முன்பதிவு செய்யப்படுகின்றன.}} | | |
+| `Sponsors.new.done.close` | Close | වසන්න | மூடு | | |
+| `Sponsors.clash.slot_inactive` | Meal not offered | වේල ලබා නොදේ | உணவு வழங்கப்படுவதில்லை | | |
+| `Sponsors.clash.institution_not_active` | Not taking bookings | වෙන්කිරීම් භාර නොගනී | முன்பதிவுகள் ஏற்கப்படுவதில்லை | | |
+| `Sponsors.clash.not_on_this_day` | Meal not served that day | එදින වේල සපයන්නේ නැත | அந்த நாளில் உணவு இல்லை | | |
+| `Sponsors.clash.out_of_season` | Out of season | කාලය නොවේ | பருவம் அல்ல | | |
+| `Sponsors.clash.date_blocked` | Closed that day | එදින වසා ඇත | அந்த நாள் மூடப்பட்டுள்ளது | | |
+| `Sponsors.clash.too_soon` | Too soon for this meal's notice | මෙම වේලේ දැනුම්දීමට ඉතා ළඟයි | இந்த உணவின் அறிவிப்புக்கு மிக அருகில் | | |
+| `Sponsors.clash.too_far` | Too far ahead | ඉතා දුරයි | மிகத் தொலைவில் | | |
+| `Sponsors.clash.slot_full` | Full | පිරී ඇත | நிரம்பியது | | |
+| `Sponsors.clash.held` | Held by another regular donor | වෙනත් නිත්‍ය දායකයෙකුට හිමියි | வேறொரு வழக்கமான நன்கொடையாளருக்கு உரியது | | |
+| `Sponsors.clash.alreadyHeld` | Already theirs that day | එදින දැනටමත් ඔවුන්ගේ | அந்த நாள் ஏற்கனவே அவருடையது | | |
+| `Sponsors.clash.alreadyDone` | Already booked | දැනටමත් වෙන් කර ඇත | ஏற்கனவே முன்பதிவு செய்யப்பட்டது | | |
+| `Sponsors.clash.ended` | Ended | අවසන් | முடிந்தது | | |
+| `Sponsors.clash.busy` | Busy: tried again tonight | කාර්යබහුලයි: අද රාත්‍රියේ නැවත උත්සාහ කෙරේ | பரபரப்பு: இன்றிரவு மீண்டும் முயற்சிக்கப்படும் | | |
+| `Sponsors.detail.loading` | Regular days | නිත්‍ය දින | வழக்கமான நாட்கள் | | |
+| `Sponsors.detail.title` | {name}'s regular days | {name} ගේ නිත්‍ය දින | {name} இன் வழக்கமான நாட்கள் | | |
+| `Sponsors.detail.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயற்சிக்கவும் | | |
+| `Sponsors.detail.people` | {count, plural, one {# person} other {# people}} | {count, plural, one {# දෙනා} other {# දෙනා}} | {count, plural, one {# நபர்} other {# நபர்கள்}} | | |
+| `Sponsors.detail.inMemoryOf` | In memory of {name} | {name} සිහිවීම පිණිස | {name} நினைவாக | | |
+| `Sponsors.detail.endedOn` | Ended on {date} | {date} දින අවසන් විය | {date} அன்று முடிந்தது | | |
+| `Sponsors.detail.nextDays` | Next days | ඊළඟ දින | அடுத்த நாட்கள் | | |
+| `Sponsors.detail.noDays` | No more days. | තවත් දින නැත. | மேலும் நாட்கள் இல்லை. | | |
+| `Sponsors.detail.state.booked` | Booked | වෙන් කර ඇත | முன்பதிவு செய்யப்பட்டது | | |
+| `Sponsors.detail.state.cancelled` | Cancelled on the calendar | දින දර්ශනයෙන් අවලංගු කෙරිණි | நாட்காட்டியில் ரத்து செய்யப்பட்டது | | |
+| `Sponsors.detail.state.open` | Not booked yet: tried again tonight | තවම වෙන් කර නැත: අද රාත්‍රියේ නැවත උත්සාහ කෙරේ | இன்னும் முன்பதிவு இல்லை: இன்றிரவு மீண்டும் முயற்சிக்கப்படும் | | |
+| `Sponsors.detail.state.upcoming` | Booked when it opens | විවෘත වූ විට වෙන් කෙරේ | திறக்கும்போது முன்பதிவு செய்யப்படும் | | |
+| `Sponsors.detail.state.Skipped` | Cannot give | දිය නොහැක | வழங்க இயலாது | | |
+| `Sponsors.detail.state.Released` | Given to someone who asked | ඉල්ලූ කෙනෙකුට දෙන ලදී | கேட்டவருக்கு வழங்கப்பட்டது | | |
+| `Sponsors.detail.state.Blocked` | Closed by you | ඔබ විසින් වසා ඇත | நீங்கள் மூடியது | | |
+| `Sponsors.detail.state.MovedTo` | Swapped away | මාරු කර ගියේය | மாற்றி அனுப்பப்பட்டது | | |
+| `Sponsors.detail.state.MovedFrom` | Swapped in | මාරුවෙන් ලැබුණි | மாற்றிப் பெறப்பட்டது | | |
+| `Sponsors.detail.skip` | Cannot give | දිය නොහැක | வழங்க இயலாது | | |
+| `Sponsors.detail.skipNamed` | {date}: cannot give | {date}: දිය නොහැක | {date}: வழங்க இயலாது | | |
+| `Sponsors.detail.skipTitle` | Cannot give on {date}? | {date} දිය නොහැකිද? | {date} அன்று வழங்க இயலாதா? | | |
+| `Sponsors.detail.skipExplain` | The day opens for others and they are told, if they get texts. | දිනය අන් අයට විවෘත වන අතර, කෙටි පණිවිඩ ලැබෙන්නේ නම් ඔවුන්ට දන්වනු ලැබේ. | அந்த நாள் மற்றவர்களுக்குத் திறக்கும்; குறுஞ்செய்திகள் பெறுபவரானால் அவருக்குத் தெரிவிக்கப்படும். | | |
+| `Sponsors.detail.reason` | Reason (optional) | හේතුව (අවශ්‍ය නම්) | காரணம் (விருப்பம்) | | |
+| `Sponsors.detail.reasonHint` | Your staff see it. | ඔබේ කාර්ය මණ්ඩලයට පෙනේ. | உங்கள் ஊழியர்களுக்குத் தெரியும். | | |
+| `Sponsors.detail.skipConfirm` | Let the day go | දිනය නිදහස් කරන්න | நாளை விடுவிக்கவும் | | |
+| `Sponsors.detail.skipped` | {date} is let go. | {date} නිදහස් කෙරිණි. | {date} விடுவிக்கப்பட்டது. | | |
+| `Sponsors.detail.end` | End | අවසන් කරන්න | முடிக்கவும் | | |
+| `Sponsors.detail.endTitle` | End these regular days? | මෙම නිත්‍ය දින අවසන් කරන්නද? | இந்த வழக்கமான நாட்களை முடிக்கவா? | | |
+| `Sponsors.detail.endExplain` | Every booked day after today is let go. Today's meal stays. | අදින් පසු වෙන් කළ සියලු දින නිදහස් කෙරේ. අද දානය ඉතිරි වේ. | இன்றைக்குப் பிறகு முன்பதிவு செய்த ஒவ்வொரு நாளும் விடுவிக்கப்படும். இன்றைய உணவு அப்படியே இருக்கும். | | |
+| `Sponsors.detail.endReasonHint` | Shown on the cancelled days. | අවලංගු කළ දිනවල පෙන්වයි. | ரத்து செய்யப்பட்ட நாட்களில் காட்டப்படும். | | |
+| `Sponsors.detail.endConfirm` | End | අවසන් කරන්න | முடிக்கவும் | | |
+| `Sponsors.detail.ended` | These regular days have ended. | මෙම නිත්‍ය දින අවසන් විය. | இந்த வழக்கமான நாட்கள் முடிந்தன. | | |
+| `Sponsors.detail.swap` | Swap a day | දිනයක් මාරු කරන්න | ஒரு நாளை மாற்றவும் | | |
+| `Sponsors.detail.back` | Back | ආපසු | பின்செல் | | |
+| `Sponsors.detail.close` | Close | වසන්න | மூடு | | |
+| `Sponsors.swap.title` | Swap a day | දිනයක් මාරු කරන්න | ஒரு நாளை மாற்றவும் | | |
+| `Sponsors.swap.description` | Two regular donors of the same meal give on each other's day. Both are told. | එකම වේලේ නිත්‍ය දායකයන් දෙදෙනෙක් එකිනෙකාගේ දිනයේ දන් දෙති. දෙදෙනාටම දන්වනු ලැබේ. | ஒரே உணவின் இரண்டு வழக்கமான நன்கொடையாளர்கள் ஒருவர் மற்றவரின் நாளில் வழங்குவர். இருவருக்கும் தெரிவிக்கப்படும். | | |
+| `Sponsors.swap.noPartner` | No other regular donor gives this meal. | මෙම වේල දෙන වෙනත් නිත්‍ය දායකයෙක් නැත. | இந்த உணவை வழங்கும் வேறு வழக்கமான நன்கொடையாளர் இல்லை. | | |
+| `Sponsors.swap.when` | For how long | කොපමණ කලකට | எவ்வளவு காலம் | | |
+| `Sponsors.swap.once` | This time only | මෙවර පමණක් | இம்முறை மட்டும் | | |
+| `Sponsors.swap.onceHint` | Both days must be booked. | දින දෙකම වෙන් කර තිබිය යුතුය. | இரண்டு நாட்களும் முன்பதிவு செய்யப்பட்டிருக்க வேண்டும். | | |
+| `Sponsors.swap.permanent` | From now on | මින් ඉදිරියට | இனிமேல் | | |
+| `Sponsors.swap.permanentHint` | From the chosen days, each gives on the other's days. | තෝරාගත් දින සිට, එක් එක් අය අනෙකාගේ දිනවල දෙති. | தேர்ந்தெடுத்த நாட்களிலிருந்து, ஒவ்வொருவரும் மற்றவரின் நாட்களில் வழங்குவர். | | |
+| `Sponsors.swap.own` | {name}'s day | {name} ගේ දිනය | {name} இன் நாள் | | |
+| `Sponsors.swap.partner` | With | සමඟ | இவருடன் | | |
+| `Sponsors.swap.partnerDay` | Their day | ඔවුන්ගේ දිනය | அவரது நாள் | | |
+| `Sponsors.swap.choose` | Choose a day | දිනයක් තෝරන්න | ஒரு நாளைத் தேர்ந்தெடுக்கவும் | | |
+| `Sponsors.swap.confirm` | Swap | මාරු කරන්න | மாற்றவும் | | |
+| `Sponsors.swap.done` | Swapped. | මාරු කෙරිණි. | மாற்றப்பட்டது. | | |
+| `Sponsors.swap.back` | Back | ආපසු | பின்செல் | | |
+| `Sponsors.errors.sponsorship_not_found` | These regular days are no longer here. | මෙම නිත්‍ය දින තවදුරටත් මෙහි නැත. | இந்த வழக்கமான நாட்கள் இனி இங்கு இல்லை. | | |
+| `Sponsors.errors.sponsorship_ended` | These regular days have ended. | මෙම නිත්‍ය දින අවසන් වී ඇත. | இந்த வழக்கமான நாட்கள் முடிந்துவிட்டன. | | |
+| `Sponsors.errors.day_already_changed` | That day has already been let go or swapped. | එම දිනය දැනටමත් නිදහස් කර හෝ මාරු කර ඇත. | அந்த நாள் ஏற்கனவே விடுவிக்கப்பட்டது அல்லது மாற்றப்பட்டது. | | |
+| `Sponsors.errors.day_not_booked` | Both days must be booked to swap this time only. | මෙවර පමණක් මාරු කිරීමට දින දෙකම වෙන් කර තිබිය යුතුය. | இம்முறை மட்டும் மாற்ற இரண்டு நாட்களும் முன்பதிவு செய்யப்பட்டிருக்க வேண்டும். | | |
+| `Calendar.standingDot` | A regular donor's day | නිත්‍ය දායකයෙකුගේ දිනය | வழக்கமான நன்கொடையாளரின் நாள் | | |
+| `Calendar.standingLabel` | {count, plural, one {# regular donor.} other {# regular donors.}} | {count, plural, one {නිත්‍ය දායකයන් #.} other {නිත්‍ය දායකයන් #.}} | {count, plural, one {# வழக்கமான நன்கொடையாளர்.} other {# வழக்கமான நன்கொடையாளர்கள்.}} | | |
+| `Calendar.booking.standing` | Regular donor | නිත්‍ය දායක | வழக்கமான நன்கொடையாளர் | | |
+| `Calendar.dayRequests.heading` | Asked for a regular donor's day | නිත්‍ය දායකයෙකුගේ දිනයක් ඉල්ලා ඇත | வழக்கமான நன்கொடையாளரின் நாள் கேட்கப்பட்டுள்ளது | | |
+| `Calendar.dayRequests.intro` | Giving the day lets the regular donor's day go and books the person who asked. | දිනය දීමෙන් නිත්‍ය දායකයාගේ දිනය නිදහස් වී ඉල්ලූ තැනැත්තාට වෙන් කෙරේ. | நாளை வழங்கினால் வழக்கமான நன்கொடையாளரின் நாள் விடுவிக்கப்பட்டு கேட்டவருக்கு முன்பதிவு செய்யப்படும். | | |
+| `Calendar.dayRequests.asks` | {name} asks for this day | {name} මෙම දිනය ඉල්ලයි | {name} இந்த நாளைக் கேட்கிறார் | | |
+| `Calendar.dayRequests.heldBy` | Held by {name} | {name} ට හිමියි | {name} க்கு உரியது | | |
+| `Calendar.dayRequests.whose` | Whose day to give | කාගේ දිනය දිය යුතුද | யாருடைய நாளை வழங்குவது | | |
+| `Calendar.dayRequests.give` | Give them the day | ඔවුන්ට දිනය දෙන්න | அவருக்கு நாளை வழங்கவும் | | |
+| `Calendar.dayRequests.decline` | Keep it | තබා ගන්න | வைத்திருக்கவும் | | |
+| `Calendar.dayRequests.declineReason` | Why? They read this when they sign in. | ඇයි? ඔවුන් පුරනය වූ විට මෙය කියවයි. | ஏன்? அவர் உள்நுழையும்போது இதைப் படிப்பார். | | |
+| `Calendar.dayRequests.declineHint` | Optional. It is not texted. | අවශ්‍ය නම්. කෙටි පණිවිඩයෙන් නොයවයි. | விருப்பம். குறுஞ்செய்தியில் அனுப்பப்படாது. | | |
+| `Calendar.dayRequests.confirmDecline` | Keep it with the regular donor | නිත්‍ය දායකයාට තබා ගන්න | வழக்கமான நன்கொடையாளரிடம் வைத்திருக்கவும் | | |
+| `Calendar.dayRequests.back` | Back | ආපසු | பின்செல் | | |
+| `Calendar.dayRequests.given` | {requestNo}: the day is {name}'s now. Both have been told. | {requestNo}: දිනය දැන් {name} ට. දෙදෙනාටම දන්වා ඇත. | {requestNo}: நாள் இப்போது {name} உடையது. இருவருக்கும் தெரிவிக்கப்பட்டது. | | |
+| `Calendar.dayRequests.declined` | {requestNo}: kept with the regular donor. {name} has been told. | {requestNo}: නිත්‍ය දායකයාට තබා ගැනිණි. {name} ට දන්වා ඇත. | {requestNo}: வழக்கமான நன்கொடையாளரிடம் வைக்கப்பட்டது. {name} க்குத் தெரிவிக்கப்பட்டது. | | |
+| `Discover.reason.held` | Held by a regular donor | නිත්‍ය දායකයෙකුට හිමියි | வழக்கமான நன்கொடையாளருக்கு உரியது | | |
+| `Discover.heldAsk` | Held by a regular donor. You can ask for it. | නිත්‍ය දායකයෙකුට හිමියි. ඔබට එය ඉල්ලිය හැක. | வழக்கமான நன்கொடையாளருக்கு உரியது. நீங்கள் கேட்கலாம். | | |
+| `Discover.legend.held` | Held by a regular donor: ask | නිත්‍ය දායකයෙකුට හිමියි: ඉල්ලන්න | வழக்கமான நன்கொடையாளருக்கு உரியது: கேட்கவும் | | |
+| `Discover.ask.title` | Ask for {date} | {date} ඉල්ලන්න | {date} ஐக் கேட்கவும் | | |
+| `Discover.ask.explain` | A regular donor gives on this day. The institution decides whether to give it to you. Asking holds nothing. | මෙදින නිත්‍ය දායකයෙක් දන් දෙයි. ඔබට එය දෙනවාද යන්න ආයතනය තීරණය කරයි. ඉල්ලීමෙන් කිසිවක් රඳවා නොගනී. | இந்த நாளில் ஒரு வழக்கமான நன்கொடையாளர் வழங்குகிறார். அதை உங்களுக்கு வழங்குவதா என்பதை நிறுவனம் முடிவு செய்யும். கேட்பது எதையும் ஒதுக்காது. | | |
+| `Discover.ask.signInFirst` | Sign in to ask for this day. You will come back here. | මෙම දිනය ඉල්ලීමට පුරනය වන්න. ඔබ නැවත මෙහි පැමිණේ. | இந்த நாளைக் கேட்க உள்நுழையவும். நீங்கள் மீண்டும் இங்கு வருவீர்கள். | | |
+| `Discover.ask.institutionSession` | You are signed in for an institution. Switch to your own account to ask. | ඔබ ආයතනයක් සඳහා පුරනය වී ඇත. ඉල්ලීමට ඔබේම ගිණුමට මාරු වන්න. | நீங்கள் ஒரு நிறுவனத்துக்காக உள்நுழைந்துள்ளீர்கள். கேட்க உங்கள் சொந்தக் கணக்குக்கு மாறவும். | | |
+| `Discover.ask.notAllowed` | This account cannot ask for days. | මෙම ගිණුමට දින ඉල්ලිය නොහැක. | இந்தக் கணக்கால் நாட்களைக் கேட்க முடியாது. | | |
+| `Discover.ask.headcount` | People you would feed | ඔබ ආහාර දෙන පිරිස | நீங்கள் உணவளிப்பவர்கள் | | |
+| `Discover.ask.headcountHint` | Between {min} and {max}. | {min} සිට {max} දක්වා. | {min} முதல் {max} வரை. | | |
+| `Discover.ask.headcountRange` | Enter a number between {min} and {max}. | {min} සිට {max} දක්වා අංකයක් ඇතුළත් කරන්න. | {min} முதல் {max} வரையான எண்ணை உள்ளிடவும். | | |
+| `Discover.ask.fulfilment` | Who provides the meal | ආහාරය සපයන්නේ කවුද | உணவை யார் வழங்குகிறார் | | |
+| `Discover.ask.note` | A note for the institution (optional) | ආයතනයට සටහනක් (අවශ්‍ය නම්) | நிறுவனத்துக்கு ஒரு குறிப்பு (விருப்பம்) | | |
+| `Discover.ask.noteHint` | For example, why this day matters to you. | උදාහරණයක් ලෙස, මෙම දිනය ඔබට වැදගත් වන්නේ ඇයි. | உதாரணமாக, இந்த நாள் உங்களுக்கு ஏன் முக்கியம். | | |
+| `Discover.ask.cancel` | Cancel | අවලංගු කරන්න | ரத்து செய் | | |
+| `Discover.ask.send` | Ask for this day | මෙම දිනය ඉල්ලන්න | இந்த நாளைக் கேட்கவும் | | |
+| `Discover.ask.done` | Asked: {requestNo} | ඉල්ලා ඇත: {requestNo} | கேட்கப்பட்டது: {requestNo} | | |
+| `Discover.ask.doneNext` | We will text you their answer. Your requests are in My bookings. | ඔවුන්ගේ පිළිතුර අපි ඔබට කෙටි පණිවිඩයෙන් දන්වමු. ඔබේ ඉල්ලීම් මගේ වෙන්කිරීම්වල ඇත. | அவர்களின் பதிலைக் குறுஞ்செய்தியில் தெரிவிப்போம். உங்கள் கோரிக்கைகள் எனது முன்பதிவுகளில் உள்ளன. | | |
+| `Discover.ask.myBookings` | My bookings | මගේ වෙන්කිරීම් | எனது முன்பதிவுகள் | | |
+| `Discover.ask.close` | Close | වසන්න | மூடு | | |
+| `MyBookings.regular` | A regular day the institution set up for you | ආයතනය ඔබ සඳහා සැකසූ නිත්‍ය දිනයක් | நிறுவனம் உங்களுக்காக அமைத்த வழக்கமான நாள் | | |
+| `MyBookings.requests.title` | Days I asked for | මා ඉල්ලූ දින | நான் கேட்ட நாட்கள் | | |
+| `MyBookings.requests.status.Open` | Waiting for their answer | ඔවුන්ගේ පිළිතුරට රැඳී ඇත | அவர்களின் பதிலுக்குக் காத்திருக்கிறது | | |
+| `MyBookings.requests.status.Given` | Given to you | ඔබට දෙන ලදී | உங்களுக்கு வழங்கப்பட்டது | | |
+| `MyBookings.requests.status.Declined` | Kept with the regular donor | නිත්‍ය දායකයාට තබා ගැනිණි | வழக்கமான நன்கொடையாளரிடம் வைக்கப்பட்டது | | |
+| `MyBookings.requests.status.Withdrawn` | Withdrawn | ඉවත් කර ගැනිණි | திரும்பப் பெறப்பட்டது | | |
+| `MyBookings.requests.booking` | Booked as {bookingNo} | {bookingNo} ලෙස වෙන් කෙරිණි | {bookingNo} ஆக முன்பதிவு செய்யப்பட்டது | | |
+| `MyBookings.requests.declinedBecause` | Their reason: {reason} | ඔවුන්ගේ හේතුව: {reason} | அவர்களின் காரணம்: {reason} | | |
+| `Booking.errors.day_not_held` | This day is no longer held by a regular donor. The calendar has been refreshed. | මෙම දිනය තවදුරටත් නිත්‍ය දායකයෙකුට හිමි නැත. දින දර්ශනය යාවත්කාලීන කෙරිණි. | இந்த நாள் இனி வழக்கமான நன்கொடையாளருக்கு உரியதல்ல. நாட்காட்டி புதுப்பிக்கப்பட்டது. | | |
+| `Booking.errors.day_request_open` | You have already asked for this day. We will text you their answer. | ඔබ දැනටමත් මෙම දිනය ඉල්ලා ඇත. ඔවුන්ගේ පිළිතුර අපි කෙටි පණිවිඩයෙන් දන්වමු. | நீங்கள் ஏற்கனவே இந்த நாளைக் கேட்டுள்ளீர்கள். அவர்களின் பதிலைக் குறுஞ்செய்தியில் தெரிவிப்போம். | | |
+| `Booking.errors.day_request_answered` | This request has already been answered. | මෙම ඉල්ලීමට දැනටමත් පිළිතුරු දී ඇත. | இந்தக் கோரிக்கைக்கு ஏற்கனவே பதிலளிக்கப்பட்டது. | | |
+| `Booking.errors.day_request_not_found` | This request could not be found. | මෙම ඉල්ලීම සොයාගත නොහැකි විය. | இந்தக் கோரிக்கையைக் கண்டுபிடிக்க முடியவில்லை. | | |
