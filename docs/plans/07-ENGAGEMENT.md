@@ -8,7 +8,8 @@ Status: **drafted 2026-11-01; the user answered §8 the same day (co-sponsors in
 the C# engine and the three packages OK, the draft rules OK). H1-H19 agreed. C.1 done (2026-11-01,
 committed by the user). C.2 done 2026-11-01 (schema on `Sethika_Test` and the dev `Sethika`; the user
 kept the "day of passing is day 1" count, H24); H20-H27 recorded while building. C.2 committed by the
-user (f5cb142). C.3 done 2026-11-02 (H28-H31; no schema change). Next: C.4.**
+user (f5cb142). C.3 done 2026-11-02 (H28-H31; no schema change), committed by the user (14abb76).
+C.4 done 2026-11-02 (H32-H38; schema on `Sethika_Test`, the dev `Sethika` still to publish). Next: C.5.**
 Update this line and the §7 boxes whenever either changes; a fresh session trusts them.
 
 Decision numbers here are **H1, H2, …**. Plan 03 uses C1-C12 and E1-E35, Phase E V1-V39, plan 06 G1-G11.
@@ -99,6 +100,13 @@ Decided while building (recorded here so the report and DECISIONS.md match the c
 | H29 | (C.3) The hub is at `/api/hubs/availability` (H9 and §3 said `/hubs/availability`), and its message is `AvailabilityChanged { slug, from, to }`. A connection watches at most 3 institutions (`too_many_watched`), and a slug is 1-150 characters (`invalid_slug`). Connecting is **not** rate-limited, although §3 said it would be | Under `/api`, the web's one proxy rule (A3) carries the hub and the browser keeps one origin. Each watched institution is a Redis subscription on every instance, so the cap bounds what one connection costs them. Sethika's Redis rate limiter is an endpoint filter, and a hub's endpoints never run endpoint filters, so a limit on connecting waits for the hardening day (§6) |
 | H30 | (C.3) The wake is an endpoint filter, `WakesOutbox()`, on every endpoint whose change writes outbox messages: booking, the donor's cancel, the three decisions, slots, blocked days and the listing. After a 2xx result it queues `OutboxJob` with Hangfire. A refusal wakes nothing. With jobs off (tests) the wake does nothing. A failed enqueue is logged, and the minute's run delivers | The wake comes after the commit, never inside it: a job queued before the commit could run first and find nothing. One line per endpoint, instead of a call in every handler |
 | H31 | (C.3) A calendar quietly refetches the month it shows, with no loading state, when a hint touches that month and after a reconnect. The public page also forgets any other cached month the hint touched. The institution's calendar also reloads its waiting list and the shell's counts | A hint says which days changed, not what they now hold (H9). A reconnect may have missed hints |
+| H32 | (C.4) `BookingContributors` gains, appended last: `InstitutionId` (with the composite FK), `InvitedBy`, `PublicId` (by which the donor withdraws an invitation), `InvitedAt` and `DeclinedAt`. CHECKs: an invitation that waits has no answerer, a joined one has its who and when, a declined one its who and when; and the answerer is never the donor. The unique index is `(BookingId, UserId) WHERE Status = 'Joined'`, so a decline through one link does not stop a join through another. `Phone` stays empty (H16). The predicate is `sec.fn_Contributor(InstitutionId, UserId, InvitedBy)`, with FILTER and BLOCK AFTER INSERT and AFTER UPDATE | H18, with the answer's rules in the schema as well as the handler |
+| H33 | (C.4) The narrow platform scope is one class, `SqlShareLinks`, whose connections are stamped as the platform in the class itself. It does three things: finds an invitation by its link's hash; answers the invitation it found with one conditional `UPDATE ... WHERE Status = 'Invited'`; and lists "Shared with me" by the caller's own id. H18 named the two reads; the answer is a third, because the person answering is on neither row before they answer | Nothing else in a request gains the platform's reach. If two people answer at once, the first one's answer stands, and the database decides it, not a read made before |
+| H34 | (C.4) Withdrawing deletes the row; there is no `Withdrawn` status. Its link then opens nothing (`link_not_found`, 404), the same as a link never made. Joined and declined are final: neither can be withdrawn or answered again (409) | An unanswered invitation holds nothing worth keeping. A final answer stops a link from being passed on and reused |
+| H35 | (C.4) The cap of 10 counts every invitation, answered or not. The booking's row is update-locked while counting (`IBookingRowLocks`), so two invitations at once cannot make 11. The lock writes nothing, so the booking's `RowVersion` stays and no decision on it goes stale | The cap is a promise (H16), so it has to hold under a double click |
+| H36 | (C.4) A link shows `invitation` (Invited, Joined, Declined) and `booking`: Open (requested or approved, today or later), Cancelled, Rejected, or Past (its day has gone, or it was completed or missed). Inviting and answering need Open. The summary is the same for everyone who opens the link. Its donor name is the booking's display name, else the name it was booked under. Answering needs `MYBOOKINGS.BOOKINGS.EDIT` (the DONOR role, a personal session): anonymous is 401 and an institution session 403 | H17's fields and states. The web signs a person in before they join |
+| H37 | (C.4) The institution's "Shared with" is an endpoint of its own, `GET /api/institution/bookings/{no}/shared-with` (`BOOKINGS.CALENDAR.VIEW`): for each person who joined, the name the donor gave them and when they joined. Invited and declined names are not shown | H19's names only, without changing the calendar's read for every booking |
+| H38 | (C.4) A co-sponsor's reminder is the donor's own `BOOKING_REMINDER`, in the co-sponsor's language, under `booking-reminder:{BookingNo}:{UserId}`. It comes from the same job, for approved bookings only, and `ReminderRun` gains `Contributors`. Rate limits: 30 invitations an hour per account; 120 link reads per 15 minutes per address; 30 answers an hour per account | The text already says "this booking is tomorrow", which is as true for a sibling as for the donor |
 
 ## 3. API
 
@@ -192,8 +200,21 @@ Decided while building (recorded here so the report and DECISIONS.md match the c
   listened by the server's own constant; the client now listens as the web does, by the literal name
   and the JSON fields, and H6 and H7 (a renamed field) are killed. Web: `touchesMonth` 4/4 mutants
   plus a control, vitest 223, tsc, eslint and `dotnet format` clean.
-- [ ] **C.4 Co-sponsors**: the schema change and predicate (H18), invite, the token summary, join,
-  decline, withdraw, shared with me, the contributor's reminder. ~0.75 day
+- [x] **C.4 Co-sponsors**: the schema change and predicate (H18), invite, the token summary, join,
+  decline, withdraw, shared with me, the contributor's reminder. ~0.75 day. **Done 2026-11-02 (H32-H38):**
+  domain 25 (`ShareTokenTests`: the token's form and hash, what is not a token, which bookings can
+  be shared), integration 9 (`CoSponsorTests`: invite, the summary's fields and states, join, shared
+  with me, the institution's names; decline and withdraw; unknown, malformed, own and second-joining
+  links; cancelled, rejected, past and today's bookings; the fields, another donor's booking and the
+  eleventh invitation; **two forced races** - four invitations at nine, two answers to one link - each
+  waiting until SQL Server shows the requests blocked, never on a fixed delay; RLS from six sessions
+  and both block predicates; the co-sponsor's reminder once, in their language). Mutants: 32/32 code
+  (7 domain, 8 invite/withdraw, 8 answer, 2 reads, 4 reminder, 3 endpoints) plus a surviving
+  control, and 7/7 RLS and schema. S4 (the answer's status condition) survived at first: the race
+  test's request was the host's first and merely slow, so a two-second wait passed without a race;
+  the races now wait for `sys.dm_exec_requests` to show the blocking. Built in the `Sethika-c4`
+  worktree on `Sethika_C2Test` while C.3's mutations ran, then moved in byte for byte; then, on
+  `Sethika_Test`, domain 328/328 and the neighbouring integration classes 220/220, `dotnet format` clean.
 - [ ] **C.5 Screens**: every-year in the sheet and My bookings, `/memorial`, sharing and `/share/[token]`,
   the heart and My places; en/si/ta; Playwright desktop + 320 px. ~1 day
 - [ ] **C.6 Done**: DECISIONS.md, `docs/report/PHASE-C.md`, the full runs, the PR.

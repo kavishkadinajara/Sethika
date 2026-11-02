@@ -28,6 +28,12 @@ public interface IBookingNotificationQueries
     Task<IReadOnlyList<BookingTextDetails>> ListApprovedOnAsync(DateOnly slotDate, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// The people who joined approved bookings on <paramref name="slotDate"/> (plan 07, H19), one row each,
+    /// in the order they joined: <see cref="BookingTextDetails.DonorUserId"/> is the co-sponsor's account.
+    /// </summary>
+    Task<IReadOnlyList<BookingTextDetails>> ListJoinedOnAsync(DateOnly slotDate, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// The yearly booking <paramref name="publicId"/>'s text for <paramref name="slotDate"/> (plan 07, H4),
     /// with no booking number; <see langword="null"/> if there is none.
     /// </summary>

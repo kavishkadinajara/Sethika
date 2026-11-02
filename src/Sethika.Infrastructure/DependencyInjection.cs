@@ -53,6 +53,7 @@ public static class DependencyInjection
         // On the scoped context, so each runs inside the handler's own transaction.
         services.AddScoped<INumberSeries, SqlNumberSeries>();
         services.AddScoped<IRegistrationLocks, SqlRegistrationLocks>();
+        services.AddScoped<IBookingRowLocks, SqlBookingRowLocks>();
         services.AddScoped<IInstitutionModules, SqlInstitutionModules>();
         services.AddScoped<ISlotInventory, SqlSlotInventory>();
 
@@ -75,6 +76,8 @@ public static class DependencyInjection
         services.AddScoped<IInstitutionBookingQueries, InstitutionBookingQueries>();
         services.AddScoped<IDonorBookingQueries, DonorBookingQueries>();
         services.AddScoped<IMemorialQueries, MemorialQueries>();
+        services.AddScoped<ISharingQueries, SharingQueries>();
+        services.AddScoped<IShareLinks>(_ => new SqlShareLinks(connectionString));
         services.AddScoped<IBookingNotificationQueries, BookingNotificationQueries>();
         services.AddScoped<IServiceSetupQueries, ServiceSetupQueries>();
         services.AddScoped<IDonorAppointmentQueries, DonorAppointmentQueries>();

@@ -64,6 +64,10 @@ public sealed class EndpointPolicyTests(SethikaTestDatabase database)
         // anyone may hear them. SignalR maps the connection and its negotiation for every method.
         "* /api/hubs/availability",
         "* /api/hubs/availability/negotiate",
+
+        // A co-sponsor's link (plan 07, H17): the link is the credential, and its summary shows only
+        // what the donor chose to share. Joining it needs an account.
+        "GET /api/share/{token}",
     ];
 
     private WebApplicationFactory<Program> Host() =>

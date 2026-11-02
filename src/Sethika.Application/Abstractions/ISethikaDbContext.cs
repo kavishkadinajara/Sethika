@@ -75,6 +75,10 @@ public interface ISethikaDbContext
     // transaction, so two runs of the yearly job cannot both try it.
     DbSet<RecurringBooking> RecurringBookings { get; }
 
+    // Co-sponsors (plan 07, H16-H19): the donor's invitations, in the donor's session. Joining and
+    // declining go through IShareLinks, since the person answering is on neither row yet (H18).
+    DbSet<BookingContributor> BookingContributors { get; }
+
     // The Memorial Dana Planner (plan 07, H6). Plans are the donor's alone (RLS, H13); rules are
     // reference data the application only reads.
     DbSet<MemorialPlan> MemorialPlans { get; }

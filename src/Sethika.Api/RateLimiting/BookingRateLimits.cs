@@ -29,4 +29,19 @@ internal static class BookingRateLimits
     /// loop from filling the table and the reminder job's nightly read.
     /// </summary>
     public static readonly RateLimitRule MemorialPlanPerUser = new("memorial-create-user", 10, TimeSpan.FromHours(1));
+
+    /// <summary>
+    /// Invitations to share a booking made by one account (plan 07, H16). A booking holds ten at most;
+    /// this bounds a loop of inviting and withdrawing across bookings.
+    /// </summary>
+    public static readonly RateLimitRule InvitePerUser = new("share-invite-user", 30, TimeSpan.FromHours(1));
+
+    /// <summary>
+    /// Co-sponsor links opened from one address (H17). A token is 256 random bits, so guessing is no
+    /// threat; the limit bounds load from a script, while a family opening its links never meets it.
+    /// </summary>
+    public static readonly RateLimitRule ShareReadPerClient = new("share-read-client", 120, TimeSpan.FromMinutes(15));
+
+    /// <summary>Joins and declines by one account (H17): a person answers a few links, not dozens.</summary>
+    public static readonly RateLimitRule ShareAnswerPerUser = new("share-answer-user", 30, TimeSpan.FromHours(1));
 }

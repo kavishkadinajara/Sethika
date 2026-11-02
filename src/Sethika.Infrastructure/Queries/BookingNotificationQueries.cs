@@ -35,6 +35,22 @@ public sealed class BookingNotificationQueries(IDbConnectionFactory connections)
         WHERE r.PublicId = @publicId;
         """;
 
+    // Co-sponsors of approved bookings (plan 07, H19): the same text, to the account that joined.
+    private const string JoinedOnSql =
+        """
+        SELECT b.BookingNo AS BookingNo, b.Status AS Status, c.UserId AS DonorUserId,
+               u.PreferredLanguage AS Language, i.Name AS InstitutionName, i.NameSi AS InstitutionNameSi,
+               i.NameTa AS InstitutionNameTa, si.SlotDate AS Date, CONVERT(CHAR(5), s.StartTime, 108) AS StartTime
+        FROM booking.BookingContributors AS c
+        JOIN booking.Bookings AS b ON b.Id = c.BookingId AND b.InstitutionId = c.InstitutionId
+        JOIN booking.SlotInstances AS si ON si.Id = b.SlotInstanceId AND si.InstitutionId = b.InstitutionId
+        JOIN booking.MealSlots AS s ON s.Id = si.MealSlotId AND s.InstitutionId = si.InstitutionId
+        JOIN org.Institutions AS i ON i.Id = b.InstitutionId
+        JOIN auth.Users AS u ON u.Id = c.UserId
+        WHERE si.SlotDate = @slotDate AND b.Status = 'Approved' AND c.Status = 'Joined'
+        ORDER BY c.JoinedAt, c.Id;
+        """;
+
     private const string ApprovedOnSql =
         Select + "\nWHERE si.SlotDate = @slotDate AND b.Status = 'Approved' AND b.DonorUserId IS NOT NULL\nORDER BY b.Id;";
 
@@ -68,6 +84,17 @@ public sealed class BookingNotificationQueries(IDbConnectionFactory connections)
         await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         var rows = await connection.QueryAsync<Row>(new CommandDefinition(
             ApprovedOnSql,
+            new { slotDate },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        return [.. rows.Select(r => r.ToDetails())];
+    }
+
+    public async Task<IReadOnlyList<BookingTextDetails>> ListJoinedOnAsync(DateOnly slotDate, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        var rows = await connection.QueryAsync<Row>(new CommandDefinition(
+            JoinedOnSql,
             new { slotDate },
             cancellationToken: cancellationToken)).ConfigureAwait(false);
 

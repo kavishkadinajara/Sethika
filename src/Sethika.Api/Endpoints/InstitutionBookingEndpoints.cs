@@ -67,6 +67,7 @@ internal static class InstitutionBookingEndpoints
         institution.MapGet("/today", GetTodayAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
         institution.MapGet("/ledger", GetLedgerAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
         institution.MapGet("/bookings/{bookingNo}", FindBookingAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
+        institution.MapGet("/bookings/{bookingNo}/shared-with", ListSharedWithAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
 
         institution.MapPost("/bookings/{bookingNo}/approve", (string bookingNo, ICurrentUserContext user, BookingDecisionHandler handler, CancellationToken ct) =>
             DecideAsync(bookingNo, InstitutionDecision.Approve, null, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarApprove)).WakesOutbox();
@@ -264,6 +265,23 @@ internal static class InstitutionBookingEndpoints
         // The database's collation is case-insensitive, so "bk-2026-000123" finds BK-2026-000123 as typed.
         return await queries.FindBookingAsync(actor.InstitutionId, bookingNo.Trim(), cancellationToken) is { } place
             ? Results.Ok(place)
+            : ApiErrors.Error(StatusCodes.Status404NotFound, BookingDecisionResult.NotFound);
+    }
+
+    /// <summary>Who joined the booking as a co-sponsor (plan 07, H19): names only.</summary>
+    private static async Task<IResult> ListSharedWithAsync(
+        string bookingNo,
+        ICurrentUserContext currentUser,
+        ISharingQueries queries,
+        CancellationToken cancellationToken)
+    {
+        if (Actor(currentUser) is not { } actor)
+        {
+            return NoInstitution();
+        }
+
+        return await queries.ListSharedWithAsync(actor.InstitutionId, bookingNo.Trim(), cancellationToken) is { } names
+            ? Results.Ok(names)
             : ApiErrors.Error(StatusCodes.Status404NotFound, BookingDecisionResult.NotFound);
     }
 

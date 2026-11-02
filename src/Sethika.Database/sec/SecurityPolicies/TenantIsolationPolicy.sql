@@ -10,6 +10,10 @@ CREATE SECURITY POLICY sec.TenantIsolationPolicy
     ADD FILTER PREDICATE sec.fn_Owner(DonorUserId) ON booking.MemorialPlans,
     ADD BLOCK  PREDICATE sec.fn_Owner(DonorUserId) ON booking.MemorialPlans AFTER INSERT,
     ADD BLOCK  PREDICATE sec.fn_Owner(DonorUserId) ON booking.MemorialPlans AFTER UPDATE,
+    /* a co-sponsor: the institution, the person who answered, and the donor who invited (H18) */
+    ADD FILTER PREDICATE sec.fn_Contributor(InstitutionId, UserId, InvitedBy) ON booking.BookingContributors,
+    ADD BLOCK  PREDICATE sec.fn_Contributor(InstitutionId, UserId, InvitedBy) ON booking.BookingContributors AFTER INSERT,
+    ADD BLOCK  PREDICATE sec.fn_Contributor(InstitutionId, UserId, InvitedBy) ON booking.BookingContributors AFTER UPDATE,
     ADD FILTER PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Donations,
     ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Donations AFTER INSERT,
     ADD FILTER PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Pledges,
