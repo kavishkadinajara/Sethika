@@ -5,7 +5,15 @@ Branch: `phase-c-engagement`, cut from `develop` once the Phase B pull request i
 merge `develop` in later; never rebase a pushed branch.
 
 Status: **drafted 2026-11-01; the user answered §8 the same day (co-sponsors in, email cut for now,
-the C# engine and the three packages OK, the draft rules OK). H1-H19 agreed. Nothing built.** Update this line and the §7 boxes whenever either changes; a fresh session trusts them.
+the C# engine and the three packages OK, the draft rules OK). H1-H19 agreed. C.1 done (2026-11-01,
+committed by the user). C.2 done 2026-11-01 (schema on `Sethika_Test` and the dev `Sethika`; the user
+kept the "day of passing is day 1" count, H24); H20-H27 recorded while building. C.2 committed by the
+user (f5cb142). C.3 done 2026-11-02 (H28-H31; no schema change), committed by the user (14abb76).
+C.4 done 2026-11-02 (H32-H38; schema on `Sethika_Test` and the dev `Sethika`), committed by the user (730cc6d).
+C.5 done 2026-11-02 (H39-H42; the heart's RLS on `Sethika_Test` and the dev `Sethika`), committed (3b21d17).
+C.6 2026-11-02: DECISIONS.md, `docs/report/PHASE-C.md`, full runs green (1141/1141 .NET, 122/122 e2e); the PR
+to `develop` is next. Then plan 08 (`docs/plans/08-STANDING-SPONSORS.md`, the user's Q1).**
+Update this line and the §7 boxes whenever either changes; a fresh session trusts them.
 
 Decision numbers here are **H1, H2, …**. Plan 03 uses C1-C12 and E1-E35, Phase E V1-V39, plan 06 G1-G11.
 
@@ -79,6 +87,34 @@ Added outside the proposal text:
 | H18 | **Schema and RLS:** `BookingContributors` gains `InstitutionId` (composite FK `(BookingId, InstitutionId) → Bookings(Id, InstitutionId)`, CLAUDE.md's tenant rule) and `InvitedBy` (the booking's donor), and a filtered unique index on `(BookingId, UserId)`. A new predicate lets a row be seen by the institution, the contributor (`UserId`) and the donor who invited (`InvitedBy`). Two reads cannot run under the person's own session and use a narrow platform-scoped query instead, each documented and tested: the summary behind a token (looked up by its hash only), and a joined contributor's view of the booking itself (`Bookings` RLS shows it only to the donor and the institution) | The table is empty everywhere, so the columns cost nothing. A contributor must see the booking they joined without `Bookings`' RLS being widened for every query |
 | H19 | Joined contributors appear on the donor's booking ("shared with"), on the institution's booking detail (names only), and under "Shared with me" in the contributor's My bookings. A joined contributor gets the 18:00 reminder the day before, like the donor (`DedupKey` per contributor). Cancelling or rejecting the booking ends it for everyone; contributors see the state | The point of sharing a memorial dana is that the siblings come; the reminder is what makes them |
 
+Decided while building (recorded here so the report and DECISIONS.md match the code):
+
+| # | Decision | Why |
+|---|---|---|
+| H20 | (C.1) A yearly booking is named by a new `PublicId` column (appended last, so adding it never rebuilds a table under RLS), and copies the first booking's `FulfilmentMode` (a new column). A unique index `(DonorUserId, MealSlotId, RecurMonth, RecurDay) WHERE IsActive = 1` keeps one active yearly booking per donor, meal and day; "every year" on a day that already has one joins it | §3 left the id open. A booking number names a booking, not the promise behind many |
+| H21 | (C.1) The refusal text is two templates, `RECURRING_FULL` and `RECURRING_CLOSED` (H14's `RECURRING_NOT_BOOKED` split): full when every place was taken, closed for every other refusal | The donor's next step differs: another day at the same place, or another place |
+| H22 | (C.1) The year is claimed by a conditional `UPDATE` of `LastGeneratedYear` in the booking's own transaction. A busy slot lock, or the donor booking the same day at the same moment, claims nothing and the next run tries again; a day already past, a donor without a confirmed phone, or a day the donor already holds claims the year with no text | One try per year (H4) without losing a year to a lock that was busy for a second |
+| H23 | (C.2) A booking for an observance must fall on that observance's own day (`not_an_observance`, 400), on the donor's own active plan and an active rule of the plan's faith (`memorial_not_found`, 404 otherwise). "Every year" is allowed only for a yearly observance. An observance is **booked** when a live (requested or approved) booking for the plan is on its day; a yearly booking made from it carries the plan, and so does each year the job books | The planner can then tell what is booked without guessing which nearby day a booking meant. A donor who wants another day books it as an ordinary booking |
+| H24 | (C.2) "The 7th day" is the date of passing + 6 (the day of passing counted as the first), and the 31st and 40th days likewise + 30 and + 39; the month offsets add months first. Drafts, in the seed's comment and the translations list, for a reviewer to confirm per faith | H7: the offsets are data. The convention had to be one, stated, and changeable without code |
+| H25 | (C.2) The memorial reminder covers tomorrow to 7 days ahead, not exactly the 7th day, with `memorial:{plan}:{rule}:{date}` as the dedup key; it never carries the deceased's name (typed by the donor, and template values are never typed text) | A plan made 3 days before an observance, or a night the job did not run, still gets one text; never two |
+| H26 | (C.2) Archiving a plan stops its reminders and hides it; bookings and yearly bookings made from it stay until the donor cancels or stops them in My bookings | As H5: nothing an institution accepted is cancelled as a side effect |
+| H27 | (C.2) `RELATIONSHIP` values (mother, father, ...) are seeded as plain words, not drafts; the planner is a new donor screen `MYMEMORIAL.PLANS` (`/memorial`) under the BOOK module, `Self` scope, VIEW/CREATE/EDIT granted to the DONOR role. RLS: a new `sec.fn_Owner(DonorUserId)` (the donor and the platform, never an institution) with FILTER and BLOCK AFTER INSERT/UPDATE | Family words are not facts about a faith; the plan needs its own permissions so a role can never hold it by accident |
+| H28 | (C.3) The hint is an outbox message of its own, `AvailabilityChanged` (aggregate `Institution`; payload the institution's id and the first and last day that changed, both null for "any day"), written in the change's own transaction by: a booking; a rejection or cancellation that gives a place back; a blocked range added or removed (its range); a slot added, changed, switched off or on (any day). Approving writes none, because it changes no place (a colleague's approval shows on the calendar's next load) | H10 assumed the existing events would do. But the outbox runs one handler per event type, the booking events already have their texts, and slots and blocked days had no event at all. A range, because one blocked range can cover months |
+| H29 | (C.3) The hub is at `/api/hubs/availability` (H9 and §3 said `/hubs/availability`), and its message is `AvailabilityChanged { slug, from, to }`. A connection watches at most 3 institutions (`too_many_watched`), and a slug is 1-150 characters (`invalid_slug`). Connecting is **not** rate-limited, although §3 said it would be | Under `/api`, the web's one proxy rule (A3) carries the hub and the browser keeps one origin. Each watched institution is a Redis subscription on every instance, so the cap bounds what one connection costs them. Sethika's Redis rate limiter is an endpoint filter, and a hub's endpoints never run endpoint filters, so a limit on connecting waits for the hardening day (§6) |
+| H30 | (C.3) The wake is an endpoint filter, `WakesOutbox()`, on every endpoint whose change writes outbox messages: booking, the donor's cancel, the three decisions, slots, blocked days and the listing. After a 2xx result it queues `OutboxJob` with Hangfire. A refusal wakes nothing. With jobs off (tests) the wake does nothing. A failed enqueue is logged, and the minute's run delivers | The wake comes after the commit, never inside it: a job queued before the commit could run first and find nothing. One line per endpoint, instead of a call in every handler |
+| H31 | (C.3) A calendar quietly refetches the month it shows, with no loading state, when a hint touches that month and after a reconnect. The public page also forgets any other cached month the hint touched. The institution's calendar also reloads its waiting list and the shell's counts | A hint says which days changed, not what they now hold (H9). A reconnect may have missed hints |
+| H32 | (C.4) `BookingContributors` gains, appended last: `InstitutionId` (with the composite FK), `InvitedBy`, `PublicId` (by which the donor withdraws an invitation), `InvitedAt` and `DeclinedAt`. CHECKs: an invitation that waits has no answerer, a joined one has its who and when, a declined one its who and when; and the answerer is never the donor. The unique index is `(BookingId, UserId) WHERE Status = 'Joined'`, so a decline through one link does not stop a join through another. `Phone` stays empty (H16). The predicate is `sec.fn_Contributor(InstitutionId, UserId, InvitedBy)`, with FILTER and BLOCK AFTER INSERT and AFTER UPDATE | H18, with the answer's rules in the schema as well as the handler |
+| H33 | (C.4) The narrow platform scope is one class, `SqlShareLinks`, whose connections are stamped as the platform in the class itself. It does three things: finds an invitation by its link's hash; answers the invitation it found with one conditional `UPDATE ... WHERE Status = 'Invited'`; and lists "Shared with me" by the caller's own id. H18 named the two reads; the answer is a third, because the person answering is on neither row before they answer | Nothing else in a request gains the platform's reach. If two people answer at once, the first one's answer stands, and the database decides it, not a read made before |
+| H34 | (C.4) Withdrawing deletes the row; there is no `Withdrawn` status. Its link then opens nothing (`link_not_found`, 404), the same as a link never made. Joined and declined are final: neither can be withdrawn or answered again (409) | An unanswered invitation holds nothing worth keeping. A final answer stops a link from being passed on and reused |
+| H35 | (C.4) The cap of 10 counts every invitation, answered or not. The booking's row is update-locked while counting (`IBookingRowLocks`), so two invitations at once cannot make 11. The lock writes nothing, so the booking's `RowVersion` stays and no decision on it goes stale | The cap is a promise (H16), so it has to hold under a double click |
+| H36 | (C.4) A link shows `invitation` (Invited, Joined, Declined) and `booking`: Open (requested or approved, today or later), Cancelled, Rejected, or Past (its day has gone, or it was completed or missed). Inviting and answering need Open. The summary is the same for everyone who opens the link. Its donor name is the booking's display name, else the name it was booked under. Answering needs `MYBOOKINGS.BOOKINGS.EDIT` (the DONOR role, a personal session): anonymous is 401 and an institution session 403 | H17's fields and states. The web signs a person in before they join |
+| H37 | (C.4) The institution's "Shared with" is an endpoint of its own, `GET /api/institution/bookings/{no}/shared-with` (`BOOKINGS.CALENDAR.VIEW`): for each person who joined, the name the donor gave them and when they joined. Invited and declined names are not shown | H19's names only, without changing the calendar's read for every booking |
+| H38 | (C.4) A co-sponsor's reminder is the donor's own `BOOKING_REMINDER`, in the co-sponsor's language, under `booking-reminder:{BookingNo}:{UserId}`. It comes from the same job, for approved bookings only, and `ReminderRun` gains `Contributors`. Rate limits: 30 invitations an hour per account; 120 link reads per 15 minutes per address; 30 answers an hour per account | The text already says "this booking is tomorrow", which is as true for a sibling as for the donor |
+| H39 | (C.5) The heart's API is `GET /api/me/places`, `PUT` and `DELETE /api/me/places/{slug}`, under `/api/me`'s rule (MeEndpoints: signed in, no permission, only the caller's own rows, named by the token). Both writes are idempotent (204 again; `DELETE` of a place never kept is 204), `PUT` needs an active institution (404 `institution_not_found`) and is limited to 60 an hour per account; there is no cap. A kept place that stops being active stays kept but is not listed. RLS: `sec.fn_Owner(UserId)` on `auth.FavoriteInstitutions`, FILTER and BLOCK AFTER INSERT/UPDATE. Two taps at once: the primary key refuses the second and the handler answers 204 | Under `/api/me` like the language and the invitations: a person's own preference, which no role should be needed for. The look before the insert only saves a refused insert and its logged error; the key is the guarantee (mutant P3 survives, by design) |
+| H40 | (C.5) "Find a place" on an observance opens `/find?date=…&plan=…&rule=…`; the search keeps `plan` and `rule` in its address and its "Book" links, and drops them when the donor picks another day. On `/i/[slug]` the sheet sends `memorialPlan`/`memorialRule` only for the day the address named. "Every year" for an observance is the sheet's own switch; for an observance that is not yearly the API's `invalid_details` (`everyYear`) is shown as "this memorial day does not come every year" | One booking path (H6) with no second form; a booking for an observance is only valid on its day (H23), so the screen never sends one for any other |
+| H41 | (C.5) The co-sponsor link is made by the web from the API's token: the page's origin and locale path, `/share/{token}`. It is shown once, when made (only the hash is kept, H16), with copy and the phone's own share menu. `/share/[token]` is `noindex` and `no-referrer`. "Share this dana" is offered on a requested or approved booking from today on; the institution's booking item reads its "Shared with" names itself | The link is a bearer secret: it must not reach a search engine or another site's logs |
+| H42 | (C.5) The donor's home keeps "Places you give to" (from bookings) and adds "My places" (the hearts) above it, with a hint when empty. The heart shows only in a personal session | The proposal's "preferred institutions" (H12) without losing the list donors already had |
+
 ## 3. API
 
 - `POST /api/bookings` gains `everyYear: bool` (H5). `GET /api/bookings/recurring` (mine),
@@ -134,23 +170,84 @@ Added outside the proposal text:
 - Email confirmations and reminders (the user, Q2): built on the hardening day only if time is left.
 - Texting an invitation to a co-sponsor (H16); contributors' shares of a cost or a donation.
 - Live counts on `/find`; live updates in the mobile app; SignalR for anything but availability.
+- A per-address limit on connecting to the hub (H29): the hardening day, if time is left.
 - Confirmed memorial rules and religion names (drafts until a reviewer confirms them, H7).
 - `core.SpecialDays` (poya, festivals): still unseeded (CLAUDE.md's open items); nothing here reads it.
 - The waitlist and availability alerts (designed, optional).
 
 ## 7. Work breakdown
 
-- [ ] **C.1 Recurring bookings**: RLS, public id, `everyYear` on booking, the job, the refusal text, stop.
-  Tests and mutations as §4. ~0.75 day
-- [ ] **C.2 Memorial planner engine**: the seeds (H7), RLS, the domain function, the plan endpoints,
-  bookings from an observance, the reminder job. ~0.75 day
-- [ ] **C.3 Live slot updates**: the packages (Q4), the hub, the backplane, the outbox handler and wake,
-  the two calendars. ~0.5 day
-- [ ] **C.4 Co-sponsors**: the schema change and predicate (H18), invite, the token summary, join,
-  decline, withdraw, shared with me, the contributor's reminder. ~0.75 day
-- [ ] **C.5 Screens**: every-year in the sheet and My bookings, `/memorial`, sharing and `/share/[token]`,
-  the heart and My places; en/si/ta; Playwright desktop + 320 px. ~1 day
-- [ ] **C.6 Done**: DECISIONS.md, `docs/report/PHASE-C.md`, the full runs, the PR.
+- [x] **C.1 Recurring bookings**: RLS, public id, `everyYear` on booking, the job, the refusal text, stop.
+  Tests and mutations as §4. ~0.75 day. **Done 2026-11-01:** domain 15, integration 14
+  (`RecurringBookingTests`: the window's first day and the day before, rerun, two runs at once forced,
+  full and closed texted once per year, 29 February, stop, the donor's own booking winning a forced
+  race, past and no phone, HTTP and RLS); neighbours 84/84; 35/35 mutants killed (31 code, 2 API,
+  2 RLS predicates) plus a surviving control. Schema published to `Sethika_Test` and the dev `Sethika`.
+- [x] **C.2 Memorial planner engine**: the seeds (H7), RLS, the domain function, the plan endpoints,
+  bookings from an observance, the reminder job. ~0.75 day. **Done 2026-11-01 (H23-H27):** domain 39
+  (`MemorialObservancesTests`: months then days, month ends, 29 February, a yearly rule whose days
+  cross the year end in a leap year, the next yearly day), integration 12 (`MemorialPlanTests`: the
+  draft seeds and the form's lists, a plan's days and states, refusals with their fields, a new rule
+  row and a faith with none, booking an observance and its refusals, every year through the yearly
+  job, the reminder once a week ahead in the donor's language and not for a booked observance or an
+  archived plan, the host's job as the platform, archiving, RLS); neighbours 99/99; 59/59 mutants
+  killed (54 code incl. 4 API, 5 RLS/seed) plus a surviving control. Built in a separate worktree on
+  `Sethika_C2Test` while C.1's mutations ran, then moved in byte for byte; the memorial and neighbouring
+  test classes 59/59 again on `Sethika_Test`.
+- [x] **C.3 Live slot updates**: the packages (Q4), the hub, the backplane, the outbox handler and wake,
+  the two calendars. ~0.5 day. **Done 2026-11-02 (H28-H31):** integration 6 (`LiveAvailabilityTests`:
+  each kind of change heard, with its days, by a calendar on the institution and none by one on
+  another; nothing for an approval; unwatching; the hub's slug and watch limits; a successful change
+  wakes the outbox and a refusal does not; **two hosts on one Redis**, a change on one heard on the
+  other, and a host on another channel prefix hears nothing; the handler and notifier wired), the
+  host's wake queues the outbox job (`HangfireJobsTests`), and the hub's two routes in the anonymous
+  list; neighbours 154/155, the one failure being that list before the hub's routes were added (then
+  the live, Hangfire and policy classes 10/10); 24/24 mutants killed (10 writers and handler, 7 hub, 2 backplane, 5 wake)
+  plus a surviving control. H6 (the message's name) survived at first, because the test client
+  listened by the server's own constant; the client now listens as the web does, by the literal name
+  and the JSON fields, and H6 and H7 (a renamed field) are killed. Web: `touchesMonth` 4/4 mutants
+  plus a control, vitest 223, tsc, eslint and `dotnet format` clean.
+- [x] **C.4 Co-sponsors**: the schema change and predicate (H18), invite, the token summary, join,
+  decline, withdraw, shared with me, the contributor's reminder. ~0.75 day. **Done 2026-11-02 (H32-H38):**
+  domain 25 (`ShareTokenTests`: the token's form and hash, what is not a token, which bookings can
+  be shared), integration 9 (`CoSponsorTests`: invite, the summary's fields and states, join, shared
+  with me, the institution's names; decline and withdraw; unknown, malformed, own and second-joining
+  links; cancelled, rejected, past and today's bookings; the fields, another donor's booking and the
+  eleventh invitation; **two forced races** - four invitations at nine, two answers to one link - each
+  waiting until SQL Server shows the requests blocked, never on a fixed delay; RLS from six sessions
+  and both block predicates; the co-sponsor's reminder once, in their language). Mutants: 32/32 code
+  (7 domain, 8 invite/withdraw, 8 answer, 2 reads, 4 reminder, 3 endpoints) plus a surviving
+  control, and 7/7 RLS and schema. S4 (the answer's status condition) survived at first: the race
+  test's request was the host's first and merely slow, so a two-second wait passed without a race;
+  the races now wait for `sys.dm_exec_requests` to show the blocking. Built in the `Sethika-c4`
+  worktree on `Sethika_C2Test` while C.3's mutations ran, then moved in byte for byte; then, on
+  `Sethika_Test`, domain 328/328 and the neighbouring integration classes 220/220, `dotnet format` clean.
+- [x] **C.5 Screens**: every-year in the sheet and My bookings, `/memorial`, sharing and `/share/[token]`,
+  the heart and My places; en/si/ta; Playwright desktop + 320 px. ~1 day. **Done 2026-11-02 (H39-H42):**
+  the heart's API first (H12 had no backend): `/api/me/places`, `FavoritePlacesHandler`, RLS `fn_Owner` on
+  `auth.FavoriteInstitutions`; integration 5 (`FavoritePlacesTests`: kept once, newest first, let go alone;
+  only active places; sign-in; **two taps at once forced** on the key, waiting for SQL Server to show the
+  block; RLS from five sessions and both block predicates); 8/9 code mutants killed plus a surviving
+  control, and P3 (the look before the insert) survives by design: the key is the guarantee; 3/3 RLS
+  mutants. Screens: the sheet's "Book this every year" and a memorial day carried from `/find`
+  (`plan`/`rule`), My bookings' "Every year" with stop, "Share this dana" (`ShareSheet`), "Shared with
+  me", `/memorial` (`MemorialPlanner`, in the menu), `/share/[token]` (`ShareScreen`), the heart
+  (`PlaceHeart`) and "My places" on the donor's home, "Shared with" on the institution's booking. 131
+  messages in en/si/ta (si/ta drafts in `docs/translations-to-review.md`). Found by the browser: C.3's live
+  connection logged a stop during negotiation (React's double effect in development, or a page left at
+  once) as a console error, which raised Next's overlay over the page; SignalR's log now goes to
+  `console.warn` (`liveLogger`, with a vitest). `e2e/engagement/engagement.spec.ts` 13/13 (every year,
+  sharing with join/decline/withdraw/own link and the institution's names, the memorial day booked through
+  `/find`, the heart, **two browsers: one books, the other's calendar shows the day taken with no reload**,
+  si and ta on desktop and 320 px); booking, discovery and shell specs green after the menu's sixth link;
+  5/5 web mutants killed by the spec (the live refetch, the memorial in "Book", the link's locale, the
+  heart's state, "Shared with"). `newPhone` now skips numbers already taken (earlier runs' accounts made
+  `already_registered` likely in a full run). vitest 227, tsc, eslint and `dotnet format` clean.
+- [ ] **C.6 Done**: DECISIONS.md, `docs/report/PHASE-C.md`, the full runs, the PR. **2026-11-02:** DECISIONS.md
+  (Engagement section, drafts, plans 07 and 08), the report chapter; full `dotnet test` 1141/1141 (328
+  domain, 71 application, 742 integration, 1 h 6 m); full e2e 122/122 (18 m) after fixing a vacuous
+  admin test (`"Suspend"` matched the "Suspended" filter, and its "no button" checks passed before the
+  list loaded; 3/3 mutants killed once it waits for a row). Left: the PR.
 
 **If time runs out, cut in this order:** preferred institutions (H12), the memorial reminder (H8), the
 contributor's reminder (H19), the institution's calendar going live (the public page stays live).

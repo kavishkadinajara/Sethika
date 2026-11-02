@@ -98,6 +98,7 @@ const booking = (bookingNo: string, date: string, startTime: string, over: Parti
   rejectReason: null,
   cancelReason: null,
   canCancel: true,
+  yearly: null,
   ...over,
 });
 

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Sethika.Application.Abstractions;
+using Sethika.Application.Bookings.Live;
 using Sethika.Domain.Bookings;
 using Sethika.Domain.Core;
 
@@ -145,6 +146,12 @@ public sealed class BookingDecisionHandler(ISethikaDbContext db, ISlotInventory 
                 Payload = JsonSerializer.Serialize(new { bookingNo = booking.BookingNo, donorUserId = booking.DonorUserId, byDonor }),
                 OccurredAt = now,
             });
+        }
+
+        // A place given back opens the day again for everyone watching it (plan 07, H10).
+        if (heldPlace && !BookingStatus.HoldsPlace(booking.Status))
+        {
+            db.OutboxMessages.Add(AvailabilityChange.Message(booking.InstitutionId, slotDate, slotDate, now));
         }
 
         try

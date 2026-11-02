@@ -1184,3 +1184,204 @@ browser cannot format Sinhala currency the way the server does. Drafts; please c
 | Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
 |---|---|---|---|---|---|
 | `Discover.costPerHead` | About Rs {cost} a person | එක් අයෙකුට ආසන්න වශයෙන් රු. {cost} | ஒருவருக்குச் சுமார் ரூ. {cost} | | |
+
+## Yearly booking texts (2026-11-01, `RECURRING_FULL`, `RECURRING_CLOSED`, plan 07 C.1)
+
+Sent when the yearly job cannot make a year's booking. `{institution}`, `{date}` and `{time}` are filled in by
+the app. Drafts, written by the developer; please check them, and keep each as short as it can be (SMS segments).
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `RECURRING_FULL` | Sethika: {institution}, {date} {time}. Your yearly booking could not be made: every place is taken. Sign in to choose another day. | Sethika: {institution}, {date} {time}. වාර්ෂික වෙන්කිරීම කළ නොහැකි විය: ස්ථාන සියල්ල වෙන් කර ඇත. වෙනත් දිනයකට පිවිසෙන්න. | Sethika: {institution}, {date} {time}. வருடாந்த முன்பதிவு முடியவில்லை: இடங்கள் நிரம்பின. வேறு நாளுக்கு உள்நுழையவும். | | |
+| `RECURRING_CLOSED` | Sethika: {institution}, {date} {time}. Your yearly booking could not be made: the meal is not open that day. Sign in to choose another day. | Sethika: {institution}, {date} {time}. වාර්ෂික වෙන්කිරීම කළ නොහැකි විය: එදින මෙම ආහාර වේල නැත. වෙනත් දිනයකට පිවිසෙන්න. | Sethika: {institution}, {date} {time}. வருடாந்த முன்பதிவு முடியவில்லை: அன்று இந்த வேளை இல்லை. வேறு நாளுக்கு உள்நுழையவும். | | |
+
+## Memorial Dana Planner (2026-11-01, `core.LookupValues`, `core.MemorialRules`, `MEMORIAL_REMINDER`, plan 07 C.2)
+
+Seeded in `Scripts/Seed/13_MemorialDrafts.sql`. The religions' and relationships' Sinhala and Tamil
+names are drafts, written by the developer. The observance rules are drafts twice over: the names, and
+the custom itself (which days each faith keeps, and whether "the 7th day" counts the day of passing as
+the first). Every rule's name starts with `DRAFT - ` in all three languages until a reviewer confirms it.
+
+**Religions (`RELIGION`)**
+
+| Code | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `BUDDHISM` | Buddhism | බෞද්ධ | பௌத்தம் | | |
+| `HINDUISM` | Hinduism | හින්දු | இந்து | | |
+| `ISLAM` | Islam | ඉස්ලාම් | இஸ்லாம் | | |
+| `CHRISTIANITY` | Christianity | ක්‍රිස්තියානි | கிறிஸ்தவம் | | |
+
+**Relationships (`RELATIONSHIP`)**
+
+| Code | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `MOTHER` | Mother | මව | தாய் | | |
+| `FATHER` | Father | පියා | தந்தை | | |
+| `WIFE` | Wife | බිරිඳ | மனைவி | | |
+| `HUSBAND` | Husband | සැමියා | கணவர் | | |
+| `DAUGHTER` | Daughter | දියණිය | மகள் | | |
+| `SON` | Son | පුතා | மகன் | | |
+| `GRANDMOTHER` | Grandmother | ආච්චි | பாட்டி | | |
+| `GRANDFATHER` | Grandfather | සීයා | தாத்தா | | |
+| `SISTER` | Sister | සහෝදරිය | சகோதரி | | |
+| `BROTHER` | Brother | සහෝදරයා | சகோதரர் | | |
+| `RELATIVE` | Relative | ඥාතියා | உறவினர் | | |
+| `FRIEND` | Friend | මිතුරා | நண்பர் | | |
+
+**Observances (`core.MemorialRules`)**: the day is the date of passing plus the months, then the days.
+
+| Code | Months, days | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|---|
+| `BUDDHIST_7TH_DAY` | 0, 6 | DRAFT - 7th day almsgiving | DRAFT - සත්වන දින දානය | DRAFT - 7ஆம் நாள் தானம் | | |
+| `BUDDHIST_3_MONTHS` | 3, 0 | DRAFT - 3 months almsgiving | DRAFT - තෙමසේ දානය | DRAFT - 3 மாத தானம் | | |
+| `BUDDHIST_YEARLY` | 12, 0, every year | DRAFT - Yearly almsgiving | DRAFT - වාර්ෂික දානය | DRAFT - வருடாந்த தானம் | | |
+| `HINDU_31ST_DAY` | 0, 30 | DRAFT - 31st day | DRAFT - 31 වන දිනය | DRAFT - 31ஆம் நாள் | | |
+| `MUSLIM_40TH_DAY` | 0, 39 | DRAFT - 40th day | DRAFT - 40 වන දිනය | DRAFT - 40ஆம் நாள் | | |
+| `CHRISTIAN_40TH_DAY` | 0, 39 | DRAFT - 40th day | DRAFT - 40 වන දිනය | DRAFT - 40ஆம் நாள் | | |
+
+**The reminder text (`MEMORIAL_REMINDER`)**, sent a week before an observance with no booking.
+`{date}` and `{observance}` (the rule's name in the donor's language) are filled in by the app. The name
+of the person who died is never in the text.
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `MEMORIAL_REMINDER` | Sethika: {date}, {observance}. A memorial day in your plan is near and not booked yet. Sign in to find a place to give. | Sethika: {date}, {observance}. ඔබේ සමරු දිනයක් ළඟයි, තවම වෙන් කර නැත. ස්ථානයක් සොයන්න පිවිසෙන්න. | Sethika: {date}, {observance}. உங்கள் நினைவு நாள் நெருங்குகிறது, முன்பதிவு இல்லை. இடம் தேட உள்நுழையவும். | | |
+
+## Phase C screens (2026-11-02, `Memorial`, `Share`, `MyBookings`, `Discover`, `Booking.errors`, plan 07 C.5)
+
+Every year in the booking sheet and My bookings, the memorial planner, sharing a booking and its link, the heart
+and My places. Drafts by Claude; `{...}` are filled in by the app.
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `Shell.items.memorial` | Memorial dana planner | අනුස්මරණ දාන සැලසුම | நினைவு தான திட்டம் | | |
+| `Dashboard.panels.myPlaces` | My places | මගේ ස්ථාන | என் இடங்கள் | | |
+| `Dashboard.panels.noPlaces` | Tap the heart on a place's page to keep it here. | ස්ථානයක පිටුවේ හදවත ඔබා එය මෙහි තබා ගන්න. | ஒரு இடத்தின் பக்கத்தில் உள்ள இதயத்தைத் தட்டி அதை இங்கே வைத்துக்கொள்ளுங்கள். | | |
+| `Discover.sheet.forMemorial` | This booking is for a memorial day in your planner. | මෙම වෙන්කිරීම ඔබේ සැලසුමේ අනුස්මරණ දිනයක් සඳහා ය. | இந்த முன்பதிவு உங்கள் திட்டத்தில் உள்ள ஒரு நினைவு நாளுக்கானது. | | |
+| `Discover.sheet.everyYear` | Book this every year | සෑම වසරකම මෙය වෙන් කරන්න | இதை ஒவ்வொரு ஆண்டும் முன்பதிவு செய்யவும் | | |
+| `Discover.sheet.everyYearHint` | We book the same meal on the same day each year, as soon as the day opens, and text you. You can stop it any time in My bookings. | දිනය විවෘත වූ විගස සෑම වසරකම එම දිනයේ එම ආහාර වේල අපි වෙන් කර ඔබට කෙටි පණිවිඩයක් එවන්නෙමු. මගේ වෙන්කිරීම් තුළ ඕනෑම වේලාවක එය නවත්වන්න පුළුවන්. | நாள் திறந்தவுடன் ஒவ்வொரு ஆண்டும் அதே நாளில் அதே உணவை நாங்கள் முன்பதிவு செய்து உங்களுக்குக் குறுஞ்செய்தி அனுப்புவோம். என் முன்பதிவுகளில் எப்போது வேண்டுமானாலும் நிறுத்தலாம். | | |
+| `Discover.sheet.everyYearNotYearly` | This memorial day does not come every year, so it cannot be booked every year. | මෙම අනුස්මරණ දිනය සෑම වසරකම නොඑන නිසා එය සෑම වසරකම වෙන් කළ නොහැක. | இந்த நினைவு நாள் ஒவ்வொரு ஆண்டும் வருவதில்லை, எனவே ஒவ்வொரு ஆண்டும் முன்பதிவு செய்ய முடியாது. | | |
+| `Discover.sheet.seePlan` | See my memorial plans | මගේ අනුස්මරණ සැලසුම් බලන්න | என் நினைவுத் திட்டங்களைப் பார்க்கவும் | | |
+| `Discover.heart.on` | In my places | මගේ ස්ථානවල ඇත | என் இடங்களில் உள்ளது | | |
+| `Discover.heart.off` | Keep this place | මෙම ස්ථානය තබා ගන්න | இந்த இடத்தை வைத்துக்கொள் | | |
+| `Discover.heart.kept` | {name} is in My places. | {name} මගේ ස්ථානවලට එක් කළා. | {name} என் இடங்களில் சேர்க்கப்பட்டது. | | |
+| `Discover.heart.letGo` | {name} is no longer in My places. | {name} මගේ ස්ථානවලින් ඉවත් කළා. | {name} என் இடங்களிலிருந்து நீக்கப்பட்டது. | | |
+| `Discover.heart.failed` | That did not work. Please try again. | එය සාර්ථක වූයේ නැත. නැවත උත්සාහ කරන්න. | அது வேலை செய்யவில்லை. மீண்டும் முயற்சிக்கவும். | | |
+| `Booking.errors.recurring_not_found` | This yearly booking has already been stopped. | මෙම වාර්ෂික වෙන්කිරීම දැනටමත් නවත්වා ඇත. | இந்த வருடாந்த முன்பதிவு ஏற்கனவே நிறுத்தப்பட்டுள்ளது. | | |
+| `Booking.errors.memorial_not_found` | This memorial plan could not be found. It may have been archived. | මෙම අනුස්මරණ සැලසුම සොයාගත නොහැක. එය ඉවත් කර තිබිය හැක. | இந்த நினைவுத் திட்டம் கிடைக்கவில்லை. அது நீக்கப்பட்டிருக்கலாம். | | |
+| `Booking.errors.memorial_plan_not_found` | This memorial plan could not be found. It may have been archived. | මෙම අනුස්මරණ සැලසුම සොයාගත නොහැක. එය ඉවත් කර තිබිය හැක. | இந்த நினைவுத் திட்டம் கிடைக்கவில்லை. அது நீக்கப்பட்டிருக்கலாம். | | |
+| `Booking.errors.not_an_observance` | This is not the day of that memorial. Please book the day shown in your planner. | මෙය එම අනුස්මරණයේ දිනය නොවේ. ඔබේ සැලසුමේ පෙන්වන දිනය වෙන් කරන්න. | இது அந்த நினைவு நாள் அல்ல. உங்கள் திட்டத்தில் காட்டப்படும் நாளை முன்பதிவு செய்யவும். | | |
+| `Booking.errors.booking_closed` | This booking can no longer be shared or joined. | මෙම වෙන්කිරීම තවදුරටත් බෙදා ගැනීමට හෝ එක්වීමට නොහැක. | இந்த முன்பதிவைப் இனி பகிரவோ சேரவோ முடியாது. | | |
+| `Booking.errors.too_many_invitations` | A booking can be shared with at most 10 people. | එක් වෙන්කිරීමක් උපරිම 10 දෙනෙකු සමඟ බෙදා ගත හැක. | ஒரு முன்பதிவை அதிகபட்சம் 10 பேருடன் பகிரலாம். | | |
+| `Booking.errors.invitation_not_found` | This invitation has already been withdrawn. | මෙම ආරාධනාව දැනටමත් ඉල්ලා අස්කර ඇත. | இந்த அழைப்பு ஏற்கனவே திரும்பப் பெறப்பட்டது. | | |
+| `Booking.errors.invitation_answered` | This invitation has already been answered. | මෙම ආරාධනාවට දැනටමත් පිළිතුරු දී ඇත. | இந்த அழைப்புக்கு ஏற்கனவே பதில் அளிக்கப்பட்டது. | | |
+| `Booking.errors.link_not_found` | This link is not valid, or the invitation was withdrawn. | මෙම සබැඳිය වලංගු නැත, නැතහොත් ආරාධනාව ඉල්ලා අස්කර ඇත. | இந்த இணைப்பு செல்லாது, அல்லது அழைப்பு திரும்பப் பெறப்பட்டது. | | |
+| `Booking.errors.own_booking` | This is your own booking: you do not need to join it. | මෙය ඔබේම වෙන්කිරීමයි: ඔබට එයට එක්වීමට අවශ්‍ය නැත. | இது உங்கள் சொந்த முன்பதிவு: நீங்கள் சேர வேண்டியதில்லை. | | |
+| `Booking.errors.already_joined` | You have already joined this booking. | ඔබ දැනටමත් මෙම වෙන්කිරීමට එක්වී ඇත. | நீங்கள் ஏற்கனவே இந்த முன்பதிவில் சேர்ந்துள்ளீர்கள். | | |
+| `MyBookings.partOfYearly` | Booked every year | සෑම වසරකම වෙන් කෙරේ | ஒவ்வொரு ஆண்டும் முன்பதிவு | | |
+| `MyBookings.shareThis` | Share this dana | මෙම දානය බෙදා ගන්න | இந்த தானத்தைப் பகிரவும் | | |
+| `MyBookings.yearly.title` | Every year | සෑම වසරකම | ஒவ்வொரு ஆண்டும் | | |
+| `MyBookings.yearly.intro` | Meals we book for you each year, as soon as the day opens. | දිනය විවෘත වූ විගස සෑම වසරකම අපි ඔබ වෙනුවෙන් වෙන් කරන ආහාර වේල්. | நாள் திறந்தவுடன் ஒவ்வொரு ஆண்டும் உங்களுக்காக நாங்கள் முன்பதிவு செய்யும் உணவுகள். | | |
+| `MyBookings.yearly.every` | Every {day} | සෑම {day} | ஒவ்வொரு {day} | | |
+| `MyBookings.yearly.next` | next on {date} | ඊළඟට {date} | அடுத்தது {date} | | |
+| `MyBookings.yearly.ended` | no more years to book | තවත් වෙන් කිරීමට වසර නැත | இனி முன்பதிவு செய்ய ஆண்டுகள் இல்லை | | |
+| `MyBookings.yearly.stop` | Stop booking every year | සෑම වසරකම වෙන් කිරීම නවත්වන්න | ஒவ்வொரு ஆண்டும் முன்பதிவு செய்வதை நிறுத்து | | |
+| `MyBookings.yearly.stopTitle` | Stop booking this every year? | මෙය සෑම වසරකම වෙන් කිරීම නවත්වන්නද? | இதை ஒவ்வொரு ஆண்டும் முன்பதிவு செய்வதை நிறுத்தவா? | | |
+| `MyBookings.yearly.stopExplain` | We will not book it in later years. A year already booked stays booked; cancel it above if you need to. | ඉදිරි වසරවල අපි එය වෙන් නොකරමු. දැනටමත් වෙන් කළ වසරක් එලෙසම පවතී; අවශ්‍ය නම් ඉහතින් එය අවලංගු කරන්න. | வரும் ஆண்டுகளில் நாங்கள் இதை முன்பதிவு செய்ய மாட்டோம். ஏற்கனவே முன்பதிவு செய்த ஆண்டு அப்படியே இருக்கும்; தேவைப்பட்டால் மேலே ரத்து செய்யவும். | | |
+| `MyBookings.yearly.keep` | Keep it | තබා ගන්න | வைத்திரு | | |
+| `MyBookings.yearly.stopConfirm` | Stop | නවත්වන්න | நிறுத்து | | |
+| `MyBookings.yearly.stopped` | It will not be booked again. | එය නැවත වෙන් නොකෙරේ. | இது மீண்டும் முன்பதிவு செய்யப்படாது. | | |
+| `MyBookings.shared.title` | Shared with me | මා සමඟ බෙදාගත් | என்னுடன் பகிரப்பட்டவை | | |
+| `MyBookings.shared.with` | With {name} | {name} සමඟ | {name} உடன் | | |
+| `MyBookings.share.title` | Share this dana | මෙම දානය බෙදා ගන්න | இந்த தானத்தைப் பகிரவும் | | |
+| `MyBookings.share.description` | Invite family or friends to give this meal with you. We make a link; you send it to them yourself. | මෙම දානය ඔබ සමඟ දීමට පවුලේ අයට හෝ මිතුරන්ට ආරාධනා කරන්න. අපි සබැඳියක් සාදමු; ඔබ එය ඔවුන්ට යවන්න. | இந்த உணவை உங்களுடன் வழங்க குடும்பத்தினரை அல்லது நண்பர்களை அழைக்கவும். நாங்கள் ஒரு இணைப்பை உருவாக்குவோம்; நீங்களே அதை அவர்களுக்கு அனுப்புங்கள். | | |
+| `MyBookings.share.full` | This booking is already shared with {max} people, the most it can be. | මෙම වෙන්කිරීම දැනටමත් උපරිමය වන {max} දෙනෙකු සමඟ බෙදාගෙන ඇත. | இந்த முன்பதிவு ஏற்கனவே அதிகபட்சமான {max} பேருடன் பகிரப்பட்டுள்ளது. | | |
+| `MyBookings.share.invited` | Invited | ආරාධිතයන් | அழைக்கப்பட்டவர்கள் | | |
+| `MyBookings.share.nobody` | Nobody yet. | තවම කිසිවෙක් නැත. | இன்னும் யாரும் இல்லை. | | |
+| `MyBookings.share.close` | Close | වසන්න | மூடு | | |
+| `MyBookings.share.name` | Their name | ඔවුන්ගේ නම | அவர்களின் பெயர் | | |
+| `MyBookings.share.nameHint` | As you know them. Only you and the institution see it. | ඔබ ඔවුන් හඳුනන ලෙස. ඔබට සහ ආයතනයට පමණක් එය පෙනේ. | நீங்கள் அவர்களை அறிந்தபடி. நீங்களும் நிறுவனமும் மட்டுமே பார்க்க முடியும். | | |
+| `MyBookings.share.nameRequired` | Please enter their name. | ඔවුන්ගේ නම ඇතුළත් කරන්න. | அவர்களின் பெயரை உள்ளிடவும். | | |
+| `MyBookings.share.note` | A note (optional) | සටහනක් (අත්‍යවශ්‍ය නැත) | குறிப்பு (விருப்பம்) | | |
+| `MyBookings.share.noteHint` | For example: brings the dessert. | උදාහරණයක්: අතුරුපස රැගෙන එයි. | உதாரணமாக: இனிப்பு கொண்டு வருவார். | | |
+| `MyBookings.share.make` | Make a link | සබැඳියක් සාදන්න | இணைப்பை உருவாக்கு | | |
+| `MyBookings.share.made` | A link for {name} | {name} සඳහා සබැඳියක් | {name} க்கான இணைப்பு | | |
+| `MyBookings.share.linkLabel` | The link for {name} | {name} සඳහා සබැඳිය | {name} க்கான இணைப்பு | | |
+| `MyBookings.share.onceOnly` | Copy it now: for safety we show each link only once. Send it by WhatsApp or a text. | දැන්ම පිටපත් කරන්න: ආරක්ෂාව සඳහා අපි සෑම සබැඳියක්ම එක් වරක් පමණක් පෙන්වමු. WhatsApp හෝ කෙටි පණිවිඩයකින් යවන්න. | இப்போதே நகலெடுக்கவும்: பாதுகாப்பிற்காக ஒவ்வொரு இணைப்பையும் ஒரு முறை மட்டுமே காட்டுவோம். WhatsApp அல்லது குறுஞ்செய்தி மூலம் அனுப்பவும். | | |
+| `MyBookings.share.copy` | Copy link | සබැඳිය පිටපත් කරන්න | இணைப்பை நகலெடு | | |
+| `MyBookings.share.copied` | Link copied. | සබැඳිය පිටපත් කළා. | இணைப்பு நகலெடுக்கப்பட்டது. | | |
+| `MyBookings.share.copyFailed` | Could not copy. Select the link and copy it yourself. | පිටපත් කළ නොහැකි විය. සබැඳිය තෝරා ඔබම පිටපත් කරන්න. | நகலெடுக்க முடியவில்லை. இணைப்பைத் தேர்ந்தெடுத்து நீங்களே நகலெடுக்கவும். | | |
+| `MyBookings.share.shareVia` | Share… | බෙදා ගන්න… | பகிர்… | | |
+| `MyBookings.share.shareText` | Join me in giving this dana on Sethika | Sethika හි මෙම දානය දීමට මා සමඟ එක්වන්න | Sethika இல் இந்த தானத்தை வழங்க என்னுடன் சேருங்கள் | | |
+| `MyBookings.share.another` | Invite someone else | තවත් අයෙකුට ආරාධනා කරන්න | வேறொருவரை அழை | | |
+| `MyBookings.share.withdraw` | Withdraw | ඉල්ලා අස් කරන්න | திரும்பப் பெறு | | |
+| `MyBookings.share.withdrawn` | {name}'s invitation is withdrawn. | {name} ගේ ආරාධනාව ඉල්ලා අස් කළා. | {name} இன் அழைப்பு திரும்பப் பெறப்பட்டது. | | |
+| `MyBookings.share.status.Invited` | Invited | ආරාධිතයි | அழைக்கப்பட்டார் | | |
+| `MyBookings.share.status.Joined` | Joined | එක්වුණා | சேர்ந்தார் | | |
+| `MyBookings.share.status.Declined` | Declined | ප්‍රතික්ෂේප කළා | மறுத்தார் | | |
+| `Calendar.booking.sharedWith` | Shared with: {names} | බෙදාගත්තේ: {names} | பகிர்ந்தவர்கள்: {names} | | |
+| `Memorial.title` | Memorial dana planner | අනුස්මරණ දාන සැලසුම | நினைவு தான திட்டம் | | |
+| `Memorial.intro` | Remember the people you have lost on the days their faith remembers them. We show each day, and remind you a week before. | ඔබට අහිමි වූවන් ඔවුන්ගේ ආගම ඔවුන් සිහිපත් කරන දිනවල සිහිපත් කරන්න. අපි සෑම දිනයක්ම පෙන්වා සතියකට පෙර මතක් කරමු. | நீங்கள் இழந்தவர்களை அவர்களின் சமயம் நினைவுகூரும் நாட்களில் நினைவுகூருங்கள். ஒவ்வொரு நாளையும் காட்டி, ஒரு வாரத்திற்கு முன் நினைவூட்டுவோம். | | |
+| `Memorial.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயற்சிக்கவும் | | |
+| `Memorial.draftNote` | The memorial days are drafts until religious leaders confirm them, so please check a date with your temple, kovil, mosque or church. | ආගමික නායකයන් තහවුරු කරන තුරු අනුස්මරණ දින කෙටුම්පත් පමණි; දිනයක් ඔබේ පන්සල, කෝවිල, පල්ලිය හෝ දේවස්ථානය සමඟ තහවුරු කර ගන්න. | சமயத் தலைவர்கள் உறுதிப்படுத்தும் வரை நினைவு நாட்கள் வரைவுகள் மட்டுமே; ஒரு தேதியை உங்கள் விகாரை, கோவில், பள்ளிவாசல் அல்லது தேவாலயத்துடன் உறுதிப்படுத்தவும். | | |
+| `Memorial.add` | Remember someone | කෙනෙකු සිහිපත් කරන්න | ஒருவரை நினைவுகூர | | |
+| `Memorial.none` | No one yet. Add someone to see their memorial days. | තවම කිසිවෙක් නැත. ඔවුන්ගේ අනුස්මරණ දින බැලීමට කෙනෙකු එක් කරන්න. | இன்னும் யாரும் இல்லை. நினைவு நாட்களைப் பார்க்க ஒருவரைச் சேர்க்கவும். | | |
+| `Memorial.passed` | passed away {date} | අභාවය {date} | மறைவு {date} | | |
+| `Memorial.noObservances` | Their faith has no memorial days listed yet. | ඔවුන්ගේ ආගමට තවම අනුස්මරණ දින ලැයිස්තුගත කර නැත. | அவர்களின் சமயத்திற்கு இன்னும் நினைவு நாட்கள் பட்டியலிடப்படவில்லை. | | |
+| `Memorial.observances` | Memorial days | අනුස්මරණ දින | நினைவு நாட்கள் | | |
+| `Memorial.archive` | Remove this plan | මෙම සැලසුම ඉවත් කරන්න | இந்தத் திட்டத்தை நீக்கு | | |
+| `Memorial.yearNumber` | {name} (year {number}) | {name} (වසර {number}) | {name} (ஆண்டு {number}) | | |
+| `Memorial.state.booked` | Booked | වෙන් කර ඇත | முன்பதிவு செய்யப்பட்டது | | |
+| `Memorial.state.toBook` | Not booked yet | තවම වෙන් කර නැත | இன்னும் முன்பதிவு இல்லை | | |
+| `Memorial.state.past` | Gone by | ගත වී ඇත | கடந்துவிட்டது | | |
+| `Memorial.everyYear` | every year | සෑම වසරකම | ஒவ்வொரு ஆண்டும் | | |
+| `Memorial.find` | Find a place | ස්ථානයක් සොයන්න | இடம் தேடு | | |
+| `Memorial.findLabel` | Find a place for {name} on {date} | {date} දින {name} සඳහා ස්ථානයක් සොයන්න | {date} அன்று {name} க்கு இடம் தேடு | | |
+| `Memorial.everyYearHint` | In the booking form you can choose to book it every year. | වෙන්කිරීමේ පෝරමයේදී එය සෑම වසරකම වෙන් කිරීමට තෝරාගත හැක. | முன்பதிவுப் படிவத்தில் இதை ஒவ்வொரு ஆண்டும் முன்பதிவு செய்யத் தேர்வு செய்யலாம். | | |
+| `Memorial.form.title` | Remember someone | කෙනෙකු සිහිපත් කරන්න | ஒருவரை நினைவுகூர | | |
+| `Memorial.form.description` | Only you see this plan. | මෙම සැලසුම ඔබට පමණක් පෙනේ. | இந்தத் திட்டத்தை நீங்கள் மட்டுமே பார்க்க முடியும். | | |
+| `Memorial.form.name` | Their name | ඔවුන්ගේ නම | அவர்களின் பெயர் | | |
+| `Memorial.form.nameRequired` | Please enter their name. | ඔවුන්ගේ නම ඇතුළත් කරන්න. | அவர்களின் பெயரை உள்ளிடவும். | | |
+| `Memorial.form.relationship` | Who they were to you (optional) | ඔවුන් ඔබට කවුද (අත්‍යවශ්‍ය නැත) | அவர் உங்களுக்கு யார் (விருப்பம்) | | |
+| `Memorial.form.relationshipNone` | Not given | සඳහන් කර නැත | குறிப்பிடவில்லை | | |
+| `Memorial.form.invalid` | Please choose again. | නැවත තෝරන්න. | மீண்டும் தேர்வு செய்யவும். | | |
+| `Memorial.form.dateOfPassing` | Date of passing | අභාවප්‍රාප්ත වූ දිනය | மறைந்த தேதி | | |
+| `Memorial.form.dateRequired` | Please enter the date of passing. | අභාවප්‍රාප්ත වූ දිනය ඇතුළත් කරන්න. | மறைந்த தேதியை உள்ளிடவும். | | |
+| `Memorial.form.religion` | Their faith | ඔවුන්ගේ ආගම | அவர்களின் சமயம் | | |
+| `Memorial.form.religionHint` | The memorial days follow this faith's customs. | අනුස්මරණ දින මෙම ආගමේ සිරිත් අනුව වේ. | நினைவு நாட்கள் இந்த சமயத்தின் வழக்கங்களைப் பின்பற்றும். | | |
+| `Memorial.form.religionRequired` | Please choose a faith. | ආගමක් තෝරන්න. | ஒரு சமயத்தைத் தேர்வு செய்யவும். | | |
+| `Memorial.form.rulesTitle` | The memorial days we will show | අපි පෙන්වන අනුස්මරණ දින | நாங்கள் காட்டும் நினைவு நாட்கள் | | |
+| `Memorial.form.notes` | Notes (optional) | සටහන් (අත්‍යවශ්‍ය නැත) | குறிப்புகள் (விருப்பம்) | | |
+| `Memorial.form.notesHint` | Only for you. | ඔබට පමණි. | உங்களுக்கு மட்டும். | | |
+| `Memorial.form.cancel` | Cancel | අවලංගු කරන්න | ரத்து | | |
+| `Memorial.form.save` | Save | සුරකින්න | சேமி | | |
+| `Memorial.form.created` | We will remember {name}'s days with you. | {name} ගේ දින අපි ඔබ සමඟ සිහිපත් කරමු. | {name} இன் நாட்களை உங்களுடன் நினைவுகூர்வோம். | | |
+| `Memorial.archiveSheet.title` | Remove the plan for {name}? | {name} සඳහා වූ සැලසුම ඉවත් කරන්නද? | {name} க்கான திட்டத்தை நீக்கவா? | | |
+| `Memorial.archiveSheet.description` | Its reminders stop. Bookings already made from it stay; you can cancel them in My bookings. | එහි මතක් කිරීම් නවතී. එයින් කළ වෙන්කිරීම් පවතී; මගේ වෙන්කිරීම් තුළ ඒවා අවලංගු කළ හැක. | அதன் நினைவூட்டல்கள் நிற்கும். அதிலிருந்து செய்த முன்பதிவுகள் இருக்கும்; என் முன்பதிவுகளில் ரத்து செய்யலாம். | | |
+| `Memorial.archiveSheet.keep` | Keep it | තබා ගන්න | வைத்திரு | | |
+| `Memorial.archiveSheet.confirm` | Remove | ඉවත් කරන්න | நீக்கு | | |
+| `Share.title` | Share a dana | දානයක් බෙදා ගන්න | ஒரு தானத்தைப் பகிரவும் | | |
+| `Share.notFound` | This link is not valid, or the invitation was withdrawn. | මෙම සබැඳිය වලංගු නැත, නැතහොත් ආරාධනාව ඉල්ලා අස්කර ඇත. | இந்த இணைப்பு செல்லாது, அல்லது அழைப்பு திரும்பப் பெறப்பட்டது. | | |
+| `Share.invitedBy` | {name} invites you to give with them | {name} ඔවුන් සමඟ දන් දීමට ඔබට ආරාධනා කරයි | {name} அவர்களுடன் வழங்க உங்களை அழைக்கிறார் | | |
+| `Share.where` | Where | කොහේද | எங்கே | | |
+| `Share.when` | When | කවදාද | எப்போது | | |
+| `Share.inMemoryOfLabel` | In memory of | සිහිවීම පිණිස | நினைவாக | | |
+| `Share.joined` | You have joined this dana. | ඔබ මෙම දානයට එක්වුණා. | நீங்கள் இந்த தானத்தில் சேர்ந்துள்ளீர்கள். | | |
+| `Share.declined` | You have declined. Thank you for letting them know. | ඔබ ප්‍රතික්ෂේප කළා. ඔවුන්ට දැනුම් දීම ගැන ස්තූතියි. | நீங்கள் மறுத்துவிட்டீர்கள். தெரிவித்ததற்கு நன்றி. | | |
+| `Share.joinedNext` | It is under Shared with me in My bookings, and we will remind you the day before. | එය මගේ වෙන්කිරීම් හි මා සමඟ බෙදාගත් යටතේ ඇත; අපි පෙර දින මතක් කරමු. | இது என் முன்பதிவுகளில் என்னுடன் பகிரப்பட்டவை என்பதன் கீழ் உள்ளது; முந்தைய நாள் நினைவூட்டுவோம். | | |
+| `Share.seeMine` | See my bookings | මගේ වෙන්කිරීම් බලන්න | என் முன்பதிவுகளைப் பார்க்கவும் | | |
+| `Share.booking.Open` | This booking is open. | මෙම වෙන්කිරීම විවෘතයි. | இந்த முன்பதிவு திறந்துள்ளது. | | |
+| `Share.booking.Cancelled` | This booking was cancelled. | මෙම වෙන්කිරීම අවලංගු කර ඇත. | இந்த முன்பதிவு ரத்து செய்யப்பட்டது. | | |
+| `Share.booking.Rejected` | The institution could not accept this booking. | ආයතනයට මෙම වෙන්කිරීම භාර ගත නොහැකි විය. | நிறுவனத்தால் இந்த முன்பதிவை ஏற்க முடியவில்லை. | | |
+| `Share.booking.Past` | This dana has already taken place. | මෙම දානය දැනටමත් පැවැත්විණි. | இந்த தானம் ஏற்கனவே நடந்துவிட்டது. | | |
+| `Share.invitation.Invited` | This invitation is waiting for an answer. | මෙම ආරාධනාව පිළිතුරක් බලාපොරොත්තුවෙන් ඇත. | இந்த அழைப்பு பதிலுக்காகக் காத்திருக்கிறது. | | |
+| `Share.invitation.Joined` | This invitation has already been accepted. | මෙම ආරාධනාව දැනටමත් භාරගෙන ඇත. | இந்த அழைப்பு ஏற்கனவே ஏற்கப்பட்டது. | | |
+| `Share.invitation.Declined` | This invitation has already been declined. | මෙම ආරාධනාව දැනටමත් ප්‍රතික්ෂේප කර ඇත. | இந்த அழைப்பு ஏற்கனவே மறுக்கப்பட்டது. | | |
+| `Share.signInFirst` | Sign in to answer. It takes a minute, and we will bring you straight back here. | පිළිතුරු දීමට පුරනය වන්න. එයට විනාඩියක් ගතවන අතර අපි ඔබව නැවත මෙහි ගෙන එන්නෙමු. | பதிலளிக்க உள்நுழையவும். ஒரு நிமிடம் ஆகும், உங்களை நேராக இங்கே திரும்பக் கொண்டு வருவோம். | | |
+| `Share.signIn` | Sign in | පුරනය වන්න | உள்நுழை | | |
+| `Share.createAccount` | Create an account | ගිණුමක් සාදන්න | கணக்கை உருவாக்கு | | |
+| `Share.institutionSession` | You are signed in for an institution. Switch to your own account to answer. | ඔබ ආයතනයක් සඳහා පුරනය වී ඇත. පිළිතුරු දීමට ඔබේම ගිණුමට මාරු වන්න. | நீங்கள் ஒரு நிறுவனத்திற்காக உள்நுழைந்துள்ளீர்கள். பதிலளிக்க உங்கள் சொந்தக் கணக்கிற்கு மாறவும். | | |
+| `Share.notAllowed` | This account cannot join bookings. | මෙම ගිණුමට වෙන්කිරීම්වලට එක්විය නොහැක. | இந்தக் கணக்கால் முன்பதிவுகளில் சேர முடியாது. | | |
+| `Share.ask` | Will you give this dana with them? | ඔබ ඔවුන් සමඟ මෙම දානය දෙනවාද? | அவர்களுடன் இந்த தானத்தை வழங்குவீர்களா? | | |
+| `Share.join` | Join | එක්වන්න | சேர் | | |
+| `Share.decline` | Decline | ප්‍රතික්ෂේප කරන්න | மறு | | |

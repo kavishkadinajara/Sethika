@@ -48,32 +48,35 @@ internal static class InstitutionBookingEndpoints
     {
         var institution = app.MapGroup("/api/institution");
 
+        // A change below writes outbox messages - texts, the search index, the live calendars - and
+        // wakes the outbox when it succeeds (plan 07, H10).
         institution.MapGet("/meal-slots", ListSlotsAsync).WithMetadata(new HasPermissionAttribute(SlotsView));
-        institution.MapPost("/meal-slots", CreateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsCreate));
-        institution.MapPut("/meal-slots/{publicId:guid}", UpdateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
-        institution.MapPost("/meal-slots/{publicId:guid}/deactivate", DeactivateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
-        institution.MapPost("/meal-slots/{publicId:guid}/activate", ActivateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
+        institution.MapPost("/meal-slots", CreateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsCreate)).WakesOutbox();
+        institution.MapPut("/meal-slots/{publicId:guid}", UpdateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
+        institution.MapPost("/meal-slots/{publicId:guid}/deactivate", DeactivateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
+        institution.MapPost("/meal-slots/{publicId:guid}/activate", ActivateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
 
         institution.MapGet("/blocked-dates", ListBlockedDatesAsync).WithMetadata(new HasPermissionAttribute(SlotsView));
-        institution.MapPost("/blocked-dates", AddBlockedDateAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
-        institution.MapDelete("/blocked-dates/{id:int}", RemoveBlockedDateAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
+        institution.MapPost("/blocked-dates", AddBlockedDateAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
+        institution.MapDelete("/blocked-dates/{id:int}", RemoveBlockedDateAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
 
         institution.MapGet("/listing", GetListingAsync).WithMetadata(new HasPermissionAttribute(SlotsView));
-        institution.MapPut("/listing", SetListingAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
+        institution.MapPut("/listing", SetListingAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
 
         institution.MapGet("/bookings", GetCalendarAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
         institution.MapGet("/today", GetTodayAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
         institution.MapGet("/ledger", GetLedgerAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
         institution.MapGet("/bookings/{bookingNo}", FindBookingAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
+        institution.MapGet("/bookings/{bookingNo}/shared-with", ListSharedWithAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
 
         institution.MapPost("/bookings/{bookingNo}/approve", (string bookingNo, ICurrentUserContext user, BookingDecisionHandler handler, CancellationToken ct) =>
-            DecideAsync(bookingNo, InstitutionDecision.Approve, null, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarApprove));
+            DecideAsync(bookingNo, InstitutionDecision.Approve, null, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarApprove)).WakesOutbox();
 
         institution.MapPost("/bookings/{bookingNo}/reject", ([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReasonBody? body, string bookingNo, ICurrentUserContext user, BookingDecisionHandler handler, CancellationToken ct) =>
-            DecideAsync(bookingNo, InstitutionDecision.Reject, body?.Reason, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarReject));
+            DecideAsync(bookingNo, InstitutionDecision.Reject, body?.Reason, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarReject)).WakesOutbox();
 
         institution.MapPost("/bookings/{bookingNo}/cancel", ([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReasonBody? body, string bookingNo, ICurrentUserContext user, BookingDecisionHandler handler, CancellationToken ct) =>
-            DecideAsync(bookingNo, InstitutionDecision.Cancel, body?.Reason, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarEdit));
+            DecideAsync(bookingNo, InstitutionDecision.Cancel, body?.Reason, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarEdit)).WakesOutbox();
 
         institution.MapPost("/bookings/{bookingNo}/complete", (string bookingNo, ICurrentUserContext user, BookingDecisionHandler handler, CancellationToken ct) =>
             DecideAsync(bookingNo, InstitutionDecision.Complete, null, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarEdit));
@@ -262,6 +265,23 @@ internal static class InstitutionBookingEndpoints
         // The database's collation is case-insensitive, so "bk-2026-000123" finds BK-2026-000123 as typed.
         return await queries.FindBookingAsync(actor.InstitutionId, bookingNo.Trim(), cancellationToken) is { } place
             ? Results.Ok(place)
+            : ApiErrors.Error(StatusCodes.Status404NotFound, BookingDecisionResult.NotFound);
+    }
+
+    /// <summary>Who joined the booking as a co-sponsor (plan 07, H19): names only.</summary>
+    private static async Task<IResult> ListSharedWithAsync(
+        string bookingNo,
+        ICurrentUserContext currentUser,
+        ISharingQueries queries,
+        CancellationToken cancellationToken)
+    {
+        if (Actor(currentUser) is not { } actor)
+        {
+            return NoInstitution();
+        }
+
+        return await queries.ListSharedWithAsync(actor.InstitutionId, bookingNo.Trim(), cancellationToken) is { } names
+            ? Results.Ok(names)
             : ApiErrors.Error(StatusCodes.Status404NotFound, BookingDecisionResult.NotFound);
     }
 

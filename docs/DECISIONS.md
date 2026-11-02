@@ -228,6 +228,33 @@ assignment (the picker only filters); live SignalR updates; a time-grid calendar
 service types; a platform action to enable `SERVICES` for institutions approved before Phase E;
 inviting a leader to create an account from the roster.
 
+## Engagement (Phase C)
+
+Full reasoning in `docs/plans/07-ENGAGEMENT.md` §2 (H1-H19, and H20-H42 decided while building). The
+proposal's Phase C promises are built except email (cut by the user, H1); the Memorial Dana Planner and
+co-sponsors were added outside the proposal text. Nothing on the cut order was cut.
+
+| # | Decision | Why |
+|---|----------|-----|
+| H1 | Phase C is recurring yearly bookings, the Memorial Dana Planner, live slot updates, preferred institutions and co-sponsors. **Email is cut**: every confirmation and reminder already goes by SMS in the donor's language | The proposal's Phase C row plus the user's planner and co-sponsor decisions (plan 07 §8) |
+| H2, H3, H22 | **A yearly booking is a promise to try, not a held slot.** Each year's booking is an ordinary booking (`Source = 'Recurring'`) made by the same engine, by a daily job (`recurring-bookings`, 00:30 Colombo) on the first day the date enters the slot's booking window. The year is claimed by a conditional `UPDATE` of `LastGeneratedYear` in the booking's own transaction, so a rerun or two runs at once book it once; a busy lock claims nothing and the next run tries again. C#, not a stored procedure | One engine, one judge (C4, G7): the overbooking guarantee covers yearly bookings with no new code. A procedure would have re-implemented `MealSlotRules`, the lock and the outbox |
+| H4, H21 | A year that cannot be booked texts the donor once (`RECURRING_FULL` or `RECURRING_CLOSED`) with a link to `/find` for that day. No retries | A retry loop would compete with other donors for weeks; Phase B already answers "where else?" |
+| H5, H20 | "Book this every year" in the booking sheet; 29 February books 28 February in a common year; one active yearly booking per donor, meal and day (filtered unique index); named by a `PublicId`. Stopping keeps a year already booked | Stopping must never silently cancel what the institution has accepted |
+| H6, H23, H24 | **The Memorial Dana Planner is configuration, not code.** A pure domain function (`MemorialObservances`) computes the days from `core.MemorialRules` (date of passing + months, then days; "the 7th day" is + 6, the day of passing counted as the first). A booking for an observance must fall on its day; a yearly observance can become a yearly booking | A faith, or an institution's custom, is a row; a reviewer corrects an offset without a code change |
+| H7, H27 | Religions and memorial rules seeded as **drafts** (every rule name starts with `DRAFT`); relationships as plain words. The planner is its own screen `MYMEMORIAL.PLANS`; RLS `sec.fn_Owner(DonorUserId)`: the donor and the platform, never an institution | CLAUDE.md forbids inventing faith facts. The names of a family's dead are theirs alone |
+| H8, H25, H26 | One memorial reminder per observance, from tomorrow to 7 days ahead, if nothing is booked for it (`memorial:{plan}:{rule}:{date}`); never carries the deceased's name. Archiving a plan stops its reminders and cancels nothing | One text, never two; a late plan still gets its reminder |
+| H9, H10, H28-H31 | **Live updates are a hint, the API is the truth.** A booking, a rejection or cancellation that frees a place, a blocked range and a slot change each write an `AvailabilityChanged` outbox message in their own transaction; its handler sends `AvailabilityChanged { slug, from, to }` to the institution's SignalR group (`/api/hubs/availability`, anonymous, at most 3 institutions per connection). An endpoint filter (`WakesOutbox`) queues the outbox job after a successful change, so a calendar hears in about a second. Redis backplane with a channel prefix. The calendar refetches its month | A lost hint costs freshness, never correctness: the engine still refuses a full slot. Azure scales out, so a change on one instance must reach a calendar on another; the prefix keeps Sethika's channels apart from other users of the same Redis |
+| H11 | Live: the institution's public page and its booking calendar. `/find`'s counts are not live | The two calendars the proposal means; live counts across every institution would need a broadcast to every searcher |
+| H12, H39, H42 | **Preferred institutions:** a heart on `/i/[slug]`, `GET/PUT/DELETE /api/me/places`, "My places" on the donor's home; RLS `fn_Owner(UserId)`; the primary key, not a look-up, stops a double tap | The proposal's donor profile at its smallest real size |
+| H16-H18, H32-H36 | **Co-sponsors by a link the donor sends.** Sethika makes `/share/{token}` (32 random bytes, only the SHA-256 stored) and texts no one. At most 10 invitations per booking (the booking row is update-locked while counting). Joined and declined are final; withdrawing deletes the row. RLS `sec.fn_Contributor(InstitutionId, UserId, InvitedBy)`; the three things a contributor needs that no session can see go through one platform-scoped class, `SqlShareLinks`, and the answer is one conditional `UPDATE ... WHERE Status = 'Invited'` | A number typed by someone else is not consent to be texted; a link is a bearer secret, so only its hash is kept. Nothing else in a request gains the platform's reach |
+| H19, H37, H38 | Joined co-sponsors appear on the donor's booking, by name only on the institution's, and under "Shared with me"; each gets the 18:00 reminder in their own language (`booking-reminder:{BookingNo}:{UserId}`) | The point of sharing a memorial dana is that the siblings come |
+| H15 | New packages: `Microsoft.AspNetCore.SignalR.StackExchangeRedis`, `@microsoft/signalr`, and `Microsoft.AspNetCore.SignalR.Client` (tests only) | Microsoft's own package for each job |
+
+**Cut from Phase C, and the report says so** (plan 07 §6): email confirmations and reminders; texting
+a co-sponsor; contributors' shares of a cost; live counts on `/find` and live updates in the mobile app;
+a per-address limit on connecting to the hub; confirmed memorial rules and religion names;
+`core.SpecialDays` (poya, festivals).
+
 ## Unconfirmed reference data (seeded as drafts)
 CLAUDE.md forbids inventing facts about real institutions. Where the flow cannot run without a row,
 the row is seeded as a visibly marked draft and listed here until someone confirms or replaces it.
@@ -240,6 +267,8 @@ the row is seeded as a visibly marked draft and listed here until someone confir
 | Reviewer checklist items | `12_OnboardingDrafts.sql` | `DRAFT` in every question | the platform's reviewers |
 | Religious service suggestions per institution type (name, duration, leaders needed) | not seeded (V4): each institution types its own | — | real institutions of each faith, if suggestions are ever added |
 | SMS texts for religious services (Sinhala and Tamil) | `11_NotifyTemplates.sql` | listed in `docs/translations-to-review.md` | a Sinhala and a Tamil reviewer |
+| Religions (Sinhala and Tamil names) and memorial rules per faith (which days, their offsets, H24's "day of passing is day 1") | `03_LookupTypes.sql`, `13_MemorialDrafts.sql` | `DRAFT` in every rule name; listed in `docs/translations-to-review.md` | a reviewer of each faith |
+| SMS texts and screen messages for Phase C (Sinhala and Tamil) | `11_NotifyTemplates.sql`, `web/messages` | listed in `docs/translations-to-review.md` | a Sinhala and a Tamil reviewer |
 | Sinhala and Tamil names of districts and institution types | not seeded: `NameSi`/`NameTa` are `NULL`, so the search page shows the English name in every language | — | a Sinhala and a Tamil reviewer |
 
 The registration reject reasons in the same seed are Sethika's own review policy, not facts about
@@ -265,4 +294,6 @@ tables above once the code exists and the choice has held.
 | `docs/plans/05-REDESIGN.md` — true-black dark theme, living sidebar, Day Ledger dashboards, every screen on the new base | `redesign` | Merged into `develop` (PR #31) on 2026-11-01 |
 | `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` — religious services, leader roster, conflict-free assignment | `phase-e-religious-services`, `phase-e-donor` | Done. 8.1-8.4 and 8.6 merged (PR #12); 8.5 and 8.7-8.10 (donor requests, assignment endpoints, texts and reminders, screens) pushed to `develop` on 2026-11-01 without a pull request, described in `docs/plans/PHASE-E-DELIVERY.md`; decisions summarised above under "Religious services (Phase E)" |
 | `docs/plans/06-DISCOVERY.md` — public institution pages, cross-institution search, Redis GEO, the month view and the map | `rcsi-on` (with `READ_COMMITTED_SNAPSHOT`, D11) | B.1-B.4 built and committed; decisions summarised above under "Discovery (Phase B)" |
+| `docs/plans/07-ENGAGEMENT.md` — yearly bookings, the Memorial Dana Planner, live slot updates (SignalR), preferred institutions, co-sponsors | `phase-c-engagement` | C.1-C.5 built and committed; decisions summarised above under "Engagement (Phase C)" |
+| `docs/plans/08-STANDING-SPONSORS.md` — the institution's own regular donors on any pattern, day requests, swaps | `standing-sponsors` (after Phase C's PR) | Agreed 2026-11-02 (K1-K12, §8 answered); nothing built |
 | `docs/plans/PHASE-F-MOBILE.md` — donor mobile app (Expo), mobile sessions, push notifications | `ccr-79f10240-uk4n3v`, `mobile-booking` | F.1-F.4 merged (PR #9, #11: scaffold, mobile sessions, browse and book, my bookings); phone walk-through owed; F.5 push notifications next (S8) |

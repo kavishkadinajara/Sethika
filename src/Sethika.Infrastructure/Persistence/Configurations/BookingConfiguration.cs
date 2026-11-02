@@ -32,5 +32,6 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.Property(b => b.RowVersion).IsRowVersion();
 
         builder.HasMany(b => b.StatusHistory).WithOne().HasForeignKey(h => h.BookingId);
+        builder.HasOne(b => b.RecurringBooking).WithMany().HasForeignKey(b => b.RecurringBookingId);
     }
 }

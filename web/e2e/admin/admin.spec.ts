@@ -105,10 +105,14 @@ test("a reviewer sees the lists but cannot open an institution or change an acco
 
   await page.goto("/admin/institutions");
   await expect(page.getByRole("heading", { level: 1, name: "Institutions" })).toBeVisible();
-  await expect(page.getByRole("listitem").first()).toBeVisible();
+  // an institution's card first (the sidebar's items are list items too): before it there is nothing to count
+  await expect(page.getByText(/^(Owner: .+|No owner yet)$/).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Open as platform support" })).toHaveCount(0);
 
   await page.goto("/admin/users");
+  // the rows first: before they load there is no Suspend button to count
+  await expect(page.getByText(reviewer.phone.slice(1)).first()).toBeVisible(); // shown as +94…
   await expect(page.getByRole("button", { name: "Create an account" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Suspend" })).toHaveCount(0);
+  // exact: the "Suspended" status filter is a button too
+  await expect(page.getByRole("button", { name: "Suspend", exact: true })).toHaveCount(0);
 });

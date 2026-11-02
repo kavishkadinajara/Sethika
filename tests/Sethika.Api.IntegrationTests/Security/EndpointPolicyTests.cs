@@ -59,6 +59,15 @@ public sealed class EndpointPolicyTests(SethikaTestDatabase database)
         "GET /api/search",
         "GET /api/search/month",
         "GET /api/search/lookups",
+
+        // The live calendars' hub (plan 07, H9, H29): it hints at the same open days, so the same
+        // anyone may hear them. SignalR maps the connection and its negotiation for every method.
+        "* /api/hubs/availability",
+        "* /api/hubs/availability/negotiate",
+
+        // A co-sponsor's link (plan 07, H17): the link is the credential, and its summary shows only
+        // what the donor chose to share. Joining it needs an account.
+        "GET /api/share/{token}",
     ];
 
     private WebApplicationFactory<Program> Host() =>

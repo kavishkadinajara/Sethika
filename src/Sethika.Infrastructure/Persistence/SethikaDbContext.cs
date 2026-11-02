@@ -32,6 +32,7 @@ public partial class SethikaDbContext(DbContextOptions<SethikaDbContext> options
     public DbSet<PreviousPassword> PreviousPasswords => Set<PreviousPassword>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<DonorProfile> DonorProfiles => Set<DonorProfile>();
+    public DbSet<FavoriteInstitution> FavoriteInstitutions => Set<FavoriteInstitution>();
     public DbSet<UserConsent> UserConsents => Set<UserConsent>();
     public DbSet<LegalDocument> LegalDocuments => Set<LegalDocument>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
@@ -55,6 +56,10 @@ public partial class SethikaDbContext(DbContextOptions<SethikaDbContext> options
     public DbSet<BlockedDate> BlockedDates => Set<BlockedDate>();
     public DbSet<SlotInstance> SlotInstances => Set<SlotInstance>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<RecurringBooking> RecurringBookings => Set<RecurringBooking>();
+    public DbSet<BookingContributor> BookingContributors => Set<BookingContributor>();
+    public DbSet<MemorialPlan> MemorialPlans => Set<MemorialPlan>();
+    public DbSet<MemorialRule> MemorialRules => Set<MemorialRule>();
     public DbSet<ServiceType> ServiceTypes => Set<ServiceType>();
     public DbSet<ReligiousLeader> ReligiousLeaders => Set<ReligiousLeader>();
     public DbSet<LeaderWeeklyHours> LeaderWeeklyHours => Set<LeaderWeeklyHours>();

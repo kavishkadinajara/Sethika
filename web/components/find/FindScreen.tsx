@@ -20,6 +20,7 @@ import { addMonths, colomboToday, monthOf } from "@/lib/bookings/calendar";
 import {
   DEFAULT_RADIUS,
   inSriLanka,
+  memorialSearch,
   monthApiQuery,
   parseFindQuery,
   radii,
@@ -28,6 +29,7 @@ import {
   timesOfDay,
   toFindSearch,
   type FindQuery,
+  type Memorial,
   type Radius,
 } from "@/lib/bookings/find-query";
 import { inLocale, localName } from "@/lib/bookings/names";
@@ -69,7 +71,9 @@ export function FindScreen() {
   const set = useCallback(
     (change: Partial<FindQuery>, replace = false) => {
       const now = parseFindQuery(new URLSearchParams(window.location.search), today);
-      const href = `${window.location.pathname}${toFindSearch({ ...now, ...change }, today)}`;
+      // A memorial observance falls on one day: choosing another lets it go (H23).
+      const memorial = change.date !== undefined && change.date !== now.date ? null : now.memorial;
+      const href = `${window.location.pathname}${toFindSearch({ ...now, memorial, ...change }, today)}`;
       if (replace) window.history.replaceState(null, "", href);
       else window.history.pushState(null, "", href);
     },
@@ -324,7 +328,7 @@ export function FindScreen() {
                 <ol className="grid gap-3">
                   {current.results.map((place, index) => (
                     <li key={place.slug}>
-                      <PlaceCard place={place} number={index + 1} date={query.date} />
+                      <PlaceCard place={place} number={index + 1} date={query.date} memorial={query.memorial} />
                     </li>
                   ))}
                 </ol>
@@ -347,7 +351,7 @@ export function FindScreen() {
  * A place found, numbered as its marker on the map, with each meal open that day. Its name opens its
  * page; "Book" opens it on that meal and day, with the booking form already open.
  */
-function PlaceCard({ place, number, date }: { place: SearchPlace; number: number; date: string }) {
+function PlaceCard({ place, number, date, memorial }: { place: SearchPlace; number: number; date: string; memorial: Memorial | null }) {
   const t = useTranslations("Find");
   const locale = useLocale();
   const format = useFormatter();
@@ -387,7 +391,7 @@ function PlaceCard({ place, number, date }: { place: SearchPlace; number: number
               </span>
               <Button asChild variant="outline">
                 <Link
-                  href={`/i/${encodeURIComponent(place.slug)}?slot=${slot.mealSlot}&date=${date}`}
+                  href={`/i/${encodeURIComponent(place.slug)}?slot=${slot.mealSlot}&date=${date}${memorialSearch(memorial)}`}
                   aria-label={t("results.bookLabel", { meal, place: name })}
                 >
                   {t("results.book")}

@@ -61,6 +61,7 @@ USING (
         ('ACCESS',      'ACCESS.MEMBERS',      N'Staff and their roles', '/access/members',      2),
         ('APPLY',       'ONBOARDING.APPLICATION', N'Institution application', '/apply',               1),
         ('BOOK',        'MYBOOKINGS.BOOKINGS',    N'My bookings',             '/bookings/mine',       1),
+        ('BOOK',        'MYMEMORIAL.PLANS',       N'Memorial dana planner',   '/memorial',            2),
         ('REQUEST',     'MYSERVICES.APPOINTMENTS', N'My service requests',    '/services/mine',       1),
         ('ONBOARDING',  'ONBOARDING.REQUESTS',    N'Registration requests',   '/admin/registrations', 1),
         ('INSTITUTIONS', 'PLATFORM.INSTITUTIONS', N'All institutions',        '/admin/institutions',  1),
@@ -143,6 +144,10 @@ VALUES
     ('MYBOOKINGS.BOOKINGS.VIEW',      'MYBOOKINGS.BOOKINGS',    'VIEW',    'Self',     N'See my bookings',                             0, 0),
     ('MYBOOKINGS.BOOKINGS.CREATE',    'MYBOOKINGS.BOOKINGS',    'CREATE',  'Self',     N'Book a meal slot',                            0, 0),
     ('MYBOOKINGS.BOOKINGS.EDIT',      'MYBOOKINGS.BOOKINGS',    'EDIT',    'Self',     N'Cancel my bookings',                          0, 0),
+    /*  A donor's memorial plans (plan 07, H6): Self scope, like bookings. EDIT is archiving one.  */
+    ('MYMEMORIAL.PLANS.VIEW',         'MYMEMORIAL.PLANS',       'VIEW',    'Self',     N'See my memorial plans',                       0, 0),
+    ('MYMEMORIAL.PLANS.CREATE',       'MYMEMORIAL.PLANS',       'CREATE',  'Self',     N'Make a memorial plan',                        0, 0),
+    ('MYMEMORIAL.PLANS.EDIT',         'MYMEMORIAL.PLANS',       'EDIT',    'Self',     N'Archive my memorial plans',                   0, 0),
     /*  A donor's own service requests (Phase E): Self scope, like bookings. EDIT is cancelling one. */
     ('MYSERVICES.APPOINTMENTS.VIEW',   'MYSERVICES.APPOINTMENTS', 'VIEW',   'Self',    N'See my service requests',                     0, 0),
     ('MYSERVICES.APPOINTMENTS.CREATE', 'MYSERVICES.APPOINTMENTS', 'CREATE', 'Self',    N'Request a religious service',                 0, 0),
@@ -201,6 +206,8 @@ VALUES
     ('PLATFORM.USERS.EDIT',          'PLATFORM.USERS.VIEW'),
     ('MYBOOKINGS.BOOKINGS.CREATE',    'MYBOOKINGS.BOOKINGS.VIEW'),
     ('MYBOOKINGS.BOOKINGS.EDIT',      'MYBOOKINGS.BOOKINGS.VIEW'),
+    ('MYMEMORIAL.PLANS.CREATE',       'MYMEMORIAL.PLANS.VIEW'),
+    ('MYMEMORIAL.PLANS.EDIT',         'MYMEMORIAL.PLANS.VIEW'),
     ('SERVICES.TYPES.CREATE',         'SERVICES.TYPES.VIEW'),
     ('SERVICES.TYPES.EDIT',           'SERVICES.TYPES.VIEW'),
     ('SERVICES.LEADERS.CREATE',       'SERVICES.LEADERS.VIEW'),
@@ -273,6 +280,9 @@ FROM (VALUES
     ('MYBOOKINGS.BOOKINGS.VIEW'),
     ('MYBOOKINGS.BOOKINGS.CREATE'),
     ('MYBOOKINGS.BOOKINGS.EDIT'),
+    ('MYMEMORIAL.PLANS.VIEW'),
+    ('MYMEMORIAL.PLANS.CREATE'),
+    ('MYMEMORIAL.PLANS.EDIT'),
     ('MYSERVICES.APPOINTMENTS.VIEW'),
     ('MYSERVICES.APPOINTMENTS.CREATE'),
     ('MYSERVICES.APPOINTMENTS.EDIT')
@@ -410,6 +420,9 @@ FROM (VALUES
     ('MYBOOKINGS.BOOKINGS.VIEW'),
     ('MYBOOKINGS.BOOKINGS.CREATE'),
     ('MYBOOKINGS.BOOKINGS.EDIT'),
+    ('MYMEMORIAL.PLANS.VIEW'),
+    ('MYMEMORIAL.PLANS.CREATE'),
+    ('MYMEMORIAL.PLANS.EDIT'),
     ('MYSERVICES.APPOINTMENTS.VIEW'),
     ('MYSERVICES.APPOINTMENTS.CREATE'),
     ('MYSERVICES.APPOINTMENTS.EDIT')

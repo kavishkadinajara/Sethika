@@ -41,6 +41,7 @@ DECLARE @districtId SMALLINT = (SELECT Id FROM core.Districts       WHERE Code =
     fixture's users and institutions, and a test that dies before its own cleanup would
     otherwise leave rows that block every later reset.                                    */
 DELETE FROM auth.RefreshTokens;
+DELETE FROM auth.FavoriteInstitutions;   -- plan 07, H12: before the institutions they point at
 DELETE FROM auth.LoginHistory;
 DELETE FROM auth.PasswordHistory;
 DELETE FROM auth.UserRoles;
@@ -69,7 +70,15 @@ DELETE FROM booking.ServiceTypes;
 -- What the booking engine's tests leave (plan 03): history before its booking, blocks and seasons
 -- before their slot, and the outbox trail of every booking.
 DELETE FROM booking.BookingStatusHistory;
+DELETE FROM booking.BookingContributors;
 DELETE FROM booking.Bookings;
+-- Yearly bookings (plan 07) after the bookings that point at them, before their slot; and their texts' trail.
+DELETE FROM booking.RecurringBookings;
+DELETE FROM core.OutboxMessages WHERE AggregateType = 'RecurringBooking';
+-- Memorial plans after the bookings and yearly bookings made for them; and the rules a test added
+-- beside the seeded drafts, which are the seed's alone.
+DELETE FROM booking.MemorialPlans;
+DELETE FROM core.MemorialRules WHERE Code LIKE 'TEST[_]%';
 DELETE FROM booking.SlotInstances;
 DELETE FROM booking.BlockedDates;
 DELETE FROM booking.MealSlotSeasons;

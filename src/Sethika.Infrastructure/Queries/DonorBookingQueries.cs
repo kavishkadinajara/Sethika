@@ -31,6 +31,19 @@ public sealed class DonorBookingQueries(IDbConnectionFactory connections) : IDon
         ORDER BY i.Name, i.Slug;
         """;
 
+    // A person's places (plan 07, H12), the newest kept first. The person's id as well as RLS's owner
+    // branch, like the bookings; a place that is no longer active is kept but not shown.
+    private const string PlacesSql =
+        $"""
+        SELECT {InstitutionColumns}
+        FROM auth.FavoriteInstitutions AS f
+        JOIN org.Institutions AS i ON i.Id = f.InstitutionId
+        JOIN org.InstitutionTypes AS t ON t.Id = i.InstitutionTypeId
+        JOIN core.Districts AS d ON d.Id = i.DistrictId
+        WHERE f.UserId = @userId AND i.Status = 'Active' AND i.IsDeleted = 0
+        ORDER BY f.AddedAt DESC, i.Name, i.Slug;
+        """;
+
     // An active institution is reachable by its slug whether or not it is listed (C10): the link is
     // what an institution shares.
     private const string FindSql =
@@ -129,13 +142,31 @@ public sealed class DonorBookingQueries(IDbConnectionFactory connections) : IDon
                i.NameTa AS InstitutionNameTa, s.PublicId AS MealSlot, s.Name AS SlotName,
                s.NameSi AS SlotNameSi, s.NameTa AS SlotNameTa, b.Headcount AS Headcount,
                b.FulfilmentMode AS FulfilmentMode, b.InMemoryOf AS InMemoryOf, b.Notes AS Notes,
-               b.CreatedAt AS CreatedAt, b.RejectReason AS RejectReason, b.CancelReason AS CancelReason
+               b.CreatedAt AS CreatedAt, b.RejectReason AS RejectReason, b.CancelReason AS CancelReason,
+               r.PublicId AS Yearly
         FROM booking.Bookings AS b
         JOIN booking.SlotInstances AS si ON si.Id = b.SlotInstanceId AND si.InstitutionId = b.InstitutionId
         JOIN booking.MealSlots AS s ON s.Id = si.MealSlotId AND s.InstitutionId = si.InstitutionId
         JOIN org.Institutions AS i ON i.Id = b.InstitutionId
+        LEFT JOIN booking.RecurringBookings AS r ON r.Id = b.RecurringBookingId AND r.IsActive = 1
         WHERE b.DonorUserId = @donorId
         ORDER BY si.SlotDate DESC, s.StartTime DESC, b.CreatedAt DESC;
+        """;
+
+    // Active only: a stopped yearly booking books nothing more, and its bookings are in the list above.
+    private const string YearlySql =
+        """
+        SELECT r.PublicId AS PublicId, i.Slug AS Institution, i.Name AS InstitutionName,
+               i.NameSi AS InstitutionNameSi, i.NameTa AS InstitutionNameTa, s.PublicId AS MealSlot,
+               s.Name AS SlotName, s.NameSi AS SlotNameSi, s.NameTa AS SlotNameTa,
+               CONVERT(CHAR(5), s.StartTime, 108) AS StartTime, CONVERT(CHAR(5), s.EndTime, 108) AS EndTime,
+               r.RecurMonth AS Month, r.RecurDay AS Day, r.StartYear AS StartYear, r.EndYear AS EndYear,
+               r.LastGeneratedYear AS LastYear, r.Headcount AS Headcount, r.FulfilmentMode AS FulfilmentMode,
+               r.InMemoryOf AS InMemoryOf
+        FROM booking.RecurringBookings AS r
+        JOIN booking.MealSlots AS s ON s.Id = r.MealSlotId AND s.InstitutionId = r.InstitutionId
+        JOIN org.Institutions AS i ON i.Id = r.InstitutionId
+        WHERE r.DonorUserId = @donorId AND r.IsActive = 1;
         """;
 
     /// <summary><c>org.Institutions.Slug</c> is <c>VARCHAR(150)</c>; sent as such, the unique index is seeked, not converted.</summary>
@@ -211,7 +242,42 @@ public sealed class DonorBookingQueries(IDbConnectionFactory connections) : IDon
             r.BookingNo, r.Status, r.Date, r.StartTime, r.EndTime, r.Institution, r.InstitutionName,
             r.InstitutionNameSi, r.InstitutionNameTa, r.MealSlot, r.SlotName, r.SlotNameSi, r.SlotNameTa,
             r.Headcount, r.FulfilmentMode, r.InMemoryOf, r.Notes, r.CreatedAt, r.RejectReason, r.CancelReason,
-            Booking.DonorMayCancel(r.Status, r.Date, today)))];
+            Booking.DonorMayCancel(r.Status, r.Date, today), r.Yearly))];
+    }
+
+    public async Task<IReadOnlyList<PublicInstitutionSummary>> ListPlacesAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        var rows = await connection.QueryAsync<PublicInstitutionSummary>(new CommandDefinition(
+            PlacesSql,
+            new { userId },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        return [.. rows];
+    }
+
+    public async Task<IReadOnlyList<RecurringBookingView>> ListYearlyAsync(Guid donorId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        var rows = await connection.QueryAsync<YearlyRow>(new CommandDefinition(
+            YearlySql,
+            new { donorId },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        return [.. rows
+            .Select(r => r.ToView())
+            .OrderBy(v => v.NextDate is null)
+            .ThenBy(v => v.NextDate)
+            .ThenBy(v => v.InstitutionName, StringComparer.Ordinal)];
+    }
+
+    public async Task<string?> SlugOfAsync(int institutionId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        return await connection.QuerySingleOrDefaultAsync<string>(new CommandDefinition(
+            "SELECT i.Slug AS Slug FROM org.Institutions AS i WHERE i.Id = @institutionId;",
+            new { institutionId },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
     }
 
     private static DbString Slug(string slug) => new() { Value = slug.Trim(), IsAnsi = true, Length = SlugLength };
@@ -285,5 +351,37 @@ public sealed class DonorBookingQueries(IDbConnectionFactory connections) : IDon
         public DateTime CreatedAt { get; init; }
         public string? RejectReason { get; init; }
         public string? CancelReason { get; init; }
+        public Guid? Yearly { get; init; }
+    }
+
+    private sealed class YearlyRow
+    {
+        public Guid PublicId { get; init; }
+        public string Institution { get; init; } = null!;
+        public string InstitutionName { get; init; } = null!;
+        public string? InstitutionNameSi { get; init; }
+        public string? InstitutionNameTa { get; init; }
+        public Guid MealSlot { get; init; }
+        public string SlotName { get; init; } = null!;
+        public string? SlotNameSi { get; init; }
+        public string? SlotNameTa { get; init; }
+        public string StartTime { get; init; } = null!;
+        public string EndTime { get; init; } = null!;
+        public byte Month { get; init; }
+        public byte Day { get; init; }
+        public short StartYear { get; init; }
+        public short? EndYear { get; init; }
+        public short? LastYear { get; init; }
+        public short Headcount { get; init; }
+        public string FulfilmentMode { get; init; } = null!;
+        public string? InMemoryOf { get; init; }
+
+        public RecurringBookingView ToView() =>
+            new(PublicId, Institution, InstitutionName, InstitutionNameSi, InstitutionNameTa, MealSlot, SlotName,
+                SlotNameSi, SlotNameTa, StartTime, EndTime, Month, Day,
+                RecurringBooking.NextYearOf(StartYear, EndYear, LastYear, isActive: true) is { } next
+                    ? RecurringBooking.OccursIn(Month, Day, next)
+                    : null,
+                LastYear, Headcount, FulfilmentMode, InMemoryOf);
     }
 }

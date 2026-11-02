@@ -6,6 +6,7 @@ using Sethika.Api.Security;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Bookings.Discovery;
 using Sethika.Application.Bookings.Engine;
+using Sethika.Application.Bookings.Recurring;
 using Sethika.Domain.Bookings;
 
 namespace Sethika.Api.Endpoints;
@@ -38,6 +39,7 @@ internal static class DonorBookingEndpoints
         BookingErrors.HeadcountOutOfRange,
         BookingErrors.FulfilmentNotOffered,
         BookingErrors.ReasonTooLong,
+        BookMealResult.NotAnObservance,
     };
 
     public static IEndpointRouteBuilder MapDonorBookingEndpoints(this IEndpointRouteBuilder app)
@@ -52,10 +54,15 @@ internal static class DonorBookingEndpoints
 
         bookings.MapPost("/", BookAsync)
             .WithMetadata(new HasPermissionAttribute(MineCreate))
-            .RateLimitPerUser(BookingRateLimits.CreatePerUser);
+            .RateLimitPerUser(BookingRateLimits.CreatePerUser)
+            .WakesOutbox();
 
         bookings.MapGet("/mine", ListMineAsync).WithMetadata(new HasPermissionAttribute(MineView));
-        bookings.MapPost("/{bookingNo}/cancel", CancelAsync).WithMetadata(new HasPermissionAttribute(MineEdit));
+        bookings.MapPost("/{bookingNo}/cancel", CancelAsync).WithMetadata(new HasPermissionAttribute(MineEdit)).WakesOutbox();
+
+        // Yearly bookings (plan 07, H5): the donor's list, and stopping one.
+        bookings.MapGet("/recurring", ListYearlyAsync).WithMetadata(new HasPermissionAttribute(MineView));
+        bookings.MapPost("/recurring/{publicId:guid}/stop", StopYearlyAsync).WithMetadata(new HasPermissionAttribute(MineEdit));
 
         return app;
     }
@@ -109,7 +116,9 @@ internal static class DonorBookingEndpoints
 
         var result = await handler.BookAsync(
             currentUser.UserId!.Value,
-            new BookMealCommand(body.MealSlot!.Value, date, body.Headcount!.Value, body.Fulfilment, body.InMemoryOf, body.Notes),
+            new BookMealCommand(
+                body.MealSlot!.Value, date, body.Headcount!.Value, body.Fulfilment, body.InMemoryOf, body.Notes, body.EveryYear ?? false,
+                body.MemorialPlan, body.MemorialRule),
             cancellationToken);
 
         if (result.Succeeded)
@@ -122,7 +131,9 @@ internal static class DonorBookingEndpoints
             return Results.Json(new { code = result.Error, fields = result.Fields }, statusCode: StatusCodes.Status400BadRequest);
         }
 
-        return ApiErrors.Error(StatusOf(result.Error!, BookMealResult.SlotNotFound), result.Error!);
+        return result.Error == BookMealResult.MemorialNotFound
+            ? ApiErrors.Error(StatusCodes.Status404NotFound, result.Error)
+            : ApiErrors.Error(StatusOf(result.Error!, BookMealResult.SlotNotFound), result.Error!);
     }
 
     private static async Task<IResult> ListMineAsync(ICurrentUserContext currentUser, IDonorBookingQueries queries, TimeProvider timeProvider, CancellationToken cancellationToken) =>
@@ -141,6 +152,14 @@ internal static class DonorBookingEndpoints
             : ApiErrors.Error(StatusOf(result.Error!, BookingDecisionResult.NotFound), result.Error!);
     }
 
+    private static async Task<IResult> ListYearlyAsync(ICurrentUserContext currentUser, IDonorBookingQueries queries, CancellationToken cancellationToken) =>
+        Results.Ok(await queries.ListYearlyAsync(currentUser.UserId!.Value, cancellationToken));
+
+    private static async Task<IResult> StopYearlyAsync(Guid publicId, ICurrentUserContext currentUser, RecurringBookingHandler handler, CancellationToken cancellationToken) =>
+        await handler.StopAsync(publicId, currentUser.UserId!.Value, cancellationToken) is { } error
+            ? ApiErrors.Error(StatusCodes.Status404NotFound, error)
+            : Results.NoContent();
+
     // ------------------------------------------------------------------ plumbing
 
     private static int StatusOf(string error, string notFound) =>
@@ -155,4 +174,16 @@ internal static class DonorBookingEndpoints
 /// <param name="MealSlot">The slot's <c>PublicId</c>.</param>
 /// <param name="Date"><c>yyyy-MM-dd</c>, the slot-day in Sri Lanka.</param>
 /// <param name="Fulfilment">A <c>FulfilmentMode</c> the slot offers.</param>
-internal sealed record BookingBody(Guid? MealSlot, string? Date, short? Headcount, string? Fulfilment, string? InMemoryOf, string? Notes);
+/// <param name="EveryYear">Book the same meal on the same day every year from next year on (plan 07, H5).</param>
+/// <param name="MemorialPlan">A memorial plan's public id, when the booking is for one of its observances (H6).</param>
+/// <param name="MemorialRule">That observance's rule code, from the plan's observances.</param>
+internal sealed record BookingBody(
+    Guid? MealSlot,
+    string? Date,
+    short? Headcount,
+    string? Fulfilment,
+    string? InMemoryOf,
+    string? Notes,
+    bool? EveryYear,
+    Guid? MemorialPlan,
+    string? MemorialRule);

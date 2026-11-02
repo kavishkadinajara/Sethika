@@ -31,6 +31,10 @@ public interface ISethikaDbContext
     DbSet<PreviousPassword> PreviousPasswords { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<DonorProfile> DonorProfiles { get; }
+
+    // A donor's preferred places (plan 07, H12): theirs alone, by RLS.
+    DbSet<FavoriteInstitution> FavoriteInstitutions { get; }
+
     DbSet<UserConsent> UserConsents { get; }
     DbSet<LegalDocument> LegalDocuments { get; }
     DbSet<OutboxMessage> OutboxMessages { get; }
@@ -70,6 +74,19 @@ public interface ISethikaDbContext
     DbSet<BlockedDate> BlockedDates { get; }
     DbSet<SlotInstance> SlotInstances { get; }
     DbSet<Booking> Bookings { get; }
+
+    // Yearly bookings (plan 07, H2). The year is claimed with a conditional UPDATE in the booking's
+    // transaction, so two runs of the yearly job cannot both try it.
+    DbSet<RecurringBooking> RecurringBookings { get; }
+
+    // Co-sponsors (plan 07, H16-H19): the donor's invitations, in the donor's session. Joining and
+    // declining go through IShareLinks, since the person answering is on neither row yet (H18).
+    DbSet<BookingContributor> BookingContributors { get; }
+
+    // The Memorial Dana Planner (plan 07, H6). Plans are the donor's alone (RLS, H13); rules are
+    // reference data the application only reads.
+    DbSet<MemorialPlan> MemorialPlans { get; }
+    DbSet<MemorialRule> MemorialRules { get; }
 
     // Religious services (Phase E). An appointment's leaders and history are reached through it.
     // Time blocks have a set of their own: handlers write and delete them beside the assignment or

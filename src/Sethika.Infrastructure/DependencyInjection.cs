@@ -53,6 +53,7 @@ public static class DependencyInjection
         // On the scoped context, so each runs inside the handler's own transaction.
         services.AddScoped<INumberSeries, SqlNumberSeries>();
         services.AddScoped<IRegistrationLocks, SqlRegistrationLocks>();
+        services.AddScoped<IBookingRowLocks, SqlBookingRowLocks>();
         services.AddScoped<IInstitutionModules, SqlInstitutionModules>();
         services.AddScoped<ISlotInventory, SqlSlotInventory>();
 
@@ -74,6 +75,9 @@ public static class DependencyInjection
         services.AddScoped<IRegistrationReviewQueries, RegistrationReviewQueries>();
         services.AddScoped<IInstitutionBookingQueries, InstitutionBookingQueries>();
         services.AddScoped<IDonorBookingQueries, DonorBookingQueries>();
+        services.AddScoped<IMemorialQueries, MemorialQueries>();
+        services.AddScoped<ISharingQueries, SharingQueries>();
+        services.AddScoped<IShareLinks>(_ => new SqlShareLinks(connectionString));
         services.AddScoped<IBookingNotificationQueries, BookingNotificationQueries>();
         services.AddScoped<IServiceSetupQueries, ServiceSetupQueries>();
         services.AddScoped<IDonorAppointmentQueries, DonorAppointmentQueries>();
@@ -300,14 +304,20 @@ public static class DependencyInjection
         services.AddScoped<IUserTextMessages, UserTextMessages>();
         services.AddTransient<OutboxJob>();
         services.AddTransient<BookingReminderJob>();
+        services.AddTransient<RecurringBookingJob>();
+        services.AddTransient<MemorialReminderJob>();
         services.AddTransient<AppointmentReminderJob>();
         services.AddTransient<GeoIndexRebuildJob>();
 
         var jobs = configuration.GetSection(JobsOptions.SectionName).Get<JobsOptions>() ?? new JobsOptions();
         if (!jobs.Enabled)
         {
+            services.AddSingleton<IOutboxWake, NoOutboxWake>();
             return services;
         }
+
+        // A change that wrote an outbox message queues the outbox job at once (plan 07, H10).
+        services.AddScoped<IOutboxWake, HangfireOutboxWake>();
 
         services.AddHangfire(hangfire => hangfire
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)

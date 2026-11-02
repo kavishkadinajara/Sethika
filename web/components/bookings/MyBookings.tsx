@@ -11,13 +11,16 @@ import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHea
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
 import { Link } from "@/i18n/navigation";
-import { cancelMyBooking, listMyBookings, type BookingFailure } from "@/lib/bookings/api";
+import { cancelMyBooking, listMyBookings, listSharedWithMe, listYearly, type BookingFailure } from "@/lib/bookings/api";
 import { asDate, colomboToday, daysBetween } from "@/lib/bookings/calendar";
 import { inLocale } from "@/lib/bookings/names";
-import type { DonorBooking } from "@/lib/bookings/types";
+import type { DonorBooking, SharedBooking, YearlyBooking } from "@/lib/bookings/types";
 import { cn, focusRing } from "@/lib/utils";
 import { BookingStatusBadge } from "./BookingStatusBadge";
 import { EmptyState } from "./EmptyState";
+import { ShareSheet } from "./ShareSheet";
+import { SharedWithMe } from "./SharedWithMe";
+import { YearlyBookings } from "./YearlyBookings";
 import { useBookingError } from "./useBookingError";
 import { useWide } from "./useWide";
 import { useDates } from "./useDates";
@@ -33,11 +36,18 @@ export function MyBookings() {
   const t = useTranslations("MyBookings");
   const [bookings, setBookings] = useState<DonorBooking[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const [yearly, setYearly] = useState<YearlyBooking[]>([]);
+  const [shared, setShared] = useState<SharedBooking[]>([]);
   const [cancelling, setCancelling] = useState<DonorBooking | null>(null);
+  const [sharing, setSharing] = useState<DonorBooking | null>(null);
 
+  // The bookings decide the page; the yearly ones and those shared with the donor (plan 07) are
+  // sections beside them, left out if they cannot be read.
   const load = useCallback(async () => {
     setFailed(false);
-    const result = await listMyBookings();
+    const [result, yearlyResult, sharedResult] = await Promise.all([listMyBookings(), listYearly(), listSharedWithMe()]);
+    if (yearlyResult.ok) setYearly(yearlyResult.value);
+    if (sharedResult.ok) setShared(sharedResult.value);
     if (result.ok) setBookings(result.value);
     else setFailed(true);
   }, []);
@@ -67,7 +77,7 @@ export function MyBookings() {
     );
   }
 
-  if (bookings.length === 0) {
+  if (bookings.length === 0 && yearly.length === 0 && shared.length === 0) {
     return (
       <div className="grid gap-5">
         <EmptyState>{t("none")}</EmptyState>
@@ -85,8 +95,12 @@ export function MyBookings() {
 
   return (
     <div className="grid gap-10">
-      <Section title={t("upcoming")} empty={t("noneUpcoming")} bookings={upcoming} today={today} onCancel={setCancelling} />
-      {past.length > 0 && <Section title={t("past")} bookings={past} today={today} onCancel={setCancelling} />}
+      <Section title={t("upcoming")} empty={t("noneUpcoming")} bookings={upcoming} today={today} onCancel={setCancelling} onShare={setSharing} />
+      {yearly.length > 0 && <YearlyBookings yearly={yearly} onStopped={() => void load()} />}
+      {shared.length > 0 && <SharedWithMe shared={shared} />}
+      {past.length > 0 && <Section title={t("past")} bookings={past} today={today} onCancel={setCancelling} onShare={setSharing} />}
+
+      {sharing && <ShareSheet booking={sharing} onClose={() => setSharing(null)} />}
 
       {cancelling && (
         <CancelSheet
@@ -108,12 +122,14 @@ function Section({
   bookings,
   today,
   onCancel,
+  onShare,
 }: {
   title: string;
   empty?: string;
   bookings: DonorBooking[];
   today: string;
   onCancel: (booking: DonorBooking) => void;
+  onShare: (booking: DonorBooking) => void;
 }) {
   return (
     <section className="grid gap-3">
@@ -124,7 +140,7 @@ function Section({
         <ul className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
           {bookings.map((booking) => (
             <li key={booking.bookingNo}>
-              <BookingCard booking={booking} today={today} onCancel={() => onCancel(booking)} />
+              <BookingCard booking={booking} today={today} onCancel={() => onCancel(booking)} onShare={() => onShare(booking)} />
             </li>
           ))}
         </ul>
@@ -133,7 +149,7 @@ function Section({
   );
 }
 
-function BookingCard({ booking, today, onCancel }: { booking: DonorBooking; today: string; onCancel: () => void }) {
+function BookingCard({ booking, today, onCancel, onShare }: { booking: DonorBooking; today: string; onCancel: () => void; onShare: () => void }) {
   const t = useTranslations("MyBookings");
   const fulfilment = useTranslations("Booking.fulfilment");
   const dates = useDates();
@@ -173,6 +189,7 @@ function BookingCard({ booking, today, onCancel }: { booking: DonorBooking; toda
           {live && away >= 0 && away <= 7 && <span className="font-medium text-fg">{t("when", { days: away })} · </span>}
           {t("people", { count: booking.headcount })} · {fulfilment(booking.fulfilmentMode)} · {booking.bookingNo}
         </p>
+        {booking.yearly && live && <p className="text-sm font-medium text-brand">{t("partOfYearly")}</p>}
 
         {booking.inMemoryOf && <p className="font-tagline text-base italic text-fg">{t("inMemoryOf", { name: booking.inMemoryOf })}</p>}
 
@@ -184,11 +201,19 @@ function BookingCard({ booking, today, onCancel }: { booking: DonorBooking; toda
         )}
         {booking.status === "Requested" && <p className="text-sm text-muted">{t("waiting")}</p>}
 
-        {booking.canCancel && (
-          <div className="pt-1">
-            <Button variant="ghost" onClick={onCancel} className="-ml-3 text-danger hover:bg-danger/10">
-              {t("cancel")}
-            </Button>
+        {/* Sharing needs a booking that is still to come (H36: Open). */}
+        {((live && away >= 0) || booking.canCancel) && (
+          <div className="-ml-3 flex flex-wrap gap-1 pt-1">
+            {live && away >= 0 && (
+              <Button variant="ghost" onClick={onShare}>
+                {t("shareThis")}
+              </Button>
+            )}
+            {booking.canCancel && (
+              <Button variant="ghost" onClick={onCancel} className="text-danger hover:bg-danger/10">
+                {t("cancel")}
+              </Button>
+            )}
           </div>
         )}
       </div>

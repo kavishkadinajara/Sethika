@@ -23,9 +23,18 @@ function anotherPhoneAddress(): string {
 
 export type Account = { phone: string; fullName: string };
 
-/** A fresh mobile number, in the local format a person types: 0779 plus six random digits. */
+/**
+ * A fresh mobile number, in the local format a person types: 0779 plus six random digits, and not
+ * one an account already holds. Earlier runs leave thousands of accounts in that million, so a number
+ * picked blindly was taken often enough that a full run usually met one "already_registered".
+ */
 export function newPhone(): string {
-  return "0779" + String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
+  for (;;) {
+    const phone = "0779" + String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
+    const last9 = phone.slice(-9);
+    const [taken] = sql("SELECT COUNT(*) FROM auth.Users WHERE RIGHT(PhoneNumber, 9) = '$(last9)';", { last9 });
+    if (taken?.trim() === "0") return phone;
+  }
 }
 
 /** The last code texted to <phone>, waiting for it to arrive. */
