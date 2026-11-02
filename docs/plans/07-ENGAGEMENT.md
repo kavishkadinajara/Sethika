@@ -10,7 +10,9 @@ committed by the user). C.2 done 2026-11-01 (schema on `Sethika_Test` and the de
 kept the "day of passing is day 1" count, H24); H20-H27 recorded while building. C.2 committed by the
 user (f5cb142). C.3 done 2026-11-02 (H28-H31; no schema change), committed by the user (14abb76).
 C.4 done 2026-11-02 (H32-H38; schema on `Sethika_Test` and the dev `Sethika`), committed by the user (730cc6d).
-C.5 done 2026-11-02 (H39-H42; the heart's RLS on `Sethika_Test` and the dev `Sethika`), not committed yet. Next: C.6.**
+C.5 done 2026-11-02 (H39-H42; the heart's RLS on `Sethika_Test` and the dev `Sethika`), committed (3b21d17).
+C.6 2026-11-02: DECISIONS.md, `docs/report/PHASE-C.md`, full runs green (1141/1141 .NET, 122/122 e2e); the PR
+to `develop` is next. Then plan 08 (`docs/plans/08-STANDING-SPONSORS.md`, the user's Q1).**
 Update this line and the §7 boxes whenever either changes; a fresh session trusts them.
 
 Decision numbers here are **H1, H2, …**. Plan 03 uses C1-C12 and E1-E35, Phase E V1-V39, plan 06 G1-G11.
@@ -241,7 +243,11 @@ Decided while building (recorded here so the report and DECISIONS.md match the c
   5/5 web mutants killed by the spec (the live refetch, the memorial in "Book", the link's locale, the
   heart's state, "Shared with"). `newPhone` now skips numbers already taken (earlier runs' accounts made
   `already_registered` likely in a full run). vitest 227, tsc, eslint and `dotnet format` clean.
-- [ ] **C.6 Done**: DECISIONS.md, `docs/report/PHASE-C.md`, the full runs, the PR.
+- [ ] **C.6 Done**: DECISIONS.md, `docs/report/PHASE-C.md`, the full runs, the PR. **2026-11-02:** DECISIONS.md
+  (Engagement section, drafts, plans 07 and 08), the report chapter; full `dotnet test` 1141/1141 (328
+  domain, 71 application, 742 integration, 1 h 6 m); full e2e 122/122 (18 m) after fixing a vacuous
+  admin test (`"Suspend"` matched the "Suspended" filter, and its "no button" checks passed before the
+  list loaded; 3/3 mutants killed once it waits for a row). Left: the PR.
 
 **If time runs out, cut in this order:** preferred institutions (H12), the memorial reminder (H8), the
 contributor's reminder (H19), the institution's calendar going live (the public page stays live).

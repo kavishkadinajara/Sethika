@@ -241,7 +241,14 @@ filtered unique indexes, the RLS predicates and the backplane cannot be faked.
 - **Found by the browser:** the live connection logged a "stopped during negotiation" error when React
   ran its effect twice in development, or when a page was left at once. Next.js raised its error overlay
   over the page. SignalR's log now goes to `console.warn`.
-- **The whole suite** at the end of the phase: FULL_RUN_PENDING.
+- **The whole suite** at the end of the phase: 1141 of 1141 .NET tests passed (328 domain, 71
+  application, 742 integration; the integration run took 1 hour 6 minutes). Browser: 122 of 122 Playwright tests (desktop and
+  320 px phone, every spec) in 18 minutes.
+- **A vacuous test found at the final run.** An older platform test ("a reviewer cannot change an
+  account") failed because `"Suspend"` also matched the new "Suspended" filter. Mutating it showed a
+  worse fault: its two "no such button" checks passed before the list had loaded, so forcing the
+  permission gates open left it green. It now waits for a row first; three mutants (the edit gate, the
+  create gate, the support gate) are killed.
 
 ## 10. Limitations and what was left out
 
