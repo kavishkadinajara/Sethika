@@ -1,6 +1,6 @@
 # Plan 08 — Standing sponsors: the institution's own regular donors
 
-Status: **draft 2026-11-02, waiting for the user's answers in §8.** Nothing here is built. Asked for by
+Status: **agreed 2026-11-02 (answers in §8).** Nothing here is built; build after C.6. Asked for by
 the user on 2026-11-02 (after C.5): "an institution must be able to set up dana dates itself, for a donor,
 on a specific day, daily, weekly, monthly, yearly, every 2 or 3 months, every other month - any scenario.
 People give like that today." Decision numbers here are **K1, K2, …**.
@@ -37,16 +37,16 @@ Branch: after Phase C's pull request, `git switch -c standing-sponsors develop`.
 
 | # | Decision | Why |
 |---|---|---|
-| K1 | **The donor book.** `org.InstitutionDonors` comes alive: staff add a person (name, phone, notes). If the phone belongs to a Sethika account with a confirmed phone, the row is linked (`UserId`) when that person first signs in or when staff add them; the person sees their standing days in My bookings. RLS: `fn_Tenant(InstitutionId)` (the institution only); the linked person reads their own standing days through a narrow query, as co-sponsors do (H33) | The table and the FK exist; one history per person per institution. A person not in the app is still a donor |
-| K2 | **A standing sponsorship** (new table `booking.StandingSponsorships`): the donor, the meal slot, the pattern, start date, optional end date, headcount, who brings it, "in memory of", notes, `Active`/`Ended`, `RowVersion`. Patterns: `Once`, `Daily`, `Weekly` (a weekday mask), `Monthly` (a mask of days 1-31, **several days a month**), every **N** months (`Interval` 1-12, counted from the start month: 2 = every other month, 3 = quarterly), `Yearly` (a month and day). A day that does not exist in a month (the 31st, 30 February) is skipped, not moved | Every scenario in §0 is one row. "Skipped, not moved" is the one rule that never puts two days in one month by surprise; to be confirmed (Q3) |
+| K1 | **The donor book.** `org.InstitutionDonors` comes alive: staff add a person (name, phone, notes, and "this person agreed to receive texts" - stored with who and when, Q2). If the phone belongs to a Sethika account with a confirmed phone, the row is linked (`UserId`) when that person first signs in or when staff add them; the person sees their standing days in My bookings. RLS: `fn_Tenant(InstitutionId)` (the institution only); the linked person reads their own standing days through a narrow query, as co-sponsors do (H33) | The table and the FK exist; one history per person per institution. A person not in the app is still a donor |
+| K2 | **A standing sponsorship** (new table `booking.StandingSponsorships`): the donor, the meal slot, the pattern, start date, optional end date, headcount, who brings it, "in memory of", notes, `Active`/`Ended`, `RowVersion`. Patterns: `Once`, `Daily`, `Weekly` (a weekday mask), `Monthly` (a mask of days 1-31, **several days a month**), every **N** months (`Interval` 1-12, counted from the start month: 2 = every other month, 3 = quarterly), `Yearly` (a month and day). A day that does not exist in a month (the 31st, 30 February) is skipped, not moved (Q3) | Every scenario in §0 is one row. "Skipped, not moved" is the one rule that never puts two days in one month by surprise |
 | K3 | **Each day is an ordinary booking**, `Source = 'Standing'` (new CHECK value) with `StandingSponsorshipId`, made by the engine and **approved at once** (the institution made it). A nightly job (00:45 Colombo) books every active sponsorship's days up to the slot's booking window (`MaxAdvanceDays`); creating a sponsorship books them at once. So the calendar, the places left, the overbooking guarantee, the reminder, completing and no-show all work with no new code | One engine, one judge (C4, H2). Unlike H2 (a donor's promise to *try*), a standing day **holds** the place: that is the point of the institution's own arrangement |
 | K4 | **Exceptions** (new table `booking.StandingExceptions`: sponsorship, date, kind, reason, who, when): `Skipped` (the sponsor cannot), `Released` (given to someone who asked), `Blocked` (the institution's other use), `MovedTo` / `MovedFrom` (a swap). The job never books a day that has an exception. Letting a day go cancels its booking in the same transaction, with the reason | A cancelled booking alone would be booked again by the next night's run |
 | K5 | **"I can't give that day"**: a linked sponsor in My bookings, or staff for them. The day opens for others (live hint), the institution sees it in its ledger, and the sponsor gets one text confirming it | Scenario 5. Most standing sponsors will tell the temple by phone; staff need the same button |
 | K6 | **Asking for a held day** (new table `booking.DayRequests`): a donor on `/i/[slug]` sees a standing day as "held by a regular donor - ask for it"; the request (headcount, note) waits for the institution. **Give it**: one transaction releases the standing day (K4), cancels its booking, and books the asker approved; the sponsor and the asker are texted. **Decline**: the asker is texted. Asking holds nothing. One open request per donor and slot-day | Scenario 4. The institution decides, as the user said |
-| K7 | **The institution's other use**: adding a blocked date over a standing day lets it go (`Blocked`) and texts the sponsor; ordinary donors' bookings on those days are named, as today (they are not cancelled automatically) | Scenario 6. The user asked for the standing day to be cancelled and the person told. Whether ordinary bookings should be cancelled too is Q4 |
+| K7 | **The institution's other use**: adding a blocked date over a standing day lets it go (`Blocked`) and texts the sponsor; ordinary donors' bookings on those days are named, as today (they are not cancelled automatically; staff speak to those donors, Q4) | Scenario 6. The user asked for the standing day to be cancelled and the person told |
 | K8 | **Swap**: staff choose two standing days (A's 5th, B's 12th) and "this time" or "from now on". This time: one transaction, `MovedTo`/`MovedFrom` exceptions, the two bookings cancelled and rebooked on each other's day. From now on: each sponsorship ends the day before and a new one starts with the other's days. Both sponsors are texted | Scenario 7. Both in one transaction, so a swap never leaves one day empty or double |
 | K9 | **Clashes when setting up**: creating or changing a sponsorship shows its next days and any that are already full or blocked; staff can save, and those days are listed as not booked (with the reason) rather than refused | A monthly pattern that collides with one day should not block the other eleven |
-| K10 | **Texts** (en/si/ta, drafts): `STANDING_CREATED` (the days and the place), `STANDING_SKIPPED`, `STANDING_RELEASED` (given to someone who asked), `STANDING_BLOCKED`, `STANDING_SWAPPED`, `DAY_REQUEST_GIVEN`, `DAY_REQUEST_DECLINED`; the day-before reminder is the existing one. A standing sponsor without an app account is texted at the phone the institution gave (Q2) | Every change of someone's day reaches them |
+| K10 | **Texts** (en/si/ta, drafts): `STANDING_CREATED` (the days and the place), `STANDING_SKIPPED`, `STANDING_RELEASED` (given to someone who asked), `STANDING_BLOCKED`, `STANDING_SWAPPED`, `DAY_REQUEST_GIVEN`, `DAY_REQUEST_DECLINED`; the day-before reminder is the existing one. A standing sponsor without an app account is texted at the phone the institution gave, **only if the consent box was ticked** (Q2); without it the institution tells them itself and the ledger says "not texted" | Every change of someone's day reaches them |
 | K11 | **Permissions**: a new screen `BOOKINGS.SPONSORS` (`/bookings/sponsors`): VIEW, CREATE, EDIT (end, skip, swap). Template roles: OWNER and ADMIN all, STAFF VIEW. Answering a day request needs `BOOKINGS.CALENDAR.APPROVE` / `REJECT`. Asking needs `MYBOOKINGS.BOOKINGS.CREATE` | Same catalogue rules as every screen (anti-escalation, deny wins) |
 | K12 | **Live**: every change above writes the `AvailabilityChanged` hint (H28) in its transaction | Open calendars stay right |
 
@@ -90,12 +90,12 @@ Branch: after Phase C's pull request, `git switch -c standing-sponsors develop`.
 
 ## 7. Work breakdown (estimate ~2.5 days)
 
-- [ ] **K.1** Schema (sponsorships, exceptions, day requests, `Source = 'Standing'`), RLS, the donor book API. ~0.5
+- [ ] **K.1** Schema (sponsorships, exceptions, day requests, `Source = 'Standing'`, the donors' text consent), RLS, the donor book API. ~0.5
 - [ ] **K.2** Pattern engine (domain) + nightly job + create/end/skip. ~0.75
 - [ ] **K.3** Day requests, blocks over standing days, swap; texts. ~0.75
 - [ ] **K.4** Screens + e2e. ~0.5
 
-## 8. Questions for the user
+## 8. Questions for the user (answered 2026-11-02)
 
 - **Q1 When?** Nov 10 is in 8 days; left: C.6, Phase D (donations, needs board, gratitude wall,
   dashboards/reports), mobile F.5, the report. Plan 08 is ~2.5 days. Recommendation: build it right after
@@ -109,3 +109,14 @@ Branch: after Phase C's pull request, `git switch -c standing-sponsors develop`.
   donors' bookings too?
 - **Q5** Should a standing day hold the place (K3, recommended), so others see it taken and must ask? The
   alternative - the day stays open and the standing sponsor competes like anyone - loses the point.
+
+**Answers (the user, 2026-11-02):**
+
+- **Q1:** build it right after C.6 (Phase C's pull request), then Phase D without the gratitude wall and
+  part of the reports; the report says what was cut and why.
+- **Q2:** yes, with the consent box: staff tick "this person agreed to receive texts" when adding the
+  donor (stored: who, when). Unticked, no texts are sent to that donor (K1, K10).
+- **Q3:** skip it. The 31st in April and 29 February in a common year are not booked (K2).
+- **Q4:** standing days only (K7). Ordinary donors' bookings on a blocked day are listed, as today, not
+  cancelled.
+- **Q5:** yes, a standing day holds the place; others see it taken and ask for it (K3, K6).
