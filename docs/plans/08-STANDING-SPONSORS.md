@@ -1,7 +1,7 @@
 # Plan 08 — Standing sponsors: the institution's own regular donors
 
-Status: **agreed 2026-11-02 (answers in §8). K.1 built 2026-11-02** on `standing-sponsors` (from develop
-f2a7be5, after PR #34); K.2-K.4 to do. Asked for by
+Status: **agreed 2026-11-02 (answers in §8). K.1 and K.2 built 2026-11-02** on `standing-sponsors` (from develop
+f2a7be5, after PR #34); K.3-K.4 to do. Asked for by
 the user on 2026-11-02 (after C.5): "an institution must be able to set up dana dates itself, for a donor,
 on a specific day, daily, weekly, monthly, yearly, every 2 or 3 months, every other month - any scenario.
 People give like that today." Decision numbers here are **K1, K2, …**.
@@ -55,6 +55,13 @@ Branch: after Phase C's pull request, `git switch -c standing-sponsors develop`.
 | K15 | (K.1) **Shapes the database enforces**: `CK_Standing_Shape` (each pattern has its own fields and no others; `Once` has `EndDate = StartDate`), `CK_Standing_YearDate` (29 February yes, 31 April never), `CK_Standing_Ended`; a standing booking names its sponsorship and the institution's donor (`CK_Bookings_Standing`), and its FK is `(StandingSponsorshipId, InstitutionId, InstitutionDonorId)`, so the day is booked for that sponsorship's own donor; one exception per sponsorship and day (`UQ_StandingExc_Day`), a swap names its other day (`OtherDate`, never the same day), a released day names its request; a day request has one open per donor and slot-day, and *Given* names both the day let go and the booking made | The later slices rely on these; the database refuses anything else. Found while testing: `EndDate = StartDate` alone let a `Once` without an end through, because a CHECK passes on unknown |
 | K16 | (K.1) **RLS**: `InstitutionDonors` gains its missing `AFTER UPDATE` block; `StandingSponsorships` and `StandingExceptions` `fn_Tenant` (filter, block after insert and update); `DayRequests` `fn_TenantOrOwner(InstitutionId, DonorUserId)`, as `Bookings`. A linked sponsor reads none of the first three: their days reach them as their own bookings (`DonorUserId`), through `Bookings`' owner branch | The narrowest reach that still lets each person see what is theirs |
 | K17 | (K.1) **Permissions**: `BOOKINGS.SPONSORS` screen (`/bookings/sponsors`), VIEW / CREATE / EDIT; VIEW needs `BOOKINGS.SLOTS.VIEW`. OWNER and MANAGER templates hold all three (every institution permission), STAFF ceiling and template VIEW only. **Institutions approved before this change keep their cloned roles** (cloning happens at approval), so their owners do not hold the new permissions until someone grants them: the same as SERVICES for institutions approved before Phase E | K11 as agreed; the gap for existing institutions is the existing cloning rule, not new |
+| K18 | (K.2) **Booked while staff wait: the next 31 days.** Setting one up books the window's days up to 31 days ahead (their clashes are on screen at once, K9) and starts the standing job for the rest (`IStandingBookingWake`, Hangfire, as the outbox is woken); the night's run stays the guarantee. The answer carries `later`, the days left to the job | Measured: a daily sponsorship on a 365-day window took 17.5 s in one request (about 48 ms a day, each its own lock and transaction). Monthly or weekly patterns are 1-2.5 s a year |
+| K19 | (K.2) **One change at a time per sponsorship.** Booking one of its days, skipping a day and ending it each take an update lock on the sponsorship's row inside their transaction, after the slot-day's Redis lock, and read its status under it (`IStandingLocks`) | Without Redis, and with READ_COMMITTED_SNAPSHOT, a reader does not wait for an uncommitted exception: a skip and a run could each miss the other and the day be booked although let go. Both races are forced in the tests |
+| K20 | (K.2) **A day is booked once.** A day with a booking of the sponsorship in any status, or an exception, is never booked again, so a standing day cancelled on the calendar stays cancelled. A day the engine refuses (full, blocked, closed, too soon) writes nothing and is tried again each night, so a day that opens later is still booked | The job must not undo staff's decisions, and must not give up on a day that opens |
+| K21 | (K.2) **No text per day.** A standing day writes the calendars' hint only, not `BookingConfirmed`: a daily sponsor would be texted every day, and a sponsor without an account or consent must not be (Q2). The day-before reminder already goes only to bookings with an account (`DonorUserId`); K.3 adds the sponsorship's own texts (K10) | Q2 and K10 |
+| K22 | (K.2) **The engine's rules are unchanged for standing days**, the advance window too: with `MinAdvanceDays = 1` today is "too soon" when setting one up (listed, K9). Each day is recorded as made and approved by the staff member who set the sponsorship up, also the days the night's run books | One engine, one judge (C4) |
+| K23 | (K.2) **Ending** lets go every booked day after today (cancelled with the reason given, or "The standing sponsorship ended."), keeps today's meal, and needs the version read (`stale`). **Skipping** takes a day of the pattern, today or later, also beyond the window (recorded only, so never booked); a day already given (completed) is refused, one cancelled before is recorded without a booking. An ended sponsorship refuses both (`sponsorship_ended`) | Scenario 5; today's meal is already being made |
+| K24 | (K.2) **A linked sponsor's own "I can't give that day"** (K5) waits for My bookings in K.4: their session cannot write `StandingExceptions` (K16), so it needs the platform's reach for that one change, as linking at sign-in does (K14) | Narrowest reach first |
 
 ## 3. API (sketch)
 
@@ -107,7 +114,20 @@ Branch: after Phase C's pull request, `git switch -c standing-sponsors develop`.
   Mutants 65/65 killed: C# 27, SQL/RLS 30 (run on `Sethika_C2Test`), web 8. Neighbours (Persistence,
   booking engine, policy) 101/101. Screen `/bookings/sponsors` (donor book: list, search, add/edit,
   consent) built ahead of K.4, en/si/ta, vitest; not yet tried in a browser.
-- [ ] **K.2** Pattern engine (domain) + nightly job + create/end/skip. ~0.75
+- [x] **K.2** Pattern engine (domain) + nightly job + create/end/skip. ~0.75
+  Built 2026-11-02 (K18-K24), no schema change: `StandingSponsorship` (pattern arithmetic, `OccursOn`),
+  `StandingPattern` (masks), `StandingDayChange` (a `StandingExceptions` row), `Booking.Standing`;
+  `StandingDayBooker` (the engine's door: slot-day lock, the sponsorship's row lock `IStandingLocks`,
+  the rules, the conditional UPDATE), `StandingBookingRun` + Hangfire `standing-bookings` at 00:45 Colombo,
+  `IStandingBookingWake`. API: `GET/POST /api/institution/sponsorships` (`?donor=`),
+  `GET /.../{publicId}` (its next 12 days: booked, cancelled, an exception's kind, open, upcoming),
+  `POST /.../{publicId}/end` `{version, reason}`, `POST /.../{publicId}/skip` `{date, reason}`. Errors:
+  `invalid_details` (fields), `sponsorship_not_found` 404, `sponsorship_ended`, `day_already_changed`,
+  `stale`, `slot_busy`, `invalid_transition` 409. Tests: domain `StandingSponsorshipTests` 33,
+  integration `StandingSponsorshipTests` 18 (two forced races on the row lock). Mutants 46/46 killed
+  (domain 12, integration 34); two survived first and each led to a test (a `Once` without an end;
+  skipping a past day of a running pattern). Neighbours (engine, yearly, calendar, donor book, schema,
+  EF mapping, RLS, SMS, live) 139/139; domain 361, application 71. Screens are K.4's.
 - [ ] **K.3** Day requests, blocks over standing days, swap; texts. ~0.75
 - [ ] **K.4** Screens + e2e. ~0.5
 

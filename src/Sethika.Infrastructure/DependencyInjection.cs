@@ -54,6 +54,7 @@ public static class DependencyInjection
         services.AddScoped<INumberSeries, SqlNumberSeries>();
         services.AddScoped<IRegistrationLocks, SqlRegistrationLocks>();
         services.AddScoped<IBookingRowLocks, SqlBookingRowLocks>();
+        services.AddScoped<IStandingLocks, SqlStandingLocks>();
         services.AddScoped<IInstitutionModules, SqlInstitutionModules>();
         services.AddScoped<ISlotInventory, SqlSlotInventory>();
 
@@ -81,6 +82,7 @@ public static class DependencyInjection
         services.AddScoped<IBookingNotificationQueries, BookingNotificationQueries>();
         services.AddScoped<IServiceSetupQueries, ServiceSetupQueries>();
         services.AddScoped<IDonorBookQueries, DonorBookQueries>();
+        services.AddScoped<IStandingSponsorshipQueries, StandingSponsorshipQueries>();
         services.AddScoped<IDonorAppointmentQueries, DonorAppointmentQueries>();
         services.AddScoped<IAppointmentQueries, AppointmentQueries>();
         services.AddScoped<IAppointmentNotificationQueries, AppointmentNotificationQueries>();
@@ -306,6 +308,7 @@ public static class DependencyInjection
         services.AddTransient<OutboxJob>();
         services.AddTransient<BookingReminderJob>();
         services.AddTransient<RecurringBookingJob>();
+        services.AddTransient<StandingBookingJob>();
         services.AddTransient<MemorialReminderJob>();
         services.AddTransient<AppointmentReminderJob>();
         services.AddTransient<GeoIndexRebuildJob>();
@@ -314,11 +317,13 @@ public static class DependencyInjection
         if (!jobs.Enabled)
         {
             services.AddSingleton<IOutboxWake, NoOutboxWake>();
+            services.AddSingleton<IStandingBookingWake, NoStandingBookingWake>();
             return services;
         }
 
         // A change that wrote an outbox message queues the outbox job at once (plan 07, H10).
         services.AddScoped<IOutboxWake, HangfireOutboxWake>();
+        services.AddScoped<IStandingBookingWake, HangfireStandingBookingWake>();
 
         services.AddHangfire(hangfire => hangfire
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)

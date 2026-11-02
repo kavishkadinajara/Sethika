@@ -91,6 +91,11 @@ public interface ISethikaDbContext
     // An institution's donor book (plan 08, K1): its institution's alone, by RLS.
     DbSet<InstitutionDonor> InstitutionDonors { get; }
 
+    // Standing sponsorships and the days let go from them (plan 08, K2, K4): the institution's alone.
+    // Work on one sponsorship's days takes IStandingLocks first, so it is done one change at a time.
+    DbSet<StandingSponsorship> StandingSponsorships { get; }
+    DbSet<StandingDayChange> StandingExceptions { get; }
+
     // Religious services (Phase E). An appointment's leaders and history are reached through it.
     // Time blocks have a set of their own: handlers write and delete them beside the assignment or
     // leave they belong to, and their primary key is the overlap guarantee (V2).

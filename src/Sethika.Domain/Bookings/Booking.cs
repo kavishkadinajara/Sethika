@@ -61,6 +61,12 @@ public class Booking
     /// <summary>Set to add a new yearly booking with this one, in the same save.</summary>
     public RecurringBooking? RecurringBooking { get; set; }
 
+    /// <summary>The institution's donor it is for: a standing day's sponsor (plan 08, K3).</summary>
+    public int? InstitutionDonorId { get; set; }
+
+    /// <summary>The standing sponsorship whose day it is (K3).</summary>
+    public int? StandingSponsorshipId { get; set; }
+
     public string Status { get; private set; } = BookingStatus.Requested;
     public Guid CreatedBy { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -83,6 +89,9 @@ public class Booking
 
     /// <summary><c>booking.Bookings.Source</c> for a donor booking made for a memorial plan's observance.</summary>
     public const string MemorialSource = "Memorial";
+
+    /// <summary><c>booking.Bookings.Source</c> for a day of an institution's standing sponsorship (plan 08, K3).</summary>
+    public const string StandingSource = "Standing";
 
     /// <summary>The longest reject or cancel reason: <c>RejectReason</c> and <c>CancelReason</c> are <c>NVARCHAR(300)</c>.</summary>
     public const int MaxReason = 300;
@@ -133,6 +142,62 @@ public class Booking
             ChangedBy = donorUserId,
             ChangedAt = now,
             Comment = slot.RequiresApproval ? null : "The slot needs no approval.",
+        });
+
+        return booking;
+    }
+
+    /// <summary>
+    /// A day of <paramref name="sponsorship"/>, booked by the institution for its own donor (plan 08,
+    /// K3): <see cref="BookingStatus.Approved"/> at once, whatever the slot's approval setting, because
+    /// the institution made the arrangement itself.
+    /// </summary>
+    /// <param name="donorUserId">The donor's account when the donor book links one (K14), so the day is in their My bookings.</param>
+    /// <param name="madeBy">Who it is recorded as made by: the staff member who set the sponsorship up.</param>
+    /// <remarks>Bookability (<see cref="MealSlotRules"/>) and the place on the slot-day are the caller's to have checked.</remarks>
+    public static Booking Standing(
+        string bookingNo,
+        StandingSponsorship sponsorship,
+        long slotInstanceId,
+        Guid? donorUserId,
+        string donorName,
+        string donorPhone,
+        Guid madeBy,
+        DateTime now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bookingNo);
+        ArgumentNullException.ThrowIfNull(sponsorship);
+        ArgumentException.ThrowIfNullOrWhiteSpace(donorName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(donorPhone);
+
+        var booking = new Booking
+        {
+            BookingNo = bookingNo,
+            InstitutionId = sponsorship.InstitutionId,
+            SlotInstanceId = slotInstanceId,
+            DonorUserId = donorUserId,
+            InstitutionDonorId = sponsorship.InstitutionDonorId,
+            StandingSponsorshipId = sponsorship.Id,
+            Source = StandingSource,
+            DonorName = donorName,
+            DonorPhone = donorPhone,
+            Headcount = sponsorship.Headcount,
+            FulfilmentMode = sponsorship.FulfilmentMode,
+            InMemoryOf = sponsorship.InMemoryOf,
+            Status = BookingStatus.Approved,
+            CreatedBy = madeBy,
+            CreatedAt = now,
+            DecidedBy = madeBy,
+            DecidedAt = now,
+        };
+
+        booking.StatusHistory.Add(new BookingStatusChange
+        {
+            FromStatus = null,
+            ToStatus = BookingStatus.Approved,
+            ChangedBy = madeBy,
+            ChangedAt = now,
+            Comment = "A day of the institution's standing sponsorship.",
         });
 
         return booking;

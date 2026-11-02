@@ -131,6 +131,7 @@ app.MapDonorBookingEndpoints();
 app.MapMemorialEndpoints();
 app.MapSharingEndpoints();
 app.MapDonorBookEndpoints();
+app.MapSponsorshipEndpoints();
 app.MapSearchEndpoints();
 app.MapServiceSetupEndpoints();
 app.MapDonorAppointmentEndpoints();
