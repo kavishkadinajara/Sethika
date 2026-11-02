@@ -7,8 +7,8 @@ using Sethika.Application.Bookings.Sponsors;
 namespace Sethika.Api.Endpoints;
 
 /// <summary>
-/// The institution's standing sponsorships (plan 08, K2-K5, K9): set one up for a donor in its donor
-/// book, read it with its next days, end it, skip a day. Every endpoint acts for the institution in
+/// The institution's standing sponsorships (plan 08, K2-K5, K8, K9): set one up for a donor in its donor
+/// book, read it with its next days, end it, skip a day, swap two days. Every endpoint acts for the institution in
 /// the caller's token, never one named in the request.
 /// </summary>
 /// <remarks>
@@ -37,6 +37,7 @@ internal static class SponsorshipEndpoints
         sponsorships.MapGet("/{publicId:guid}", GetAsync).WithMetadata(new HasPermissionAttribute(SponsorsView));
         sponsorships.MapPost("/{publicId:guid}/end", EndAsync).WithMetadata(new HasPermissionAttribute(SponsorsEdit)).WakesOutbox();
         sponsorships.MapPost("/{publicId:guid}/skip", SkipAsync).WithMetadata(new HasPermissionAttribute(SponsorsEdit)).WakesOutbox();
+        sponsorships.MapPost("/swap", SwapAsync).WithMetadata(new HasPermissionAttribute(SponsorsEdit)).WakesOutbox();
 
         return app;
     }
@@ -95,6 +96,31 @@ internal static class SponsorshipEndpoints
 
         var result = await handler.SkipAsync(institutionId, userId, publicId, body.Date, body.Reason, cancellationToken);
         return result.Succeeded ? Results.NoContent() : Refused(result);
+    }
+
+    private static async Task<IResult> SwapAsync([FromBody] SwapInput body, ICurrentUserContext currentUser, StandingSwapHandler handler, CancellationToken cancellationToken)
+    {
+        if (currentUser is not { UserId: { } userId, InstitutionId: { } institutionId })
+        {
+            return NoInstitution();
+        }
+
+        var result = await handler.SwapAsync(institutionId, userId, body, cancellationToken);
+        if (result.Succeeded)
+        {
+            return Results.Ok(new { a = result.NewA, b = result.NewB });
+        }
+
+        var status = result.Error switch
+        {
+            SwapResult.InvalidDetails => StatusCodes.Status400BadRequest,
+            SponsorshipChangeResult.NotFound => StatusCodes.Status404NotFound,
+            _ => StatusCodes.Status409Conflict,
+        };
+
+        return result.Fields.Count > 0
+            ? Results.Json(new { code = result.Error, fields = result.Fields }, statusCode: status)
+            : ApiErrors.Error(status, result.Error!);
     }
 
     /// <summary>A day's outcome as the API names it: camelCase, like its other codes' readers expect.</summary>

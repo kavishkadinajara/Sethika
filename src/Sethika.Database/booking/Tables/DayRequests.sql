@@ -1,7 +1,7 @@
 /* Asking for a day a standing sponsor holds (plan 08, K6). A donor asks; asking holds nothing. The
    institution gives it (the standing day is released, StandingExceptions, and the asker is booked,
    BookingId) or declines; the donor may withdraw while it is open. RequestNo is the request's
-   address, from core.NumberSeries. */
+   address, from core.NumberSeries. The asker's headcount and way of giving become their booking's. */
 CREATE TABLE booking.DayRequests (
     Id                    INT           IDENTITY(1,1) PRIMARY KEY,
     RequestNo             VARCHAR(20)   NOT NULL CONSTRAINT UQ_DayRequests_No UNIQUE,
@@ -21,6 +21,9 @@ CREATE TABLE booking.DayRequests (
     DeclineReason         NVARCHAR(300) NULL,
     CreatedAt             DATETIME2(3)  NOT NULL CONSTRAINT DF_DayRequests_CreatedAt DEFAULT SYSUTCDATETIME(),
     RowVersion            ROWVERSION,
+    -- How the asker gives the meal if the day is given to them (K.3): added at the end, so the deploy is an ALTER.
+    FulfilmentMode        VARCHAR(20)   NOT NULL CONSTRAINT DF_DayRequests_FulfilmentMode DEFAULT 'DonorBrings'
+        CONSTRAINT CK_DayRequests_FulfilmentMode CHECK (FulfilmentMode = 'DonorBrings' OR FulfilmentMode = 'InstitutionPrepares' OR FulfilmentMode = 'Caterer'),
     CONSTRAINT FK_DayRequests_SlotTenant     FOREIGN KEY (MealSlotId, InstitutionId)            REFERENCES booking.MealSlots(Id, InstitutionId),
     CONSTRAINT FK_DayRequests_StandingTenant FOREIGN KEY (StandingSponsorshipId, InstitutionId) REFERENCES booking.StandingSponsorships(Id, InstitutionId),
     CONSTRAINT FK_DayRequests_BookingTenant  FOREIGN KEY (BookingId, InstitutionId)             REFERENCES booking.Bookings(Id, InstitutionId),

@@ -27,7 +27,7 @@ public sealed record AvailabilityView(string Month, IReadOnlyList<SlotAvailabili
 /// cannot disagree about anything but a booking made in between. Days in the past are refused as
 /// <c>too_soon</c>, like any other day too close to book.
 /// </remarks>
-public sealed class AvailabilityCalendar(IDonorBookingQueries queries, TimeProvider timeProvider)
+public sealed class AvailabilityCalendar(IDonorBookingQueries queries, IStandingHolds holds, TimeProvider timeProvider)
 {
     /// <summary>The month of the institution <paramref name="slug"/>; <see langword="null"/> if there is no such active institution.</summary>
     /// <param name="month">Any day of the month; only its year and month are used.</param>
@@ -46,12 +46,18 @@ public sealed class AvailabilityCalendar(IDonorBookingQueries queries, TimeProvi
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var slotDays = source.SlotDays.ToDictionary(d => (d.MealSlotId, d.SlotDate));
+        // A standing booking is on a slot-day, so a month with none has nothing held.
+        var held = source.SlotDays.Count == 0
+            ? []
+            : (await holds.ListAsync(source.SlotDays[0].InstitutionId, first, last, cancellationToken).ConfigureAwait(false))
+                .ToDictionary(h => (h.MealSlotId, h.Date));
 
         var slots = source.Slots
             .Select(slot => new SlotAvailabilityView(
                 slot.PublicId,
                 [.. Days(first, last).Select(date =>
                 {
+                    var instance = slotDays.GetValueOrDefault((slot.Id, date));
                     var openings = MealSlotRules.Openings(
                         slot,
                         source.InstitutionStatus,
@@ -59,9 +65,15 @@ public sealed class AvailabilityCalendar(IDonorBookingQueries queries, TimeProvi
                         source.Blocks,
                         date,
                         now,
-                        slotDays.GetValueOrDefault((slot.Id, date)));
+                        instance);
 
-                    return new DayAvailabilityView(date, openings.Bookable, openings.Refused, openings.Sponsors, openings.Headcount);
+                    // Full only through a regular donor's hold: the page offers to ask for it (K6).
+                    var reason = held.TryGetValue((slot.Id, date), out var hold)
+                                 && MealSlotRules.IsHeld(slot, openings, instance, hold.Sponsors, hold.Headcount)
+                        ? BookingErrors.Held
+                        : openings.Refused;
+
+                    return new DayAvailabilityView(date, openings.Bookable, reason, openings.Sponsors, openings.Headcount);
                 })]))
             .ToList();
 

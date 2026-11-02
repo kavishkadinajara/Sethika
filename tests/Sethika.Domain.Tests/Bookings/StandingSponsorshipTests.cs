@@ -251,4 +251,64 @@ public class StandingSponsorshipTests
     [InlineData(1, 0, false)]
     public void ADayOfSomeYear_HasFebruary29_ButNeverApril31(int month, int day, bool expected) =>
         Assert.Equal(expected, StandingPattern.IsDayOfSomeYear(month, day));
+
+    // ------------------------------------------------------------------ a swap from now on (K8)
+
+    private static readonly Guid Staff = Guid.CreateVersion7();
+    private static readonly DateTime Now = new(2026, 11, 9, 3, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public void EndingBeforeADay_EndsIt_OnTheDayBefore()
+    {
+        var weekly = Sponsorship(StandingPattern.Weekly, weekDays: [2]);
+
+        Assert.True(weekly.EndBefore(D(2026, 11, 24), Staff, Now));
+
+        Assert.Equal((StandingSponsorship.EndedStatus, (DateOnly?)D(2026, 11, 23), (Guid?)Staff), (weekly.Status, weekly.EndDate, weekly.EndedBy));
+        Assert.False(weekly.OccursOn(D(2026, 11, 24)));
+        Assert.True(weekly.OccursOn(D(2026, 11, 17)));
+        Assert.False(weekly.EndBefore(D(2026, 12, 1), Staff, Now));
+    }
+
+    [Fact]
+    public void EndingBeforeItsFirstDay_KeepsItsDates()
+    {
+        var weekly = Sponsorship(StandingPattern.Weekly, end: D(2027, 1, 31), weekDays: [2]);
+
+        weekly.EndBefore(Start, Staff, Now);
+
+        Assert.Equal((StandingSponsorship.EndedStatus, (DateOnly?)D(2027, 1, 31)), (weekly.Status, weekly.EndDate));
+    }
+
+    [Fact]
+    public void EndingBeforeADayAfterItsEnd_KeepsItsEnd()
+    {
+        var weekly = Sponsorship(StandingPattern.Weekly, end: D(2026, 11, 30), weekDays: [2]);
+
+        weekly.EndBefore(D(2026, 12, 15), Staff, Now);
+
+        Assert.Equal(D(2026, 11, 30), weekly.EndDate);
+    }
+
+    [Fact]
+    public void TakingOver_GivesThisDonorsMeal_OnTheOthersPattern_FromItsDay()
+    {
+        var mine = Sponsorship(StandingPattern.Weekly, weekDays: [2]);
+        (mine.Id, mine.InstitutionId, mine.InstitutionDonorId, mine.MealSlotId) = (7, 3, 11, 5);
+        (mine.Headcount, mine.FulfilmentMode, mine.InMemoryOf, mine.Notes) = (25, FulfilmentMode.InstitutionPrepares, "Appachchi", "Rice and curry");
+
+        // Every other month on the 5th from October: October, December, February.
+        var theirs = Sponsorship(StandingPattern.Monthly, start: D(2026, 10, 5), end: D(2027, 6, 30), interval: 2, monthDays: [5]);
+        theirs.InstitutionDonorId = 12;
+
+        var id = Guid.CreateVersion7();
+        var taken = mine.TakingOver(theirs, D(2026, 12, 5), id, Staff, Now);
+
+        Assert.Equal((id, 3, 11, 5, 0), (taken.PublicId, taken.InstitutionId, taken.InstitutionDonorId, taken.MealSlotId, taken.Id));
+        Assert.Equal(((short)25, FulfilmentMode.InstitutionPrepares, "Appachchi", "Rice and curry"), (taken.Headcount, taken.FulfilmentMode, taken.InMemoryOf, taken.Notes));
+        Assert.Equal((StandingSponsorship.ActiveStatus, Staff, Now), (taken.Status, taken.CreatedBy, taken.CreatedAt));
+
+        // Started on one of their days, it keeps their months: December, February, April, June.
+        Assert.Equal([D(2026, 12, 5), D(2027, 2, 5), D(2027, 4, 5), D(2027, 6, 5)], Days(taken, D(2026, 11, 1), D(2027, 12, 31)));
+    }
 }

@@ -163,6 +163,25 @@ public static class MealSlotRules
 
         return new SlotDayOpenings(refused, sponsors, headcount);
     }
+
+    /// <summary>
+    /// Whether a day <see cref="Openings"/> found full is full only through standing days (plan 08, K6):
+    /// letting one of them go would open it, so a donor may ask for it. A day closed or blocked is not
+    /// held, whoever is on it.
+    /// </summary>
+    /// <param name="openings">What <see cref="Openings"/> said of the day.</param>
+    /// <param name="instance">The slot-day.</param>
+    /// <param name="standing">Its active standing bookings.</param>
+    /// <param name="standingHeadcount">The most people one of them brings.</param>
+    public static bool IsHeld(MealSlot slot, SlotDayOpenings openings, SlotInstance? instance, int standing, int standingHeadcount)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+
+        return openings.Refused == BookingErrors.SlotFull
+               && standing > 0
+               && instance is { Status: SlotInstanceStatus.Open or SlotInstanceStatus.Full }
+               && instance.RemainingHeadcount + standingHeadcount >= slot.MinHeadcount;
+    }
 }
 
 /// <summary>A slot-day as the availability calendar shows it.</summary>

@@ -134,6 +134,59 @@ public class StandingSponsorship
         return true;
     }
 
+    /// <summary>
+    /// Active → Ended, giving its days up from <paramref name="day"/> on: a swap "from now on" (K8). Its
+    /// end date becomes the day before, unless that is before it started.
+    /// </summary>
+    /// <returns>Whether it moved; an ended sponsorship stays as it ended.</returns>
+    public bool EndBefore(DateOnly day, Guid userId, DateTime now)
+    {
+        if (!End(userId, now))
+        {
+            return false;
+        }
+
+        var last = day.AddDays(-1);
+        if (last >= StartDate && (EndDate is not { } end || last < end))
+        {
+            EndDate = last;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// A new sponsorship for this one's donor, meal and slot on <paramref name="other"/>'s pattern from
+    /// <paramref name="start"/>, a day of <paramref name="other"/>: the second half of a swap "from now on"
+    /// (K8). Starting on one of the other's own days keeps an every-N-months pattern in its months.
+    /// </summary>
+    public StandingSponsorship TakingOver(StandingSponsorship other, DateOnly start, Guid publicId, Guid userId, DateTime now)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        return new StandingSponsorship
+        {
+            PublicId = publicId,
+            InstitutionId = InstitutionId,
+            InstitutionDonorId = InstitutionDonorId,
+            MealSlotId = MealSlotId,
+            Pattern = other.Pattern,
+            MonthInterval = other.MonthInterval,
+            WeekDays = other.WeekDays,
+            MonthDays = other.MonthDays,
+            YearMonth = other.YearMonth,
+            YearDay = other.YearDay,
+            StartDate = start,
+            EndDate = other.EndDate,
+            Headcount = Headcount,
+            FulfilmentMode = FulfilmentMode,
+            InMemoryOf = InMemoryOf,
+            Notes = Notes,
+            CreatedBy = userId,
+            CreatedAt = now,
+        };
+    }
+
     private int MonthsFromStart(DateOnly date) => ((date.Year - StartDate.Year) * 12) + date.Month - StartDate.Month;
 
     private static bool HasBit(int mask, int bit) => ((mask >> bit) & 1) == 1;

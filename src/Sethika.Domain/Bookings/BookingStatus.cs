@@ -75,6 +75,12 @@ public static class BookingErrors
     /// <summary>The donor already holds an active booking on this slot-day.</summary>
     public const string AlreadyBooked = "already_booked";
 
+    /// <summary>
+    /// The availability calendar's reason for a day full only through standing days (plan 08, K6): a
+    /// regular donor holds it, and a donor may ask the institution for it.
+    /// </summary>
+    public const string Held = "held";
+
     // -------------------------------------------------- transitions (C5)
 
     /// <summary>Not allowed from the booking's current status.</summary>

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Bookings.Live;
+using Sethika.Application.Bookings.Sponsors;
 using Sethika.Domain.Bookings;
 using Sethika.Domain.Core;
 using Sethika.Domain.Institutions;
@@ -20,9 +21,10 @@ namespace Sethika.Application.Bookings.Slots;
 ///
 /// Changing a slot never changes a slot-day already booked: its capacity was copied when its first
 /// booking was made (C3). Blocking days or deactivating a slot does not cancel the bookings already
-/// on them either; the result names them, so the screen can warn and the institution decides.
+/// on them either; the result names them, so the screen can warn and the institution decides. The
+/// one exception is a standing day: a block lets it go, in the same transaction (plan 08, K7).
 /// </remarks>
-public sealed class SlotManagementHandler(ISethikaDbContext db, TimeProvider timeProvider)
+public sealed class SlotManagementHandler(ISethikaDbContext db, StandingBlocks standingBlocks, TimeProvider timeProvider)
 {
     private const string NameIndex = "UQ_MealSlots_Name";
     private const int MaxName = 100;
@@ -141,7 +143,10 @@ public sealed class SlotManagementHandler(ISethikaDbContext db, TimeProvider tim
 
     // ------------------------------------------------------------------ blocked dates
 
-    /// <summary>Takes days out of booking, for every slot or one. Bookings already on them stay, and are named.</summary>
+    /// <summary>
+    /// Takes days out of booking, for every slot or one. Standing days on them are let go and their
+    /// sponsors texted (<see cref="StandingBlocks"/>); other bookings already on them stay, and are named.
+    /// </summary>
     public async Task<SlotChangeResult> AddBlockedDateAsync(
         int institutionId,
         Guid userId,
@@ -204,12 +209,20 @@ public sealed class SlotManagementHandler(ISethikaDbContext db, TimeProvider tim
             CreatedAt = now,
         };
 
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
         db.BlockedDates.Add(block);
         db.OutboxMessages.Add(AvailabilityChange.Message(institutionId, block.DateFrom, block.DateTo, now));
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        var standingDays = await standingBlocks
+            .LetGoAsync(institutionId, userId, block.Id, slotId, block.DateFrom, block.DateTo, block.Reason, now, cancellationToken)
+            .ConfigureAwait(false);
+
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+
         var affected = await ActiveBookingsAsync(institutionId, slotId, block.DateFrom, block.DateTo, cancellationToken).ConfigureAwait(false);
-        return SlotChangeResult.ForBlock(block.Id, affected);
+        return SlotChangeResult.ForBlock(block.Id, affected, standingDays);
     }
 
     /// <summary>Opens blocked days for booking again.</summary>

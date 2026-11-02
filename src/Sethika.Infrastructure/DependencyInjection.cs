@@ -79,10 +79,12 @@ public static class DependencyInjection
         services.AddScoped<IMemorialQueries, MemorialQueries>();
         services.AddScoped<ISharingQueries, SharingQueries>();
         services.AddScoped<IShareLinks>(_ => new SqlShareLinks(connectionString));
+        services.AddScoped<IStandingHolds>(_ => new SqlStandingHolds(connectionString));
         services.AddScoped<IBookingNotificationQueries, BookingNotificationQueries>();
         services.AddScoped<IServiceSetupQueries, ServiceSetupQueries>();
         services.AddScoped<IDonorBookQueries, DonorBookQueries>();
         services.AddScoped<IStandingSponsorshipQueries, StandingSponsorshipQueries>();
+        services.AddScoped<IDayRequestQueries, DayRequestQueries>();
         services.AddScoped<IDonorAppointmentQueries, DonorAppointmentQueries>();
         services.AddScoped<IAppointmentQueries, AppointmentQueries>();
         services.AddScoped<IAppointmentNotificationQueries, AppointmentNotificationQueries>();

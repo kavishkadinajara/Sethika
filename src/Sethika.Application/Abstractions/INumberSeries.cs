@@ -20,6 +20,9 @@ public sealed record NumberSeriesDefinition(string Code, string Prefix, byte Pad
 
     /// <summary>Service appointments' <c>AppointmentNo</c> (Phase E), one series for the whole platform like bookings.</summary>
     public static NumberSeriesDefinition Appointment { get; } = new("APPOINTMENT", "APT", 6);
+
+    /// <summary>Requests for a standing sponsor's day (plan 08, K6), one series for the whole platform.</summary>
+    public static NumberSeriesDefinition DayRequest { get; } = new("DAYREQUEST", "DR", 6);
 }
 
 /// <summary>

@@ -108,6 +108,9 @@ public sealed class StandingSponsorshipHandler(
         sponsorship.MealSlotId = slot!.Id;
 
         db.StandingSponsorships.Add(sponsorship);
+
+        // One text for the whole arrangement, naming its first day; never one per day (K21).
+        db.OutboxMessages.Add(StandingTexts.Message(StandingTexts.Created, sponsorship.PublicId, sponsorship.NextDays(sponsorship.StartDate, 1)[0], "created", now));
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         var publicId = sponsorship.PublicId;
@@ -313,6 +316,8 @@ public sealed class StandingSponsorshipHandler(
             CreatedBy = userId,
             CreatedAt = now,
         });
+
+        db.OutboxMessages.Add(StandingTexts.Message(StandingTexts.Skipped, sponsorship.PublicId, date.Value, StandingTexts.Iso(date.Value), now));
 
         try
         {

@@ -63,6 +63,7 @@ public partial class SethikaDbContext(DbContextOptions<SethikaDbContext> options
     public DbSet<InstitutionDonor> InstitutionDonors => Set<InstitutionDonor>();
     public DbSet<StandingSponsorship> StandingSponsorships => Set<StandingSponsorship>();
     public DbSet<StandingDayChange> StandingExceptions => Set<StandingDayChange>();
+    public DbSet<DayRequest> DayRequests => Set<DayRequest>();
     public DbSet<ServiceType> ServiceTypes => Set<ServiceType>();
     public DbSet<ReligiousLeader> ReligiousLeaders => Set<ReligiousLeader>();
     public DbSet<LeaderWeeklyHours> LeaderWeeklyHours => Set<LeaderWeeklyHours>();

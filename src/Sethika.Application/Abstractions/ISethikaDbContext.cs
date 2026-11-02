@@ -96,6 +96,9 @@ public interface ISethikaDbContext
     DbSet<StandingSponsorship> StandingSponsorships { get; }
     DbSet<StandingDayChange> StandingExceptions { get; }
 
+    // A donor asking for a standing day (plan 08, K6): the institution's and the asker's.
+    DbSet<DayRequest> DayRequests { get; }
+
     // Religious services (Phase E). An appointment's leaders and history are reached through it.
     // Time blocks have a set of their own: handlers write and delete them beside the assignment or
     // leave they belong to, and their primary key is the overlap guarantee (V2).
