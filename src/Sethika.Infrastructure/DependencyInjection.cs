@@ -80,6 +80,7 @@ public static class DependencyInjection
         services.AddScoped<IShareLinks>(_ => new SqlShareLinks(connectionString));
         services.AddScoped<IBookingNotificationQueries, BookingNotificationQueries>();
         services.AddScoped<IServiceSetupQueries, ServiceSetupQueries>();
+        services.AddScoped<IDonorBookQueries, DonorBookQueries>();
         services.AddScoped<IDonorAppointmentQueries, DonorAppointmentQueries>();
         services.AddScoped<IAppointmentQueries, AppointmentQueries>();
         services.AddScoped<IAppointmentNotificationQueries, AppointmentNotificationQueries>();

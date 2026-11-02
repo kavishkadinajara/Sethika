@@ -69,9 +69,15 @@ DELETE FROM org.ReligiousLeaders;
 DELETE FROM booking.ServiceTypes;
 -- What the booking engine's tests leave (plan 03): history before its booking, blocks and seasons
 -- before their slot, and the outbox trail of every booking.
+-- Standing sponsors (plan 08): let-go days before the requests they name, both before the bookings
+-- they name; the sponsorships after their bookings, the donor book after its sponsorships and bookings.
+DELETE FROM booking.StandingExceptions;
+DELETE FROM booking.DayRequests;
 DELETE FROM booking.BookingStatusHistory;
 DELETE FROM booking.BookingContributors;
 DELETE FROM booking.Bookings;
+DELETE FROM booking.StandingSponsorships;
+DELETE FROM org.InstitutionDonors;
 -- Yearly bookings (plan 07) after the bookings that point at them, before their slot; and their texts' trail.
 DELETE FROM booking.RecurringBookings;
 DELETE FROM core.OutboxMessages WHERE AggregateType = 'RecurringBooking';

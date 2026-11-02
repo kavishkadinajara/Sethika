@@ -88,6 +88,9 @@ public interface ISethikaDbContext
     DbSet<MemorialPlan> MemorialPlans { get; }
     DbSet<MemorialRule> MemorialRules { get; }
 
+    // An institution's donor book (plan 08, K1): its institution's alone, by RLS.
+    DbSet<InstitutionDonor> InstitutionDonors { get; }
+
     // Religious services (Phase E). An appointment's leaders and history are reached through it.
     // Time blocks have a set of their own: handlers write and delete them beside the assignment or
     // leave they belong to, and their primary key is the overlap guarantee (V2).

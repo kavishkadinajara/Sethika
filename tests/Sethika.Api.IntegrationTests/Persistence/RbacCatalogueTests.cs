@@ -175,7 +175,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
             var after = await connection.QuerySingleAsync(Snapshot, transaction: transaction);
 
             Assert.Equal((IDictionary<string, object>)before, (IDictionary<string, object>)after);
-            Assert.Equal(47, (int)after.Permissions);
+            Assert.Equal(50, (int)after.Permissions);
         }
     }
 
@@ -196,7 +196,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
                 seed.Replace(StaffApprove, "    ('BOOKINGS.CALENDAR.VIEW'),\n", StringComparison.Ordinal), transaction: transaction);
 
             Assert.DoesNotContain("BOOKINGS.CALENDAR.APPROVE", await AlphaCodesAsync(connection, transaction, database.AlphaInstitutionId));
-            Assert.Equal(10, await connection.ExecuteScalarAsync<int>(
+            Assert.Equal(11, await connection.ExecuteScalarAsync<int>(
                 """
                 SELECT COUNT(*) FROM auth.RoleLevelPermissions c JOIN auth.RoleLevels l ON l.Id = c.RoleLevelId
                 WHERE l.Code = 'STAFF';
@@ -380,7 +380,8 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
     public async Task StaffMayDecideBookingsButNeverSetUpTheSlots()
     {
         // Deciding, completing and cancelling a booking is the day's work; what is offered, and when,
-        // is the institution's to set. A new staff member starts able to read, not to decide.
+        // is the institution's to set. A new staff member starts able to read, not to decide. Staff see
+        // the standing sponsors, and never set them up (plan 08, K11).
         await using var connection = new SqlConnection(database.ConnectionString);
 
         var ceiling = await connection.QueryAsync<string>(
@@ -402,10 +403,11 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
             """);
 
         Assert.Equal(
-            ["BOOKINGS.CALENDAR.APPROVE", "BOOKINGS.CALENDAR.EDIT", "BOOKINGS.CALENDAR.REJECT", "BOOKINGS.CALENDAR.VIEW", "BOOKINGS.SLOTS.VIEW"],
+            ["BOOKINGS.CALENDAR.APPROVE", "BOOKINGS.CALENDAR.EDIT", "BOOKINGS.CALENDAR.REJECT", "BOOKINGS.CALENDAR.VIEW", "BOOKINGS.SLOTS.VIEW",
+             "BOOKINGS.SPONSORS.VIEW"],
             ceiling);
         Assert.Equal(
-            ["BOOKINGS.CALENDAR.VIEW", "BOOKINGS.SLOTS.VIEW", "INSTITUTION.PROFILE.VIEW",
+            ["BOOKINGS.CALENDAR.VIEW", "BOOKINGS.SLOTS.VIEW", "BOOKINGS.SPONSORS.VIEW", "INSTITUTION.PROFILE.VIEW",
              "SERVICES.APPOINTMENTS.VIEW", "SERVICES.LEADERS.VIEW", "SERVICES.TYPES.VIEW"],
             template);
     }

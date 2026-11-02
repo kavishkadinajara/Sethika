@@ -44,7 +44,8 @@
       "members": "Staff",
       "institutions": "Institutions",
       "users": "Users",
-      "memorial": "Memorial dana planner"
+      "memorial": "Memorial dana planner",
+      "sponsors": "Regular donors"
     },
     "context": {
       "platform": "Platform team",
@@ -2055,5 +2056,61 @@
     "ask": "Will you give this dana with them?",
     "join": "Join",
     "decline": "Decline"
+  },
+  "Sponsors": {
+    "title": "Regular donors",
+    "intro": "The people who give here regularly, many of whom never use the app. Keep their phone and whether they agreed to receive texts; from here you will set up the days they give.",
+    "book": {
+      "heading": "{count, plural, =0 {Donor book} one {Donor book · # person} other {Donor book · # people}}",
+      "add": "Add a donor",
+      "none": "No one in your donor book yet. Add the people who give here regularly.",
+      "search": "Search",
+      "searchHint": "A name, or part of a phone number",
+      "noMatch": "No one in the book matches “{query}”.",
+      "usesApp": "Uses Sethika",
+      "textsYes": "Agreed to texts on {date}",
+      "textsApp": "Gets texts in the app",
+      "textsNo": "No texts: tell them yourself",
+      "sponsorships": "{count, plural, =0 {No regular days yet} one {# regular arrangement} other {# regular arrangements}}",
+      "edit": "Edit",
+      "editNamed": "Edit {name}",
+      "retry": "Try again",
+      "language": {
+        "si": "Sinhala",
+        "ta": "Tamil",
+        "en": "English"
+      }
+    },
+    "form": {
+      "newTitle": "Add a donor",
+      "editTitle": "Edit donor",
+      "description": "If the phone belongs to a Sethika account, they will see their days in the app.",
+      "fullName": "Full name",
+      "phone": "Phone",
+      "phoneHint": "A mobile number, for example 077 123 4567",
+      "language": "Language of texts",
+      "languageHint": "Used when we text someone who does not use the app",
+      "textConsent": "This person agreed to receive texts",
+      "textConsentHint": "Only tick this if they said yes. We record who ticked it and when. Without it, someone who does not use the app is never texted.",
+      "notes": "Notes",
+      "notesHint": "For your staff only, for example “brings rice and two curries”",
+      "cancel": "Cancel",
+      "save": "Save",
+      "create": "Add donor",
+      "errors": {
+        "fullName": "Enter their name (up to 150 letters).",
+        "phone": "Enter a mobile number we can text.",
+        "phoneTaken": "Someone in your donor book already has this number.",
+        "notes": "Notes can be up to 500 letters.",
+        "language": "Choose a language."
+      }
+    },
+    "errors": {
+      "invalid_details": "Some details need fixing.",
+      "donor_not_found": "This donor is no longer in your book.",
+      "donor_phone_taken": "Someone in your donor book already has this number.",
+      "donor_account_taken": "The Sethika account with this number is already linked to another person in your book. Check that person’s number.",
+      "stale": "Someone changed this donor while you were editing. Close and open it again."
+    }
   }
 }

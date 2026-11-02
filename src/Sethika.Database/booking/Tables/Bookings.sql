@@ -21,7 +21,7 @@ CREATE TABLE booking.Bookings (
     RecurringBookingId  INT           NULL REFERENCES booking.RecurringBookings(Id),
     Notes               NVARCHAR(500) NULL,
     Source              VARCHAR(20)   NOT NULL DEFAULT 'Online'
-        CONSTRAINT CK_Bookings_Source CHECK (Source = 'Online' OR Source = 'Staff' OR Source = 'Recurring' OR Source = 'Waitlist' OR Source = 'Memorial'),
+        CONSTRAINT CK_Bookings_Source CHECK (Source = 'Online' OR Source = 'Staff' OR Source = 'Recurring' OR Source = 'Waitlist' OR Source = 'Memorial' OR Source = 'Standing'),
     Status              VARCHAR(20)   NOT NULL DEFAULT 'Requested'
         CONSTRAINT CK_Bookings_Status CHECK (Status = 'Requested' OR Status = 'Approved' OR Status = 'Rejected' OR Status = 'Cancelled' OR Status = 'Completed' OR Status = 'NoShow'),
     CreatedBy           UNIQUEIDENTIFIER NOT NULL REFERENCES auth.Users(Id),
@@ -34,12 +34,21 @@ CREATE TABLE booking.Bookings (
     CancelReason        NVARCHAR(300) NULL,
     CompletedAt         DATETIME2(3)  NULL,
     RowVersion          ROWVERSION,
+    -- Added by plan 08 (K3) at the end of the table, so the deploy is an ALTER: a day of a standing
+    -- sponsorship. Its FK names the sponsorship's own donor, so the day is booked for that person.
+    StandingSponsorshipId INT         NULL,
     CONSTRAINT FK_Bookings_SlotTenant  FOREIGN KEY (SlotInstanceId, InstitutionId)     REFERENCES booking.SlotInstances(Id, InstitutionId),
     CONSTRAINT FK_Bookings_DonorTenant FOREIGN KEY (InstitutionDonorId, InstitutionId) REFERENCES org.InstitutionDonors(Id, InstitutionId),
     CONSTRAINT UQ_Bookings_Tenant UNIQUE (Id, InstitutionId),
     CONSTRAINT CK_Bookings_Cancel CHECK (Status <> 'Cancelled' OR CancelledAt IS NOT NULL),
     CONSTRAINT CK_Bookings_Reject CHECK (Status <> 'Rejected'  OR RejectReason IS NOT NULL),
-    CONSTRAINT CK_Bookings_Actual CHECK (ActualHeadcount IS NULL OR ActualHeadcount >= 0)
+    CONSTRAINT CK_Bookings_Actual CHECK (ActualHeadcount IS NULL OR ActualHeadcount >= 0),
+    CONSTRAINT FK_Bookings_StandingTenant FOREIGN KEY (StandingSponsorshipId, InstitutionId, InstitutionDonorId)
+        REFERENCES booking.StandingSponsorships(Id, InstitutionId, InstitutionDonorId),
+    -- Only a standing day names a sponsorship, and it always names the institution's donor too.
+    CONSTRAINT CK_Bookings_Standing CHECK (
+        (Source = 'Standing' AND StandingSponsorshipId IS NOT NULL AND InstitutionDonorId IS NOT NULL)
+     OR (Source <> 'Standing' AND StandingSponsorshipId IS NULL))
 );
 GO
 
@@ -51,4 +60,8 @@ CREATE INDEX IX_Bookings_Institution ON booking.Bookings(InstitutionId, Status, 
 GO
 
 CREATE INDEX IX_Bookings_Donor       ON booking.Bookings(DonorUserId, CreatedAt DESC) WHERE DonorUserId IS NOT NULL;
+GO
+
+/* a sponsorship's days: the nightly job, letting a day go, the donor book */
+CREATE INDEX IX_Bookings_Standing ON booking.Bookings(StandingSponsorshipId) INCLUDE (SlotInstanceId, Status) WHERE StandingSponsorshipId IS NOT NULL;
 GO

@@ -22,8 +22,21 @@ CREATE SECURITY POLICY sec.TenantIsolationPolicy
     ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Donations AFTER INSERT,
     ADD FILTER PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Pledges,
     ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Pledges AFTER INSERT,
+    /* the donor book (plan 08, K1): the institution only; a linked sponsor reads their days as bookings */
     ADD FILTER PREDICATE sec.fn_Tenant(InstitutionId) ON org.InstitutionDonors,
     ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON org.InstitutionDonors AFTER INSERT,
+    ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON org.InstitutionDonors AFTER UPDATE,
+    /* standing sponsorships and their let-go days (plan 08, K2, K4): the institution only. A day request:
+       the institution and the donor who asked, as Bookings (K6). */
+    ADD FILTER PREDICATE sec.fn_Tenant(InstitutionId) ON booking.StandingSponsorships,
+    ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON booking.StandingSponsorships AFTER INSERT,
+    ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON booking.StandingSponsorships AFTER UPDATE,
+    ADD FILTER PREDICATE sec.fn_Tenant(InstitutionId) ON booking.StandingExceptions,
+    ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON booking.StandingExceptions AFTER INSERT,
+    ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON booking.StandingExceptions AFTER UPDATE,
+    ADD FILTER PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON booking.DayRequests,
+    ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON booking.DayRequests AFTER INSERT,
+    ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON booking.DayRequests AFTER UPDATE,
     ADD FILTER PREDICATE sec.fn_Tenant(InstitutionId) ON org.InstitutionSettings,
     ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON org.InstitutionSettings AFTER INSERT,
     ADD FILTER PREDICATE sec.fn_Tenant(InstitutionId) ON org.InstitutionDocuments,

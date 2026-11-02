@@ -53,6 +53,7 @@ USING (
         ('INSTITUTION', 'INSTITUTION.PROFILE', N'Institution profile',   '/institution/profile', 1),
         ('BOOKINGS',    'BOOKINGS.CALENDAR',   N'Booking calendar',      '/bookings/calendar',   1),
         ('BOOKINGS',    'BOOKINGS.SLOTS',      N'Meal slots',            '/bookings/slots',      2),
+        ('BOOKINGS',    'BOOKINGS.SPONSORS',   N'Standing sponsors',     '/bookings/sponsors',   3),
         ('SERVICES',    'SERVICES.TYPES',        N'Religious services',    '/services/types',        1),
         ('SERVICES',    'SERVICES.LEADERS',      N'Religious leaders',     '/services/leaders',      2),
         ('SERVICES',    'SERVICES.APPOINTMENTS', N'Service appointments',  '/services/appointments', 3),
@@ -102,6 +103,11 @@ VALUES
     ('BOOKINGS.SLOTS.VIEW',       'BOOKINGS.SLOTS',      'VIEW',    'Institution', N'View meal slots and blocked dates', 0, 0),
     ('BOOKINGS.SLOTS.CREATE',     'BOOKINGS.SLOTS',      'CREATE',  'Institution', N'Create meal slots',            0, 0),
     ('BOOKINGS.SLOTS.EDIT',       'BOOKINGS.SLOTS',      'EDIT',    'Institution', N'Change meal slots and blocked dates', 0, 0),
+    /*  Standing sponsors (plan 08, K11): the donor book and the regular donors' patterns. EDIT is
+        changing a donor or a sponsorship, ending one, skipping and swapping days.            */
+    ('BOOKINGS.SPONSORS.VIEW',    'BOOKINGS.SPONSORS',   'VIEW',    'Institution', N'View the donor book and standing sponsors', 0, 0),
+    ('BOOKINGS.SPONSORS.CREATE',  'BOOKINGS.SPONSORS',   'CREATE',  'Institution', N'Add donors and standing sponsorships', 0, 0),
+    ('BOOKINGS.SPONSORS.EDIT',    'BOOKINGS.SPONSORS',   'EDIT',    'Institution', N'Change, end, skip and swap standing sponsorships', 0, 0),
     /*  Religious services (Phase E, section 5). APPROVE on appointments is assigning leaders, which
         approves a request; EDIT is reassigning, answering for a leader, cancelling and completing.
         MYSCHEDULE is a leader's own: EDIT is accepting or declining their own assignments.     */
@@ -192,6 +198,9 @@ VALUES
     ('BOOKINGS.CALENDAR.VIEW',    'BOOKINGS.SLOTS.VIEW'),      -- a booking is read beside its slot
     ('BOOKINGS.SLOTS.CREATE',     'BOOKINGS.SLOTS.VIEW'),
     ('BOOKINGS.SLOTS.EDIT',       'BOOKINGS.SLOTS.VIEW'),
+    ('BOOKINGS.SPONSORS.CREATE',  'BOOKINGS.SPONSORS.VIEW'),
+    ('BOOKINGS.SPONSORS.EDIT',    'BOOKINGS.SPONSORS.VIEW'),
+    ('BOOKINGS.SPONSORS.VIEW',    'BOOKINGS.SLOTS.VIEW'),      -- a sponsorship is read beside its slot
     ('ACCESS.ROLES.CREATE',       'ACCESS.ROLES.VIEW'),
     ('ACCESS.ROLES.EDIT',         'ACCESS.ROLES.VIEW'),
     ('ACCESS.MEMBERS.EDIT',       'ACCESS.MEMBERS.VIEW'),
@@ -265,6 +274,7 @@ FROM (VALUES
     ('BOOKINGS.CALENDAR.APPROVE'),
     ('BOOKINGS.CALENDAR.REJECT'),
     ('BOOKINGS.CALENDAR.EDIT'),
+    ('BOOKINGS.SPONSORS.VIEW'),
     ('SERVICES.TYPES.VIEW'),
     ('SERVICES.LEADERS.VIEW'),
     ('SERVICES.APPOINTMENTS.VIEW'),
@@ -360,7 +370,7 @@ UNION ALL
 SELECT 'MANAGER', p.Code FROM @RbacPermissions p WHERE p.Scope = 'Institution' AND p.ScreenCode <> 'SERVICES.MYSCHEDULE' AND p.Code <> 'INSTITUTION.PROFILE.EDIT'
 UNION ALL
 SELECT 'STAFF', v.Code FROM (VALUES ('INSTITUTION.PROFILE.VIEW'), ('BOOKINGS.SLOTS.VIEW'), ('BOOKINGS.CALENDAR.VIEW'),
-                                    ('SERVICES.TYPES.VIEW'), ('SERVICES.LEADERS.VIEW'), ('SERVICES.APPOINTMENTS.VIEW')) AS v(Code)
+                                    ('BOOKINGS.SPONSORS.VIEW'), ('SERVICES.TYPES.VIEW'), ('SERVICES.LEADERS.VIEW'), ('SERVICES.APPOINTMENTS.VIEW')) AS v(Code)
 UNION ALL
 SELECT 'LEADER', v.Code FROM (VALUES ('SERVICES.MYSCHEDULE.VIEW'), ('SERVICES.MYSCHEDULE.EDIT')) AS v(Code);
 

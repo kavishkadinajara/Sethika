@@ -28,6 +28,7 @@ export type ItemKey =
   | "apply"
   | "calendar"
   | "slots"
+  | "sponsors"
   | "serviceTypes"
   | "leaders"
   | "appointments"
@@ -95,6 +96,7 @@ export const navTree: readonly NavSection[] = [
         items: [
           { key: "calendar", href: "/bookings/calendar", icon: "calendar", screen: "BOOKINGS.CALENDAR", badge: "bookingsToAnswer" },
           { key: "slots", href: "/bookings/slots", icon: "bowl", screen: "BOOKINGS.SLOTS" },
+          { key: "sponsors", href: "/bookings/sponsors", icon: "users", screen: "BOOKINGS.SPONSORS" },
         ],
       },
       {

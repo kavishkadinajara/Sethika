@@ -1,6 +1,7 @@
 # Plan 08 — Standing sponsors: the institution's own regular donors
 
-Status: **agreed 2026-11-02 (answers in §8).** Nothing here is built; build after C.6. Asked for by
+Status: **agreed 2026-11-02 (answers in §8). K.1 built 2026-11-02** on `standing-sponsors` (from develop
+f2a7be5, after PR #34); K.2-K.4 to do. Asked for by
 the user on 2026-11-02 (after C.5): "an institution must be able to set up dana dates itself, for a donor,
 on a specific day, daily, weekly, monthly, yearly, every 2 or 3 months, every other month - any scenario.
 People give like that today." Decision numbers here are **K1, K2, …**.
@@ -49,6 +50,11 @@ Branch: after Phase C's pull request, `git switch -c standing-sponsors develop`.
 | K10 | **Texts** (en/si/ta, drafts): `STANDING_CREATED` (the days and the place), `STANDING_SKIPPED`, `STANDING_RELEASED` (given to someone who asked), `STANDING_BLOCKED`, `STANDING_SWAPPED`, `DAY_REQUEST_GIVEN`, `DAY_REQUEST_DECLINED`; the day-before reminder is the existing one. A standing sponsor without an app account is texted at the phone the institution gave, **only if the consent box was ticked** (Q2); without it the institution tells them itself and the ledger says "not texted" | Every change of someone's day reaches them |
 | K11 | **Permissions**: a new screen `BOOKINGS.SPONSORS` (`/bookings/sponsors`): VIEW, CREATE, EDIT (end, skip, swap). Template roles: OWNER and ADMIN all, STAFF VIEW. Answering a day request needs `BOOKINGS.CALENDAR.APPROVE` / `REJECT`. Asking needs `MYBOOKINGS.BOOKINGS.CREATE` | Same catalogue rules as every screen (anti-escalation, deny wins) |
 | K12 | **Live**: every change above writes the `AvailabilityChanged` hint (H28) in its transaction | Open calendars stay right |
+| K13 | (K.1) **The donor book's columns**: `PublicId` (the API address), `Language` (en/si/ta, default si, the language of their texts, as a leader's, V14), `TextConsentAt` + `TextConsentBy` (both or neither, `CK_InstDonor_TextConsent`; ticking again keeps the first who and when, unticking clears both), `CreatedBy`/`UpdatedAt`/`UpdatedBy`, `RowVersion`. All added at the end of the table, so the deploy is an `ALTER`; the table was empty everywhere. `UX_InstDonor_User`: an account is one donor of an institution at most | Q2 asked for "who and when". Language is needed by K10 and costs one column now |
+| K14 | (K.1) **Linking** happens when staff add or change a donor: the account whose *confirmed* phone is the donor's, never a deleted account. Linking at the person's own sign-up or sign-in is left to K.4 (it needs the platform's reach across institutions, like H33) | An unconfirmed phone proves nothing about who holds it |
+| K15 | (K.1) **Shapes the database enforces**: `CK_Standing_Shape` (each pattern has its own fields and no others; `Once` has `EndDate = StartDate`), `CK_Standing_YearDate` (29 February yes, 31 April never), `CK_Standing_Ended`; a standing booking names its sponsorship and the institution's donor (`CK_Bookings_Standing`), and its FK is `(StandingSponsorshipId, InstitutionId, InstitutionDonorId)`, so the day is booked for that sponsorship's own donor; one exception per sponsorship and day (`UQ_StandingExc_Day`), a swap names its other day (`OtherDate`, never the same day), a released day names its request; a day request has one open per donor and slot-day, and *Given* names both the day let go and the booking made | The later slices rely on these; the database refuses anything else. Found while testing: `EndDate = StartDate` alone let a `Once` without an end through, because a CHECK passes on unknown |
+| K16 | (K.1) **RLS**: `InstitutionDonors` gains its missing `AFTER UPDATE` block; `StandingSponsorships` and `StandingExceptions` `fn_Tenant` (filter, block after insert and update); `DayRequests` `fn_TenantOrOwner(InstitutionId, DonorUserId)`, as `Bookings`. A linked sponsor reads none of the first three: their days reach them as their own bookings (`DonorUserId`), through `Bookings`' owner branch | The narrowest reach that still lets each person see what is theirs |
+| K17 | (K.1) **Permissions**: `BOOKINGS.SPONSORS` screen (`/bookings/sponsors`), VIEW / CREATE / EDIT; VIEW needs `BOOKINGS.SLOTS.VIEW`. OWNER and MANAGER templates hold all three (every institution permission), STAFF ceiling and template VIEW only. **Institutions approved before this change keep their cloned roles** (cloning happens at approval), so their owners do not hold the new permissions until someone grants them: the same as SERVICES for institutions approved before Phase E | K11 as agreed; the gap for existing institutions is the existing cloning rule, not new |
 
 ## 3. API (sketch)
 
@@ -90,7 +96,17 @@ Branch: after Phase C's pull request, `git switch -c standing-sponsors develop`.
 
 ## 7. Work breakdown (estimate ~2.5 days)
 
-- [ ] **K.1** Schema (sponsorships, exceptions, day requests, `Source = 'Standing'`, the donors' text consent), RLS, the donor book API. ~0.5
+- [x] **K.1** Schema (sponsorships, exceptions, day requests, `Source = 'Standing'`, the donors' text consent), RLS, the donor book API. ~0.5
+  Built 2026-11-02 (K13-K17): tables `booking.StandingSponsorships`, `booking.StandingExceptions`,
+  `booking.DayRequests`; `Bookings.StandingSponsorshipId` + `Source = 'Standing'`; the donor book's new
+  columns; 10 RLS predicates; `BOOKINGS.SPONSORS.*`. API: `GET/POST /api/institution/donors`,
+  `PUT /api/institution/donors/{publicId}` (`DonorBookHandler`, `DonorBookQueries`). Errors:
+  `invalid_details` (fields), `donor_not_found` 404, `donor_phone_taken`, `donor_account_taken`, `stale` 409.
+  Tests: `DonorBookEndpointsTests` 14, `StandingSchemaTests` 9, `RbacCatalogueTests` updated (50
+  permissions, STAFF ceiling 11). Schema published to Sethika_Test and the dev `Sethika` (the user's OK).
+  Mutants 65/65 killed: C# 27, SQL/RLS 30 (run on `Sethika_C2Test`), web 8. Neighbours (Persistence,
+  booking engine, policy) 101/101. Screen `/bookings/sponsors` (donor book: list, search, add/edit,
+  consent) built ahead of K.4, en/si/ta, vitest; not yet tried in a browser.
 - [ ] **K.2** Pattern engine (domain) + nightly job + create/end/skip. ~0.75
 - [ ] **K.3** Day requests, blocks over standing days, swap; texts. ~0.75
 - [ ] **K.4** Screens + e2e. ~0.5

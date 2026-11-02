@@ -43,6 +43,12 @@ describe("visible menu", () => {
     expect(keys(visibleNav(staff))).toContain("institution[calendar]");
   });
 
+  it("puts the regular donors beside the calendar and the meals, for whoever may view them (plan 08)", () => {
+    const staff = holding("BOOKINGS.CALENDAR.VIEW", "BOOKINGS.SLOTS.VIEW", "BOOKINGS.SPONSORS.VIEW");
+    expect(keys(visibleNav(staff))).toContain("institution[calendar,slots,sponsors]");
+    expect(keys(visibleNav(holding("BOOKINGS.CALENDAR.VIEW", "BOOKINGS.SPONSORS.CREATE")))).toContain("institution[calendar]");
+  });
+
   it("gives a leader only their schedule, and an owner the services without the schedule", () => {
     expect(keys(visibleNav(holding("SERVICES.MYSCHEDULE.VIEW")))).toContain("institution[schedule]");
     const owner = holding("SERVICES.APPOINTMENTS.VIEW", "SERVICES.TYPES.VIEW", "SERVICES.LEADERS.VIEW");
