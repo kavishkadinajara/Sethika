@@ -31,6 +31,10 @@ public interface ISethikaDbContext
     DbSet<PreviousPassword> PreviousPasswords { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<DonorProfile> DonorProfiles { get; }
+
+    // A donor's preferred places (plan 07, H12): theirs alone, by RLS.
+    DbSet<FavoriteInstitution> FavoriteInstitutions { get; }
+
     DbSet<UserConsent> UserConsents { get; }
     DbSet<LegalDocument> LegalDocuments { get; }
     DbSet<OutboxMessage> OutboxMessages { get; }

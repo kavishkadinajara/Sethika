@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { touchesMonth } from "./live";
+import { LogLevel } from "@microsoft/signalr";
+import { describe, expect, it, vi } from "vitest";
+import { liveLogger, touchesMonth } from "./live";
 
 describe("touchesMonth", () => {
   it("is true for a change of every day", () => {
@@ -20,5 +21,21 @@ describe("touchesMonth", () => {
   it("is false for days before or after the month", () => {
     expect(touchesMonth({ from: "2026-10-31", to: "2026-10-31" }, "2026-11")).toBe(false);
     expect(touchesMonth({ from: "2026-12-01", to: "2026-12-03" }, "2026-11")).toBe(false);
+  });
+});
+
+describe("liveLogger", () => {
+  it("writes SignalR's errors and warnings as warnings, never as console errors, and drops the rest", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    liveLogger.log(LogLevel.Error, "Failed to start the connection: stopped during negotiation.");
+    liveLogger.log(LogLevel.Warning, "Reconnecting.");
+    liveLogger.log(LogLevel.Information, "Connected.");
+    liveLogger.log(LogLevel.Debug, "Sending.");
+    expect(error).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenNthCalledWith(1, "[live] Failed to start the connection: stopped during negotiation.");
+    warn.mockRestore();
+    error.mockRestore();
   });
 });

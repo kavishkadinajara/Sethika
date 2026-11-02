@@ -15,6 +15,15 @@ import type {
   BookingStatus,
   Decision,
   DonorBooking,
+  Invitation,
+  MemorialChoice,
+  MemorialPlan,
+  MemorialPlanInput,
+  MemorialReligion,
+  SharedBooking,
+  SharedWith,
+  ShareSummary,
+  YearlyBooking,
   InstitutionMealSlot,
   LedgerEntry,
   Listing,
@@ -80,6 +89,78 @@ export async function listMyBookings(): Promise<BookingResult<DonorBooking[]>> {
 
 export async function cancelMyBooking(bookingNo: string, reason: string | null): Promise<BookingResult> {
   return empty(await send(`/api/bookings/${encodeURIComponent(bookingNo)}/cancel`, jsonBody("POST", { reason })));
+}
+
+/** The donor's active yearly bookings, soonest next first. */
+export async function listYearly(): Promise<BookingResult<YearlyBooking[]>> {
+  return json(await send("/api/bookings/recurring", { method: "GET" }));
+}
+
+/** Stops a yearly booking: no later year is booked; a year already booked stays. */
+export async function stopYearly(publicId: string): Promise<BookingResult> {
+  return empty(await send(`/api/bookings/recurring/${encodeURIComponent(publicId)}/stop`, { method: "POST" }));
+}
+
+// ---- the memorial planner -------------------------------------------------------------------------
+
+export async function listMemorialReligions(): Promise<BookingResult<MemorialReligion[]>> {
+  return json(await send("/api/memorial/religions", { method: "GET" }));
+}
+
+export async function listRelationships(): Promise<BookingResult<MemorialChoice[]>> {
+  return json(await send("/api/memorial/relationships", { method: "GET" }));
+}
+
+export async function listMemorialPlans(): Promise<BookingResult<MemorialPlan[]>> {
+  return json(await send("/api/memorial/plans", { method: "GET" }));
+}
+
+export async function createMemorialPlan(input: MemorialPlanInput): Promise<BookingResult<{ plan: string }>> {
+  return json(await send("/api/memorial/plans", jsonBody("POST", input)));
+}
+
+export async function archiveMemorialPlan(publicId: string): Promise<BookingResult> {
+  return empty(await send(`/api/memorial/plans/${encodeURIComponent(publicId)}/archive`, { method: "POST" }));
+}
+
+// ---- sharing a booking (co-sponsors) --------------------------------------------------------------
+
+export async function listInvitations(bookingNo: string): Promise<BookingResult<Invitation[]>> {
+  return json(await send(`/api/bookings/${encodeURIComponent(bookingNo)}/contributors`, { method: "GET" }));
+}
+
+/** Invites someone; the answer's token makes the link the donor sends themselves (H16). */
+export async function invite(bookingNo: string, name: string, note: string | null): Promise<BookingResult<{ contributor: string; token: string }>> {
+  return json(await send(`/api/bookings/${encodeURIComponent(bookingNo)}/contributors`, jsonBody("POST", { name, note })));
+}
+
+export async function withdrawInvitation(bookingNo: string, publicId: string): Promise<BookingResult> {
+  return empty(
+    await send(`/api/bookings/${encodeURIComponent(bookingNo)}/contributors/${encodeURIComponent(publicId)}`, { method: "DELETE" }),
+  );
+}
+
+/** A link's summary. Anonymous, so a person not signed in sees what they are asked to join. */
+export async function openShare(token: string): Promise<BookingResult<ShareSummary>> {
+  return json(await publicGet(`/api/share/${encodeURIComponent(token)}`));
+}
+
+export async function answerShare(token: string, join: boolean): Promise<BookingResult> {
+  return empty(await send(`/api/share/${encodeURIComponent(token)}/${join ? "join" : "decline"}`, { method: "POST" }));
+}
+
+export async function listSharedWithMe(): Promise<BookingResult<SharedBooking[]>> {
+  return json(await send("/api/bookings/shared", { method: "GET" }));
+}
+
+// ---- my places (the heart, H12) -------------------------------------------------------------------
+
+export async function listPlaces(): Promise<BookingResult<PublicInstitutionSummary[]>> {
+  return json(await send("/api/me/places", { method: "GET" }));
+}
+
+export async function keepPlace(slug: string, keep: boolean): Promise<BookingResult> {
+  return empty(await send(`/api/me/places/${encodeURIComponent(slug)}`, { method: keep ? "PUT" : "DELETE" }));
 }
 
 // ---- the institution, for the institution in the session ----------------------------------------
@@ -151,6 +232,11 @@ export async function getLedger(): Promise<BookingResult<LedgerEntry[]>> {
 /** A booking by its number, as typed: 404 `booking_not_found` when the institution has none by it. */
 export async function findBooking(bookingNo: string): Promise<BookingResult<BookingPlace>> {
   return json(await send(`${INSTITUTION}/bookings/${encodeURIComponent(bookingNo.trim())}`, { method: "GET" }));
+}
+
+/** Who joined a booking as a co-sponsor (H37): names only. */
+export async function getSharedWith(bookingNo: string): Promise<BookingResult<SharedWith[]>> {
+  return json(await send(`${INSTITUTION}/bookings/${encodeURIComponent(bookingNo)}/shared-with`, { method: "GET" }));
 }
 
 export async function decide(bookingNo: string, decision: Decision, reason?: string): Promise<BookingResult<{ status: BookingStatus }>> {

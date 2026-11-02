@@ -42,6 +42,12 @@ internal static class BookingRateLimits
     /// </summary>
     public static readonly RateLimitRule ShareReadPerClient = new("share-read-client", 120, TimeSpan.FromMinutes(15));
 
+    /// <summary>
+    /// Places kept by one account (plan 07, H12). A heart is tapped now and then; the limit bounds a
+    /// loop filling the table, since a place is kept without a cap.
+    /// </summary>
+    public static readonly RateLimitRule PlacePerUser = new("place-keep-user", 60, TimeSpan.FromHours(1));
+
     /// <summary>Joins and declines by one account (H17): a person answers a few links, not dozens.</summary>
     public static readonly RateLimitRule ShareAnswerPerUser = new("share-answer-user", 30, TimeSpan.FromHours(1));
 }

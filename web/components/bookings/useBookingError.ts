@@ -32,6 +32,19 @@ const bookingCodes = [
   "reason_required",
   "reason_too_long",
   "stale",
+  // yearly bookings and the memorial planner (plan 07)
+  "recurring_not_found",
+  "memorial_not_found",
+  "memorial_plan_not_found",
+  "not_an_observance",
+  // sharing a booking (co-sponsors)
+  "booking_closed",
+  "too_many_invitations",
+  "invitation_not_found",
+  "invitation_answered",
+  "link_not_found",
+  "own_booking",
+  "already_joined",
   // the institution's slots
   "slot_name_taken",
   "blocked_date_not_found",

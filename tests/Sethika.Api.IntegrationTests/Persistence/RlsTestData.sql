@@ -41,6 +41,7 @@ DECLARE @districtId SMALLINT = (SELECT Id FROM core.Districts       WHERE Code =
     fixture's users and institutions, and a test that dies before its own cleanup would
     otherwise leave rows that block every later reset.                                    */
 DELETE FROM auth.RefreshTokens;
+DELETE FROM auth.FavoriteInstitutions;   -- plan 07, H12: before the institutions they point at
 DELETE FROM auth.LoginHistory;
 DELETE FROM auth.PasswordHistory;
 DELETE FROM auth.UserRoles;

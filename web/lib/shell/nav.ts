@@ -23,6 +23,7 @@ export type GroupKey = "book" | "request" | "apply" | "bookings" | "services" | 
 export type ItemKey =
   | "find"
   | "myBookings"
+  | "memorial"
   | "myServices"
   | "apply"
   | "calendar"
@@ -72,6 +73,7 @@ export const navTree: readonly NavSection[] = [
         items: [
           { key: "find", href: "/find", icon: "search" },
           { key: "myBookings", href: "/bookings/mine", icon: "ticket", screen: "MYBOOKINGS.BOOKINGS" },
+          { key: "memorial", href: "/memorial", icon: "calendar", screen: "MYMEMORIAL.PLANS" },
         ],
       },
       {

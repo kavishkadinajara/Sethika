@@ -166,6 +166,9 @@ public interface IDonorBookingQueries
     /// <param name="today">Today in Colombo, for <see cref="DonorBookingView.CanCancel"/>.</param>
     Task<IReadOnlyList<DonorBookingView>> ListMineAsync(Guid donorId, DateOnly today, CancellationToken cancellationToken = default);
 
+    /// <summary>The active institutions among <paramref name="userId"/>'s places (plan 07, H12), the newest kept first.</summary>
+    Task<IReadOnlyList<PublicInstitutionSummary>> ListPlacesAsync(Guid userId, CancellationToken cancellationToken = default);
+
     /// <summary>The donor's active yearly bookings, soonest next date first.</summary>
     Task<IReadOnlyList<RecurringBookingView>> ListYearlyAsync(Guid donorId, CancellationToken cancellationToken = default);
 

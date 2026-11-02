@@ -11,11 +11,11 @@ import { Field } from "@/components/ui/field";
 import { inputClasses } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
-import { decide, getCalendar, type BookingFailure } from "@/lib/bookings/api";
+import { decide, getCalendar, getSharedWith, type BookingFailure } from "@/lib/bookings/api";
 import { addDays, colomboToday, firstOfMonth, lastOfMonth, monthOf } from "@/lib/bookings/calendar";
 import { touchesMonth } from "@/lib/bookings/live";
 import { inLocale } from "@/lib/bookings/names";
-import type { CalendarBooking, Decision, SlotDay } from "@/lib/bookings/types";
+import type { CalendarBooking, Decision, SharedWith, SlotDay } from "@/lib/bookings/types";
 import { useSession } from "@/lib/auth/useSession";
 import { usePermissions } from "@/lib/permissions/usePermissions";
 import { markShellStale } from "@/lib/shell/summary";
@@ -256,6 +256,25 @@ function DayPanel({ date, days, focus, onDecided }: { date: string; days: SlotDa
  * "Waiting for you" (plan 05, R4) uses it too, so a decision there is the calendar's own call.
  * `focused` marks the booking a jump opened the calendar on, and brings it into view.
  */
+/** Who joined the booking as a co-sponsor (plan 07, H19, H37): the names the donor gave them, nothing else. */
+function SharedWithNames({ bookingNo }: { bookingNo: string }) {
+  const t = useTranslations("Calendar.booking");
+  const [names, setNames] = useState<SharedWith[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getSharedWith(bookingNo).then((result) => {
+      if (!cancelled && result.ok) setNames(result.value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [bookingNo]);
+
+  if (names.length === 0) return null;
+  return <p className="text-sm text-fg">{t("sharedWith", { names: names.map((n) => n.name).join(", ") })}</p>;
+}
+
 export function BookingItem({
   day,
   booking,
@@ -338,6 +357,7 @@ export function BookingItem({
       {booking.notes && <p className="rounded-cup bg-subtle px-3 py-2 text-sm text-fg">{booking.notes}</p>}
       {booking.rejectReason && <p className="text-sm text-muted">{t("rejectedBecause", { reason: booking.rejectReason })}</p>}
       {booking.cancelReason && <p className="text-sm text-muted">{t("cancelledBecause", { reason: booking.cancelReason })}</p>}
+      <SharedWithNames bookingNo={booking.bookingNo} />
 
       {asking ? (
         <form onSubmit={submitReason} className="grid gap-3 pt-1">

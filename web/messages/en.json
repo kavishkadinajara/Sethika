@@ -43,7 +43,8 @@
       "roles": "Roles",
       "members": "Staff",
       "institutions": "Institutions",
-      "users": "Users"
+      "users": "Users",
+      "memorial": "Memorial dana planner"
     },
     "context": {
       "platform": "Platform team",
@@ -204,7 +205,9 @@
       "decisions": "Latest decisions",
       "noDecisions": "No application has been decided yet.",
       "institutions": "Institutions by status",
-      "openInstitutions": "All institutions"
+      "openInstitutions": "All institutions",
+      "myPlaces": "My places",
+      "noPlaces": "Tap the heart on a place's page to keep it here."
     },
     "timeline": {
       "now": "Now"
@@ -909,7 +912,18 @@
       "blocked_date_not_found": "This closed day has already been removed.",
       "no_active_slot": "Add a meal first: a place is listed once there is something to book.",
       "invalid_range": "That range of days cannot be shown.",
-      "invalid_details": "Some details need fixing."
+      "invalid_details": "Some details need fixing.",
+      "recurring_not_found": "This yearly booking has already been stopped.",
+      "memorial_not_found": "This memorial plan could not be found. It may have been archived.",
+      "memorial_plan_not_found": "This memorial plan could not be found. It may have been archived.",
+      "not_an_observance": "This is not the day of that memorial. Please book the day shown in your planner.",
+      "booking_closed": "This booking can no longer be shared or joined.",
+      "too_many_invitations": "A booking can be shared with at most 10 people.",
+      "invitation_not_found": "This invitation has already been withdrawn.",
+      "invitation_answered": "This invitation has already been answered.",
+      "link_not_found": "This link is not valid, or the invitation was withdrawn.",
+      "own_booking": "This is your own booking: you do not need to join it.",
+      "already_joined": "You have already joined this booking."
     },
     "gate": {
       "signInFirst": "Sign in with the account you use for your institution.",
@@ -1046,7 +1060,19 @@
       "doneConfirmedNext": "We have texted you the details, and will remind you the evening before.",
       "thanks": "Thank you for feeding others.",
       "seeMine": "See my bookings",
-      "close": "Close"
+      "close": "Close",
+      "forMemorial": "This booking is for a memorial day in your planner.",
+      "everyYear": "Book this every year",
+      "everyYearHint": "We book the same meal on the same day each year, as soon as the day opens, and text you. You can stop it any time in My bookings.",
+      "everyYearNotYearly": "This memorial day does not come every year, so it cannot be booked every year.",
+      "seePlan": "See my memorial plans"
+    },
+    "heart": {
+      "on": "In my places",
+      "off": "Keep this place",
+      "kept": "{name} is in My places.",
+      "letGo": "{name} is no longer in My places.",
+      "failed": "That did not work. Please try again."
     }
   },
   "Find": {
@@ -1133,6 +1159,55 @@
       "keep": "Keep booking",
       "confirm": "Cancel booking",
       "done": "{bookingNo} is cancelled."
+    },
+    "partOfYearly": "Booked every year",
+    "shareThis": "Share this dana",
+    "yearly": {
+      "title": "Every year",
+      "intro": "Meals we book for you each year, as soon as the day opens.",
+      "every": "Every {day}",
+      "next": "next on {date}",
+      "ended": "no more years to book",
+      "stop": "Stop booking every year",
+      "stopTitle": "Stop booking this every year?",
+      "stopExplain": "We will not book it in later years. A year already booked stays booked; cancel it above if you need to.",
+      "keep": "Keep it",
+      "stopConfirm": "Stop",
+      "stopped": "It will not be booked again."
+    },
+    "shared": {
+      "title": "Shared with me",
+      "with": "With {name}"
+    },
+    "share": {
+      "title": "Share this dana",
+      "description": "Invite family or friends to give this meal with you. We make a link; you send it to them yourself.",
+      "full": "This booking is already shared with {max} people, the most it can be.",
+      "invited": "Invited",
+      "nobody": "Nobody yet.",
+      "close": "Close",
+      "name": "Their name",
+      "nameHint": "As you know them. Only you and the institution see it.",
+      "nameRequired": "Please enter their name.",
+      "note": "A note (optional)",
+      "noteHint": "For example: brings the dessert.",
+      "make": "Make a link",
+      "made": "A link for {name}",
+      "linkLabel": "The link for {name}",
+      "onceOnly": "Copy it now: for safety we show each link only once. Send it by WhatsApp or a text.",
+      "copy": "Copy link",
+      "copied": "Link copied.",
+      "copyFailed": "Could not copy. Select the link and copy it yourself.",
+      "shareVia": "Share…",
+      "shareText": "Join me in giving this dana on Sethika",
+      "another": "Invite someone else",
+      "withdraw": "Withdraw",
+      "withdrawn": "{name}'s invitation is withdrawn.",
+      "status": {
+        "Invited": "Invited",
+        "Joined": "Joined",
+        "Declined": "Declined"
+      }
     }
   },
   "Slots": {
@@ -1288,7 +1363,8 @@
         "cancel": "{bookingNo} cancelled. The donor has been texted.",
         "complete": "{bookingNo} marked as served.",
         "no-show": "{bookingNo} marked as not happened."
-      }
+      },
+      "sharedWith": "Shared with: {names}"
     }
   },
   "Access": {
@@ -1900,5 +1976,84 @@
         "confirm": "I cannot come"
       }
     }
+  },
+  "Memorial": {
+    "title": "Memorial dana planner",
+    "intro": "Remember the people you have lost on the days their faith remembers them. We show each day, and remind you a week before.",
+    "retry": "Try again",
+    "draftNote": "The memorial days are drafts until religious leaders confirm them, so please check a date with your temple, kovil, mosque or church.",
+    "add": "Remember someone",
+    "none": "No one yet. Add someone to see their memorial days.",
+    "passed": "passed away {date}",
+    "noObservances": "Their faith has no memorial days listed yet.",
+    "observances": "Memorial days",
+    "archive": "Remove this plan",
+    "yearNumber": "{name} (year {number})",
+    "state": {
+      "booked": "Booked",
+      "toBook": "Not booked yet",
+      "past": "Gone by"
+    },
+    "everyYear": "every year",
+    "find": "Find a place",
+    "findLabel": "Find a place for {name} on {date}",
+    "everyYearHint": "In the booking form you can choose to book it every year.",
+    "form": {
+      "title": "Remember someone",
+      "description": "Only you see this plan.",
+      "name": "Their name",
+      "nameRequired": "Please enter their name.",
+      "relationship": "Who they were to you (optional)",
+      "relationshipNone": "Not given",
+      "invalid": "Please choose again.",
+      "dateOfPassing": "Date of passing",
+      "dateRequired": "Please enter the date of passing.",
+      "religion": "Their faith",
+      "religionHint": "The memorial days follow this faith's customs.",
+      "religionRequired": "Please choose a faith.",
+      "rulesTitle": "The memorial days we will show",
+      "notes": "Notes (optional)",
+      "notesHint": "Only for you.",
+      "cancel": "Cancel",
+      "save": "Save",
+      "created": "We will remember {name}'s days with you."
+    },
+    "archiveSheet": {
+      "title": "Remove the plan for {name}?",
+      "description": "Its reminders stop. Bookings already made from it stay; you can cancel them in My bookings.",
+      "keep": "Keep it",
+      "confirm": "Remove"
+    }
+  },
+  "Share": {
+    "title": "Share a dana",
+    "notFound": "This link is not valid, or the invitation was withdrawn.",
+    "invitedBy": "{name} invites you to give with them",
+    "where": "Where",
+    "when": "When",
+    "inMemoryOfLabel": "In memory of",
+    "joined": "You have joined this dana.",
+    "declined": "You have declined. Thank you for letting them know.",
+    "joinedNext": "It is under Shared with me in My bookings, and we will remind you the day before.",
+    "seeMine": "See my bookings",
+    "booking": {
+      "Open": "This booking is open.",
+      "Cancelled": "This booking was cancelled.",
+      "Rejected": "The institution could not accept this booking.",
+      "Past": "This dana has already taken place."
+    },
+    "invitation": {
+      "Invited": "This invitation is waiting for an answer.",
+      "Joined": "This invitation has already been accepted.",
+      "Declined": "This invitation has already been declined."
+    },
+    "signInFirst": "Sign in to answer. It takes a minute, and we will bring you straight back here.",
+    "signIn": "Sign in",
+    "createAccount": "Create an account",
+    "institutionSession": "You are signed in for an institution. Switch to your own account to answer.",
+    "notAllowed": "This account cannot join bookings.",
+    "ask": "Will you give this dana with them?",
+    "join": "Join",
+    "decline": "Decline"
   }
 }

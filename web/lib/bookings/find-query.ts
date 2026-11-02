@@ -27,7 +27,27 @@ export type FindQuery = {
   where: Where;
   /** On a phone, the list or the map; a wide screen shows both. */
   view: "list" | "map";
+  /** A memorial observance being found a place for (plan 07, H6): it is on `date`, and "Book" carries it. */
+  memorial: Memorial | null;
 };
+
+/** A memorial plan's publicId and one of its observances' rule codes. */
+export type Memorial = { plan: string; rule: string };
+
+const PUBLIC_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const RULE = /^[A-Z0-9_]{1,50}$/;
+
+/** The memorial named by `plan` and `rule`, both well formed, or null. */
+export function parseMemorial(params: Params): Memorial | null {
+  const plan = params.get("plan");
+  const rule = params.get("rule");
+  return plan && rule && PUBLIC_ID.test(plan) && RULE.test(rule) ? { plan: plan.toLowerCase(), rule } : null;
+}
+
+/** `&plan=...&rule=...` for a link that keeps the memorial, or nothing. */
+export function memorialSearch(memorial: Memorial | null): string {
+  return memorial ? `&plan=${encodeURIComponent(memorial.plan)}&rule=${encodeURIComponent(memorial.rule)}` : "";
+}
 
 type Params = { get(name: string): string | null };
 
@@ -76,6 +96,7 @@ export function parseFindQuery(params: Params, today = colomboToday()): FindQuer
         ? { kind: "district", district }
         : { kind: "anywhere" },
     view: params.get("view") === "map" ? "map" : "list",
+    memorial: parseMemorial(params),
   };
 }
 
@@ -92,6 +113,10 @@ export function toFindSearch(query: FindQuery, today = colomboToday()): string {
     params.set("district", query.where.district);
   }
   if (query.view === "map") params.set("view", "map");
+  if (query.memorial) {
+    params.set("plan", query.memorial.plan);
+    params.set("rule", query.memorial.rule);
+  }
 
   const text = params.toString();
   return text ? `?${text}` : "";

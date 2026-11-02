@@ -4,12 +4,12 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { BookingStatusBadge } from "@/components/bookings/BookingStatusBadge";
 import { useDates } from "@/components/bookings/useDates";
-import { InstitutionIcon, SearchIcon } from "@/components/ui/icons";
+import { HeartIcon, InstitutionIcon, SearchIcon } from "@/components/ui/icons";
 import { Link } from "@/i18n/navigation";
-import { listMyBookings } from "@/lib/bookings/api";
+import { listMyBookings, listPlaces } from "@/lib/bookings/api";
 import { colomboToday } from "@/lib/bookings/calendar";
 import { inLocale } from "@/lib/bookings/names";
-import type { DonorBooking } from "@/lib/bookings/types";
+import type { DonorBooking, PublicInstitutionSummary } from "@/lib/bookings/types";
 import { colomboTime, donorSentence, upcoming } from "@/lib/dashboard/sentence";
 import { usePermissions } from "@/lib/permissions/usePermissions";
 import { cn, focusRing } from "@/lib/utils";
@@ -33,6 +33,7 @@ export function DonorDay() {
   const today = colomboToday(now);
   const reads = can("MYBOOKINGS.BOOKINGS.VIEW");
   const [bookings, setBookings] = useState<DonorBooking[] | null>(null);
+  const [kept, setKept] = useState<PublicInstitutionSummary[] | null>(null);
 
   useEffect(() => {
     if (!reads) return;
@@ -44,6 +45,17 @@ export function DonorDay() {
       cancelled = true;
     };
   }, [reads]);
+
+  // My places (plan 07, H12): the places kept with the heart on their pages; the account's own rows.
+  useEffect(() => {
+    let cancelled = false;
+    void listPlaces().then((result) => {
+      if (!cancelled && result.ok) setKept(result.value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const time = colomboTime(now);
   const coming = bookings ? upcoming(bookings, today, time) : null;
@@ -61,6 +73,11 @@ export function DonorDay() {
           </Panel>
         )}
         <div className="grid gap-6">
+          {kept && (
+            <Panel title={t("panels.myPlaces")}>
+              {kept.length === 0 ? <PanelEmpty>{t("panels.noPlaces")}</PanelEmpty> : <MyPlaces places={kept} />}
+            </Panel>
+          )}
           {reads && bookings && bookings.length > 0 && (
             <Panel title={t("panels.places")}>
               <Places bookings={bookings} />
@@ -115,6 +132,32 @@ function YourTable({ bookings }: { bookings: DonorBooking[] }) {
         </li>
       ))}
     </ol>
+  );
+}
+
+/** The places the donor keeps, the newest kept first. */
+function MyPlaces({ places }: { places: PublicInstitutionSummary[] }) {
+  const locale = useLocale();
+
+  return (
+    <ul className="grid grid-cols-1 gap-2">
+      {places.slice(0, PLACES_SHOWN).map((p) => (
+        <li key={p.slug}>
+          <Link
+            href={`/i/${p.slug}`}
+            className={cn("flex min-h-12 items-center gap-3 rounded-cup border border-hairline px-3 py-2 hover:border-line", focusRing)}
+          >
+            <HeartIcon filled className="size-5 shrink-0 text-accent-strong" />
+            <span className="grid min-w-0">
+              <span className="truncate font-medium text-fg">{inLocale(locale, p.name, p.nameSi, p.nameTa)}</span>
+              <span className="truncate text-sm text-muted">
+                {p.city} · {inLocale(locale, p.district, p.districtSi, p.districtTa)}
+              </span>
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
 

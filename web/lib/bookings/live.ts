@@ -1,4 +1,4 @@
-import { HubConnectionBuilder, LogLevel, type HubConnection } from "@microsoft/signalr";
+import { HubConnectionBuilder, LogLevel, type HubConnection, type ILogger } from "@microsoft/signalr";
 import { firstOfMonth, lastOfMonth } from "./calendar";
 
 /*  Live slot updates (plan 07, H9-H11). The API's hub tells every calendar watching an institution
@@ -21,6 +21,18 @@ export function touchesMonth(change: Pick<AvailabilityChanged, "from" | "to">, m
 }
 
 /**
+ * SignalR's messages as warnings, never errors. Live updates are a hint (H9): a connection that fails,
+ * or is stopped while it negotiates - a page left at once, or React mounting an effect twice in
+ * development - leaves the calendar working as before. SignalR logs those as errors, which the
+ * development overlay then shows over the page.
+ */
+export const liveLogger: ILogger = {
+  log(level, message) {
+    if (level >= LogLevel.Warning && level !== LogLevel.None) console.warn(`[live] ${message}`);
+  },
+};
+
+/**
  * Watches `slug` until the returned function is called. `onChange` hears each change, and a change
  * of every day after a reconnect: anything may have changed while the connection was down.
  */
@@ -28,7 +40,7 @@ export function watchAvailability(slug: string, onChange: (change: AvailabilityC
   const connection: HubConnection = new HubConnectionBuilder()
     .withUrl(HUB_PATH)
     .withAutomaticReconnect()
-    .configureLogging(LogLevel.Warning)
+    .configureLogging(liveLogger)
     .build();
 
   let stopped = false;

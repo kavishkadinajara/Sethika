@@ -9,7 +9,8 @@ the C# engine and the three packages OK, the draft rules OK). H1-H19 agreed. C.1
 committed by the user). C.2 done 2026-11-01 (schema on `Sethika_Test` and the dev `Sethika`; the user
 kept the "day of passing is day 1" count, H24); H20-H27 recorded while building. C.2 committed by the
 user (f5cb142). C.3 done 2026-11-02 (H28-H31; no schema change), committed by the user (14abb76).
-C.4 done 2026-11-02 (H32-H38; schema on `Sethika_Test`, the dev `Sethika` still to publish). Next: C.5.**
+C.4 done 2026-11-02 (H32-H38; schema on `Sethika_Test` and the dev `Sethika`), committed by the user (730cc6d).
+C.5 done 2026-11-02 (H39-H42; the heart's RLS on `Sethika_Test` and the dev `Sethika`), not committed yet. Next: C.6.**
 Update this line and the §7 boxes whenever either changes; a fresh session trusts them.
 
 Decision numbers here are **H1, H2, …**. Plan 03 uses C1-C12 and E1-E35, Phase E V1-V39, plan 06 G1-G11.
@@ -107,6 +108,10 @@ Decided while building (recorded here so the report and DECISIONS.md match the c
 | H36 | (C.4) A link shows `invitation` (Invited, Joined, Declined) and `booking`: Open (requested or approved, today or later), Cancelled, Rejected, or Past (its day has gone, or it was completed or missed). Inviting and answering need Open. The summary is the same for everyone who opens the link. Its donor name is the booking's display name, else the name it was booked under. Answering needs `MYBOOKINGS.BOOKINGS.EDIT` (the DONOR role, a personal session): anonymous is 401 and an institution session 403 | H17's fields and states. The web signs a person in before they join |
 | H37 | (C.4) The institution's "Shared with" is an endpoint of its own, `GET /api/institution/bookings/{no}/shared-with` (`BOOKINGS.CALENDAR.VIEW`): for each person who joined, the name the donor gave them and when they joined. Invited and declined names are not shown | H19's names only, without changing the calendar's read for every booking |
 | H38 | (C.4) A co-sponsor's reminder is the donor's own `BOOKING_REMINDER`, in the co-sponsor's language, under `booking-reminder:{BookingNo}:{UserId}`. It comes from the same job, for approved bookings only, and `ReminderRun` gains `Contributors`. Rate limits: 30 invitations an hour per account; 120 link reads per 15 minutes per address; 30 answers an hour per account | The text already says "this booking is tomorrow", which is as true for a sibling as for the donor |
+| H39 | (C.5) The heart's API is `GET /api/me/places`, `PUT` and `DELETE /api/me/places/{slug}`, under `/api/me`'s rule (MeEndpoints: signed in, no permission, only the caller's own rows, named by the token). Both writes are idempotent (204 again; `DELETE` of a place never kept is 204), `PUT` needs an active institution (404 `institution_not_found`) and is limited to 60 an hour per account; there is no cap. A kept place that stops being active stays kept but is not listed. RLS: `sec.fn_Owner(UserId)` on `auth.FavoriteInstitutions`, FILTER and BLOCK AFTER INSERT/UPDATE. Two taps at once: the primary key refuses the second and the handler answers 204 | Under `/api/me` like the language and the invitations: a person's own preference, which no role should be needed for. The look before the insert only saves a refused insert and its logged error; the key is the guarantee (mutant P3 survives, by design) |
+| H40 | (C.5) "Find a place" on an observance opens `/find?date=…&plan=…&rule=…`; the search keeps `plan` and `rule` in its address and its "Book" links, and drops them when the donor picks another day. On `/i/[slug]` the sheet sends `memorialPlan`/`memorialRule` only for the day the address named. "Every year" for an observance is the sheet's own switch; for an observance that is not yearly the API's `invalid_details` (`everyYear`) is shown as "this memorial day does not come every year" | One booking path (H6) with no second form; a booking for an observance is only valid on its day (H23), so the screen never sends one for any other |
+| H41 | (C.5) The co-sponsor link is made by the web from the API's token: the page's origin and locale path, `/share/{token}`. It is shown once, when made (only the hash is kept, H16), with copy and the phone's own share menu. `/share/[token]` is `noindex` and `no-referrer`. "Share this dana" is offered on a requested or approved booking from today on; the institution's booking item reads its "Shared with" names itself | The link is a bearer secret: it must not reach a search engine or another site's logs |
+| H42 | (C.5) The donor's home keeps "Places you give to" (from bookings) and adds "My places" (the hearts) above it, with a hint when empty. The heart shows only in a personal session | The proposal's "preferred institutions" (H12) without losing the list donors already had |
 
 ## 3. API
 
@@ -215,8 +220,27 @@ Decided while building (recorded here so the report and DECISIONS.md match the c
   the races now wait for `sys.dm_exec_requests` to show the blocking. Built in the `Sethika-c4`
   worktree on `Sethika_C2Test` while C.3's mutations ran, then moved in byte for byte; then, on
   `Sethika_Test`, domain 328/328 and the neighbouring integration classes 220/220, `dotnet format` clean.
-- [ ] **C.5 Screens**: every-year in the sheet and My bookings, `/memorial`, sharing and `/share/[token]`,
-  the heart and My places; en/si/ta; Playwright desktop + 320 px. ~1 day
+- [x] **C.5 Screens**: every-year in the sheet and My bookings, `/memorial`, sharing and `/share/[token]`,
+  the heart and My places; en/si/ta; Playwright desktop + 320 px. ~1 day. **Done 2026-11-02 (H39-H42):**
+  the heart's API first (H12 had no backend): `/api/me/places`, `FavoritePlacesHandler`, RLS `fn_Owner` on
+  `auth.FavoriteInstitutions`; integration 5 (`FavoritePlacesTests`: kept once, newest first, let go alone;
+  only active places; sign-in; **two taps at once forced** on the key, waiting for SQL Server to show the
+  block; RLS from five sessions and both block predicates); 8/9 code mutants killed plus a surviving
+  control, and P3 (the look before the insert) survives by design: the key is the guarantee; 3/3 RLS
+  mutants. Screens: the sheet's "Book this every year" and a memorial day carried from `/find`
+  (`plan`/`rule`), My bookings' "Every year" with stop, "Share this dana" (`ShareSheet`), "Shared with
+  me", `/memorial` (`MemorialPlanner`, in the menu), `/share/[token]` (`ShareScreen`), the heart
+  (`PlaceHeart`) and "My places" on the donor's home, "Shared with" on the institution's booking. 131
+  messages in en/si/ta (si/ta drafts in `docs/translations-to-review.md`). Found by the browser: C.3's live
+  connection logged a stop during negotiation (React's double effect in development, or a page left at
+  once) as a console error, which raised Next's overlay over the page; SignalR's log now goes to
+  `console.warn` (`liveLogger`, with a vitest). `e2e/engagement/engagement.spec.ts` 13/13 (every year,
+  sharing with join/decline/withdraw/own link and the institution's names, the memorial day booked through
+  `/find`, the heart, **two browsers: one books, the other's calendar shows the day taken with no reload**,
+  si and ta on desktop and 320 px); booking, discovery and shell specs green after the menu's sixth link;
+  5/5 web mutants killed by the spec (the live refetch, the memorial in "Book", the link's locale, the
+  heart's state, "Shared with"). `newPhone` now skips numbers already taken (earlier runs' accounts made
+  `already_registered` likely in a full run). vitest 227, tsc, eslint and `dotnet format` clean.
 - [ ] **C.6 Done**: DECISIONS.md, `docs/report/PHASE-C.md`, the full runs, the PR.
 
 **If time runs out, cut in this order:** preferred institutions (H12), the memorial reminder (H8), the

@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { getAvailability, getInstitution, type BookingFailure } from "@/lib/bookings/api";
 import { addDays, addMonths, colomboToday, maskDays, monthOf, weekdayDate } from "@/lib/bookings/calendar";
+import { parseMemorial } from "@/lib/bookings/find-query";
 import { touchesMonth } from "@/lib/bookings/live";
 import { inLocale, localName } from "@/lib/bookings/names";
 import type { Availability, DayAvailability, PublicInstitution, PublicMealSlot } from "@/lib/bookings/types";
@@ -18,6 +19,7 @@ import { Bowl } from "./Bowl";
 import { BookingSheet } from "./BookingSheet";
 import { BowlCalendar, type DayView } from "./BowlCalendar";
 import { EmptyState } from "./EmptyState";
+import { PlaceHeart } from "./PlaceHeart";
 import { useBookingError } from "./useBookingError";
 import { useDates } from "./useDates";
 import { useLiveAvailability } from "./useLiveAvailability";
@@ -47,6 +49,10 @@ export function InstitutionPage({ slug, initial = null }: { slug: string; initia
   // The day as it was when chosen: the sheet keeps it while the month refreshes under it, so a
   // booking's confirmation is not lost when its own booking fills the day.
   const [chosen, setChosen] = useState<DayAvailability | null>(null);
+  // From the memorial planner (plan 07, H6): the observance falls on the address's day, and only a
+  // booking of that day is made for it.
+  const [memorial] = useState(() => (validDate(search.get("date")) ? parseMemorial(search) : null));
+  const memorialDay = memorial ? validDate(search.get("date")) : null;
   // Opening on a month with no open day for the meal moves on to the next one, once.
   const movedOn = useRef(search.get("date") !== null);
 
@@ -192,6 +198,7 @@ export function InstitutionPage({ slug, initial = null }: { slug: string; initia
               institution={institution}
               slot={slot}
               day={chosen}
+              memorial={chosen.date === memorialDay ? memorial : null}
               onClose={() => choose(null)}
               onBooked={refresh}
               onTaken={() => {
@@ -239,7 +246,10 @@ function Profile({ institution }: { institution: PublicInstitution }) {
       <p className="text-sm font-medium text-muted">
         {inLocale(locale, institution.typeName, institution.typeNameSi, institution.typeNameTa)}
       </p>
-      <h1 className="text-3xl font-semibold leading-tight text-brand">{localName(locale, institution)}</h1>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <h1 className="min-w-0 text-3xl font-semibold leading-tight text-brand">{localName(locale, institution)}</h1>
+        <PlaceHeart slug={institution.slug} name={localName(locale, institution)} />
+      </div>
       <p className="text-fg">
         {[institution.addressLine1, institution.addressLine2, institution.city].filter(Boolean).join(", ")} ·{" "}
         {inLocale(locale, institution.district, institution.districtSi, institution.districtTa)}

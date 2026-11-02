@@ -31,6 +31,19 @@ public sealed class DonorBookingQueries(IDbConnectionFactory connections) : IDon
         ORDER BY i.Name, i.Slug;
         """;
 
+    // A person's places (plan 07, H12), the newest kept first. The person's id as well as RLS's owner
+    // branch, like the bookings; a place that is no longer active is kept but not shown.
+    private const string PlacesSql =
+        $"""
+        SELECT {InstitutionColumns}
+        FROM auth.FavoriteInstitutions AS f
+        JOIN org.Institutions AS i ON i.Id = f.InstitutionId
+        JOIN org.InstitutionTypes AS t ON t.Id = i.InstitutionTypeId
+        JOIN core.Districts AS d ON d.Id = i.DistrictId
+        WHERE f.UserId = @userId AND i.Status = 'Active' AND i.IsDeleted = 0
+        ORDER BY f.AddedAt DESC, i.Name, i.Slug;
+        """;
+
     // An active institution is reachable by its slug whether or not it is listed (C10): the link is
     // what an institution shares.
     private const string FindSql =
@@ -230,6 +243,17 @@ public sealed class DonorBookingQueries(IDbConnectionFactory connections) : IDon
             r.InstitutionNameSi, r.InstitutionNameTa, r.MealSlot, r.SlotName, r.SlotNameSi, r.SlotNameTa,
             r.Headcount, r.FulfilmentMode, r.InMemoryOf, r.Notes, r.CreatedAt, r.RejectReason, r.CancelReason,
             Booking.DonorMayCancel(r.Status, r.Date, today), r.Yearly))];
+    }
+
+    public async Task<IReadOnlyList<PublicInstitutionSummary>> ListPlacesAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        var rows = await connection.QueryAsync<PublicInstitutionSummary>(new CommandDefinition(
+            PlacesSql,
+            new { userId },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        return [.. rows];
     }
 
     public async Task<IReadOnlyList<RecurringBookingView>> ListYearlyAsync(Guid donorId, CancellationToken cancellationToken = default)

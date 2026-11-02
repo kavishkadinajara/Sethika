@@ -32,6 +32,7 @@ public partial class SethikaDbContext(DbContextOptions<SethikaDbContext> options
     public DbSet<PreviousPassword> PreviousPasswords => Set<PreviousPassword>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<DonorProfile> DonorProfiles => Set<DonorProfile>();
+    public DbSet<FavoriteInstitution> FavoriteInstitutions => Set<FavoriteInstitution>();
     public DbSet<UserConsent> UserConsents => Set<UserConsent>();
     public DbSet<LegalDocument> LegalDocuments => Set<LegalDocument>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using Sethika.Api.RateLimiting;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Access.Language;
 using Sethika.Application.Access.Roles;
+using Sethika.Application.Bookings.Places;
 using Sethika.Domain.Bookings;
 
 namespace Sethika.Api.Endpoints;
@@ -27,6 +29,11 @@ internal static class MeEndpoints
         me.MapGet("/invitations", GetInvitationsAsync);
         me.MapPost("/invitations/{id:guid}/accept", AcceptInvitationAsync);
         me.MapPost("/invitations/{id:guid}/decline", DeclineInvitationAsync);
+
+        // The places this person keeps, the heart on an institution's page (plan 07, H12).
+        me.MapGet("/places", ListPlacesAsync);
+        me.MapPut("/places/{slug}", KeepPlaceAsync).RateLimitPerUser(BookingRateLimits.PlacePerUser);
+        me.MapDelete("/places/{slug}", LetPlaceGoAsync);
 
         return app;
     }
@@ -129,6 +136,46 @@ internal static class MeEndpoints
         httpContext.Response.Headers.CacheControl = "no-store";
         return Results.Ok(new { bookingsToAnswer, registrationsWaiting, invitations });
     }
+
+    /// <summary><c>org.Institutions.Slug</c>'s length; anything longer cannot be one.</summary>
+    private const int MaxSlugLength = 150;
+
+    /// <summary>The active places the caller keeps, the newest first.</summary>
+    private static async Task<IResult> ListPlacesAsync(ICurrentUserContext currentUser, IDonorBookingQueries queries, CancellationToken cancellationToken) =>
+        currentUser.UserId is { } userId
+            ? Results.Ok(await queries.ListPlacesAsync(userId, cancellationToken))
+            : Results.Unauthorized();
+
+    /// <summary>Keeps a place: 204, also when it was kept already; 404 for no active institution by that slug.</summary>
+    private static async Task<IResult> KeepPlaceAsync(string slug, ICurrentUserContext currentUser, FavoritePlacesHandler handler, CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        return IsSlug(slug) && await handler.AddAsync(userId, slug.Trim(), cancellationToken) is null
+            ? Results.NoContent()
+            : ApiErrors.Error(StatusCodes.Status404NotFound, FavoritePlacesHandler.NotFound);
+    }
+
+    /// <summary>Lets a place go: 204 whether or not it was kept.</summary>
+    private static async Task<IResult> LetPlaceGoAsync(string slug, ICurrentUserContext currentUser, FavoritePlacesHandler handler, CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (IsSlug(slug))
+        {
+            await handler.RemoveAsync(userId, slug.Trim(), cancellationToken);
+        }
+
+        return Results.NoContent();
+    }
+
+    private static bool IsSlug(string slug) => !string.IsNullOrWhiteSpace(slug) && slug.Trim().Length <= MaxSlugLength;
 
     /// <summary>The caller's invitations still waiting for an answer.</summary>
     /// <remarks>Their own only: the user is the token's, and RLS shows an invitation to its invitee.</remarks>
