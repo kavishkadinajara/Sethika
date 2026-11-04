@@ -255,6 +255,37 @@ a co-sponsor; contributors' shares of a cost; live counts on `/find` and live up
 a per-address limit on connecting to the hub; confirmed memorial rules and religion names;
 `core.SpecialDays` (poya, festivals).
 
+## Standing sponsors (plan 08)
+
+Full reasoning in `docs/plans/08-STANDING-SPONSORS.md` §2 (K1-K12 agreed with the user on 2026-11-02,
+K13-K37 decided while building). Not in the proposal: the user asked for it after Phase C ("an
+institution must be able to set up dana dates itself, for a donor ... any scenario. People give like that
+today"), and it took the place of the gratitude wall and part of Phase D's reports (plan 08 Q1).
+
+| # | Decision | Why |
+|---|----------|-----|
+| K1, K13, K14 | **The donor book.** `org.InstitutionDonors` (in the schema since the start, never used) holds the institution's own regular donors, most of whom never use the app: name, phone, notes, the language of their texts, and "this person agreed to receive texts" with who ticked it and when. A row is linked to the Sethika account whose *confirmed* phone it has, never a deleted one; one row per account per institution (`UX_InstDonor_User`) | One history per person per institution; an unconfirmed phone proves nothing about who holds it |
+| K2, K15 | **A standing sponsorship** is one row (`booking.StandingSponsorships`) for any of the user's scenarios: once, daily, weekly (a weekday mask), monthly on several days (a 1-31 mask) every N months from the start month, yearly. A day a month does not have is skipped, not moved (Q3). The database refuses any other shape (`CK_Standing_Shape`, `CK_Standing_YearDate`) | Every scenario in plan 08 §0 is one row, checked where it is stored |
+| K3, K18, K20-K22 | **Each day is an ordinary booking** (`Source = 'Standing'`), made by the same engine and approved at once, so calendars, places left, the overbooking guarantee, reminders and completing need no new code. A day *holds* its place (Q5). Setting one up books the next 31 days while staff wait; a nightly job (`standing-bookings`, 00:45 Colombo) books the rest of each slot's window. A day is booked once: a day with any booking or change is never booked again, and a day the engine refuses is tried again each night. No text per day | One engine, one judge (C4). A daily sponsor must not be texted daily; a 365-day window took 17.5 s in one request |
+| K4, K5, K19, K23 | **Changes to a day** are rows of `booking.StandingExceptions` (skipped, released, blocked, moved to or from), one per sponsorship and day. Skipping, ending and booking one of its days each take an update lock on the sponsorship's row after the slot-day's Redis lock, so none can cross another. Ending keeps today's meal | A cancelled booking alone would be booked again by the next night's run; with RCSI a reader does not wait for an uncommitted change, so the row lock is what serialises them (both races forced in the tests) |
+| K6, K25-K27 | **Asking for a held day.** A donor on `/i/[slug]` sees a regular donor's full day as "held: ask for it"; the institution gives it (one transaction: the standing day released, its booking cancelled, the asker booked approved, both texted) or keeps it. "Held" is read past Row-Level Security as counts only (`SqlStandingHolds`) | Scenario 4: the institution decides. Neither a donor's session nor the public calendar may read who holds a day |
+| K7, K28 | **A blocked date over standing days** lets each go (`Blocked`) in the block's own transaction and texts each sponsor once per block; ordinary donors' bookings are listed, not cancelled (Q4) | Scenario 6, as the user answered |
+| K8, K29 | **Swaps**, this time (both days booked; four changes recorded; both rebooked through the engine) or from now on (each sponsorship ends and a new one takes the other's pattern). Both slot-days' locks in date order, both row locks in id order | Scenario 7 in one transaction, so a swap never leaves a day empty or double (forced race: two staff swapping one day with different partners, one wins) |
+| K10, K30 | **Texts** through the outbox (`StandingTextDue`, `DayRequestAnswered`) with dedup keys: a linked donor is texted as their account; one without an account at the institution's phone only with the consent box ticked (Q2); otherwise not at all | Every change of someone's day reaches them, and only with consent |
+| K11, K17 | Screen `BOOKINGS.SPONSORS` (VIEW/CREATE/EDIT); giving or keeping a day is `BOOKINGS.CALENDAR.APPROVE`/`REJECT`. Institutions approved before this change keep their cloned roles | The catalogue's rules; cloning happens at approval |
+| K16 | **RLS**: the three new tables are tenant-only; a linked sponsor reads their days only as their own bookings (`DonorUserId`) | The narrowest reach that still lets each person see what is theirs |
+| K31-K33 | The form's preview of the next 12 days and their clashes is the server's (`/sponsorships/preview`, the night run's arithmetic and the calendar's rules); calendars mark regular donors' days | A TypeScript copy of the pattern and the engine's rules would drift |
+| K35 | **A linked sponsor's own "I can't give that day"** in My bookings (`POST /api/bookings/{bookingNo}/skip`) runs the staff skip itself in a scope stamped as the platform (`PlatformOwnStandingDays`), found only through a booking that is the caller's and a donor book row linked to the caller. Today is allowed (the user, 2026-11-04) | Their session cannot write `StandingExceptions` (K16); one judge, not a copy of the skip |
+| K36, K37 | **Linking at sign-up and sign-in**: `SqlDonorBookLinks` links every unlinked row with the account's confirmed phone, in every institution, and the standing days already booked for it become the person's in the same transaction. A staff change of link carries those days too | Without the days following, a newly linked person would see nothing until a new day was booked |
+
+Platform reach from a request is now in three narrow classes (`SqlShareLinks`, `SqlStandingHolds`,
+`SqlDonorBookLinks`) and one platform scope for one call (`PlatformOwnStandingDays`); each is keyed by
+what the caller holds and returns only what plan 07 H33 or plan 08 K25/K35/K36 lists.
+
+**Not built, and the report says so** (plan 08 §6): poya and festival patterns (`core.SpecialDays` is
+not seeded); importing a donor book; payments or pledges for standing days; withdrawing a day request;
+a person's own list of their arrangements (they see the days, not the pattern).
+
 ## Unconfirmed reference data (seeded as drafts)
 CLAUDE.md forbids inventing facts about real institutions. Where the flow cannot run without a row,
 the row is seeded as a visibly marked draft and listed here until someone confirms or replaces it.
@@ -269,6 +300,7 @@ the row is seeded as a visibly marked draft and listed here until someone confir
 | SMS texts for religious services (Sinhala and Tamil) | `11_NotifyTemplates.sql` | listed in `docs/translations-to-review.md` | a Sinhala and a Tamil reviewer |
 | Religions (Sinhala and Tamil names) and memorial rules per faith (which days, their offsets, H24's "day of passing is day 1") | `03_LookupTypes.sql`, `13_MemorialDrafts.sql` | `DRAFT` in every rule name; listed in `docs/translations-to-review.md` | a reviewer of each faith |
 | SMS texts and screen messages for Phase C (Sinhala and Tamil) | `11_NotifyTemplates.sql`, `web/messages` | listed in `docs/translations-to-review.md` | a Sinhala and a Tamil reviewer |
+| SMS texts and screen messages for standing sponsors (Sinhala and Tamil) | `11_NotifyTemplates.sql`, `web/messages` | listed in `docs/translations-to-review.md` | a Sinhala and a Tamil reviewer |
 | Sinhala and Tamil names of districts and institution types | not seeded: `NameSi`/`NameTa` are `NULL`, so the search page shows the English name in every language | — | a Sinhala and a Tamil reviewer |
 
 The registration reject reasons in the same seed are Sethika's own review policy, not facts about
@@ -295,5 +327,5 @@ tables above once the code exists and the choice has held.
 | `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` — religious services, leader roster, conflict-free assignment | `phase-e-religious-services`, `phase-e-donor` | Done. 8.1-8.4 and 8.6 merged (PR #12); 8.5 and 8.7-8.10 (donor requests, assignment endpoints, texts and reminders, screens) pushed to `develop` on 2026-11-01 without a pull request, described in `docs/plans/PHASE-E-DELIVERY.md`; decisions summarised above under "Religious services (Phase E)" |
 | `docs/plans/06-DISCOVERY.md` — public institution pages, cross-institution search, Redis GEO, the month view and the map | `rcsi-on` (with `READ_COMMITTED_SNAPSHOT`, D11) | B.1-B.4 built and committed; decisions summarised above under "Discovery (Phase B)" |
 | `docs/plans/07-ENGAGEMENT.md` — yearly bookings, the Memorial Dana Planner, live slot updates (SignalR), preferred institutions, co-sponsors | `phase-c-engagement` | C.1-C.5 built and committed; decisions summarised above under "Engagement (Phase C)" |
-| `docs/plans/08-STANDING-SPONSORS.md` — the institution's own regular donors on any pattern, day requests, swaps | `standing-sponsors` (after Phase C's PR) | Agreed 2026-11-02 (K1-K12, §8 answered); K.1-K.2 built (K13-K24) |
+| `docs/plans/08-STANDING-SPONSORS.md` — the institution's own regular donors on any pattern, day requests, swaps | `standing-sponsors` (after Phase C's PR) | K.1-K.5 built (K1-K37); decisions summarised above under "Standing sponsors (plan 08)" |
 | `docs/plans/PHASE-F-MOBILE.md` — donor mobile app (Expo), mobile sessions, push notifications | `ccr-79f10240-uk4n3v`, `mobile-booking` | F.1-F.4 merged (PR #9, #11: scaffold, mobile sessions, browse and book, my bookings); phone walk-through owed; F.5 push notifications next (S8) |

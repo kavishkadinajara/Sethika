@@ -8,8 +8,9 @@ import { expect, scrollsSideways, test, widerThanWindow } from "../support/test"
 
 /*  Plan 08, K.4: the screens of standing sponsors - the donor book's arrangements with their next
     days (set up with a preview of clashes, skip, swap), the calendar's regular donors and its tray of
-    asked-for days, a held day on /i/[slug], and My bookings' requests. The rules are the API's
-    integration tests (StandingSponsorshipTests, StandingChangesTests); these prove the screens use
+    asked-for days, a held day on /i/[slug], My bookings' requests, and (K24, K36) a person the donor
+    book knows signing up and letting one of their regular days go. The rules are the API's integration
+    tests (StandingSponsorshipTests, StandingChangesTests, StandingSponsorLinkTests); these prove the screens use
     the API, say what happened in words, and fit a 320 px phone.                                    */
 
 function shot(name: string): string {
@@ -206,6 +207,74 @@ test("a donor asks for a held day, and the institution gives it to them @phone",
     await expect(requests.getByText("Given to you")).toBeVisible();
     await expect(requests.getByText(/^Booked as BK-/)).toBeVisible();
     await page.screenshot({ path: shot(`mine-${testInfo.project.name}`), fullPage: true });
+  } finally {
+    await unlist(baseURL!, institution);
+  }
+});
+
+test("a person the donor book knows signs up, sees their regular days, and lets one go @phone", async ({ page, baseURL }, testInfo) => {
+  const institution = await approvedInstitution(baseURL!, `E2E Standing Own ${Date.now()}`);
+  try {
+    const slot = await slotOf(baseURL!, institution);
+    const first = colomboDate(4);
+    const second = colomboDate(6);
+
+    // The institution knows the person before they use the app (K14): their days are booked with no account.
+    const phone = newPhone();
+    const donor = await donorOf(baseURL!, institution, "E2E Own Regular", phone);
+    const firstSponsorship = await onceOf(baseURL!, institution, donor, slot, first);
+    await onceOf(baseURL!, institution, donor, slot, second);
+
+    // Signing up with that phone links them, and the days become theirs (K36).
+    const account = await createAccount(baseURL!, "E2E Own Regular", "en", phone);
+    await signIn(page, account);
+    await page.goto("/bookings/mine");
+    const upcoming = page.getByRole("listitem").filter({ hasText: "A regular day the institution set up for you" });
+    await expect(upcoming).toHaveCount(2);
+    const card = upcoming.first();
+
+    // A regular day is let go, not cancelled (K24).
+    await expect(card.getByRole("button", { name: "Cancel booking" })).toHaveCount(0);
+    await card.getByRole("button", { name: "I can't give that day" }).click();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet.getByText("Only this day is let go", { exact: false })).toBeVisible();
+    expect(await scrollsSideways(page)).toBe(false);
+    await page.screenshot({ path: shot(`skip-${testInfo.project.name}`) });
+    await field(sheet, "Reason (optional)").fill("Away in Kandy");
+    await sheet.getByRole("button", { name: "I can't give that day" }).click();
+    await expect(page.getByText(/^BK-\S+ is let go\. We will text you to confirm\.$/).first()).toBeVisible();
+
+    // It is past and cancelled with their reason; the other day stays theirs, with its button.
+    await expect(page.getByText("Cancelled: Away in Kandy")).toBeVisible();
+    await expect(page.getByRole("button", { name: "I can't give that day" })).toHaveCount(1);
+    await page.screenshot({ path: shot(`skipped-${testInfo.project.name}`), fullPage: true });
+
+    // The institution sees the day let go, not merely cancelled: it is never booked again (K4).
+    const staff = await apiAs(baseURL!, institution.owner);
+    try {
+      const details = (await (await staff.get(`/api/institution/sponsorships/${firstSponsorship}`)).json()) as { days: { date: string; state: string; reason: string | null }[] };
+      expect(details.days.find((d) => d.date === first)).toMatchObject({ state: "Skipped", reason: "Away in Kandy" });
+    } finally {
+      await staff.dispose();
+    }
+
+    // The same in Sinhala and Tamil, on a phone too: through the language menu, which saves the
+    // choice to the account (an address alone is moved back to the account's language, A11).
+    for (const [locale, name, label] of [
+      ["si", "සිංහල", "මට එදින දිය නොහැක"],
+      ["ta", "தமிழ்", "அந்த நாளில் என்னால் வழங்க முடியாது"],
+    ] as const) {
+      await page.getByRole("banner").getByRole("button", { name: /^(Language|භාෂාව|மொழி)$/ }).click();
+      await page.getByRole("menuitem", { name }).click();
+      await expect(page.locator("html")).toHaveAttribute("lang", locale);
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByRole("button", { name: label })).toHaveCount(1);
+      await page.getByRole("button", { name: label }).click();
+      await expect(page.getByRole("dialog")).toBeVisible();
+      expect(await widerThanWindow(page)).toEqual([]);
+      await page.screenshot({ path: shot(`skip-${locale}-${testInfo.project.name}`) });
+      await page.keyboard.press("Escape");
+    }
   } finally {
     await unlist(baseURL!, institution);
   }

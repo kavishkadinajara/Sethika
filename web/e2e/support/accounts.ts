@@ -64,9 +64,8 @@ async function ok(response: Awaited<ReturnType<APIRequestContext["post"]>>, what
   return response;
 }
 
-/** Signs a new donor up through the API and returns how to sign in as them. */
-export async function createAccount(_baseURL: string, fullName = "E2E Applicant", language: "en" | "si" | "ta" = "en"): Promise<Account> {
-  const phone = newPhone();
+/** Signs a new donor up through the API and returns how to sign in as them; at <phone> if given (07x...). */
+export async function createAccount(_baseURL: string, fullName = "E2E Applicant", language: "en" | "si" | "ta" = "en", phone = newPhone()): Promise<Account> {
   const api = await request.newContext({ baseURL: apiURL, extraHTTPHeaders: { "X-Forwarded-For": anotherPhoneAddress() } });
   try {
     await ok(await api.post("/api/auth/otp/request", { data: { phoneNumber: phone, purpose: "signup", language } }), "OTP request");

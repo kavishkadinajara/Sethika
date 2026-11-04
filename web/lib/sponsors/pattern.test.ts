@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { byDonor, canSkip, isDayOfSomeYear, patternFields, patternProblems, swapPartners, swappableDays, type PatternForm } from "./pattern";
+import { byDonor, canLetGoOwnDay, canSkip, isDayOfSomeYear, patternFields, patternProblems, swapPartners, swappableDays, type PatternForm } from "./pattern";
 import type { Sponsorship, SponsorshipDay } from "./types";
 
 const form = (patch: Partial<PatternForm> = {}): PatternForm => ({
@@ -155,5 +155,22 @@ describe("swapPartners", () => {
     const own = sponsorship("own");
     const all = [own, sponsorship("same"), sponsorship("dinner", { mealSlot: "dinner" }), sponsorship("ended", { status: "Ended" })];
     expect(swapPartners(all, own).map((s) => s.publicId)).toEqual(["same"]);
+  });
+});
+
+describe("canLetGoOwnDay", () => {
+  const today = "2026-11-05";
+  const own = (patch: Partial<{ regular: boolean; status: string; date: string }> = {}) => ({ regular: true, status: "Approved", date: today, ...patch });
+
+  it("lets a regular donor let go a day of theirs from today on, today included", () => {
+    expect(canLetGoOwnDay(own(), today)).toBe(true);
+    expect(canLetGoOwnDay(own({ date: "2026-12-05", status: "Requested" }), today)).toBe(true);
+  });
+
+  it("not a past day, one no longer booked, or an ordinary booking", () => {
+    expect(canLetGoOwnDay(own({ date: "2026-11-04" }), today)).toBe(false);
+    expect(canLetGoOwnDay(own({ status: "Cancelled" }), today)).toBe(false);
+    expect(canLetGoOwnDay(own({ status: "Completed" }), today)).toBe(false);
+    expect(canLetGoOwnDay(own({ regular: false }), today)).toBe(false);
   });
 });

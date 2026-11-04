@@ -1593,3 +1593,18 @@ calendar's regular donors and asked-for days, asking for a held day, and My book
 | `Booking.errors.day_request_open` | You have already asked for this day. We will text you their answer. | ඔබ දැනටමත් මෙම දිනය ඉල්ලා ඇත. ඔවුන්ගේ පිළිතුර අපි කෙටි පණිවිඩයෙන් දන්වමු. | நீங்கள் ஏற்கனவே இந்த நாளைக் கேட்டுள்ளீர்கள். அவர்களின் பதிலைக் குறுஞ்செய்தியில் தெரிவிப்போம். | | |
 | `Booking.errors.day_request_answered` | This request has already been answered. | මෙම ඉල්ලීමට දැනටමත් පිළිතුරු දී ඇත. | இந்தக் கோரிக்கைக்கு ஏற்கனவே பதிலளிக்கப்பட்டது. | | |
 | `Booking.errors.day_request_not_found` | This request could not be found. | මෙම ඉල්ලීම සොයාගත නොහැකි විය. | இந்தக் கோரிக்கையைக் கண்டுபிடிக்க முடியவில்லை. | | |
+
+## Standing sponsors' own days (2026-11-04, `MyBookings`, `Booking.errors`, plan 08 K.5)
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `MyBookings.cantGive` | I can't give that day | මට එදින දිය නොහැක | அந்த நாளில் என்னால் வழங்க முடியாது | | |
+| `MyBookings.skipSheet.title` | Can't give on this day? | මෙදින දන් දිය නොහැකිද? | இந்த நாளில் வழங்க முடியாதா? | | |
+| `MyBookings.skipSheet.description` | {bookingNo}. Only this day is let go: your other regular days stay yours. The institution sees it, and the day opens for someone else. | {bookingNo}. මෙම දිනය පමණක් අත්හරිනු ලැබේ: ඔබේ අනෙක් නිත්‍ය දින ඔබටම රැඳේ. ආයතනයට එය පෙනෙන අතර, දිනය වෙනත් අයෙකුට විවෘත වේ. | {bookingNo}. இந்த நாள் மட்டுமே விடப்படும்: உங்கள் மற்ற வழக்கமான நாட்கள் உங்களிடமே இருக்கும். நிறுவனம் இதைப் பார்க்கும், இந்த நாள் வேறொருவருக்குக் கிடைக்கும். | | |
+| `MyBookings.skipSheet.reason` | Reason (optional) | හේතුව (අත්‍යවශ්‍ය නොවේ) | காரணம் (விருப்பத்தேர்வு) | | |
+| `MyBookings.skipSheet.reasonHint` | The institution will see it. | ආයතනයට එය පෙනෙනු ඇත. | நிறுவனம் இதைப் பார்க்கும். | | |
+| `MyBookings.skipSheet.keep` | Keep this day | මෙම දිනය තබා ගන්න | இந்த நாளை வைத்திருங்கள் | | |
+| `MyBookings.skipSheet.confirm` | I can't give that day | මට එදින දිය නොහැක | அந்த நாளில் என்னால் வழங்க முடியாது | | |
+| `MyBookings.skipSheet.done` | {bookingNo} is let go. We will text you to confirm. | {bookingNo} අත්හරින ලදී. තහවුරු කිරීමට අපි ඔබට කෙටි පණිවිඩයක් එවන්නෙමු. | {bookingNo} விடப்பட்டது. உறுதிப்படுத்த உங்களுக்குக் குறுஞ்செய்தி அனுப்புவோம். | | |
+| `Booking.errors.sponsorship_ended` | These regular days have ended. | මෙම නිත්‍ය දින අවසන් වී ඇත. | இந்த வழக்கமான நாட்கள் முடிந்துவிட்டன. | | |
+| `Booking.errors.day_already_changed` | That day has already been let go or swapped. | එම දිනය දැනටමත් නිදහස් කර හෝ මාරු කර ඇත. | அந்த நாள் ஏற்கனவே விடுவிக்கப்பட்டது அல்லது மாற்றப்பட்டது. | | |

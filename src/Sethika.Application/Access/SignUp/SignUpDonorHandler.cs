@@ -33,6 +33,7 @@ public sealed class SignUpDonorHandler(
     IPhoneNumberNormalizer phoneNumbers,
     IPasswordPolicy passwordPolicy,
     IPasswordHasher<User> passwordHasher,
+    IDonorBookLinks donorBooks,
     TimeProvider timeProvider)
 {
     private const int FullNameMaxLength = 150;
@@ -188,6 +189,10 @@ public sealed class SignUpDonorHandler(
 
             throw;
         }
+
+        // The phone was just proved by the ticket: a donor book that already has it gains the
+        // account, and its standing days show in My bookings (plan 08, K36).
+        await donorBooks.LinkAsync(user.Id, cancellationToken).ConfigureAwait(false);
 
         return SignUpDonorResult.Success(user.Id);
     }

@@ -80,6 +80,8 @@ public static class DependencyInjection
         services.AddScoped<ISharingQueries, SharingQueries>();
         services.AddScoped<IShareLinks>(_ => new SqlShareLinks(connectionString));
         services.AddScoped<IStandingHolds>(_ => new SqlStandingHolds(connectionString));
+        services.AddScoped<IDonorBookLinks>(_ => new SqlDonorBookLinks(connectionString));
+        services.AddScoped<IOwnStandingDays, PlatformOwnStandingDays>();
         services.AddScoped<IBookingNotificationQueries, BookingNotificationQueries>();
         services.AddScoped<IServiceSetupQueries, ServiceSetupQueries>();
         services.AddScoped<IDonorBookQueries, DonorBookQueries>();

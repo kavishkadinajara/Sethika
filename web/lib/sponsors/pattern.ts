@@ -69,6 +69,14 @@ export function byDonor(sponsorships: readonly Sponsorship[]): Map<string, Spons
 }
 
 /**
+ * Whether a regular donor can let one of their own days go from My bookings (K24, K35): a regular
+ * day, still booked, today or later. Today too, unlike an ordinary booking's cancel (plan 03 Q1).
+ */
+export function canLetGoOwnDay(booking: { regular: boolean; status: string; date: string }, today: string): boolean {
+  return booking.regular && (booking.status === "Requested" || booking.status === "Approved") && booking.date >= today;
+}
+
+/**
  * Whether staff can still say the sponsor cannot give on a day (K23): today or later, not already let
  * go or moved, and not a meal already given.
  */

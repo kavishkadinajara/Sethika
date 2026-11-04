@@ -16,6 +16,8 @@ namespace Sethika.Application.Bookings.Sponsors;
 /// A person whose phone is a Sethika account's confirmed phone is linked to that account when added or
 /// changed, so they will see their standing days in My bookings. An unconfirmed phone proves nothing
 /// about who holds it, so it links nothing; nor does a deleted account, whose phone a new one may hold.
+/// A change of link carries the standing days still to come with it (K37). The person's own sign-up
+/// or sign-in links them too (<see cref="IDonorBookLinks"/>, K36).
 /// </remarks>
 public sealed class DonorBookHandler(ISethikaDbContext db, IPhoneNumberNormalizer phoneNumbers, TimeProvider timeProvider)
 {
@@ -77,6 +79,7 @@ public sealed class DonorBookHandler(ISethikaDbContext db, IPhoneNumberNormalize
         }
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
+        var linkedBefore = donor.UserId;
         var invalid = await ApplyAsync(input, donor, fields, userId, now, cancellationToken).ConfigureAwait(false);
         if (invalid is not null)
         {
@@ -87,7 +90,28 @@ public sealed class DonorBookHandler(ISethikaDbContext db, IPhoneNumberNormalize
         donor.UpdatedAt = now;
         donor.UpdatedBy = userId;
 
-        return await SaveAsync(donor, cancellationToken).ConfigureAwait(false);
+        if (donor.UserId == linkedBefore)
+        {
+            return await SaveAsync(donor, cancellationToken).ConfigureAwait(false);
+        }
+
+        // The link changed (K37): the standing days still to come follow it in the same transaction, so
+        // the account now linked sees them in My bookings and the one unlinked no longer does.
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        var saved = await SaveAsync(donor, cancellationToken).ConfigureAwait(false);
+        if (!saved.Succeeded)
+        {
+            return saved;
+        }
+
+        await db.Bookings
+            .Where(b => b.InstitutionDonorId == donor.Id && b.InstitutionId == institutionId && b.Source == Booking.StandingSource
+                        && (b.Status == BookingStatus.Requested || b.Status == BookingStatus.Approved))
+            .ExecuteUpdateAsync(setters => setters.SetProperty(b => b.DonorUserId, donor.UserId), cancellationToken)
+            .ConfigureAwait(false);
+
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return saved;
     }
 
     private async Task<DonorChangeResult> SaveAsync(InstitutionDonor donor, CancellationToken cancellationToken)

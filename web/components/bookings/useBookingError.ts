@@ -50,6 +50,9 @@ const bookingCodes = [
   "day_request_open",
   "day_request_answered",
   "day_request_not_found",
+  // a regular donor letting their own day go (plan 08, K24)
+  "sponsorship_ended",
+  "day_already_changed",
   // the institution's slots
   "slot_name_taken",
   "blocked_date_not_found",

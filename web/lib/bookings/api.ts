@@ -91,6 +91,14 @@ export async function cancelMyBooking(bookingNo: string, reason: string | null):
   return empty(await send(`/api/bookings/${encodeURIComponent(bookingNo)}/cancel`, jsonBody("POST", { reason })));
 }
 
+/**
+ * A linked regular donor's "I can't give that day" (plan 08, K24): lets go the day of their standing
+ * booking, today or later, and only that day. The institution sees it, and the donor is texted once.
+ */
+export async function skipMyRegularDay(bookingNo: string, reason: string | null): Promise<BookingResult> {
+  return empty(await send(`/api/bookings/${encodeURIComponent(bookingNo)}/skip`, jsonBody("POST", { reason })));
+}
+
 /** The donor's active yearly bookings, soonest next first. */
 export async function listYearly(): Promise<BookingResult<YearlyBooking[]>> {
   return json(await send("/api/bookings/recurring", { method: "GET" }));

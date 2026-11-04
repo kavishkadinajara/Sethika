@@ -928,7 +928,9 @@
       "day_not_held": "This day is no longer held by a regular donor. The calendar has been refreshed.",
       "day_request_open": "You have already asked for this day. We will text you their answer.",
       "day_request_answered": "This request has already been answered.",
-      "day_request_not_found": "This request could not be found."
+      "day_request_not_found": "This request could not be found.",
+      "sponsorship_ended": "These regular days have ended.",
+      "day_already_changed": "That day has already been let go or swapped."
     },
     "gate": {
       "signInFirst": "Sign in with the account you use for your institution.",
@@ -1178,6 +1180,7 @@
     "cancelledBecause": "Cancelled: {reason}",
     "waiting": "Waiting for their reply. We will text you.",
     "cancel": "Cancel booking",
+    "cantGive": "I can't give that day",
     "cancelSheet": {
       "title": "Cancel this booking?",
       "description": "{bookingNo}. The day becomes free for someone else.",
@@ -1186,6 +1189,15 @@
       "keep": "Keep booking",
       "confirm": "Cancel booking",
       "done": "{bookingNo} is cancelled."
+    },
+    "skipSheet": {
+      "title": "Can't give on this day?",
+      "description": "{bookingNo}. Only this day is let go: your other regular days stay yours. The institution sees it, and the day opens for someone else.",
+      "reason": "Reason (optional)",
+      "reasonHint": "The institution will see it.",
+      "keep": "Keep this day",
+      "confirm": "I can't give that day",
+      "done": "{bookingNo} is let go. We will text you to confirm."
     },
     "partOfYearly": "Booked every year",
     "shareThis": "Share this dana",

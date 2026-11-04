@@ -342,6 +342,48 @@ public sealed class StandingSponsorshipHandler(
     }
 
     /// <summary>
+    /// The linked sponsor's own "I can't give that day" (K24, K35): the day of their standing booking
+    /// <paramref name="bookingNo"/> is let go by <see cref="SkipAsync"/>'s rules, recorded as theirs.
+    /// </summary>
+    /// <remarks>
+    /// Run with the platform's reach (<see cref="IOwnStandingDays"/>), so the sponsorship is found only
+    /// through what is the caller's: the booking is theirs (<c>DonorUserId</c>), and the donor book row
+    /// of its sponsorship is linked to them now. A booking that is someone else's, not a standing one,
+    /// or of a row since linked to another account reads as not found. In the caller's own session it
+    /// finds nothing at all, since that session reads no sponsorship (K16).
+    /// </remarks>
+    public async Task<SponsorshipChangeResult> SkipOwnAsync(Guid userId, string? bookingNo, string? reason, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(bookingNo))
+        {
+            return SponsorshipChangeResult.Failed(BookingDecisionResult.NotFound);
+        }
+
+        var number = bookingNo.Trim();
+        var day = await db.Bookings
+            .AsNoTracking()
+            .Where(b => b.BookingNo == number && b.DonorUserId == userId && b.StandingSponsorshipId != null)
+            .Join(
+                db.StandingSponsorships,
+                b => new { Id = b.StandingSponsorshipId, b.InstitutionId },
+                s => new { Id = (int?)s.Id, s.InstitutionId },
+                (b, s) => new { b.SlotInstanceId, s.InstitutionId, s.InstitutionDonorId, s.PublicId })
+            .Join(
+                db.InstitutionDonors,
+                x => new { Id = x.InstitutionDonorId, x.InstitutionId },
+                d => new { d.Id, d.InstitutionId },
+                (x, d) => new { x.SlotInstanceId, x.InstitutionId, x.PublicId, d.UserId })
+            .Where(x => x.UserId == userId)
+            .Join(db.SlotInstances, x => x.SlotInstanceId, i => i.Id, (x, i) => new { x.InstitutionId, x.PublicId, i.SlotDate })
+            .SingleOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return day is null
+            ? SponsorshipChangeResult.Failed(BookingDecisionResult.NotFound)
+            : await SkipAsync(day.InstitutionId, userId, day.PublicId, day.SlotDate, reason, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// The pattern and its dates, as <c>CK_Standing_Shape</c> wants them: each pattern's own fields and
     /// no others, so a field sent for another pattern is refused rather than quietly dropped.
     /// </summary>
