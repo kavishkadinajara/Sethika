@@ -91,7 +91,8 @@ export function AppShell({ width, children }: { width: keyof typeof shellWidths;
         {t("skipToContent")}
       </a>
 
-      <header className="sticky top-0 z-30 border-b border-hairline bg-canvas">
+      {/* Printed pages (a receipt, plan 09 M4) carry only their own content. */}
+      <header className="sticky top-0 z-30 border-b border-hairline bg-canvas print:hidden">
         <div className="flex min-h-16 items-center gap-2 px-4 sm:gap-3 lg:px-6">
           {signedIn && (
             <MobileNav sections={sections} pathname={pathname} data={data} busy={busy} onJump={() => setJumping(true)} />
@@ -118,10 +119,12 @@ export function AppShell({ width, children }: { width: keyof typeof shellWidths;
 
       <div className="flex flex-1 items-start">
         {signedIn && (
-          <Sidebar sections={sections} pathname={pathname} data={data} busy={busy} onJump={() => setJumping(true)} />
+          <div className="contents print:hidden">
+            <Sidebar sections={sections} pathname={pathname} data={data} busy={busy} onJump={() => setJumping(true)} />
+          </div>
         )}
         <div className="flex min-w-0 flex-1 flex-col self-stretch">
-          <main id="main" tabIndex={-1} className="flex-1 px-4 py-6 focus:outline-none sm:px-6 sm:py-8 lg:px-10">
+          <main id="main" tabIndex={-1} className="flex-1 px-4 py-6 focus:outline-none sm:px-6 sm:py-8 lg:px-10 print:p-0">
             <div className={cn("w-full", shellWidths[width])}>{children}</div>
           </main>
           {!signedIn && (

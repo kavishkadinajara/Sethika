@@ -56,6 +56,7 @@ public static class DependencyInjection
         services.AddScoped<IBookingRowLocks, SqlBookingRowLocks>();
         services.AddScoped<IStandingLocks, SqlStandingLocks>();
         services.AddScoped<IInstitutionModules, SqlInstitutionModules>();
+        services.AddScoped<IRoleGrantHistory, SqlRoleGrantHistory>();
         services.AddScoped<ISlotInventory, SqlSlotInventory>();
 
         services.AddScoped<IDbConnectionFactory>(serviceProvider =>
@@ -85,6 +86,7 @@ public static class DependencyInjection
         services.AddScoped<IBookingNotificationQueries, BookingNotificationQueries>();
         services.AddScoped<IServiceSetupQueries, ServiceSetupQueries>();
         services.AddScoped<IDonorBookQueries, DonorBookQueries>();
+        services.AddScoped<IGivingQueries, GivingQueries>();
         services.AddScoped<IStandingSponsorshipQueries, StandingSponsorshipQueries>();
         services.AddScoped<IDayRequestQueries, DayRequestQueries>();
         services.AddScoped<IDonorAppointmentQueries, DonorAppointmentQueries>();

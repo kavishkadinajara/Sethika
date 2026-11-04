@@ -110,6 +110,13 @@ public sealed class DonorBookHandler(ISethikaDbContext db, IPhoneNumberNormalize
             .ExecuteUpdateAsync(setters => setters.SetProperty(b => b.DonorUserId, donor.UserId), cancellationToken)
             .ConfigureAwait(false);
 
+        // So do the person's receipts (plan 09, M3), all of them: who gave stays the donor book row; only
+        // the account that may read them moves (the one change trg_Donations_Immutable allows, M22).
+        await db.Donations
+            .Where(g => g.InstitutionDonorId == donor.Id && g.InstitutionId == institutionId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(g => g.DonorUserId, donor.UserId), cancellationToken)
+            .ConfigureAwait(false);
+
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return saved;
     }

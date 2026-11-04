@@ -71,7 +71,7 @@ test("a donor's menu holds giving, not an institution's or the platform's @phone
   await shot(page, testInfo.project.name, "en-dashboard-donor");
 
   const links = await menuLinks(page);
-  expect(links).toEqual(["Dashboard", "Find a place to give", "My bookings", "Memorial dana planner", "My service requests", "My applications"]);
+  expect(links).toEqual(["Dashboard", "Find a place to give", "My bookings", "Memorial dana planner", "My service requests", "My giving", "My applications"]);
 
   // Who the session acts as: the donor's own account, with nothing to switch to.
   const side = await sidebar(page);
@@ -112,7 +112,7 @@ test("folded, the sidebar keeps every link, each named on hover above the page, 
   await shot(page, testInfo.project.name, "en-sidebar-folded");
 
   const links = side.getByRole("navigation", { name: "Main menu" }).getByRole("link");
-  await expect(links).toHaveCount(6);
+  await expect(links).toHaveCount(7);
   for (const link of await links.all()) {
     const name = (await link.getAttribute("aria-label"))!;
     await link.hover();
@@ -154,7 +154,7 @@ test("jump to finds a screen by its name and opens it, offering only screens the
   const palette = page.getByRole("dialog", { name: "Jump to" });
   const search = palette.getByRole("combobox", { name: "Jump to" });
   await expect(search).toBeFocused();
-  await expect(palette.getByRole("option")).toHaveCount(6);
+  await expect(palette.getByRole("option")).toHaveCount(7);
 
   // Not the platform's or an institution's, whatever is typed.
   await search.fill("registration");

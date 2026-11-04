@@ -18,10 +18,23 @@ CREATE SECURITY POLICY sec.TenantIsolationPolicy
     ADD FILTER PREDICATE sec.fn_Contributor(InstitutionId, UserId, InvitedBy) ON booking.BookingContributors,
     ADD BLOCK  PREDICATE sec.fn_Contributor(InstitutionId, UserId, InvitedBy) ON booking.BookingContributors AFTER INSERT,
     ADD BLOCK  PREDICATE sec.fn_Contributor(InstitutionId, UserId, InvitedBy) ON booking.BookingContributors AFTER UPDATE,
+    /* giving (plan 09). A donation: its institution and the donor's account may read it (the receipt,
+       M4); only the institution writes it (a donor's session cannot make itself a receipt; an online gift
+       is recorded as the platform, M9), and never edits it (trg_Donations_Immutable, M7). An online
+       gift (M8) and a pledge (M13): the institution and the donor; a donor's own pledge and cancel run
+       as the platform (M14). A merchant and its secret (M10): the institution alone.                */
     ADD FILTER PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Donations,
-    ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Donations AFTER INSERT,
+    ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON giving.Donations AFTER INSERT,
+    ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON giving.Donations AFTER UPDATE,
     ADD FILTER PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Pledges,
     ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Pledges AFTER INSERT,
+    ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Pledges AFTER UPDATE,
+    ADD FILTER PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.OnlinePayments,
+    ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.OnlinePayments AFTER INSERT,
+    ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.OnlinePayments AFTER UPDATE,
+    ADD FILTER PREDICATE sec.fn_Tenant(InstitutionId) ON giving.PaymentMerchants,
+    ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON giving.PaymentMerchants AFTER INSERT,
+    ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON giving.PaymentMerchants AFTER UPDATE,
     /* the donor book (plan 08, K1): the institution only; a linked sponsor reads their days as bookings */
     ADD FILTER PREDICATE sec.fn_Tenant(InstitutionId) ON org.InstitutionDonors,
     ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON org.InstitutionDonors AFTER INSERT,
@@ -55,7 +68,10 @@ CREATE SECURITY POLICY sec.TenantIsolationPolicy
     ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON booking.MealSlots BEFORE DELETE,
     ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON booking.BlockedDates AFTER INSERT,
     ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON booking.BlockedDates BEFORE DELETE,
-    ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON giving.Needs AFTER INSERT,  -- no AFTER UPDATE: donor pledges update pledged qty
+    /* A need is public; only its institution writes it. A donor's pledge moves its counter as the
+       platform (M14), so no donor session can change a need's title.                             */
+    ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON giving.Needs AFTER INSERT,
+    ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON giving.Needs AFTER UPDATE,
     /* religious services (Phase E, V9). An appointment: its institution and its donor, as Bookings.
        Service types: public read, like MealSlots. Leaders, their hours, leave, assignments and time
        blocks: the institution only, so a donor's cancel leaves the blocks to the outbox (V16). */

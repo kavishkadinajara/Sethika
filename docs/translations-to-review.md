@@ -1608,3 +1608,167 @@ calendar's regular donors and asked-for days, asking for a held day, and My book
 | `MyBookings.skipSheet.done` | {bookingNo} is let go. We will text you to confirm. | {bookingNo} අත්හරින ලදී. තහවුරු කිරීමට අපි ඔබට කෙටි පණිවිඩයක් එවන්නෙමු. | {bookingNo} விடப்பட்டது. உறுதிப்படுத்த உங்களுக்குக் குறுஞ்செய்தி அனுப்புவோம். | | |
 | `Booking.errors.sponsorship_ended` | These regular days have ended. | මෙම නිත්‍ය දින අවසන් වී ඇත. | இந்த வழக்கமான நாட்கள் முடிந்துவிட்டன. | | |
 | `Booking.errors.day_already_changed` | That day has already been let go or swapped. | එම දිනය දැනටමත් නිදහස් කර හෝ මාරු කර ඇත. | அந்த நாள் ஏற்கனவே விடுவிக்கப்பட்டது அல்லது மாற்றப்பட்டது. | | |
+
+## Giving: donations and receipts (2026-11-04, `Giving`, `Shell`, `Admin`, plan 09 D.1)
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `Giving.money` | LKR {amount} | රු. {amount} | ரூ. {amount} | | |
+| `Giving.itemsCounted` | {items} ({count}) | {items} ({count}) | {items} ({count}) | | |
+| `Giving.methods.CASH` | Cash | මුදල් | ரொக்கம் | | |
+| `Giving.methods.BANK_TRANSFER` | Bank transfer | බැංකු මාරුව | வங்கிப் பரிமாற்றம் | | |
+| `Giving.methods.CHEQUE` | Cheque | චෙක්පත | காசோலை | | |
+| `Giving.methods.CARD` | Card | කාඩ්පත | அட்டை | | |
+| `Giving.methods.PAYHERE` | Online (PayHere) | මාර්ගගත (PayHere) | இணையவழி (PayHere) | | |
+| `Giving.errors.invalid_details` | Some details need fixing. Check the fields marked below. | සමහර විස්තර නිවැරදි කළ යුතුයි. පහත සලකුණු කළ ක්ෂේත්‍ර බලන්න. | சில விவரங்களைத் திருத்த வேண்டும். கீழே குறிக்கப்பட்ட புலங்களைப் பாருங்கள். | | |
+| `Giving.errors.donation_not_found` | There is no such receipt here. It may belong to another institution, or the link is wrong. | මෙහි එවැනි රිසිට්පතක් නැත. එය වෙනත් ආයතනයකට අයත් විය හැක, නැතහොත් සබැඳිය වැරදියි. | இங்கே அப்படி ஒரு பற்றுச்சீட்டு இல்லை. அது வேறு நிறுவனத்தினுடையதாக இருக்கலாம், அல்லது இணைப்பு தவறானது. | | |
+| `Giving.errors.donor_not_found` | That person is not in your donor book any more. Choose them again, or record the gift under a typed name. | එම පුද්ගලයා තවදුරටත් ඔබේ දායක පොතේ නැත. ඔවුන් නැවත තෝරන්න, නැතහොත් නමක් ටයිප් කර පරිත්‍යාගය සටහන් කරන්න. | அந்த நபர் இனி உங்கள் நன்கொடையாளர் புத்தகத்தில் இல்லை. மீண்டும் தேர்ந்தெடுக்கவும், அல்லது தட்டச்சு செய்த பெயரில் நன்கொடையைப் பதிவு செய்யவும். | | |
+| `Giving.errors.stale` | Someone changed this gift while you were looking at it. Look at the list again. | ඔබ බලා සිටියදී කෙනෙකු මෙම පරිත්‍යාගය වෙනස් කළා. ලැයිස්තුව නැවත බලන්න. | நீங்கள் பார்த்துக்கொண்டிருக்கும்போது யாரோ இந்த நன்கொடையை மாற்றினர். பட்டியலை மீண்டும் பாருங்கள். | | |
+| `Giving.errors.already_void` | This gift is voided already. | මෙම පරිත්‍යාගය දැනටමත් අවලංගු කර ඇත. | இந்த நன்கொடை ஏற்கனவே ரத்து செய்யப்பட்டது. | | |
+| `Giving.errors.void_own_record` | You recorded this gift, so someone else must void it. That second pair of eyes is what keeps receipts honest. | මෙම පරිත්‍යාගය සටහන් කළේ ඔබයි, එබැවින් එය අවලංගු කළ යුත්තේ වෙනත් අයෙකි. රිසිට්පත් අවංකව තබන්නේ එම දෙවන ඇස් යුගලයයි. | இந்த நன்கொடையைப் பதிவு செய்தது நீங்கள், எனவே வேறொருவர் அதை ரத்து செய்ய வேண்டும். பற்றுச்சீட்டுகளை நேர்மையாக வைப்பது அந்த இரண்டாவது பார்வையே. | | |
+| `Giving.errors.invalid_month` | That month could not be read. | එම මාසය කියවිය නොහැකි විය. | அந்த மாதத்தைப் படிக்க முடியவில்லை. | | |
+| `Giving.donations.title` | Donations and receipts | පරිත්‍යාග සහ රිසිට්පත් | நன்கொடைகளும் பற்றுச்சீட்டுகளும் | | |
+| `Giving.donations.intro` | Every gift your institution receives, money or items, each with its own receipt number. A gift is never changed or deleted: a mistake is voided by a second person and recorded again. | ඔබේ ආයතනයට ලැබෙන සෑම පරිත්‍යාගයක්ම, මුදල් හෝ ද්‍රව්‍ය, එකිනෙකට වෙනම රිසිට් අංකයක් සමඟ. පරිත්‍යාගයක් කිසිදා වෙනස් කිරීම හෝ මැකීම නොකෙරේ: වැරැද්දක් දෙවන අයෙකු විසින් අවලංගු කර නැවත සටහන් කෙරේ. | உங்கள் நிறுவனம் பெறும் ஒவ்வொரு நன்கொடையும், பணமோ பொருளோ, தனித்தனி பற்றுச்சீட்டு எண்ணுடன். நன்கொடை ஒருபோதும் மாற்றப்படுவதோ நீக்கப்படுவதோ இல்லை: தவறு இரண்டாவது நபரால் ரத்து செய்யப்பட்டு மீண்டும் பதிவு செய்யப்படும். | | |
+| `Giving.donations.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயற்சிக்கவும் | | |
+| `Giving.donations.month` | Month | මාසය | மாதம் | | |
+| `Giving.donations.previousMonth` | Previous month | පෙර මාසය | முந்தைய மாதம் | | |
+| `Giving.donations.nextMonth` | Next month | ඊළඟ මාසය | அடுத்த மாதம் | | |
+| `Giving.donations.record` | Record a gift | පරිත්‍යාගයක් සටහන් කරන්න | நன்கொடையைப் பதிவு செய் | | |
+| `Giving.donations.totals` | {gifts, plural, =0 {No gifts kept} one {# gift} other {# gifts}}: {money} in money, {items, plural, =0 {none in items} one {# of items} other {# of items}}. | පරිත්‍යාග {gifts}: මුදලින් {money}, ද්‍රව්‍ය {items}. | நன்கொடைகள் {gifts}: பணமாக {money}, பொருட்களாக {items}. | | |
+| `Giving.donations.voidedCount` | {count, plural, one {# voided, not counted} other {# voided, not counted}} | අවලංගු {count}, ගණන් නොකෙරේ | ரத்து {count}, கணக்கில் இல்லை | | |
+| `Giving.donations.none` | No gifts recorded in this month. | මෙම මාසයේ පරිත්‍යාග සටහන් කර නැත. | இந்த மாதம் நன்கொடைகள் பதிவு செய்யப்படவில்லை. | | |
+| `Giving.donations.methodLabel` | Paid by | ගෙවූ ආකාරය | செலுத்திய முறை | | |
+| `Giving.donations.allMethods` | All | සියල්ල | அனைத்தும் | | |
+| `Giving.donations.voidedLabel` | Show | පෙන්වන්න | காட்டு | | |
+| `Giving.donations.voidedAll` | All gifts | සියලු පරිත්‍යාග | அனைத்து நன்கொடைகளும் | | |
+| `Giving.donations.voidedKept` | Not voided | අවලංගු නොකළ | ரத்து செய்யாதவை | | |
+| `Giving.donations.voidedOnly` | Voided | අවලංගු කළ | ரத்து செய்தவை | | |
+| `Giving.donations.noMatch` | No gift this month matches what you chose. | ඔබ තේරූ දෙයට ගැළපෙන පරිත්‍යාගයක් මෙම මාසයේ නැත. | நீங்கள் தேர்ந்தெடுத்ததற்குப் பொருந்தும் நன்கொடை இந்த மாதம் இல்லை. | | |
+| `Giving.donations.list` | Gifts this month | මෙම මාසයේ පරිත්‍යාග | இந்த மாத நன்கொடைகள் | | |
+| `Giving.donations.void` | VOID | අවලංගුයි | ரத்து | | |
+| `Giving.donations.fromDonorBook` | donor book | දායක පොත | நன்கொடையாளர் புத்தகம் | | |
+| `Giving.donations.recordedBy` | Recorded by {name} | සටහන් කළේ {name} | பதிவு செய்தவர் {name} | | |
+| `Giving.donations.receipt` | Receipt | රිසිට්පත | பற்றுச்சீட்டு | | |
+| `Giving.donations.receiptNamed` | Receipt {receiptNo} | රිසිට්පත {receiptNo} | பற்றுச்சீட்டு {receiptNo} | | |
+| `Giving.donations.voidNamed` | Void receipt {receiptNo} | රිසිට්පත {receiptNo} අවලංගු කරන්න | பற்றுச்சீட்டு {receiptNo} ஐ ரத்து செய் | | |
+| `Giving.donations.voidAction` | Void | අවලංගු කරන්න | ரத்து செய் | | |
+| `Giving.donations.recorded` | Receipt {receiptNo} recorded. | රිසිට්පත {receiptNo} සටහන් කළා. | பற்றுச்சீட்டு {receiptNo} பதிவு செய்யப்பட்டது. | | |
+| `Giving.donations.voided` | Receipt {receiptNo} voided. | රිසිට්පත {receiptNo} අවලංගු කළා. | பற்றுச்சீட்டு {receiptNo} ரத்து செய்யப்பட்டது. | | |
+| `Giving.record.title` | Record a gift | පරිත්‍යාගයක් සටහන් කරන්න | நன்கொடையைப் பதிவு செய் | | |
+| `Giving.record.description` | The receipt number is given when you save. A gift cannot be changed afterwards, so check it first. | සුරකින විට රිසිට් අංකය ලැබේ. පසුව පරිත්‍යාගය වෙනස් කළ නොහැක, එබැවින් පළමුව පරීක්ෂා කරන්න. | சேமிக்கும்போது பற்றுச்சீட்டு எண் வழங்கப்படும். பின்னர் நன்கொடையை மாற்ற முடியாது, எனவே முதலில் சரிபார்க்கவும். | | |
+| `Giving.record.kind` | What was given | දුන් දේ | வழங்கியது | | |
+| `Giving.record.kindMoney` | Money | මුදල් | பணம் | | |
+| `Giving.record.kindItems` | Items | ද්‍රව්‍ය | பொருட்கள் | | |
+| `Giving.record.amount` | Amount (LKR) | මුදල (රු.) | தொகை (ரூ.) | | |
+| `Giving.record.amountHint` | In rupees, for example 5000 or 2500.50. | රුපියල්වලින්, උදා: 5000 හෝ 2500.50. | ரூபாயில், எ.கா. 5000 அல்லது 2500.50. | | |
+| `Giving.record.method` | Paid by | ගෙවූ ආකාරය | செலுத்திய முறை | | |
+| `Giving.record.items` | What was given | දුන් දේ | வழங்கியது | | |
+| `Giving.record.itemsHint` | For example: 50 exercise books, or a month of dry rations. This is on the receipt; it is never texted. | උදා: අභ්‍යාස පොත් 50, හෝ මසකට වියළි ආහාර. මෙය රිසිට්පතේ ඇත; කිසිදා කෙටි පණිවිඩයකින් නොයවයි. | எ.கா. 50 பயிற்சிப் புத்தகங்கள், அல்லது ஒரு மாத உலர் உணவுப் பொருட்கள். இது பற்றுச்சீட்டில் இருக்கும்; ஒருபோதும் குறுஞ்செய்தியாக அனுப்பப்படாது. | | |
+| `Giving.record.quantity` | How many (optional) | ප්‍රමාණය (අත්‍යවශ්‍ය නැත) | எத்தனை (விருப்பம்) | | |
+| `Giving.record.estimatedValue` | Worth about (LKR, optional) | ආසන්න වටිනාකම (රු., අත්‍යවශ්‍ය නැත) | ஏறத்தாழ மதிப்பு (ரூ., விருப்பம்) | | |
+| `Giving.record.estimatedValueHint` | Only if the giver told you. | දෙන්නා ඔබට කීවොත් පමණි. | கொடுத்தவர் சொன்னால் மட்டும். | | |
+| `Giving.record.date` | Day given | දුන් දිනය | வழங்கிய நாள் | | |
+| `Giving.record.dateHint` | Today, or a day in the last year. | අද, නැතහොත් පසුගිය වසර තුළ දිනයක්. | இன்று, அல்லது கடந்த ஆண்டில் ஒரு நாள். | | |
+| `Giving.record.who` | Who gave | දුන්නේ කවුද | வழங்கியவர் | | |
+| `Giving.record.fromBook` | Someone in the donor book | දායක පොතේ සිටින කෙනෙක් | நன்கொடையாளர் புத்தகத்தில் உள்ள ஒருவர் | | |
+| `Giving.record.walkIn` | Someone else | වෙනත් කෙනෙක් | வேறொருவர் | | |
+| `Giving.record.findDonor` | Find them by name or phone | නමින් හෝ දුරකථනයෙන් සොයන්න | பெயர் அல்லது தொலைபேசி மூலம் தேடவும் | | |
+| `Giving.record.findDonorHint` | Their name and phone come from the donor book, and the receipt is texted only if they agreed to texts. | ඔවුන්ගේ නම සහ දුරකථනය දායක පොතෙන් ලැබේ; ඔවුන් කෙටි පණිවිඩවලට එකඟ වූවා නම් පමණක් රිසිට්පත යවයි. | அவர்களின் பெயரும் தொலைபேசியும் நன்கொடையாளர் புத்தகத்திலிருந்து வரும்; குறுஞ்செய்திகளுக்கு அவர்கள் ஒப்புக்கொண்டிருந்தால் மட்டுமே பற்றுச்சீட்டு அனுப்பப்படும். | | |
+| `Giving.record.chosen` | Chosen: {name} | තෝරා ඇත: {name} | தேர்ந்தெடுக்கப்பட்டது: {name} | | |
+| `Giving.record.donorChoices` | People in the donor book | දායක පොතේ සිටින අය | நன்கொடையாளர் புத்தகத்தில் உள்ளவர்கள் | | |
+| `Giving.record.donorName` | Their name | ඔවුන්ගේ නම | அவர்களின் பெயர் | | |
+| `Giving.record.donorPhone` | Their phone (optional) | ඔවුන්ගේ දුරකථනය (අත්‍යවශ්‍ය නැත) | அவர்களின் தொலைபேசி (விருப்பம்) | | |
+| `Giving.record.donorPhoneHint` | Kept on the receipt only. A phone typed here is never texted. | රිසිට්පතේ පමණක් තබයි. මෙහි ටයිප් කළ දුරකථනයට කිසිදා පණිවිඩ නොයවයි. | பற்றுச்சீட்டில் மட்டும் வைக்கப்படும். இங்கே தட்டச்சு செய்த தொலைபேசிக்கு ஒருபோதும் குறுஞ்செய்தி அனுப்பப்படாது. | | |
+| `Giving.record.note` | Note (optional) | සටහන (අත්‍යවශ්‍ය නැත) | குறிப்பு (விருப்பம்) | | |
+| `Giving.record.noteHint` | Printed on the receipt. | රිසිට්පතේ මුද්‍රණය වේ. | பற்றுச்சீட்டில் அச்சிடப்படும். | | |
+| `Giving.record.cancel` | Cancel | අවලංගු කරන්න | ரத்து | | |
+| `Giving.record.save` | Record the gift | පරිත්‍යාගය සටහන් කරන්න | நன்கொடையைப் பதிவு செய் | | |
+| `Giving.record.errors.kind` | Choose money or items. | මුදල් හෝ ද්‍රව්‍ය තෝරන්න. | பணம் அல்லது பொருட்களைத் தேர்ந்தெடுக்கவும். | | |
+| `Giving.record.errors.amount` | Enter an amount above zero, with at most two decimals. | ශුන්‍යයට වැඩි මුදලක් ඇතුළත් කරන්න, දශමස්ථාන දෙකක් දක්වා. | பூஜ்ஜியத்தை விட அதிகமான தொகையை, இரண்டு தசம இடங்கள் வரை உள்ளிடவும். | | |
+| `Giving.record.errors.method` | Choose how it was paid. | ගෙවූ ආකාරය තෝරන්න. | செலுத்திய முறையைத் தேர்ந்தெடுக்கவும். | | |
+| `Giving.record.errors.items` | Say what was given (up to 500 characters). | දුන් දේ කියන්න (අකුරු 500 දක්වා). | வழங்கியதைச் சொல்லவும் (500 எழுத்துகள் வரை). | | |
+| `Giving.record.errors.quantity` | Enter a number above zero. | ශුන්‍යයට වැඩි සංඛ්‍යාවක් ඇතුළත් කරන්න. | பூஜ்ஜியத்தை விட அதிகமான எண்ணை உள்ளிடவும். | | |
+| `Giving.record.errors.estimatedValue` | Enter an amount above zero, or leave it blank. | ශුන්‍යයට වැඩි මුදලක් ඇතුළත් කරන්න, නැතහොත් හිස්ව තබන්න. | பூஜ்ஜியத்தை விட அதிகமான தொகையை உள்ளிடவும், அல்லது காலியாக விடவும். | | |
+| `Giving.record.errors.date` | Choose today or a day in the last year. | අද හෝ පසුගිය වසර තුළ දිනයක් තෝරන්න. | இன்று அல்லது கடந்த ஆண்டில் ஒரு நாளைத் தேர்ந்தெடுக்கவும். | | |
+| `Giving.record.errors.donor` | Choose the person from the donor book. | දායක පොතෙන් පුද්ගලයා තෝරන්න. | நன்கொடையாளர் புத்தகத்திலிருந்து நபரைத் தேர்ந்தெடுக்கவும். | | |
+| `Giving.record.errors.donorName` | Enter the giver's name. | දුන් අයගේ නම ඇතුළත් කරන්න. | வழங்கியவரின் பெயரை உள்ளிடவும். | | |
+| `Giving.record.errors.donorPhone` | Enter a Sri Lankan phone number, or leave it blank. | ශ්‍රී ලාංකික දුරකථන අංකයක් ඇතුළත් කරන්න, නැතහොත් හිස්ව තබන්න. | இலங்கைத் தொலைபேசி எண்ணை உள்ளிடவும், அல்லது காலியாக விடவும். | | |
+| `Giving.record.errors.note` | A note is at most 300 characters. | සටහනක් අකුරු 300 දක්වා විය හැක. | குறிப்பு 300 எழுத்துகள் வரை இருக்கலாம். | | |
+| `Giving.void.title` | Void receipt {receiptNo} | රිසිට්පත {receiptNo} අවලංගු කරන්න | பற்றுச்சீட்டு {receiptNo} ஐ ரத்து செய் | | |
+| `Giving.void.description` | {gift} from {name}. | {name} ගෙන් {gift}. | {name} இடமிருந்து {gift}. | | |
+| `Giving.void.explain` | Voiding keeps the gift in the list, marked VOID, and takes it out of every total. It cannot be undone. If the gift was recorded wrongly, record it again afterwards. | අවලංගු කිරීමෙන් පරිත්‍යාගය ලැයිස්තුවේ අවලංගු ලෙස සලකුණු කර තබා සියලු එකතුවලින් ඉවත් කරයි. එය ආපසු හැරවිය නොහැක. පරිත්‍යාගය වැරදියට සටහන් කළා නම්, පසුව එය නැවත සටහන් කරන්න. | ரத்து செய்வது நன்கொடையை பட்டியலில் ரத்து எனக் குறித்து வைத்து, எல்லா மொத்தங்களிலிருந்தும் நீக்கும். இதைத் திரும்பப் பெற முடியாது. நன்கொடை தவறாகப் பதிவு செய்யப்பட்டிருந்தால், பின்னர் மீண்டும் பதிவு செய்யவும். | | |
+| `Giving.void.reason` | Why is it voided? | අවලංගු කරන්නේ ඇයි? | ஏன் ரத்து செய்யப்படுகிறது? | | |
+| `Giving.void.reasonHint` | The committee will read this. At most 300 characters. | කමිටුව මෙය කියවයි. අකුරු 300 දක්වා. | குழு இதைப் படிக்கும். 300 எழுத்துகள் வரை. | | |
+| `Giving.void.reasonMissing` | Say why it is voided. | අවලංගු කරන්නේ ඇයිදැයි කියන්න. | ஏன் ரத்து செய்யப்படுகிறது என்று சொல்லவும். | | |
+| `Giving.void.cancel` | Keep it | තබා ගන්න | வைத்திரு | | |
+| `Giving.void.confirm` | Void the gift | පරිත්‍යාගය අවලංගු කරන්න | நன்கொடையை ரத்து செய் | | |
+| `Giving.receipt.pageTitle` | Receipt | රිසිට්පත | பற்றுச்சீட்டு | | |
+| `Giving.receipt.label` | Receipt {receiptNo} | රිසිට්පත {receiptNo} | பற்றுச்சீட்டு {receiptNo} | | |
+| `Giving.receipt.signIn` | Sign in to see this receipt. | මෙම රිසිට්පත බැලීමට පිවිසෙන්න. | இந்தப் பற்றுச்சீட்டைப் பார்க்க உள்நுழையவும். | | |
+| `Giving.receipt.signInLink` | Sign in | පිවිසෙන්න | உள்நுழை | | |
+| `Giving.receipt.print` | Print or save as PDF | මුද්‍රණය කරන්න හෝ PDF ලෙස සුරකින්න | அச்சிடு அல்லது PDF ஆகச் சேமி | | |
+| `Giving.receipt.backMine` | Back to my giving | මගේ පරිත්‍යාග වෙත | என் நன்கொடைகளுக்கு | | |
+| `Giving.receipt.backList` | Back to donations | පරිත්‍යාග වෙත | நன்கொடைகளுக்கு | | |
+| `Giving.receipt.void` | VOID | අවලංගුයි | ரத்து | | |
+| `Giving.receipt.voidedOn` | Voided on {date} by {name}. | {date} දින {name} විසින් අවලංගු කළා. | {date} அன்று {name} ரத்து செய்தார். | | |
+| `Giving.receipt.voidReason` | Reason: {reason} | හේතුව: {reason} | காரணம்: {reason} | | |
+| `Giving.receipt.title` | Receipt | රිසිට්පත | பற்றுச்சீட்டு | | |
+| `Giving.receipt.receivedFrom` | Received from | ලැබුණේ | பெற்றது | | |
+| `Giving.receipt.amount` | Amount | මුදල | தொகை | | |
+| `Giving.receipt.method` | Paid by | ගෙවූ ආකාරය | செலுத்திய முறை | | |
+| `Giving.receipt.items` | Items | ද්‍රව්‍ය | பொருட்கள் | | |
+| `Giving.receipt.quantity` | How many | ප්‍රමාණය | எத்தனை | | |
+| `Giving.receipt.estimatedValue` | Worth about | ආසන්න වටිනාකම | ஏறத்தாழ மதிப்பு | | |
+| `Giving.receipt.money` | LKR {amount} | රු. {amount} | ரூ. {amount} | | |
+| `Giving.receipt.given` | Given on | දුන් දිනය | வழங்கிய நாள் | | |
+| `Giving.receipt.note` | Note | සටහන | குறிப்பு | | |
+| `Giving.receipt.recordedBy` | Recorded by | සටහන් කළේ | பதிவு செய்தவர் | | |
+| `Giving.receipt.recordedOn` | {name}, {date} at {time} | {name}, {date} {time} | {name}, {date} {time} | | |
+| `Giving.receipt.thanks` | With thanks for your gift. | ඔබේ පරිත්‍යාගයට ස්තූතියි. | உங்கள் நன்கொடைக்கு நன்றி. | | |
+| `Giving.receipt.notTax` | An acknowledgement of a gift received, issued through Sethika. It is not a tax receipt. | Sethika හරහා නිකුත් කළ, ලැබුණු පරිත්‍යාගයක් පිළිගැනීමකි. මෙය බදු රිසිට්පතක් නොවේ. | Sethika வழியாக வழங்கப்பட்ட, பெற்ற நன்கொடைக்கான ஒப்புகை. இது வரிப் பற்றுச்சீட்டு அல்ல. | | |
+| `Giving.mine.title` | My giving | මගේ පරිත්‍යාග | என் நன்கொடைகள் | | |
+| `Giving.mine.intro` | The gifts institutions have recorded for you, with their receipts. | ආයතන ඔබ වෙනුවෙන් සටහන් කළ පරිත්‍යාග, ඒවායේ රිසිට්පත් සමඟ. | நிறுவனங்கள் உங்களுக்காகப் பதிவு செய்த நன்கொடைகள், அவற்றின் பற்றுச்சீட்டுகளுடன். | | |
+| `Giving.mine.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயற்சிக்கவும் | | |
+| `Giving.mine.none` | No gifts recorded for you yet. When an institution records your gift, its receipt appears here. | ඔබ වෙනුවෙන් තවම පරිත්‍යාග සටහන් කර නැත. ආයතනයක් ඔබේ පරිත්‍යාගය සටහන් කළ විට, එහි රිසිට්පත මෙහි දිස් වේ. | உங்களுக்காக இன்னும் நன்கொடைகள் பதிவு செய்யப்படவில்லை. ஒரு நிறுவனம் உங்கள் நன்கொடையைப் பதிவு செய்தால், அதன் பற்றுச்சீட்டு இங்கே தோன்றும். | | |
+| `Giving.mine.list` | My gifts | මගේ පරිත්‍යාග | என் நன்கொடைகள் | | |
+| `Giving.mine.void` | VOID | අවලංගුයි | ரத்து | | |
+| `Giving.mine.receipt` | Receipt | රිසිට්පත | பற்றுச்சீட்டு | | |
+| `Giving.mine.receiptNamed` | Receipt {receiptNo} | රිසිට්පත {receiptNo} | பற்றுச்சீட்டு {receiptNo} | | |
+| `Shell.groups.give` | My giving | මගේ පරිත්‍යාග | என் நன்கொடைகள் | | |
+| `Shell.groups.giving` | Giving | පරිත්‍යාග | நன்கொடைகள் | | |
+| `Shell.items.myGiving` | My giving | මගේ පරිත්‍යාග | என் நன்கொடைகள் | | |
+| `Shell.items.donations` | Donations and receipts | පරිත්‍යාග සහ රිසිට්පත් | நன்கொடைகளும் பற்றுச்சீட்டுகளும் | | |
+| `Admin.institutions.sync` | Bring roles up to date | භූමිකා යාවත්කාලීන කරන්න | பங்குகளைப் புதுப்பிக்கவும் | | |
+| `Admin.institutions.syncNamed` | Bring {name}'s roles up to date | {name} හි භූමිකා යාවත්කාලීන කරන්න | {name} இன் பங்குகளைப் புதுப்பிக்கவும் | | |
+| `Admin.institutions.synced` | {name}: {modules, plural, =0 {no module} one {# module} other {# modules}}, {roles, plural, =0 {no role} one {# role} other {# roles}} and {grants, plural, =0 {no permission} one {# permission} other {# permissions}} added. | {name}: මොඩියුල {modules}ක්, භූමිකා {roles}ක් සහ අවසර {grants}ක් එක් කළා. | {name}: {modules} தொகுதிகள், {roles} பங்குகள், {grants} அனுமதிகள் சேர்க்கப்பட்டன. | | |
+| `Admin.institutions.syncedNothing` | {name} already holds everything its templates give. Nothing was added. | {name} සතුව එහි ආකෘති දෙන සියල්ල දැනටමත් ඇත. කිසිවක් එක් නොකළා. | {name} இன் வார்ப்புருக்கள் தருவது அனைத்தும் ஏற்கனவே உள்ளது. எதுவும் சேர்க்கப்படவில்லை. | | |
+
+## Giving lists (2026-11-04, `core.LookupValues`, plan 09 M20)
+
+| List / code | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `PAYMENT_METHOD.CASH` | Cash | මුදල් | ரொக்கம் | | |
+| `PAYMENT_METHOD.BANK_TRANSFER` | Bank transfer | බැංකු මාරුව | வங்கிப் பரிமாற்றம் | | |
+| `PAYMENT_METHOD.CHEQUE` | Cheque | චෙක්පත | காசோலை | | |
+| `PAYMENT_METHOD.CARD` | Card | කාඩ්පත | அட்டை | | |
+| `PAYMENT_METHOD.PAYHERE` | Online (PayHere) | මාර්ගගත (PayHere) | இணையவழி (PayHere) | | |
+| `NEED_CATEGORY.DRY_RATIONS` | Dry rations | වියළි ආහාර | உலர் உணவுப் பொருட்கள் | | |
+| `NEED_CATEGORY.STATIONERY` | Stationery | ලිපි ද්‍රව්‍ය | எழுதுபொருட்கள் | | |
+| `NEED_CATEGORY.TOILETRIES` | Toiletries | සනීපාරක්ෂක ද්‍රව්‍ය | கழிப்பறைப் பொருட்கள் | | |
+| `NEED_CATEGORY.MEDICINE` | Medicine | ඖෂධ | மருந்துகள் | | |
+| `NEED_CATEGORY.CLOTHING` | Clothing | ඇඳුම් | ஆடைகள் | | |
+| `NEED_CATEGORY.KITCHEN_CLEANING` | Kitchen and cleaning | මුළුතැන්ගෙයි සහ පිරිසිදු කිරීමේ ද්‍රව්‍ය | சமையலறை மற்றும் சுத்தம் செய்யும் பொருட்கள் | | |
+| `NEED_CATEGORY.OTHER` | Other | වෙනත් | மற்றவை | | |
+| `UNIT.PIECES` | Pieces | කෑලි | துண்டுகள் | | |
+| `UNIT.PACKETS` | Packets | පැකට් | பொதிகள் | | |
+| `UNIT.KG` | Kilograms | කිලෝග්‍රෑම් | கிலோகிராம் | | |
+| `UNIT.LITRES` | Litres | ලීටර් | லிட்டர் | | |
+| `UNIT.BOXES` | Boxes | පෙට්ටි | பெட்டிகள் | | |
+| `UNIT.SETS` | Sets | කට්ටල | தொகுப்புகள் | | |
+
+## Receipt texts (2026-11-04, `DONATION_RECEIPT`, `DONATION_RECEIPT_ITEMS`, plan 09 M5)
+
+| Template | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `DONATION_RECEIPT` | Sethika {receiptNo}: {institution}, LKR {amount}. Your gift was received. Thank you. | Sethika {receiptNo}: {institution}, රු. {amount}. ඔබේ පරිත්‍යාගය ලැබුණා. ස්තූතියි. | Sethika {receiptNo}: {institution}, ரூ. {amount}. உங்கள் நன்கொடை கிடைத்தது. நன்றி. | | |
+| `DONATION_RECEIPT_ITEMS` | Sethika {receiptNo}: {institution}. Your gift of items was received. Thank you. | Sethika {receiptNo}: {institution}. ඔබේ ද්‍රව්‍ය පරිත්‍යාගය ලැබුණා. ස්තූතියි. | Sethika {receiptNo}: {institution}. உங்கள் பொருள் நன்கொடை கிடைத்தது. நன்றி. | | |

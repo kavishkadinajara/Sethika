@@ -22,4 +22,17 @@ public interface IInstitutionModules
         Guid enabledBy,
         string reason,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Enables the core modules and the type's defaults the institution has no row for: a module added
+    /// to the catalogue after it was approved (plan 09, Q4). A module with a row is left as it is, so
+    /// one the institution or the platform switched off stays off. Plan modules are not touched.
+    /// </summary>
+    /// <returns>How many modules were enabled.</returns>
+    Task<int> EnableMissingDefaultsAsync(
+        int institutionId,
+        short institutionTypeId,
+        Guid enabledBy,
+        string reason,
+        CancellationToken cancellationToken = default);
 }

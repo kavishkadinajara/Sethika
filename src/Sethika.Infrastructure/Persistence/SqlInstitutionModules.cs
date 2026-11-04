@@ -54,4 +54,23 @@ public sealed class SqlInstitutionModules(SethikaDbContext context) : IInstituti
               AND (m.IsCore = 1 OR d.ModuleId IS NOT NULL OR pm.ModuleId IS NOT NULL);
             """,
             cancellationToken);
+
+    public Task<int> EnableMissingDefaultsAsync(
+        int institutionId,
+        short institutionTypeId,
+        Guid enabledBy,
+        string reason,
+        CancellationToken cancellationToken = default) =>
+        context.Database.ExecuteSqlAsync(
+            $"""
+            INSERT org.InstitutionModules (InstitutionId, ModuleId, IsEnabled, Source, ChangedBy, ChangeReason)
+            SELECT {institutionId}, m.Id, 1, 'Default', {enabledBy}, {reason}
+            FROM auth.Modules AS m
+            JOIN auth.Portals AS p ON p.Id = m.PortalId AND p.Code = 'INSTITUTION'
+            LEFT JOIN org.InstitutionTypeDefaultModules AS d ON d.ModuleId = m.Id AND d.InstitutionTypeId = {institutionTypeId}
+            WHERE m.IsActive = 1
+              AND (m.IsCore = 1 OR d.ModuleId IS NOT NULL)
+              AND NOT EXISTS (SELECT 1 FROM org.InstitutionModules AS im WHERE im.InstitutionId = {institutionId} AND im.ModuleId = m.Id);
+            """,
+            cancellationToken);
 }

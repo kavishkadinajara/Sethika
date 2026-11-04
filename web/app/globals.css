@@ -259,3 +259,11 @@ body {
 :lang(ta) body {
   line-height: 1.65;
 }
+
+/* A printed page (a receipt, plan 09 M4) is black on white whatever the theme; the shell hides itself. */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+}

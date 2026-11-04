@@ -11,7 +11,23 @@ CREATE TABLE giving.Pledges (
     ReceivedBy           UNIQUEIDENTIFIER NULL REFERENCES auth.Users(Id),
     ReceivedAt           DATETIME2(3)  NULL,
     CreatedAt            DATETIME2(3)  NOT NULL DEFAULT SYSUTCDATETIME(),
+    -- Added by plan 09 (M13, M15) at the end of the table, so the deploy is an ALTER. Built in D.2.
+    CancelledAt          DATETIME2(3)  NULL,
+    CancelledBy          UNIQUEIDENTIFIER NULL CONSTRAINT FK_Pledges_CancelledBy REFERENCES auth.Users(Id),
+    CancelReason         NVARCHAR(300) NULL,
+    ReceivedQuantity     DECIMAL(10,2) NULL,
+    RowVersion           ROWVERSION,
+    CONSTRAINT CK_Pledges_Cancelled CHECK ((Status = 'Cancelled' AND CancelledAt IS NOT NULL AND CancelledBy IS NOT NULL)
+                                        OR (Status <> 'Cancelled' AND CancelledAt IS NULL AND CancelledBy IS NULL AND CancelReason IS NULL)),
+    -- Delivered means who received how much, at most what was pledged (M15).
+    CONSTRAINT CK_Pledges_Received CHECK ((Status = 'Delivered' AND ReceivedBy IS NOT NULL AND ReceivedAt IS NOT NULL
+                                           AND ReceivedQuantity IS NOT NULL AND ReceivedQuantity > 0 AND ReceivedQuantity <= Quantity)
+                                       OR (Status <> 'Delivered' AND ReceivedQuantity IS NULL)),
     CONSTRAINT FK_Pledges_NeedTenant FOREIGN KEY (NeedId, InstitutionId) REFERENCES giving.Needs(Id, InstitutionId),
     CONSTRAINT UQ_Pledges_Tenant UNIQUE (Id, InstitutionId)
 );
+GO
+
+-- A donor's open pledges on a need (at most 5, M13) and My giving's list.
+CREATE INDEX IX_Pledges_DonorOpen ON giving.Pledges(DonorUserId, NeedId) WHERE Status = 'Pledged';
 GO

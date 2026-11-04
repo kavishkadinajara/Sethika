@@ -8,7 +8,7 @@ import { InstitutionIcon, ShieldIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
 import { Link, useRouter } from "@/i18n/navigation";
-import { getInstitutionLookups, listInstitutions, requestSupport } from "@/lib/admin/api";
+import { getInstitutionLookups, listInstitutions, requestSupport, syncTemplates } from "@/lib/admin/api";
 import { institutionStatuses, parseInstitutionQuery, type InstitutionQuery } from "@/lib/admin/list-query";
 import type { AdminInstitution, AdminPage } from "@/lib/admin/types";
 import { localName } from "@/lib/bookings/names";
@@ -46,6 +46,7 @@ export function InstitutionsScreen() {
   const [lookups, setLookups] = useState<Lookups | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState<string | null>(null);
 
   useEffect(() => {
     // A later query's answer must not be overwritten by an earlier one arriving late.
@@ -88,6 +89,22 @@ export function InstitutionsScreen() {
       return;
     }
     toast({ variant: "error", title: switched.reason === "not_available" ? tErrors("institution_not_available") : tErrors("network") });
+  }
+
+  // Plan 09, Q4: an institution approved before a screen was built holds none of its permissions.
+  async function sync(institution: AdminInstitution) {
+    setSyncing(institution.slug);
+    const result = await syncTemplates(institution.slug);
+    setSyncing(null);
+    if (!result.ok) {
+      toast({ variant: "error", title: errorMessage(result.failure) });
+      return;
+    }
+    const added = result.value.modules + result.value.roles + result.value.grants;
+    toast({
+      variant: "success",
+      title: added === 0 ? t("syncedNothing", { name: institution.name }) : t("synced", { name: institution.name, ...result.value }),
+    });
   }
 
   return (
@@ -167,18 +184,30 @@ export function InstitutionsScreen() {
                   </p>
                 </div>
               </div>
-              {can("PLATFORM.INSTITUTIONS.EXECUTE") && (institution.status === "Active" || institution.status === "Onboarding") && (
-                <Button
-                  variant="outline"
-                  className="justify-self-start"
-                  loading={opening === institution.slug}
-                  disabled={opening !== null}
-                  onClick={() => void open(institution)}
-                >
-                  <ShieldIcon className="size-5" />
-                  {t("open")}
-                </Button>
-              )}
+              <div className="flex flex-wrap gap-2">
+                {can("PLATFORM.INSTITUTIONS.EXECUTE") && (institution.status === "Active" || institution.status === "Onboarding") && (
+                  <Button
+                    variant="outline"
+                    loading={opening === institution.slug}
+                    disabled={opening !== null}
+                    onClick={() => void open(institution)}
+                  >
+                    <ShieldIcon className="size-5" />
+                    {t("open")}
+                  </Button>
+                )}
+                {can("PLATFORM.INSTITUTIONS.EDIT") && (
+                  <Button
+                    variant="ghost"
+                    loading={syncing === institution.slug}
+                    disabled={syncing !== null}
+                    onClick={() => void sync(institution)}
+                    aria-label={t("syncNamed", { name: institution.name })}
+                  >
+                    {t("sync")}
+                  </Button>
+                )}
+              </div>
             </li>
           ))}
         </ul>

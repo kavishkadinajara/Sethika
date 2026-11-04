@@ -21,6 +21,7 @@ using Sethika.Application.Bookings.Sharing;
 using Sethika.Application.Bookings.Slots;
 using Sethika.Application.Bookings.Sponsors;
 using Sethika.Application.Bookings.Today;
+using Sethika.Application.Giving.Donations;
 using Sethika.Application.Onboarding.Applying;
 using Sethika.Application.Onboarding.Approval;
 using Sethika.Application.Onboarding.Notifications;
@@ -54,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<BootstrapPlatformAdminHandler>();
         services.AddScoped<RoleManagementHandler>();
         services.AddScoped<PlatformAdminHandler>();
+        services.AddScoped<TemplateSyncHandler>();
         services.AddScoped<PreferredLanguageHandler>();
         services.AddScoped<ApplicationHandler>();
         services.AddScoped<ApproveRegistrationHandler>();
@@ -75,6 +77,7 @@ public static class DependencyInjection
         services.AddScoped<ContributorHandler>();
         services.AddScoped<ShareHandler>();
         services.AddScoped<DonorBookHandler>();
+        services.AddScoped<DonationHandler>();
         services.AddScoped<StandingDayBooker>();
         services.AddScoped<StandingSponsorshipHandler>();
         services.AddScoped<StandingSponsorshipPreview>();
@@ -94,6 +97,7 @@ public static class DependencyInjection
         services.AddScoped<IOutboxHandler, BookingSmsHandler>();
         services.AddScoped<IOutboxHandler, RecurringBookingSmsHandler>();
         services.AddScoped<IOutboxHandler, StandingSmsHandler>();
+        services.AddScoped<IOutboxHandler, DonationSmsHandler>();
         services.AddScoped<IOutboxHandler, AvailabilityChangedHandler>();
         services.AddScoped<IOutboxHandler, AppointmentCancelledHandler>();
         services.AddScoped<IOutboxHandler, AppointmentSmsHandler>();

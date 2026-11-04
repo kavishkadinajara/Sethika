@@ -23,6 +23,12 @@ public sealed record NumberSeriesDefinition(string Code, string Prefix, byte Pad
 
     /// <summary>Requests for a standing sponsor's day (plan 08, K6), one series for the whole platform.</summary>
     public static NumberSeriesDefinition DayRequest { get; } = new("DAYREQUEST", "DR", 6);
+
+    /// <summary>
+    /// Receipts' <c>ReceiptNo</c> (plan 09, M2): one series per institution, scoped by its code, so each
+    /// institution's book of receipts runs without gaps and without another institution's numbers.
+    /// </summary>
+    public static NumberSeriesDefinition Receipt { get; } = new("RECEIPT", "RCP", 6);
 }
 
 /// <summary>

@@ -5,6 +5,7 @@ using Sethika.Application.Abstractions;
 using Sethika.Domain.Access;
 using Sethika.Domain.Bookings;
 using Sethika.Domain.Core;
+using Sethika.Domain.Giving;
 using Sethika.Domain.Institutions;
 using Sethika.Domain.Onboarding;
 using Sethika.Domain.Services;
@@ -61,6 +62,9 @@ public partial class SethikaDbContext(DbContextOptions<SethikaDbContext> options
     public DbSet<MemorialPlan> MemorialPlans => Set<MemorialPlan>();
     public DbSet<MemorialRule> MemorialRules => Set<MemorialRule>();
     public DbSet<InstitutionDonor> InstitutionDonors => Set<InstitutionDonor>();
+    public DbSet<Donation> Donations => Set<Donation>();
+    public DbSet<LookupValue> LookupValues => Set<LookupValue>();
+    public DbSet<LookupType> LookupTypes => Set<LookupType>();
     public DbSet<StandingSponsorship> StandingSponsorships => Set<StandingSponsorship>();
     public DbSet<StandingDayChange> StandingExceptions => Set<StandingDayChange>();
     public DbSet<DayRequest> DayRequests => Set<DayRequest>();

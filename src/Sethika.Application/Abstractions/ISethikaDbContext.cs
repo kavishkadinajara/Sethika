@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Sethika.Domain.Access;
 using Sethika.Domain.Bookings;
 using Sethika.Domain.Core;
+using Sethika.Domain.Giving;
 using Sethika.Domain.Institutions;
 using Sethika.Domain.Onboarding;
 using Sethika.Domain.Services;
@@ -108,6 +109,12 @@ public interface ISethikaDbContext
     DbSet<LeaderTimeOff> LeaderTimeOff { get; }
     DbSet<LeaderTimeBlock> LeaderTimeBlocks { get; }
     DbSet<ServiceAppointment> ServiceAppointments { get; }
+
+    // Giving (plan 09). A donation is never edited or deleted, only voided (M6, M7): the database's
+    // trigger refuses anything else. Lookup values are reference data the application only reads.
+    DbSet<Donation> Donations { get; }
+    DbSet<LookupValue> LookupValues { get; }
+    DbSet<LookupType> LookupTypes { get; }
 
     /// <summary>For transactions that span a set-based update and tracked inserts.</summary>
     DatabaseFacade Database { get; }

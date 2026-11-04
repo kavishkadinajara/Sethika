@@ -37,6 +37,14 @@ export async function requestSupport(slug: string): Promise<AdminResult> {
   return empty(await send(`${BASE}/institutions/${part(slug)}/support`, { method: "POST" }));
 }
 
+/**
+ * Adds what the institution's roles and modules gained since it was approved, never removing
+ * anything (plan 09, Q4). Behind a step-up that apiFetch handles.
+ */
+export async function syncTemplates(slug: string): Promise<AdminResult<{ modules: number; roles: number; grants: number }>> {
+  return json(await send(`${BASE}/institutions/${part(slug)}/sync-templates`, { method: "POST" }));
+}
+
 /** One page of the accounts the query picks (plan 05, X4). */
 export async function listUsers(query: UserQuery): Promise<AdminResult<AdminPage<AdminUser>>> {
   return json(await send(`${BASE}/users?${toApiQuery(query)}`, { method: "GET" }));

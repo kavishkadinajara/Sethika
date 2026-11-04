@@ -22,7 +22,9 @@ namespace Sethika.Infrastructure.Persistence;
 /// already another row's account (<c>UX_InstDonor_User</c>); a row staff linked stays as they left it.
 /// The standing days already booked for a row it links (still to come: requested or approved) become
 /// the person's, in the same transaction, so the person sees them in My bookings and gets the
-/// day-before reminder; the job books the later ones with the account already (K21).
+/// day-before reminder; the job books the later ones with the account already (K21). So do the gifts
+/// recorded against it (plan 09, M3), voided ones too, so the person sees every receipt in My giving:
+/// the one change to a donation <c>trg_Donations_Immutable</c> allows (M22).
 /// </para>
 /// <para>
 /// A staff member linking the same person to another row at the same moment can still win the index;
@@ -55,6 +57,12 @@ public sealed class SqlDonorBookLinks(string connectionString) : IDonorBookLinks
         FROM booking.Bookings AS b
         JOIN @linked AS l ON l.Id = b.InstitutionDonorId AND l.InstitutionId = b.InstitutionId
         WHERE b.Source = 'Standing' AND b.DonorUserId IS NULL AND b.Status IN ('Requested', 'Approved');
+
+        UPDATE g
+        SET g.DonorUserId = @userId
+        FROM giving.Donations AS g
+        JOIN @linked AS l ON l.Id = g.InstitutionDonorId AND l.InstitutionId = g.InstitutionId
+        WHERE g.DonorUserId IS NULL;
 
         COMMIT TRANSACTION;
 

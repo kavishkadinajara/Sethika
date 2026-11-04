@@ -36,6 +36,14 @@
     segment), si 96-119 and ta 97-128 (two). A long institution name can push Sinhala and Tamil to
     three.
 
+    Receipt texts (plan 09, M5), sent through the outbox when a gift is recorded: to the donor's account,
+    or to a donor book row's phone only if staff ticked its consent. A walk-in's typed phone is never
+    texted, and a void texts nothing. Money and items are two templates rather than one {gift}
+    placeholder, so no placeholder sits where Sinhala or Tamil would inflect it; the items themselves
+    are typed by staff and so are never sent. {amount} is the figure as on the receipt (5,000.00).
+    With RCP-2026-000001 (15), a 20-character institution and 5,000.00: money en 97, si 95, ta 95;
+    items en 92, si 90, ta 88. English is one segment; Sinhala and Tamil are two.
+
     Matched on (Code, Channel, Language), never on Id: notify.Notifications.TemplateId points at
     these rows, so they are updated in place, and rows another seed owns are never deleted.
 
@@ -176,7 +184,13 @@ USING (VALUES
  ('DAY_REQUEST_GIVEN', 'SMS', 'ta', N'Sethika {bookingNo}: {institution}, {date} {time}. நீங்கள் கேட்ட நாளை நிறுவனம் உங்களுக்கு வழங்கியது; அது உங்களுக்கு முன்பதிவு செய்யப்பட்டது.'),
  ('DAY_REQUEST_DECLINED', 'SMS', 'en', N'Sethika {requestNo}: {institution}, {date} {time}. The institution could not give you the day you asked for. Sign in to see why.'),
  ('DAY_REQUEST_DECLINED', 'SMS', 'si', N'Sethika {requestNo}: {institution}, {date} {time}. ඔබ ඉල්ලූ දිනය ලබා දීමට ආයතනයට නොහැකි විය. හේතුව බැලීමට පිවිසෙන්න.'),
- ('DAY_REQUEST_DECLINED', 'SMS', 'ta', N'Sethika {requestNo}: {institution}, {date} {time}. நீங்கள் கேட்ட நாளை நிறுவனத்தால் வழங்க இயலவில்லை. காரணத்தைப் பார்க்க உள்நுழையவும்.')
+ ('DAY_REQUEST_DECLINED', 'SMS', 'ta', N'Sethika {requestNo}: {institution}, {date} {time}. நீங்கள் கேட்ட நாளை நிறுவனத்தால் வழங்க இயலவில்லை. காரணத்தைப் பார்க்க உள்நுழையவும்.'),
+ ('DONATION_RECEIPT', 'SMS', 'en', N'Sethika {receiptNo}: {institution}, LKR {amount}. Your gift was received. Thank you.'),
+ ('DONATION_RECEIPT', 'SMS', 'si', N'Sethika {receiptNo}: {institution}, රු. {amount}. ඔබේ පරිත්‍යාගය ලැබුණා. ස්තූතියි.'),
+ ('DONATION_RECEIPT', 'SMS', 'ta', N'Sethika {receiptNo}: {institution}, ரூ. {amount}. உங்கள் நன்கொடை கிடைத்தது. நன்றி.'),
+ ('DONATION_RECEIPT_ITEMS', 'SMS', 'en', N'Sethika {receiptNo}: {institution}. Your gift of items was received. Thank you.'),
+ ('DONATION_RECEIPT_ITEMS', 'SMS', 'si', N'Sethika {receiptNo}: {institution}. ඔබේ ද්‍රව්‍ය පරිත්‍යාගය ලැබුණා. ස්තූතියි.'),
+ ('DONATION_RECEIPT_ITEMS', 'SMS', 'ta', N'Sethika {receiptNo}: {institution}. உங்கள் பொருள் நன்கொடை கிடைத்தது. நன்றி.')
 ) AS s(Code, Channel, Language, Body)
 ON t.Code = s.Code AND t.Channel = s.Channel AND t.Language = s.Language
 -- Compared as binary: under the database's case-insensitive collation a case-only edit would never
