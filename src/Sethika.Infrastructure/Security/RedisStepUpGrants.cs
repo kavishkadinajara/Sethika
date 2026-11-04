@@ -57,6 +57,34 @@ public sealed partial class RedisStepUpGrants(
         }
     }
 
+    /// <summary>The remaining lifetime of the old key, copied to the new one in one step.</summary>
+    private const string CarryScript =
+        """
+        local ttl = redis.call('PTTL', KEYS[1])
+        if ttl <= 0 then return 0 end
+        redis.call('SET', KEYS[2], 1, 'PX', ttl)
+        return 1
+        """;
+
+    public async Task<bool> CarryAsync(Guid userId, string fromTokenId, string toTokenId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fromTokenId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(toTokenId);
+
+        try
+        {
+            var moved = await redis.GetDatabase()
+                .ScriptEvaluateAsync(CarryScript, [KeyFor(userId, fromTokenId), KeyFor(userId, toTokenId)])
+                .ConfigureAwait(false);
+            return (long)moved == 1;
+        }
+        catch (Exception ex) when (ex is RedisException or TimeoutException)
+        {
+            LogStoreUnavailable(logger, nameof(CarryAsync), ex);
+            return false;
+        }
+    }
+
     [LoggerMessage(
         Level = LogLevel.Warning,
         Message = "Step-up store unavailable during {Operation}; treating the step-up as not granted.")]

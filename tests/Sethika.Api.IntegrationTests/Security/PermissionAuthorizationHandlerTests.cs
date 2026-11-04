@@ -207,6 +207,9 @@ public class PermissionAuthorizationHandlerTests
             CallCount++;
             return Task.FromResult(_grantEverything || granted.Contains((userId, tokenId)));
         }
+
+        public Task<bool> CarryAsync(Guid userId, string fromTokenId, string toTokenId, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("The handler only reads grants.");
     }
 
     private sealed class StubUser : ICurrentUserContext

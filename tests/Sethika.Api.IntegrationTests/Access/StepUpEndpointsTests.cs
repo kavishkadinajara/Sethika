@@ -117,6 +117,8 @@ public sealed partial class StepUpEndpointsTests(SethikaTestDatabase database) :
 
         public Task<bool> IsGrantedAsync(Guid userId, string tokenId, CancellationToken cancellationToken = default) =>
             real.IsGrantedAsync(userId, tokenId, cancellationToken);
+        public Task<bool> CarryAsync(Guid userId, string fromTokenId, string toTokenId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
     }
 
     private sealed class LoopbackConnectionStartupFilter : IStartupFilter
