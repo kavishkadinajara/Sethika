@@ -50,4 +50,7 @@ internal static class BookingRateLimits
 
     /// <summary>Joins and declines by one account (H17): a person answers a few links, not dozens.</summary>
     public static readonly RateLimitRule ShareAnswerPerUser = new("share-answer-user", 30, TimeSpan.FromHours(1));
+
+    /// <summary>Pledges by one account (plan 09, M13): a person pledges to a few needs, and each holds back a need's quantity.</summary>
+    public static readonly RateLimitRule PledgePerUser = new("pledge-create-user", 30, TimeSpan.FromHours(1));
 }

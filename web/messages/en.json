@@ -49,7 +49,9 @@
       "memorial": "Memorial dana planner",
       "sponsors": "Regular donors",
       "myGiving": "My giving",
-      "donations": "Donations and receipts"
+      "donations": "Donations and receipts",
+      "needsBoard": "Needs board",
+      "needs": "Needs"
     },
     "context": {
       "platform": "Platform team",
@@ -69,7 +71,8 @@
     "public": {
       "find": "Find a place",
       "signIn": "Sign in",
-      "signUp": "Create an account"
+      "signUp": "Create an account",
+      "needs": "Needs board"
     },
     "support": {
       "banner": "You are in {institution} as platform support. Every change is recorded under your name.",
@@ -2357,7 +2360,17 @@
       "stale": "Someone changed this gift while you were looking at it. Look at the list again.",
       "already_void": "This gift is voided already.",
       "void_own_record": "You recorded this gift, so someone else must void it. That second pair of eyes is what keeps receipts honest.",
-      "invalid_month": "That month could not be read."
+      "invalid_month": "That month could not be read.",
+      "need_not_found": "There is no such need here. It may have been taken down.",
+      "pledge_not_found": "There is no such pledge here.",
+      "need_full": "There is not that much left of this need: others pledged first. Look again and pledge what is left.",
+      "need_closed": "This need is no longer taking anything.",
+      "need_wrong_status": "This need cannot take that step now. Look at the list again.",
+      "quantity_below_pledged": "That is less than people have already pledged or brought. Cancel a pledge first if the need really is smaller.",
+      "open_pledges": "People still have open pledges on this need. Mark each one delivered or cancel it first.",
+      "need_has_gifts": "Gifts have come for this need, so it cannot be cancelled. Close it instead: what came stays counted.",
+      "pledge_not_open": "This pledge is already delivered or cancelled.",
+      "too_many_pledges": "You already have 5 open pledges on this need. Deliver or cancel one first."
     },
     "donations": {
       "title": "Donations and receipts",
@@ -2430,7 +2443,10 @@
         "donorName": "Enter the giver's name.",
         "donorPhone": "Enter a Sri Lankan phone number, or leave it blank.",
         "note": "A note is at most 300 characters."
-      }
+      },
+      "need": "For a need (optional)",
+      "needHint": "Items count toward the need, so say how many.",
+      "needNone": "Not for a need"
     },
     "void": {
       "title": "Void receipt {receiptNo}",
@@ -2477,6 +2493,163 @@
       "void": "VOID",
       "receipt": "Receipt",
       "receiptNamed": "Receipt {receiptNo}"
+    },
+    "progress": {
+      "label": "Progress",
+      "figures": "{received} received, {pledged} spoken for, of {needed} {unit}"
+    },
+    "priority": {
+      "Low": "Low",
+      "Normal": "Normal",
+      "Urgent": "Urgent"
+    },
+    "board": {
+      "title": "Needs board",
+      "intro": "What institutions are asking for right now. Pledge what you can bring, and the institution records it when it arrives.",
+      "filters": "Narrow the board",
+      "district": "District",
+      "type": "Kind of place",
+      "category": "Category",
+      "all": "All",
+      "retry": "Try again",
+      "none": "No institution has an open need right now.",
+      "noMatch": "No open need matches what you chose.",
+      "list": "Open needs",
+      "deadline": "By {date}",
+      "pledge": "Pledge",
+      "pledgeNamed": "Pledge to {need}",
+      "allPledged": "All of this is pledged. Thank you.",
+      "pledged": "Your pledge is recorded. Thank you.",
+      "onPage": "What we need",
+      "onPageIntro": "Pledge what you can bring."
+    },
+    "pledge": {
+      "title": "Pledge to {need}",
+      "left": "{count} {unit} still needed.",
+      "signInFirst": "Sign in to pledge, so the institution knows who is coming. You will come back to this need.",
+      "institutionSession": "You are working in an institution. Pledges are made from your own account.",
+      "notAllowed": "This account cannot pledge.",
+      "quantity": "How many ({unit})",
+      "quantityInvalid": "Enter a number above zero, with at most two decimals.",
+      "expected": "When you expect to bring it (optional)",
+      "expectedHint": "This helps the institution plan.",
+      "expectedInvalid": "Choose today or a day within the next year.",
+      "cancel": "Not now",
+      "save": "Pledge"
+    },
+    "needs": {
+      "title": "Needs",
+      "intro": "Ask for what your institution needs. A need stays a draft until you open it onto the public board, and it tracks what is pledged and what arrives.",
+      "retry": "Try again",
+      "add": "Add a need",
+      "none": "No needs yet.",
+      "list": "Your needs",
+      "deadline": "By {date}",
+      "status": {
+        "Draft": "Draft",
+        "Open": "Open",
+        "Fulfilled": "Fulfilled",
+        "Closed": "Closed",
+        "Cancelled": "Cancelled"
+      },
+      "pledges": "Pledges ({count})",
+      "pledgesNamed": "Pledges on {need}",
+      "open": "Open on the board",
+      "openNamed": "Open {need} on the board",
+      "edit": "Change",
+      "editNamed": "Change {need}",
+      "close": "Close",
+      "closeNamed": "Close {need}",
+      "cancel": "Cancel",
+      "cancelNamed": "Cancel {need}",
+      "added": "Need added as a draft.",
+      "saved": "Need changed.",
+      "stepped": {
+        "open": "{need} is on the board.",
+        "close": "{need} is closed.",
+        "cancel": "{need} is cancelled."
+      }
+    },
+    "needForm": {
+      "addTitle": "Add a need",
+      "addDescription": "It stays a draft, seen by nobody, until you open it.",
+      "editTitle": "Change this need",
+      "editDescription": "The quantity cannot go below what is already pledged or received.",
+      "title": "What is needed",
+      "titleHint": "For example: school books for Grade 5.",
+      "description": "More about it (optional)",
+      "category": "Category",
+      "quantity": "How many",
+      "unit": "Counted in",
+      "priority": "Priority",
+      "deadline": "Needed by (optional)",
+      "cancel": "Cancel",
+      "saveAdd": "Add the need",
+      "saveEdit": "Save",
+      "errors": {
+        "title": "Say what is needed (up to 150 characters).",
+        "description": "At most 1,000 characters.",
+        "category": "Choose a category.",
+        "unit": "The unit cannot change once something is pledged.",
+        "quantity": "Enter a number above zero, with at most two decimals.",
+        "priority": "Choose a priority.",
+        "deadline": "Choose today or a later day."
+      }
+    },
+    "pledges": {
+      "title": "Pledges on {need}",
+      "description": "Who promised what, and what became of it.",
+      "none": "No pledges yet.",
+      "list": "Pledges",
+      "status": {
+        "Pledged": "Waiting",
+        "Delivered": "Delivered",
+        "Cancelled": "Cancelled"
+      },
+      "promised": "Promised {count} {unit}",
+      "expected": "expected {date}",
+      "came": "{count} {unit} came",
+      "reasonShown": "Reason: {reason}",
+      "receiptNamed": "Receipt {receiptNo}",
+      "receive": "Mark delivered",
+      "receiveNamed": "Mark {name}'s pledge delivered",
+      "cancelPledge": "Cancel",
+      "cancelNamed": "Cancel {name}'s pledge",
+      "close": "Close",
+      "back": "Back",
+      "received": "Delivered. Receipt {receiptNo} recorded.",
+      "cancelled": "Pledge cancelled.",
+      "receiveTitle": "What {name} brought",
+      "receiveDescription": "They promised {count} {unit}. This records a receipt, which cannot be changed afterwards.",
+      "cameLabel": "How many came ({unit})",
+      "cameHint": "What did not come goes back to the need.",
+      "cameInvalid": "Enter a number above zero, at most {count}.",
+      "receiveConfirm": "Record the delivery",
+      "cancelTitle": "Cancel {name}'s pledge",
+      "cancelDescription": "What they promised goes back to the need. They will see your reason in My giving.",
+      "reason": "Why is it cancelled?",
+      "reasonMissing": "Say why it is cancelled.",
+      "cancelConfirm": "Cancel the pledge"
+    },
+    "myPledges": {
+      "title": "My pledges",
+      "none": "You have not pledged to any need yet.",
+      "seeBoard": "See the needs board",
+      "list": "My pledges",
+      "status": {
+        "Pledged": "Waiting for delivery",
+        "Delivered": "Delivered",
+        "Cancelled": "Cancelled"
+      },
+      "promised": "Promised {count} {unit}",
+      "expected": "expected {date}",
+      "came": "{count} {unit} received",
+      "reasonShown": "Reason: {reason}",
+      "receipt": "Receipt",
+      "receiptNamed": "Receipt {receiptNo}",
+      "cancel": "Cancel my pledge",
+      "cancelNamed": "Cancel my pledge to {need}",
+      "cancelled": "Your pledge is cancelled."
     }
   }
 }

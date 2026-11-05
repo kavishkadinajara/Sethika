@@ -17,6 +17,10 @@ CREATE TABLE giving.Pledges (
     CancelReason         NVARCHAR(300) NULL,
     ReceivedQuantity     DECIMAL(10,2) NULL,
     RowVersion           ROWVERSION,
+    -- Added by D.2 (M31): a pledge is addressed in URLs by this, never by Id. v7, set in C#. The table
+    -- was empty everywhere when it was added, so NOT NULL needs no default.
+    PublicId             UNIQUEIDENTIFIER NOT NULL,
+    CONSTRAINT UQ_Pledges_PublicId UNIQUE (PublicId),
     CONSTRAINT CK_Pledges_Cancelled CHECK ((Status = 'Cancelled' AND CancelledAt IS NOT NULL AND CancelledBy IS NOT NULL)
                                         OR (Status <> 'Cancelled' AND CancelledAt IS NULL AND CancelledBy IS NULL AND CancelReason IS NULL)),
     -- Delivered means who received how much, at most what was pledged (M15).

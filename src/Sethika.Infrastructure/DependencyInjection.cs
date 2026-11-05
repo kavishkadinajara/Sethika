@@ -83,10 +83,12 @@ public static class DependencyInjection
         services.AddScoped<IStandingHolds>(_ => new SqlStandingHolds(connectionString));
         services.AddScoped<IDonorBookLinks>(_ => new SqlDonorBookLinks(connectionString));
         services.AddScoped<IOwnStandingDays, PlatformOwnStandingDays>();
+        services.AddScoped<IOwnPledges, PlatformPledges>();
         services.AddScoped<IBookingNotificationQueries, BookingNotificationQueries>();
         services.AddScoped<IServiceSetupQueries, ServiceSetupQueries>();
         services.AddScoped<IDonorBookQueries, DonorBookQueries>();
         services.AddScoped<IGivingQueries, GivingQueries>();
+        services.AddScoped<INeedQueries, NeedQueries>();
         services.AddScoped<IStandingSponsorshipQueries, StandingSponsorshipQueries>();
         services.AddScoped<IDayRequestQueries, DayRequestQueries>();
         services.AddScoped<IDonorAppointmentQueries, DonorAppointmentQueries>();

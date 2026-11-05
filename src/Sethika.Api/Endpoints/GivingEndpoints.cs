@@ -139,7 +139,7 @@ internal static class GivingEndpoints
         var status = result.Error switch
         {
             DonationResult.InvalidDetails => StatusCodes.Status400BadRequest,
-            DonationResult.NotFound or DonationResult.DonorNotFound => StatusCodes.Status404NotFound,
+            DonationResult.NotFound or DonationResult.DonorNotFound or DonationResult.NeedNotFound => StatusCodes.Status404NotFound,
             DonationErrors.VoidOwnRecord => StatusCodes.Status403Forbidden,
             _ => StatusCodes.Status409Conflict,
         };

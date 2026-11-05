@@ -254,7 +254,7 @@ export async function decide(bookingNo: string, decision: Decision, reason?: str
 
 // ---- plumbing ---------------------------------------------------------------------------------------
 
-async function publicGet(path: string): Promise<BookingResult<Response>> {
+export async function publicGet(path: string): Promise<BookingResult<Response>> {
   let response: Response;
   try {
     response = await fetch(path, { cache: "no-store" });

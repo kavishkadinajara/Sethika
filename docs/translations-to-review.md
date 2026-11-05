@@ -1772,3 +1772,157 @@ calendar's regular donors and asked-for days, asking for a held day, and My book
 |---|---|---|---|---|---|
 | `DONATION_RECEIPT` | Sethika {receiptNo}: {institution}, LKR {amount}. Your gift was received. Thank you. | Sethika {receiptNo}: {institution}, රු. {amount}. ඔබේ පරිත්‍යාගය ලැබුණා. ස්තූතියි. | Sethika {receiptNo}: {institution}, ரூ. {amount}. உங்கள் நன்கொடை கிடைத்தது. நன்றி. | | |
 | `DONATION_RECEIPT_ITEMS` | Sethika {receiptNo}: {institution}. Your gift of items was received. Thank you. | Sethika {receiptNo}: {institution}. ඔබේ ද්‍රව්‍ය පරිත්‍යාගය ලැබුණා. ස්තූතියි. | Sethika {receiptNo}: {institution}. உங்கள் பொருள் நன்கொடை கிடைத்தது. நன்றி. | | |
+
+## Giving: needs and pledges (2026-11-05, `Giving`, `Shell`, plan 09 D.2)
+
+Drafts by Claude, not reviewed by a Sinhala or Tamil speaker. "Pledge" is written පොරොන්දුව / உறுதிமொழி and "need" අවශ්‍යතාව / தேவை throughout.
+
+| Key | English | Sinhala | Tamil |
+|---|---|---|---|
+| `Giving.errors.need_not_found` | There is no such need here. It may have been taken down. | මෙහි එවැනි අවශ්‍යතාවක් නැත. එය ඉවත් කර තිබෙන්නට පුළුවන. | இங்கு அப்படி ஒரு தேவை இல்லை. அது நீக்கப்பட்டிருக்கலாம். |
+| `Giving.errors.pledge_not_found` | There is no such pledge here. | මෙහි එවැනි පොරොන්දුවක් නැත. | இங்கு அப்படி ஒரு உறுதிமொழி இல்லை. |
+| `Giving.errors.need_full` | There is not that much left of this need: others pledged first. Look again and pledge what is left. | මෙම අවශ්‍යතාවෙන් ඒ තරම් ප්‍රමාණයක් ඉතිරි නැත: අන් අය කලින් පොරොන්දු වී ඇත. නැවත බලා ඉතිරි ප්‍රමාණය පොරොන්දු වන්න. | இந்தத் தேவையில் அவ்வளவு மீதமில்லை: மற்றவர்கள் முன்பே உறுதியளித்துவிட்டார்கள். மீண்டும் பார்த்து மீதமுள்ளதை உறுதியளியுங்கள். |
+| `Giving.errors.need_closed` | This need is no longer taking anything. | මෙම අවශ්‍යතාව තවදුරටත් කිසිවක් භාර ගන්නේ නැත. | இந்தத் தேவை இனி எதையும் ஏற்காது. |
+| `Giving.errors.need_wrong_status` | This need cannot take that step now. Look at the list again. | මේ අවස්ථාවේ මෙම අවශ්‍යතාවට එම පියවර ගත නොහැක. ලැයිස්තුව නැවත බලන්න. | இப்போது இந்தத் தேவையில் அந்தப் படியை எடுக்க முடியாது. பட்டியலை மீண்டும் பாருங்கள். |
+| `Giving.errors.quantity_below_pledged` | That is less than people have already pledged or brought. Cancel a pledge first if the need really is smaller. | එය දැනටමත් පොරොන්දු වූ හෝ ලැබුණු ප්‍රමාණයට වඩා අඩුය. අවශ්‍යතාව ඇත්තටම අඩු නම් පළමුව පොරොන්දුවක් අවලංගු කරන්න. | அது ஏற்கெனவே உறுதியளிக்கப்பட்ட அல்லது பெறப்பட்ட அளவை விடக் குறைவு. தேவை உண்மையில் குறைந்திருந்தால் முதலில் ஓர் உறுதிமொழியை ரத்து செய்யுங்கள். |
+| `Giving.errors.open_pledges` | People still have open pledges on this need. Mark each one delivered or cancel it first. | මෙම අවශ්‍යතාවට තවමත් විවෘත පොරොන්දු තිබේ. පළමුව එක් එක් පොරොන්දුව ලැබුණු බව සටහන් කරන්න හෝ අවලංගු කරන්න. | இந்தத் தேவையில் இன்னும் திறந்த உறுதிமொழிகள் உள்ளன. முதலில் ஒவ்வொன்றையும் பெறப்பட்டதாகக் குறியுங்கள் அல்லது ரத்து செய்யுங்கள். |
+| `Giving.errors.need_has_gifts` | Gifts have come for this need, so it cannot be cancelled. Close it instead: what came stays counted. | මෙම අවශ්‍යතාවට පරිත්‍යාග ලැබී ඇති නිසා එය අවලංගු කළ නොහැක. ඒ වෙනුවට එය වසන්න: ලැබුණු දේ ගණනට ඉතිරි වේ. | இந்தத் தேவைக்கு நன்கொடைகள் வந்துள்ளதால் இதை ரத்து செய்ய முடியாது. பதிலாக மூடுங்கள்: வந்தவை கணக்கில் இருக்கும். |
+| `Giving.errors.pledge_not_open` | This pledge is already delivered or cancelled. | මෙම පොරොන්දුව දැනටමත් ලැබී හෝ අවලංගු වී ඇත. | இந்த உறுதிமொழி ஏற்கெனவே பெறப்பட்டது அல்லது ரத்து செய்யப்பட்டது. |
+| `Giving.errors.too_many_pledges` | You already have 5 open pledges on this need. Deliver or cancel one first. | මෙම අවශ්‍යතාවට ඔබට දැනටමත් විවෘත පොරොන්දු 5ක් තිබේ. පළමුව එකක් ලබා දෙන්න හෝ අවලංගු කරන්න. | இந்தத் தேவையில் உங்களிடம் ஏற்கெனவே 5 திறந்த உறுதிமொழிகள் உள்ளன. முதலில் ஒன்றை வழங்குங்கள் அல்லது ரத்து செய்யுங்கள். |
+| `Giving.progress.label` | Progress | ප්‍රගතිය | முன்னேற்றம் |
+| `Giving.progress.figures` | {received} received, {pledged} spoken for, of {needed} {unit} | {unit} {needed}න් {received}ක් ලැබී ඇත, {pledged}ක් වෙන් වී ඇත | {needed} {unit} இல் {received} பெறப்பட்டது, {pledged} ஒதுக்கப்பட்டது |
+| `Giving.priority.Low` | Low | අඩු | குறைவு |
+| `Giving.priority.Normal` | Normal | සාමාන්‍ය | சாதாரணம் |
+| `Giving.priority.Urgent` | Urgent | හදිසි | அவசரம் |
+| `Giving.board.title` | Needs board | අවශ්‍යතා පුවරුව | தேவைகள் பலகை |
+| `Giving.board.intro` | What institutions are asking for right now. Pledge what you can bring, and the institution records it when it arrives. | ආයතන මේ මොහොතේ ඉල්ලන දේ. ඔබට ගෙන ආ හැකි දේ පොරොන්දු වන්න; එය ලැබුණු විට ආයතනය එය සටහන් කරයි. | நிறுவனங்கள் இப்போது கேட்பவை. உங்களால் கொண்டு வர முடிந்ததை உறுதியளியுங்கள்; அது வந்ததும் நிறுவனம் பதிவு செய்யும். |
+| `Giving.board.filters` | Narrow the board | පුවරුව පටු කරන්න | பலகையைச் சுருக்குங்கள் |
+| `Giving.board.district` | District | දිස්ත්‍රික්කය | மாவட்டம் |
+| `Giving.board.type` | Kind of place | ස්ථාන වර්ගය | இட வகை |
+| `Giving.board.category` | Category | ප්‍රවර්ගය | பிரிவு |
+| `Giving.board.all` | All | සියල්ල | அனைத்தும் |
+| `Giving.board.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயலுங்கள் |
+| `Giving.board.none` | No institution has an open need right now. | දැනට කිසිම ආයතනයකට විවෘත අවශ්‍යතාවක් නැත. | இப்போது எந்த நிறுவனத்திலும் திறந்த தேவை இல்லை. |
+| `Giving.board.noMatch` | No open need matches what you chose. | ඔබ තෝරාගත් දෙයට ගැළපෙන විවෘත අවශ්‍යතාවක් නැත. | நீங்கள் தேர்ந்தெடுத்ததற்குப் பொருந்தும் திறந்த தேவை இல்லை. |
+| `Giving.board.list` | Open needs | විවෘත අවශ්‍යතා | திறந்த தேவைகள் |
+| `Giving.board.deadline` | By {date} | {date} වන විට | {date} க்குள் |
+| `Giving.board.pledge` | Pledge | පොරොන්දු වන්න | உறுதியளி |
+| `Giving.board.pledgeNamed` | Pledge to {need} | {need} සඳහා පොරොන්දු වන්න | {need} க்கு உறுதியளி |
+| `Giving.board.allPledged` | All of this is pledged. Thank you. | මේ සියල්ල පොරොන්දු වී ඇත. ස්තුතියි. | இவை அனைத்தும் உறுதியளிக்கப்பட்டுள்ளன. நன்றி. |
+| `Giving.board.pledged` | Your pledge is recorded. Thank you. | ඔබේ පොරොන්දුව සටහන් විය. ස්තුතියි. | உங்கள் உறுதிமொழி பதிவானது. நன்றி. |
+| `Giving.board.onPage` | What we need | අපට අවශ්‍ය දේ | எங்களுக்குத் தேவையானவை |
+| `Giving.board.onPageIntro` | Pledge what you can bring. | ඔබට ගෙන ආ හැකි දේ පොරොන්දු වන්න. | உங்களால் கொண்டு வர முடிந்ததை உறுதியளியுங்கள். |
+| `Giving.pledge.title` | Pledge to {need} | {need} සඳහා පොරොන්දු වන්න | {need} க்கு உறுதியளி |
+| `Giving.pledge.left` | {count} {unit} still needed. | තවත් {unit} {count}ක් අවශ්‍යයි. | இன்னும் {count} {unit} தேவை. |
+| `Giving.pledge.signInFirst` | Sign in to pledge, so the institution knows who is coming. You will come back to this need. | පොරොන්දු වීමට පුරනය වන්න, එවිට එන්නේ කවුදැයි ආයතනය දනී. ඔබ නැවත මෙම අවශ්‍යතාවටම පැමිණේවි. | உறுதியளிக்க உள்நுழையுங்கள்; அப்போது யார் வருகிறார் என்று நிறுவனம் அறியும். நீங்கள் இந்தத் தேவைக்கே திரும்புவீர்கள். |
+| `Giving.pledge.institutionSession` | You are working in an institution. Pledges are made from your own account. | ඔබ දැන් ආයතනයක වැඩ කරයි. පොරොන්දු වන්නේ ඔබේම ගිණුමෙනි. | நீங்கள் ஒரு நிறுவனத்தில் பணிபுரிகிறீர்கள். உறுதிமொழிகள் உங்கள் சொந்தக் கணக்கிலிருந்து அளிக்கப்படும். |
+| `Giving.pledge.notAllowed` | This account cannot pledge. | මෙම ගිණුමට පොරොන්දු විය නොහැක. | இந்தக் கணக்கால் உறுதியளிக்க முடியாது. |
+| `Giving.pledge.quantity` | How many ({unit}) | ප්‍රමාණය ({unit}) | எத்தனை ({unit}) |
+| `Giving.pledge.quantityInvalid` | Enter a number above zero, with at most two decimals. | බිංදුවට වැඩි, දශමස්ථාන දෙකකට නොවැඩි අංකයක් ඇතුළත් කරන්න. | பூஜ்ஜியத்தை விட அதிகமான, இரண்டு தசம இடங்களுக்கு மிகாத எண்ணை உள்ளிடுங்கள். |
+| `Giving.pledge.expected` | When you expect to bring it (optional) | ගෙන ඒමට බලාපොරොත්තු වන දිනය (අත්‍යවශ්‍ය නොවේ) | கொண்டு வர எதிர்பார்க்கும் நாள் (விருப்பத்திற்குரியது) |
+| `Giving.pledge.expectedHint` | This helps the institution plan. | මෙය ආයතනයට සැලසුම් කිරීමට උදව් වේ. | இது நிறுவனம் திட்டமிட உதவும். |
+| `Giving.pledge.expectedInvalid` | Choose today or a day within the next year. | අද හෝ ඉදිරි වසර තුළ දිනයක් තෝරන්න. | இன்று அல்லது அடுத்த ஓராண்டுக்குள் ஒரு நாளைத் தேர்ந்தெடுங்கள். |
+| `Giving.pledge.cancel` | Not now | දැන් නොවේ | இப்போது வேண்டாம் |
+| `Giving.pledge.save` | Pledge | පොරොන්දු වන්න | உறுதியளி |
+| `Giving.needs.title` | Needs | අවශ්‍යතා | தேவைகள் |
+| `Giving.needs.intro` | Ask for what your institution needs. A need stays a draft until you open it onto the public board, and it tracks what is pledged and what arrives. | ඔබේ ආයතනයට අවශ්‍ය දේ ඉල්ලන්න. පොදු පුවරුවට විවෘත කරන තුරු අවශ්‍යතාව කෙටුම්පතක් ලෙස පවතින අතර, පොරොන්දු වූ දේත් ලැබුණු දේත් එහි සටහන් වේ. | உங்கள் நிறுவனத்துக்குத் தேவையானதைக் கேளுங்கள். பொதுப் பலகையில் திறக்கும் வரை தேவை வரைவாகவே இருக்கும்; உறுதியளிக்கப்பட்டதும் வந்ததும் அதில் கணக்கிடப்படும். |
+| `Giving.needs.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயலுங்கள் |
+| `Giving.needs.add` | Add a need | අවශ්‍යතාවක් එක් කරන්න | தேவையைச் சேர் |
+| `Giving.needs.none` | No needs yet. | තවම අවශ්‍යතා නැත. | இன்னும் தேவைகள் இல்லை. |
+| `Giving.needs.list` | Your needs | ඔබේ අවශ්‍යතා | உங்கள் தேவைகள் |
+| `Giving.needs.deadline` | By {date} | {date} වන විට | {date} க்குள் |
+| `Giving.needs.status.Draft` | Draft | කෙටුම්පත | வரைவு |
+| `Giving.needs.status.Open` | Open | විවෘතයි | திறந்துள்ளது |
+| `Giving.needs.status.Fulfilled` | Fulfilled | සම්පූර්ණයි | நிறைவேறியது |
+| `Giving.needs.status.Closed` | Closed | වසා ඇත | மூடப்பட்டது |
+| `Giving.needs.status.Cancelled` | Cancelled | අවලංගුයි | ரத்து செய்யப்பட்டது |
+| `Giving.needs.pledges` | Pledges ({count}) | පොරොන්දු ({count}) | உறுதிமொழிகள் ({count}) |
+| `Giving.needs.pledgesNamed` | Pledges on {need} | {need} සඳහා පොරොන්දු | {need} இன் உறுதிமொழிகள் |
+| `Giving.needs.open` | Open on the board | පුවරුවට විවෘත කරන්න | பலகையில் திற |
+| `Giving.needs.openNamed` | Open {need} on the board | {need} පුවරුවට විවෘත කරන්න | {need} ஐப் பலகையில் திற |
+| `Giving.needs.edit` | Change | වෙනස් කරන්න | மாற்று |
+| `Giving.needs.editNamed` | Change {need} | {need} වෙනස් කරන්න | {need} ஐ மாற்று |
+| `Giving.needs.close` | Close | වසන්න | மூடு |
+| `Giving.needs.closeNamed` | Close {need} | {need} වසන්න | {need} ஐ மூடு |
+| `Giving.needs.cancel` | Cancel | අවලංගු කරන්න | ரத்து செய் |
+| `Giving.needs.cancelNamed` | Cancel {need} | {need} අවලංගු කරන්න | {need} ஐ ரத்து செய் |
+| `Giving.needs.added` | Need added as a draft. | අවශ්‍යතාව කෙටුම්පතක් ලෙස එක් විය. | தேவை வரைவாகச் சேர்க்கப்பட்டது. |
+| `Giving.needs.saved` | Need changed. | අවශ්‍යතාව වෙනස් විය. | தேவை மாற்றப்பட்டது. |
+| `Giving.needs.stepped.open` | {need} is on the board. | {need} පුවරුවේ ඇත. | {need} பலகையில் உள்ளது. |
+| `Giving.needs.stepped.close` | {need} is closed. | {need} වසා ඇත. | {need} மூடப்பட்டது. |
+| `Giving.needs.stepped.cancel` | {need} is cancelled. | {need} අවලංගු විය. | {need} ரத்து செய்யப்பட்டது. |
+| `Giving.needForm.addTitle` | Add a need | අවශ්‍යතාවක් එක් කරන්න | தேவையைச் சேர் |
+| `Giving.needForm.addDescription` | It stays a draft, seen by nobody, until you open it. | ඔබ විවෘත කරන තුරු එය කෙටුම්පතක් ලෙස පවතින අතර කිසිවෙකුට නොපෙනේ. | நீங்கள் திறக்கும் வரை இது யாருக்கும் தெரியாத வரைவாக இருக்கும். |
+| `Giving.needForm.editTitle` | Change this need | මෙම අවශ්‍යතාව වෙනස් කරන්න | இந்தத் தேவையை மாற்று |
+| `Giving.needForm.editDescription` | The quantity cannot go below what is already pledged or received. | දැනටමත් පොරොන්දු වූ හෝ ලැබුණු ප්‍රමාණයට වඩා අඩු කළ නොහැක. | ஏற்கெனவே உறுதியளிக்கப்பட்ட அல்லது பெறப்பட்ட அளவை விடக் குறைக்க முடியாது. |
+| `Giving.needForm.title` | What is needed | අවශ්‍ය දේ | என்ன தேவை |
+| `Giving.needForm.titleHint` | For example: school books for Grade 5. | උදාහරණයක් ලෙස: 5 ශ්‍රේණියට පාසල් පොත්. | உதாரணமாக: தரம் 5 க்கான பாடசாலைப் புத்தகங்கள். |
+| `Giving.needForm.description` | More about it (optional) | ඒ ගැන වැඩි විස්තර (අත්‍යවශ්‍ය නොවේ) | மேலும் விவரம் (விருப்பத்திற்குரியது) |
+| `Giving.needForm.category` | Category | ප්‍රවර්ගය | பிரிவு |
+| `Giving.needForm.quantity` | How many | ප්‍රමාණය | எத்தனை |
+| `Giving.needForm.unit` | Counted in | ගණන් කරන ඒකකය | அளவீடு |
+| `Giving.needForm.priority` | Priority | ප්‍රමුඛතාව | முன்னுரிமை |
+| `Giving.needForm.deadline` | Needed by (optional) | අවශ්‍ය දිනය (අත්‍යවශ්‍ය නොවේ) | தேவைப்படும் நாள் (விருப்பத்திற்குரியது) |
+| `Giving.needForm.cancel` | Cancel | අවලංගු කරන්න | ரத்து செய் |
+| `Giving.needForm.saveAdd` | Add the need | අවශ්‍යතාව එක් කරන්න | தேவையைச் சேர் |
+| `Giving.needForm.saveEdit` | Save | සුරකින්න | சேமி |
+| `Giving.needForm.errors.title` | Say what is needed (up to 150 characters). | අවශ්‍ය දේ කියන්න (අකුරු 150 දක්වා). | என்ன தேவை என்று சொல்லுங்கள் (150 எழுத்துகள் வரை). |
+| `Giving.needForm.errors.description` | At most 1,000 characters. | අකුරු 1,000කට නොවැඩි විය යුතුය. | அதிகபட்சம் 1,000 எழுத்துகள். |
+| `Giving.needForm.errors.category` | Choose a category. | ප්‍රවර්ගයක් තෝරන්න. | ஒரு பிரிவைத் தேர்ந்தெடுங்கள். |
+| `Giving.needForm.errors.unit` | The unit cannot change once something is pledged. | යමක් පොරොන්දු වූ පසු ඒකකය වෙනස් කළ නොහැක. | ஏதாவது உறுதியளிக்கப்பட்ட பின் அளவீட்டை மாற்ற முடியாது. |
+| `Giving.needForm.errors.quantity` | Enter a number above zero, with at most two decimals. | බිංදුවට වැඩි, දශමස්ථාන දෙකකට නොවැඩි අංකයක් ඇතුළත් කරන්න. | பூஜ்ஜியத்தை விட அதிகமான, இரண்டு தசம இடங்களுக்கு மிகாத எண்ணை உள்ளிடுங்கள். |
+| `Giving.needForm.errors.priority` | Choose a priority. | ප්‍රමුඛතාවක් තෝරන්න. | முன்னுரிமையைத் தேர்ந்தெடுங்கள். |
+| `Giving.needForm.errors.deadline` | Choose today or a later day. | අද හෝ පසු දිනයක් තෝරන්න. | இன்று அல்லது பிந்திய நாளைத் தேர்ந்தெடுங்கள். |
+| `Giving.pledges.title` | Pledges on {need} | {need} සඳහා පොරොන්දු | {need} இன் உறுதிமொழிகள் |
+| `Giving.pledges.description` | Who promised what, and what became of it. | කවුරු කුමක් පොරොන්දු වූවාද, එය කෙසේ අවසන් වූවාද. | யார் என்ன உறுதியளித்தார், அது என்ன ஆனது. |
+| `Giving.pledges.none` | No pledges yet. | තවම පොරොන්දු නැත. | இன்னும் உறுதிமொழிகள் இல்லை. |
+| `Giving.pledges.list` | Pledges | පොරොන්දු | உறுதிமொழிகள் |
+| `Giving.pledges.status.Pledged` | Waiting | බලාපොරොත්තුවෙන් | காத்திருக்கிறது |
+| `Giving.pledges.status.Delivered` | Delivered | ලැබුණි | பெறப்பட்டது |
+| `Giving.pledges.status.Cancelled` | Cancelled | අවලංගුයි | ரத்து செய்யப்பட்டது |
+| `Giving.pledges.promised` | Promised {count} {unit} | {unit} {count}ක් පොරොන්දු විය | {count} {unit} உறுதியளித்தது |
+| `Giving.pledges.expected` | expected {date} | බලාපොරොත්තු දිනය {date} | எதிர்பார்க்கும் நாள் {date} |
+| `Giving.pledges.came` | {count} {unit} came | {unit} {count}ක් ලැබුණි | {count} {unit} வந்தது |
+| `Giving.pledges.reasonShown` | Reason: {reason} | හේතුව: {reason} | காரணம்: {reason} |
+| `Giving.pledges.receiptNamed` | Receipt {receiptNo} | රිසිට්පත {receiptNo} | பற்றுச்சீட்டு {receiptNo} |
+| `Giving.pledges.receive` | Mark delivered | ලැබුණු බව සටහන් කරන්න | பெறப்பட்டதாகக் குறி |
+| `Giving.pledges.receiveNamed` | Mark {name}'s pledge delivered | {name}ගේ පොරොන්දුව ලැබුණු බව සටහන් කරන්න | {name} இன் உறுதிமொழியைப் பெறப்பட்டதாகக் குறி |
+| `Giving.pledges.cancelPledge` | Cancel | අවලංගු කරන්න | ரத்து செய் |
+| `Giving.pledges.cancelNamed` | Cancel {name}'s pledge | {name}ගේ පොරොන්දුව අවලංගු කරන්න | {name} இன் உறுதிமொழியை ரத்து செய் |
+| `Giving.pledges.close` | Close | වසන්න | மூடு |
+| `Giving.pledges.back` | Back | ආපසු | பின்செல் |
+| `Giving.pledges.received` | Delivered. Receipt {receiptNo} recorded. | ලැබුණි. රිසිට්පත {receiptNo} සටහන් විය. | பெறப்பட்டது. பற்றுச்சீட்டு {receiptNo} பதிவானது. |
+| `Giving.pledges.cancelled` | Pledge cancelled. | පොරොන්දුව අවලංගු විය. | உறுதிமொழி ரத்து செய்யப்பட்டது. |
+| `Giving.pledges.receiveTitle` | What {name} brought | {name} ගෙනා දේ | {name} கொண்டு வந்தவை |
+| `Giving.pledges.receiveDescription` | They promised {count} {unit}. This records a receipt, which cannot be changed afterwards. | ඔවුන් {unit} {count}ක් පොරොන්දු විය. මෙයින් රිසිට්පතක් සටහන් වන අතර පසුව එය වෙනස් කළ නොහැක. | அவர் {count} {unit} உறுதியளித்தார். இது பற்றுச்சீட்டைப் பதிவு செய்யும்; பின்னர் அதை மாற்ற முடியாது. |
+| `Giving.pledges.cameLabel` | How many came ({unit}) | ලැබුණු ප්‍රමාණය ({unit}) | எத்தனை வந்தது ({unit}) |
+| `Giving.pledges.cameHint` | What did not come goes back to the need. | නොලැබුණු ප්‍රමාණය නැවත අවශ්‍යතාවට එක් වේ. | வராதது மீண்டும் தேவைக்குச் சேரும். |
+| `Giving.pledges.cameInvalid` | Enter a number above zero, at most {count}. | බිංදුවට වැඩි, {count}ට නොවැඩි අංකයක් ඇතුළත් කරන්න. | பூஜ்ஜியத்தை விட அதிகமான, {count} க்கு மிகாத எண்ணை உள்ளிடுங்கள். |
+| `Giving.pledges.receiveConfirm` | Record the delivery | ලැබීම සටහන් කරන්න | பெறுதலைப் பதிவு செய் |
+| `Giving.pledges.cancelTitle` | Cancel {name}'s pledge | {name}ගේ පොරොන්දුව අවලංගු කරන්න | {name} இன் உறுதிமொழியை ரத்து செய் |
+| `Giving.pledges.cancelDescription` | What they promised goes back to the need. They will see your reason in My giving. | ඔවුන් පොරොන්දු වූ ප්‍රමාණය නැවත අවශ්‍යතාවට එක් වේ. ඔබේ හේතුව ඔවුන්ට මගේ පරිත්‍යාග තුළ පෙනේ. | அவர் உறுதியளித்தது மீண்டும் தேவைக்குச் சேரும். உங்கள் காரணத்தை அவர் எனது கொடைகளில் காண்பார். |
+| `Giving.pledges.reason` | Why is it cancelled? | අවලංගු කරන්නේ ඇයි? | ஏன் ரத்து செய்யப்படுகிறது? |
+| `Giving.pledges.reasonMissing` | Say why it is cancelled. | අවලංගු කරන හේතුව කියන්න. | ரத்து செய்வதற்கான காரணத்தைச் சொல்லுங்கள். |
+| `Giving.pledges.cancelConfirm` | Cancel the pledge | පොරොන්දුව අවලංගු කරන්න | உறுதிமொழியை ரத்து செய் |
+| `Giving.myPledges.title` | My pledges | මගේ පොරොන්දු | எனது உறுதிமொழிகள் |
+| `Giving.myPledges.none` | You have not pledged to any need yet. | ඔබ තවම කිසිම අවශ්‍යතාවකට පොරොන්දු වී නැත. | நீங்கள் இன்னும் எந்தத் தேவைக்கும் உறுதியளிக்கவில்லை. |
+| `Giving.myPledges.seeBoard` | See the needs board | අවශ්‍යතා පුවරුව බලන්න | தேவைகள் பலகையைப் பாருங்கள் |
+| `Giving.myPledges.list` | My pledges | මගේ පොරොන්දු | எனது உறுதிமொழிகள் |
+| `Giving.myPledges.status.Pledged` | Waiting for delivery | ලබා දීමට බලාපොරොත්තුවෙන් | வழங்கக் காத்திருக்கிறது |
+| `Giving.myPledges.status.Delivered` | Delivered | ලැබුණි | பெறப்பட்டது |
+| `Giving.myPledges.status.Cancelled` | Cancelled | අවලංගුයි | ரத்து செய்யப்பட்டது |
+| `Giving.myPledges.promised` | Promised {count} {unit} | {unit} {count}ක් පොරොන්දු විය | {count} {unit} உறுதியளித்தது |
+| `Giving.myPledges.expected` | expected {date} | බලාපොරොත්තු දිනය {date} | எதிர்பார்க்கும் நாள் {date} |
+| `Giving.myPledges.came` | {count} {unit} received | {unit} {count}ක් ලැබුණි | {count} {unit} பெறப்பட்டது |
+| `Giving.myPledges.reasonShown` | Reason: {reason} | හේතුව: {reason} | காரணம்: {reason} |
+| `Giving.myPledges.receipt` | Receipt | රිසිට්පත | பற்றுச்சீட்டு |
+| `Giving.myPledges.receiptNamed` | Receipt {receiptNo} | රිසිට්පත {receiptNo} | பற்றுச்சீட்டு {receiptNo} |
+| `Giving.myPledges.cancel` | Cancel my pledge | මගේ පොරොන්දුව අවලංගු කරන්න | எனது உறுதிமொழியை ரத்து செய் |
+| `Giving.myPledges.cancelNamed` | Cancel my pledge to {need} | {need} සඳහා මගේ පොරොන්දුව අවලංගු කරන්න | {need} க்கான எனது உறுதிமொழியை ரத்து செய் |
+| `Giving.myPledges.cancelled` | Your pledge is cancelled. | ඔබේ පොරොන්දුව අවලංගු විය. | உங்கள் உறுதிமொழி ரத்து செய்யப்பட்டது. |
+| `Giving.record.need` | For a need (optional) | අවශ්‍යතාවක් සඳහා (අත්‍යවශ්‍ය නොවේ) | ஒரு தேவைக்காக (விருப்பத்திற்குரியது) |
+| `Giving.record.needHint` | Items count toward the need, so say how many. | භාණ්ඩ අවශ්‍යතාවට ගණන් වේ, ඒ නිසා ප්‍රමාණය කියන්න. | பொருட்கள் தேவையில் கணக்கிடப்படும், எனவே எத்தனை என்று சொல்லுங்கள். |
+| `Giving.record.needNone` | Not for a need | අවශ්‍යතාවක් සඳහා නොවේ | தேவைக்காக அல்ல |
+| `Shell.items.needsBoard` | Needs board | අවශ්‍යතා පුවරුව | தேவைகள் பலகை |
+| `Shell.items.needs` | Needs | අවශ්‍යතා | தேவைகள் |
+| `Shell.public.needs` | Needs board | අවශ්‍යතා පුවරුව | தேவைகள் பலகை |

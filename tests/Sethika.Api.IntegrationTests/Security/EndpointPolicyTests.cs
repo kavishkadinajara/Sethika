@@ -60,6 +60,10 @@ public sealed class EndpointPolicyTests(SethikaTestDatabase database)
         "GET /api/search/month",
         "GET /api/search/lookups",
 
+        // The needs board, anonymous and limited per client like search (plan 09, M12).
+        "GET /api/needs",
+        "GET /api/needs/lookups",
+
         // The live calendars' hub (plan 07, H9, H29): it hints at the same open days, so the same
         // anyone may hear them. SignalR maps the connection and its negotiation for every method.
         "* /api/hubs/availability",

@@ -47,6 +47,10 @@ public class Donation
     public decimal? Quantity { get; set; }
     public decimal? EstimatedValue { get; set; }
     public int? NeedId { get; set; }
+
+    /// <summary>The pledge this gift delivered (M15); null for a gift that came without one.</summary>
+    public int? PledgeId { get; set; }
+
     public string? Note { get; set; }
 
     /// <summary>When it was given (UTC); a past day is stored at noon in Colombo (M23).</summary>

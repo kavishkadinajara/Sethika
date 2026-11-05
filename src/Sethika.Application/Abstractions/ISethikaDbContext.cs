@@ -113,6 +113,11 @@ public interface ISethikaDbContext
     // Giving (plan 09). A donation is never edited or deleted, only voided (M6, M7): the database's
     // trigger refuses anything else. Lookup values are reference data the application only reads.
     DbSet<Donation> Donations { get; }
+
+    // A need's counters move only by a conditional UPDATE (NeedCounters, M13): never through a tracked Need.
+    DbSet<Need> Needs { get; }
+    DbSet<Pledge> Pledges { get; }
+
     DbSet<LookupValue> LookupValues { get; }
     DbSet<LookupType> LookupTypes { get; }
 

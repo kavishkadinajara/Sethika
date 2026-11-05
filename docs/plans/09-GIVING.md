@@ -1,6 +1,6 @@
 # Plan 09 — Phase D: giving and insight (donations, receipts, needs board, reports)
 
-Status: **agreed 2026-11-04 (answers in §8). D.1 built 2026-11-04 (not committed; box in §7). D.2-D.5 not started.** Branch: `standing-sponsors`
+Status: **agreed 2026-11-04 (answers in §8). D.1 built 2026-11-04. D.2 built 2026-11-05 (not committed; box in §7). D.3-D.5 not started.** Branch: `standing-sponsors`
 (plan 08 and Phase D go to develop in one pull request, the user 2026-11-04). Decision numbers here are
 **M1, M2, …**.
 
@@ -99,6 +99,14 @@ or pledges for standing days" to this phase: recording a donation from a donor b
 | M27 | **The donations list's CSV moves to D.4**, with the report's CSV (one writer, one BOM rule). D.1's list filters by month on the server and by method and voided in the browser. `Kind` is `Money`/`InKind` in both directions, as stored, like booking statuses | Keeps D.1 to its promise; a month's gifts are few enough to filter in the page |
 | M28 | **A step-up survives a token rotation only when the rotation also presents the access token holding it** (asked by the user 2026-11-04, after "Bring roles up to date" kept asking for a code and hit the 3-an-hour cap). `IStepUpGrants.CarryAsync` copies the grant to the new `jti` with only the time it had left (one Redis script); the session endpoints pass the bearer token the JWT handler accepted, `SessionHandler` carries it when it is the refresh token's own user; the web client sends its token with refresh and switches, never with logout. A page reload has no token in memory, so it still asks again; the dev OTP cap is 10 an hour (`appsettings.Development.json`, Console sender, no cost; production stays 3). A20 holds: the httpOnly cookie alone carries nothing | Token expiry and switching institution or account no longer throw a fresh step-up away; a thief of the cookie still inherits none (`StepUpCarryTests`, mutants C1, C2, C4 and the client's W1 killed) |
 
+### Decided while building D.2 (2026-11-05)
+
+| # | Decision | Why |
+|---|---|---|
+| M29 | **`QuantityPledged` means everything spoken for: what arrived plus what open pledges still promise.** So a gift with no pledge moves both counters, under the same condition as a pledge (`QuantityPledged + q <= QuantityNeeded`, else `need_full`), and what is left to pledge is always needed less pledged. A gift of items against a need must say how many; money may name a need but never counts toward it. A need with open pledges cannot be closed or cancelled (`open_pledges`), and one that received gifts is closed, not cancelled (`need_has_gifts`) | M13's and M15's sums only agree on this meaning. If an unpledged arrival moved received alone, needed 10, pledged 8, received 5 would be possible. Each pledge is a person's promise, so it is delivered or cancelled by name, never swept away with its need |
+| M30 | **Voiding a gift against a need takes it out of the need** (both counters, in the void's transaction), and a need it had fulfilled is open again; a closed need stays closed with the true count. The pledge of a voided receipt stays `Delivered`, because the delivery happened; the correction is recording the gift again | M6: a voided gift leaves every total, and a need's progress is a total. M6 did not say so, and without it a need would stay fulfilled on a void receipt |
+| M31 | **`giving.Pledges` gains `PublicId`** (UUID v7 from code, `UNIQUE`). §3 left it out, but staff and donors address a pledge in URLs. `UPDATE Needs` comes before the pledge's `INSERT` (M13 said the other order): the row lock it takes is what makes the "at most 5 open pledges" count safe against a donor racing themselves. A passed deadline takes a need off the board and refuses pledges (`need_closed`) while it stays `Open` for staff. An unlisted institution's needs show on its own page only | CLAUDE.md: never `Id` in a URL. The table was empty everywhere, so the column is a plain `ALTER` |
+
 ## 3. Schema changes (one publish)
 
 - `giving.Donations`: `PublicId UNIQUEIDENTIFIER NOT NULL` (UUID v7 from code, `UNIQUE`), `Quantity DECIMAL(10,2) NULL`,
@@ -173,8 +181,21 @@ or pledges for standing days" to this phase: recording a donation from a donor b
   the trigger compares too). e2e giving 4 desktop + 3 phone (incl. si/ta at 320 px), admin + shell
   neighbours green after the shell spec's donor-menu count went 6 → 7. The full `dotnet test` and full
   e2e run before the PR (D.5). Decisions M22-M27 above.
-- [ ] **D.2** Needs, the public board, pledges (platform scope M14), receiving into in-kind receipts. Screens
+- [x] **D.2** Needs, the public board, pledges (platform scope M14), receiving into in-kind receipts. Screens
   and e2e. ~0.7
+  *Built 2026-11-05, not committed.* One schema change: `giving.Pledges.PublicId` (M31), published to
+  Sethika_Test and the dev Sethika (user OK). API: `NeedEndpoints` (`/api/institution/needs`,
+  `/api/institution/pledges/{id}/receive|cancel`, anonymous `GET /api/needs` and `/lookups`,
+  `POST /api/needs/{id}/pledges`, `/api/me/pledges`), `NeedHandler`, `PledgeHandler`, `NeedCounters` (every
+  counter move), `PlatformPledges` (M14), `NeedQueries`; `DonationHandler` takes a need and its void takes the
+  gift back out. Screens: `/giving/needs` (add, open, change, close, cancel; pledges sheet with receive and
+  cancel), `/needs` (district, type, category), needs on `/i/[slug]`, pledge sheet with the sign-in gate, My
+  pledges in `/giving/mine`, a need picker on the record sheet; strings en/si/ta (drafts in
+  `docs/translations-to-review.md`). Listing still needs a meal slot (`no_active_slot`), so a place with no
+  slots shows its needs on its own page only. Tests: `NeedEndpointsTests` 42, domain `NeedTests` and
+  `PledgeTests`, vitest `lib/giving/needs`, e2e `e2e/giving/needs.spec.ts`. Mutants C# 36/36 killed, SQL RLS
+  2/2; the unmutated control of the giving classes and neighbours is 74/74. The full `dotnet test` and full
+  e2e run before the PR (D.5). Decisions M29-M31 above.
 - [ ] **D.3** PayHere sandbox: each institution's merchant settings and the encrypted secret (M10, M21), the
   order, the checkout form, the notification, the return page. ~0.8
 - [ ] **D.4** The monthly report, CSV, print; dashboard lines (M18). ~0.5

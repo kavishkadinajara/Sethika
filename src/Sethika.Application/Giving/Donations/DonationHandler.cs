@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Sethika.Application.Abstractions;
+using Sethika.Application.Giving.Needs;
 using Sethika.Domain.Bookings;
 using Sethika.Domain.Core;
 using Sethika.Domain.Giving;
@@ -97,7 +98,8 @@ public sealed class DonationHandler(ISethikaDbContext db, INumberSeries numbers,
                 invalid.Add("items");
             }
 
-            if (input.Quantity is not null && !IsAmount(input.Quantity, MaxQuantity))
+            // A gift of items against a need must say how many: that is what the need counts (M15).
+            if (input.Quantity is null ? input.Need is not null : !IsAmount(input.Quantity, MaxQuantity))
             {
                 invalid.Add("quantity");
             }
@@ -206,6 +208,20 @@ public sealed class DonationHandler(ISethikaDbContext db, INumberSeries numbers,
             donation.DonorPhone = walkInPhone;
         }
 
+        if (input.Need is { } needPublicId)
+        {
+            donation.NeedId = await db.Needs
+                .Where(n => n.PublicId == needPublicId && n.InstitutionId == institutionId)
+                .Select(n => (int?)n.Id)
+                .SingleOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (donation.NeedId is null)
+            {
+                return DonationResult.Failed(DonationResult.NeedNotFound);
+            }
+        }
+
         var scope = await db.Institutions
             .Where(i => i.Id == institutionId)
             .Select(i => i.InstitutionCode)
@@ -217,6 +233,12 @@ public sealed class DonationHandler(ISethikaDbContext db, INumberSeries numbers,
         donation.ReceiptNo = await numbers
             .NextAsync(NumberSeriesDefinition.Receipt, scope, today.Year, cancellationToken)
             .ConfigureAwait(false);
+
+        // Refused here, the transaction's end gives the receipt number back (M2).
+        if (donation.NeedId is { } needId && await CountTowardNeedAsync(needId, donation, cancellationToken).ConfigureAwait(false) is { } refused)
+        {
+            return DonationResult.Failed(refused);
+        }
 
         db.Donations.Add(donation);
         db.AuditLogs.Add(new AuditLogEntry
@@ -282,6 +304,14 @@ public sealed class DonationHandler(ISethikaDbContext db, INumberSeries numbers,
             return DonationResult.Failed(refused);
         }
 
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
+        // Leaving every total includes the need's (M30). A stale void below rolls this back.
+        if (donation is { Kind: Donation.InKind, NeedId: { } needId, Quantity: { } quantity })
+        {
+            await db.TakeBackArrivalAsync(needId, quantity, cancellationToken).ConfigureAwait(false);
+        }
+
         db.Entry(donation).Property(d => d.RowVersion).OriginalValue = input.Version;
         db.AuditLogs.Add(new AuditLogEntry
         {
@@ -304,7 +334,25 @@ public sealed class DonationHandler(ISethikaDbContext db, INumberSeries numbers,
             return DonationResult.Failed(DonationResult.Stale);
         }
 
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return DonationResult.For(donation.PublicId, donation.ReceiptNo, donation.RowVersion);
+    }
+
+    /// <summary>
+    /// Items count toward the need (M15, M29); money only names it, so the need must simply still be open.
+    /// </summary>
+    /// <returns>The refusal, or <see langword="null"/> when the gift may stand.</returns>
+    private async Task<string?> CountTowardNeedAsync(int needId, Donation donation, CancellationToken cancellationToken)
+    {
+        if (donation.Kind == Donation.InKind)
+        {
+            return await db.CountArrivalAsync(needId, donation.Quantity!.Value, cancellationToken).ConfigureAwait(false) == 1
+                ? null
+                : await db.WhyNotAsync(needId, cancellationToken).ConfigureAwait(false);
+        }
+
+        var open = await db.Needs.AnyAsync(n => n.Id == needId && n.Status == NeedStatus.Open, cancellationToken).ConfigureAwait(false);
+        return open ? null : NeedErrors.Closed;
     }
 
     private Task<int?> MethodIdAsync(string code, CancellationToken cancellationToken) =>

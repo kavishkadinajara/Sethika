@@ -10,8 +10,8 @@ import { Input, inputClasses } from "@/components/ui/input";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { BookingFailure } from "@/lib/bookings/api";
 import { localName } from "@/lib/bookings/names";
-import { recordDonation } from "@/lib/giving/api";
-import type { CounterMethod, DonationKind, LookupItem } from "@/lib/giving/types";
+import { listNeeds, recordDonation } from "@/lib/giving/api";
+import type { CounterMethod, DonationKind, LookupItem, NeedListItem } from "@/lib/giving/types";
 import { usePermissions } from "@/lib/permissions/usePermissions";
 import { colomboParts } from "@/lib/services/time";
 import { listDonors } from "@/lib/sponsors/api";
@@ -46,6 +46,7 @@ export function RecordDonationSheet({ methods, onClose, onRecorded }: { methods:
   const errorMessage = useGivingError();
   const { can } = usePermissions();
   const readsBook = can("BOOKINGS.SPONSORS.VIEW");
+  const readsNeeds = can("GIVING.NEEDS.VIEW");
 
   const today = useMemo(() => colomboParts(new Date().toISOString()).date, []);
   const [kind, setKind] = useState<DonationKind>("Money");
@@ -62,6 +63,8 @@ export function RecordDonationSheet({ methods, onClose, onRecorded }: { methods:
   const [donorName, setDonorName] = useState("");
   const [donorPhone, setDonorPhone] = useState("");
   const [note, setNote] = useState("");
+  const [needs, setNeeds] = useState<NeedListItem[]>([]);
+  const [need, setNeed] = useState("");
   const [invalid, setInvalid] = useState<Set<string>>(new Set());
   const [failure, setFailure] = useState<BookingFailure | null>(null);
   const [saving, setSaving] = useState(false);
@@ -70,6 +73,11 @@ export function RecordDonationSheet({ methods, onClose, onRecorded }: { methods:
     if (!readsBook) return;
     void listDonors().then((result) => result.ok && setDonors(result.value.filter((d) => d.isActive)));
   }, [readsBook]);
+
+  useEffect(() => {
+    if (!readsNeeds) return;
+    void listNeeds().then((result) => result.ok && setNeeds(result.value.filter((n) => n.status === "Open")));
+  }, [readsNeeds]);
 
   const found = useMemo(() => searchDonors(donors, query).slice(0, 8), [donors, query]);
   const chosen = donors.find((d) => d.publicId === donor) ?? null;
@@ -86,7 +94,7 @@ export function RecordDonationSheet({ methods, onClose, onRecorded }: { methods:
     const estimateValue = figure(estimate);
     if (money && (amountValue === null || !(amountValue > 0))) missing.add("amount");
     if (!money && items.trim() === "") missing.add("items");
-    if (!money && quantityValue !== null && !(quantityValue > 0)) missing.add("quantity");
+    if (!money && (quantityValue === null ? need !== "" : !(quantityValue > 0))) missing.add("quantity");
     if (!money && estimateValue !== null && !(estimateValue > 0)) missing.add("estimatedValue");
     if (date === "") missing.add("date");
     if (fromBook && donor === null) missing.add("donor");
@@ -107,6 +115,7 @@ export function RecordDonationSheet({ methods, onClose, onRecorded }: { methods:
       donorName: fromBook ? null : donorName.trim(),
       donorPhone: fromBook || donorPhone.trim() === "" ? null : donorPhone.trim(),
       note: note.trim() || null,
+      need: need || null,
     });
     setSaving(false);
 
@@ -162,6 +171,19 @@ export function RecordDonationSheet({ methods, onClose, onRecorded }: { methods:
                   </Field>
                 </div>
               </>
+            )}
+
+            {needs.length > 0 && (
+              <Field label={t("need")} description={t("needHint")}>
+                <select value={need} onChange={(e) => setNeed(e.target.value)} className={cn(inputClasses, "w-full")}>
+                  <option value="">{t("needNone")}</option>
+                  {needs.map((n) => (
+                    <option key={n.publicId} value={n.publicId}>
+                      {n.title}
+                    </option>
+                  ))}
+                </select>
+              </Field>
             )}
 
             <Field label={t("date")} description={t("dateHint")} error={error("date")} required>

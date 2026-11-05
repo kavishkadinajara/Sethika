@@ -26,6 +26,8 @@ export type ItemKey =
   | "memorial"
   | "myServices"
   | "myGiving"
+  | "needsBoard"
+  | "needs"
   | "apply"
   | "calendar"
   | "slots"
@@ -85,7 +87,10 @@ export const navTree: readonly NavSection[] = [
       },
       {
         key: "give",
-        items: [{ key: "myGiving", href: "/giving/mine", icon: "giving", screen: "MYGIVING.DONATIONS" }],
+        items: [
+          { key: "needsBoard", href: "/needs", icon: "giving" },
+          { key: "myGiving", href: "/giving/mine", icon: "giving", screen: "MYGIVING.DONATIONS" },
+        ],
       },
       {
         key: "apply",
@@ -116,7 +121,10 @@ export const navTree: readonly NavSection[] = [
       },
       {
         key: "giving",
-        items: [{ key: "donations", href: "/giving/donations", icon: "giving", screen: "GIVING.DONATIONS" }],
+        items: [
+          { key: "donations", href: "/giving/donations", icon: "giving", screen: "GIVING.DONATIONS" },
+          { key: "needs", href: "/giving/needs", icon: "file", screen: "GIVING.NEEDS" },
+        ],
       },
       {
         key: "access",

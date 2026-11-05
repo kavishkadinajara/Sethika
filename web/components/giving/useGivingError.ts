@@ -14,6 +14,16 @@ const givingCodes = [
   "already_void",
   "void_own_record",
   "invalid_month",
+  "need_not_found",
+  "pledge_not_found",
+  "need_full",
+  "need_closed",
+  "need_wrong_status",
+  "quantity_below_pledged",
+  "open_pledges",
+  "need_has_gifts",
+  "pledge_not_open",
+  "too_many_pledges",
 ] as const;
 type GivingCode = (typeof givingCodes)[number];
 

@@ -89,4 +89,97 @@ export type DonationInput = {
   donorName: string | null;
   donorPhone: string | null;
   note: string | null;
+  /** An open need the gift goes toward (M15); items then need `quantity`. */
+  need: string | null;
+};
+
+/*  Needs and pledges (plan 09, D.2), as NeedEndpoints.cs sends them. */
+
+export type NeedStatus = "Draft" | "Open" | "Fulfilled" | "Closed" | "Cancelled";
+export type NeedPriority = "Low" | "Normal" | "Urgent";
+export type PledgeStatus = "Pledged" | "Delivered" | "Cancelled";
+
+/** The two counters: `quantityPledged` is everything spoken for, so what arrived plus what open pledges promise (M29). */
+export type NeedCounts = { quantityNeeded: number; quantityPledged: number; quantityReceived: number };
+
+/** A need on the institution's own screen, any status. */
+export type NeedListItem = NeedCounts & {
+  publicId: string;
+  title: string;
+  description: string | null;
+  category: string;
+  unit: string;
+  priority: NeedPriority;
+  deadline: string | null;
+  status: NeedStatus;
+  openPledges: number;
+  version: string;
+};
+
+/** A need on the public board (M12). */
+export type PublicNeed = NeedCounts & {
+  publicId: string;
+  title: string;
+  description: string | null;
+  category: string;
+  unit: string;
+  priority: NeedPriority;
+  deadline: string | null;
+  institutionName: string;
+  institutionNameSi: string | null;
+  institutionNameTa: string | null;
+  institutionSlug: string;
+  city: string;
+  district: string;
+  districtSi: string | null;
+  districtTa: string | null;
+};
+
+/** A pledge as the institution sees it. */
+export type NeedPledge = {
+  publicId: string;
+  donorName: string;
+  donorPhone: string | null;
+  quantity: number;
+  expectedDate: string | null;
+  status: PledgeStatus;
+  receivedQuantity: number | null;
+  cancelReason: string | null;
+  createdAt: string;
+  receiptPublicId: string | null;
+  receiptNo: string | null;
+  version: string;
+};
+
+/** A pledge in the donor's My giving. */
+export type MyPledge = {
+  publicId: string;
+  needTitle: string;
+  unit: string;
+  institutionName: string;
+  institutionNameSi: string | null;
+  institutionNameTa: string | null;
+  institutionSlug: string;
+  quantity: number;
+  expectedDate: string | null;
+  status: PledgeStatus;
+  receivedQuantity: number | null;
+  cancelReason: string | null;
+  createdAt: string;
+  receiptPublicId: string | null;
+  receiptNo: string | null;
+};
+
+export type NeedLookups = { categories: LookupItem[]; units: LookupItem[] };
+
+/** The add and edit sheets' body (NeedInput). */
+export type NeedInput = {
+  title: string;
+  description: string | null;
+  category: string;
+  unit: string;
+  quantity: number | null;
+  priority: NeedPriority;
+  deadline: string | null;
+  version?: string;
 };

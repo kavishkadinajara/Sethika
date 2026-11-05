@@ -1,6 +1,18 @@
 import { json, jsonBody, send } from "@/lib/onboarding/api";
-import type { BookingResult } from "@/lib/bookings/api";
-import type { DonationInput, DonationListItem, LookupItem, MyDonation, Receipt } from "./types";
+import { publicGet, type BookingResult } from "@/lib/bookings/api";
+import type {
+  DonationInput,
+  DonationListItem,
+  LookupItem,
+  MyDonation,
+  MyPledge,
+  NeedInput,
+  NeedListItem,
+  NeedLookups,
+  NeedPledge,
+  PublicNeed,
+  Receipt,
+} from "./types";
 
 /*  Typed calls to GivingEndpoints.cs (plan 09, D.1). The same `{ code, fields }` refusal and session
     plumbing as the booking calls; a void that needs a step-up is asked for and retried by the session's
@@ -34,4 +46,63 @@ export async function getReceipt(publicId: string, mine: boolean): Promise<Booki
 
 export async function listMyDonations(): Promise<BookingResult<MyDonation[]>> {
   return json(await send(MINE, { method: "GET" }));
+}
+
+// ---- needs and pledges (plan 09, D.2) -------------------------------------------------------------
+
+const NEEDS = "/api/institution/needs";
+const PLEDGES = "/api/institution/pledges";
+const MY_PLEDGES = "/api/me/pledges";
+
+type Done = { publicId: string };
+
+/** The public board (M12); `query` is `district=&type=&category=` or `institution=slug`, already encoded. */
+export async function listBoard(query = ""): Promise<BookingResult<PublicNeed[]>> {
+  return json(await publicGet(query ? `/api/needs?${query}` : "/api/needs"));
+}
+
+export async function getNeedLookups(): Promise<BookingResult<NeedLookups>> {
+  return json(await publicGet("/api/needs/lookups"));
+}
+
+export async function listNeeds(): Promise<BookingResult<NeedListItem[]>> {
+  return json(await send(NEEDS, { method: "GET" }));
+}
+
+export async function addNeed(input: NeedInput): Promise<BookingResult<Done>> {
+  return json(await send(NEEDS, jsonBody("POST", input)));
+}
+
+export async function changeNeed(publicId: string, input: NeedInput): Promise<BookingResult<Done>> {
+  return json(await send(`${NEEDS}/${encodeURIComponent(publicId)}`, jsonBody("PUT", input)));
+}
+
+/** Opens a draft, closes an open need, or cancels one nothing came for. */
+export async function stepNeed(publicId: string, step: "open" | "close" | "cancel", version: string): Promise<BookingResult<Done>> {
+  return json(await send(`${NEEDS}/${encodeURIComponent(publicId)}/${step}`, jsonBody("POST", { version })));
+}
+
+export async function listNeedPledges(publicId: string): Promise<BookingResult<NeedPledge[]>> {
+  return json(await send(`${NEEDS}/${encodeURIComponent(publicId)}/pledges`, { method: "GET" }));
+}
+
+/** Marks a pledge delivered (M15): the answer names the in-kind receipt it made. */
+export async function receivePledge(publicId: string, quantity: number, version: string): Promise<BookingResult<Done & { receiptNo: string; receiptPublicId: string }>> {
+  return json(await send(`${PLEDGES}/${encodeURIComponent(publicId)}/receive`, jsonBody("POST", { quantity, version })));
+}
+
+export async function cancelPledge(publicId: string, reason: string, version: string): Promise<BookingResult<Done>> {
+  return json(await send(`${PLEDGES}/${encodeURIComponent(publicId)}/cancel`, jsonBody("POST", { reason, version })));
+}
+
+export async function pledge(needId: string, quantity: number, expectedDate: string | null): Promise<BookingResult<Done>> {
+  return json(await send(`/api/needs/${encodeURIComponent(needId)}/pledges`, jsonBody("POST", { quantity, expectedDate })));
+}
+
+export async function listMyPledges(): Promise<BookingResult<MyPledge[]>> {
+  return json(await send(MY_PLEDGES, { method: "GET" }));
+}
+
+export async function cancelMyPledge(publicId: string): Promise<BookingResult<Done>> {
+  return json(await send(`${MY_PLEDGES}/${encodeURIComponent(publicId)}/cancel`, { method: "POST" }));
 }

@@ -1,3 +1,5 @@
+using Sethika.Domain.Giving;
+
 namespace Sethika.Application.Giving.Donations;
 
 /// <summary>A gift as the record sheet sends it (plan 09, M1, M3).</summary>
@@ -12,6 +14,7 @@ namespace Sethika.Application.Giving.Donations;
 /// <param name="DonorName">A walk-in's name, typed once (no donor book row is made).</param>
 /// <param name="DonorPhone">A walk-in's phone, optional. Never texted (M5).</param>
 /// <param name="Note">Optional, at most 300 characters; on the receipt.</param>
+/// <param name="Need">An open need's <c>PublicId</c>, optional. Items then need <paramref name="Quantity"/>, which counts toward it (M15, M29).</param>
 public sealed record DonationInput(
     string? Kind,
     decimal? Amount,
@@ -23,7 +26,8 @@ public sealed record DonationInput(
     Guid? Donor,
     string? DonorName,
     string? DonorPhone,
-    string? Note);
+    string? Note,
+    Guid? Need = null);
 
 /// <summary>A void as the void sheet sends it (M6).</summary>
 /// <param name="Version">The donation's <c>RowVersion</c> as the list read it.</param>
@@ -45,6 +49,9 @@ public sealed record DonationResult(string? Error, IReadOnlyList<string> Fields,
 
     /// <summary>Someone voided it since it was read; read it again.</summary>
     public const string Stale = "stale";
+
+    /// <summary>The caller's institution has no such need.</summary>
+    public const string NeedNotFound = NeedErrors.NotFound;
 
     public bool Succeeded => Error is null;
 

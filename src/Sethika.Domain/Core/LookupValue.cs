@@ -9,6 +9,12 @@ public class LookupValue
     /// <summary><c>PAYMENT_METHOD</c>'s type code in <c>core.LookupTypes</c>.</summary>
     public const string PaymentMethod = "PAYMENT_METHOD";
 
+    /// <summary><c>NEED_CATEGORY</c>'s type code.</summary>
+    public const string NeedCategory = "NEED_CATEGORY";
+
+    /// <summary><c>UNIT</c>'s type code.</summary>
+    public const string Unit = "UNIT";
+
     public int Id { get; set; }
     public short LookupTypeId { get; set; }
     public string Code { get; set; } = null!;

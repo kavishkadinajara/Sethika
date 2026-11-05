@@ -63,6 +63,8 @@ public partial class SethikaDbContext(DbContextOptions<SethikaDbContext> options
     public DbSet<MemorialRule> MemorialRules => Set<MemorialRule>();
     public DbSet<InstitutionDonor> InstitutionDonors => Set<InstitutionDonor>();
     public DbSet<Donation> Donations => Set<Donation>();
+    public DbSet<Need> Needs => Set<Need>();
+    public DbSet<Pledge> Pledges => Set<Pledge>();
     public DbSet<LookupValue> LookupValues => Set<LookupValue>();
     public DbSet<LookupType> LookupTypes => Set<LookupType>();
     public DbSet<StandingSponsorship> StandingSponsorships => Set<StandingSponsorship>();

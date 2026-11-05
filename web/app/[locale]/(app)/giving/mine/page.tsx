@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { DonorGate } from "@/components/bookings/DonorGate";
 import { MyGiving } from "@/components/giving/MyGiving";
+import { MyPledges } from "@/components/giving/MyPledges";
 import { pickMessages, sharedClientNamespaces } from "@/i18n/pick";
 import { routing } from "@/i18n/routing";
 import { usePageLocale } from "@/i18n/static-locale";
@@ -28,7 +29,10 @@ export default function Page({ params }: PageProps<"/[locale]/giving/mine">) {
         <p className="max-w-3xl text-muted">{t("intro")}</p>
       </header>
       <DonorGate permission="MYGIVING.DONATIONS.VIEW">
-        <MyGiving />
+        <div className="grid gap-8">
+          <MyPledges />
+          <MyGiving />
+        </div>
       </DonorGate>
     </NextIntlClientProvider>
   );

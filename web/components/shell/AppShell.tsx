@@ -149,6 +149,9 @@ function PublicLinks() {
       <Button asChild variant="ghost" className="hidden lg:inline-flex">
         <Link href="/find">{t("find")}</Link>
       </Button>
+      <Button asChild variant="ghost" className="hidden lg:inline-flex">
+        <Link href="/needs">{t("needs")}</Link>
+      </Button>
       <Button asChild variant="outline">
         <Link href="/login">{t("signIn")}</Link>
       </Button>
