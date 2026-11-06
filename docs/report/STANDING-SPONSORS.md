@@ -231,7 +231,14 @@ the CHECKs and the RLS predicates cannot be faked.
   - in K.5, letting a regular day go by the ordinary cancel call survived the first browser test,
     because both answers look the same to the donor. The test now reads the institution's side: the
     day must be recorded as skipped, not merely cancelled.
-- **The whole suite** at the end: FILL IN after the final run (dotnet test and every Playwright spec).
+- **The whole suite** ran once for this plan and Phase D together, before their pull request, at commit
+  `6391d8f`: 1508 of 1519 .NET tests passed (418 domain, 99 application, 991 of 1002 integration; 1 hour 44
+  minutes). `docs/report/PHASE-D.md` section 10 explains the eleven failures, none of them a fault in the
+  product's code. Five touched this plan: four `StandingChangesTests` failed because an earlier stopped run had
+  left a permission flag set in the test database, and the Hangfire test's job list did not have
+  `standing-bookings`, which it now checks. After the fixes, the 26 classes they touch passed, 391 of 391; the
+  other 611 integration tests were not run again. Browser: 172 of 172 Playwright tests with one worker in 24
+  minutes (desktop and 320 px phone, every spec).
 
 ## 10. Limitations and what was left out
 

@@ -354,9 +354,10 @@ for (const [locale, settings, save, give, leave, leftTitle] of [
 
     try {
       await signIn(page, institution.owner, locale);
-      await page.goto(`/${locale}/giving/payments`);
-      await expect(page.getByRole("heading", { name: settings, level: 1 })).toBeVisible();
+      // setMerchant opens the page itself: a second load here would cut off the first load's session
+      // refresh, and the rotated cookie would never arrive (A19).
       await setMerchant(page, institution.owner, locale, save);
+      await expect(page.getByRole("heading", { name: settings, level: 1 })).toBeVisible();
       expect(await scrollsSideways(page)).toBe(false);
       await page.screenshot({ path: shot(`settings-${locale}-${testInfo.project.name}`), fullPage: true });
 

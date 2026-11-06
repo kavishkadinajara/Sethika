@@ -1,6 +1,6 @@
 # Plan 09 — Phase D: giving and insight (donations, receipts, needs board, reports)
 
-Status: **agreed 2026-11-04 (answers in §8). D.1 built 2026-11-04. D.2 built 2026-11-05. D.3 and D.4 built 2026-11-06 (boxes in §7). D.5 not started.** Branch: `standing-sponsors`
+Status: **agreed 2026-11-04 (answers in §8). D.1 built 2026-11-04. D.2 built 2026-11-05. D.3 and D.4 built 2026-11-06 (boxes in §7). D.5's documents and full runs done 2026-11-06; its push and pull request wait for the user.** Branch: `standing-sponsors`
 (plan 08 and Phase D go to develop in one pull request, the user 2026-11-04). Decision numbers here are
 **M1, M2, …**.
 
@@ -262,6 +262,14 @@ or pledges for standing days" to this phase: recording a donation from a donor b
   before the PR (D.5). Decisions M37-M41 above.
 - [ ] **D.5** Close-out: DECISIONS "Giving (Phase D)" + Plans row, report chapter `docs/report/PHASE-D.md`,
   full `dotnet test` + full e2e with plan 08, push and the pull request to develop (asking first). ~0.25
+  *Documents and runs done 2026-11-06; the box stays open for the push and the pull request.* Full run at
+  `6391d8f`: domain 418/418, application 99/99, integration 991/1002 (1 h 44). The 11 failures and their fixes
+  are in `docs/report/PHASE-D.md` §10: 4 from a flag left by a stopped run, 2 from M28's development cap reaching
+  test hosts (`OtpCapInTests`), 3 tests out of date, 2 hosts with no PayHere addresses. Rerun of the 26 classes
+  touched: 391/391, the other 611 integration tests not run again. e2e: 169/172 with two workers, then 172/172
+  with one (24 min) after a test stopped opening a page twice (the A19 limitation, §11 of the chapter). Mutant
+  on the job list's new check killed. vitest 279/279; `dotnet format`, `tsc`, `eslint`, `next build` clean. No
+  schema change in this slice, and the SqlPackage script check was not run (not on this machine's PATH).
 
 Cut order if late: M18's dashboard lines, then the cross-institution `/needs` page (needs stay on `/i/[slug]`),
 then D.3's live sandbox walk (the signed-notification tests stay). Never cut: void maker-checker, the pledge
