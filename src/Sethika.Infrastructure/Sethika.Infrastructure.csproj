@@ -6,6 +6,11 @@
     <ProjectReference Include="..\Sethika.Application\Sethika.Application.csproj" />
   </ItemGroup>
 
+  <!-- Large reads live in .sql files (CLAUDE.md): the monthly report (plan 09, M16). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Queries\Sql\*.sql" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.1.89" />
     <!-- Background jobs (plan 02, B10): the outbox processor now, reminders and recurring bookings

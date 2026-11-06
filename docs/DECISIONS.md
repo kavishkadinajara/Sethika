@@ -255,6 +255,66 @@ a co-sponsor; contributors' shares of a cost; live counts on `/find` and live up
 a per-address limit on connecting to the hub; confirmed memorial rules and religion names;
 `core.SpecialDays` (poya, festivals).
 
+## Standing sponsors (plan 08)
+
+Full reasoning in `docs/plans/08-STANDING-SPONSORS.md` §2 (K1-K12 agreed with the user on 2026-11-02,
+K13-K37 decided while building). Not in the proposal: the user asked for it after Phase C ("an
+institution must be able to set up dana dates itself, for a donor ... any scenario. People give like that
+today"), and it took the place of the gratitude wall and part of Phase D's reports (plan 08 Q1).
+
+| # | Decision | Why |
+|---|----------|-----|
+| K1, K13, K14 | **The donor book.** `org.InstitutionDonors` (in the schema since the start, never used) holds the institution's own regular donors, most of whom never use the app: name, phone, notes, the language of their texts, and "this person agreed to receive texts" with who ticked it and when. A row is linked to the Sethika account whose *confirmed* phone it has, never a deleted one; one row per account per institution (`UX_InstDonor_User`) | One history per person per institution; an unconfirmed phone proves nothing about who holds it |
+| K2, K15 | **A standing sponsorship** is one row (`booking.StandingSponsorships`) for any of the user's scenarios: once, daily, weekly (a weekday mask), monthly on several days (a 1-31 mask) every N months from the start month, yearly. A day a month does not have is skipped, not moved (Q3). The database refuses any other shape (`CK_Standing_Shape`, `CK_Standing_YearDate`) | Every scenario in plan 08 §0 is one row, checked where it is stored |
+| K3, K18, K20-K22 | **Each day is an ordinary booking** (`Source = 'Standing'`), made by the same engine and approved at once, so calendars, places left, the overbooking guarantee, reminders and completing need no new code. A day *holds* its place (Q5). Setting one up books the next 31 days while staff wait; a nightly job (`standing-bookings`, 00:45 Colombo) books the rest of each slot's window. A day is booked once: a day with any booking or change is never booked again, and a day the engine refuses is tried again each night. No text per day | One engine, one judge (C4). A daily sponsor must not be texted daily; a 365-day window took 17.5 s in one request |
+| K4, K5, K19, K23 | **Changes to a day** are rows of `booking.StandingExceptions` (skipped, released, blocked, moved to or from), one per sponsorship and day. Skipping, ending and booking one of its days each take an update lock on the sponsorship's row after the slot-day's Redis lock, so none can cross another. Ending keeps today's meal | A cancelled booking alone would be booked again by the next night's run; with RCSI a reader does not wait for an uncommitted change, so the row lock is what serialises them (both races forced in the tests) |
+| K6, K25-K27 | **Asking for a held day.** A donor on `/i/[slug]` sees a regular donor's full day as "held: ask for it"; the institution gives it (one transaction: the standing day released, its booking cancelled, the asker booked approved, both texted) or keeps it. "Held" is read past Row-Level Security as counts only (`SqlStandingHolds`) | Scenario 4: the institution decides. Neither a donor's session nor the public calendar may read who holds a day |
+| K7, K28 | **A blocked date over standing days** lets each go (`Blocked`) in the block's own transaction and texts each sponsor once per block; ordinary donors' bookings are listed, not cancelled (Q4) | Scenario 6, as the user answered |
+| K8, K29 | **Swaps**, this time (both days booked; four changes recorded; both rebooked through the engine) or from now on (each sponsorship ends and a new one takes the other's pattern). Both slot-days' locks in date order, both row locks in id order | Scenario 7 in one transaction, so a swap never leaves a day empty or double (forced race: two staff swapping one day with different partners, one wins) |
+| K10, K30 | **Texts** through the outbox (`StandingTextDue`, `DayRequestAnswered`) with dedup keys: a linked donor is texted as their account; one without an account at the institution's phone only with the consent box ticked (Q2); otherwise not at all | Every change of someone's day reaches them, and only with consent |
+| K11, K17 | Screen `BOOKINGS.SPONSORS` (VIEW/CREATE/EDIT); giving or keeping a day is `BOOKINGS.CALENDAR.APPROVE`/`REJECT`. Institutions approved before this change keep their cloned roles | The catalogue's rules; cloning happens at approval |
+| K16 | **RLS**: the three new tables are tenant-only; a linked sponsor reads their days only as their own bookings (`DonorUserId`) | The narrowest reach that still lets each person see what is theirs |
+| K31-K33 | The form's preview of the next 12 days and their clashes is the server's (`/sponsorships/preview`, the night run's arithmetic and the calendar's rules); calendars mark regular donors' days | A TypeScript copy of the pattern and the engine's rules would drift |
+| K35 | **A linked sponsor's own "I can't give that day"** in My bookings (`POST /api/bookings/{bookingNo}/skip`) runs the staff skip itself in a scope stamped as the platform (`PlatformOwnStandingDays`), found only through a booking that is the caller's and a donor book row linked to the caller. Today is allowed (the user, 2026-11-04) | Their session cannot write `StandingExceptions` (K16); one judge, not a copy of the skip |
+| K36, K37 | **Linking at sign-up and sign-in**: `SqlDonorBookLinks` links every unlinked row with the account's confirmed phone, in every institution, and the standing days already booked for it become the person's in the same transaction. A staff change of link carries those days too | Without the days following, a newly linked person would see nothing until a new day was booked |
+
+Platform reach from a request is now in three narrow classes (`SqlShareLinks`, `SqlStandingHolds`,
+`SqlDonorBookLinks`) and one platform scope for one call (`PlatformOwnStandingDays`); each is keyed by
+what the caller holds and returns only what plan 07 H33 or plan 08 K25/K35/K36 lists.
+
+**Not built, and the report says so** (plan 08 §6): poya and festival patterns (`core.SpecialDays` is
+not seeded); importing a donor book; payments or pledges for standing days; withdrawing a day request;
+a person's own list of their arrangements (they see the days, not the pattern).
+
+## Giving (Phase D)
+
+Full reasoning in `docs/plans/09-GIVING.md` §2 (M1-M21 agreed with the user on 2026-11-04, M22-M41 decided
+while building). The report chapter is `docs/report/PHASE-D.md`. The user's answers: no PayHere account (Q1),
+each institution's own merchant (Q2), a one-step void by a second person (Q3), a platform action for
+institutions approved earlier (Q4), a printable receipt (Q5), the trigger (Q6).
+
+| # | Decision | Why |
+|---|----------|-----|
+| M1-M3, M23 | **Recording a gift**: money or items, a day, and who gave (a donor book row, a signed-in donor, or a typed name), in one transaction with the receipt number, an audit row and the outbox message. Receipt numbers are per institution and gap-free (`RCP-2026-000001`, `UNIQUE (InstitutionId, ReceiptNo)`), and URLs carry a `PublicId`. A gift on a past day is stored at noon in Colombo | Cash at the counter is how most giving happens, and a committee audits its own book: a gap or another institution's number in it is a question |
+| M4, M5, M24 | **The receipt is a printable page**, an acknowledgement and not a tax receipt. Its text goes to an account, or to a donor book row with consent; a walk-in's typed phone is never texted. Two templates, so no item typed by staff enters an SMS | No PDF package. A typed number is not consent. A tax receipt needs a status nobody has confirmed |
+| M6, M7, M22, M25 | **Void, never edit or delete**: a different person, `GIVING.DONATIONS.DELETE`, step-up, a reason and the version read. `giving.trg_Donations_Immutable`, the project's first trigger, refuses every delete and any change but the void, and lets one column move: `DonorUserId` of a gift recorded against a donor book row. A donor's session can never insert a donation | "Never edited" holds even against a bug in our own code, and linking at sign-in (K36) still carries a person's receipts |
+| M8, M9, M32-M35 | **Only PayHere's signed notification makes a donation.** An order is a row of `giving.OnlinePayments` with no receipt number. The notification is checked (order, merchant, `md5sig`, amount, currency), then one transaction claims the order (`Status <> 'Paid'`), writes the gift and marks it paid. A signed success beats an earlier failure. Every refusal is the same 400. Email, address and city go to PayHere and are stored nowhere. Order and notification run as the platform; a donor's session writes nothing on the table | The return URL can be forged. A retried notification waits on the row lock and stops before taking a number, so the book stays gap-free. A success ignored would be money received with no receipt |
+| M10, M21, M36 | **Each institution's own merchant** (`giving.PaymentMerchants`), so Sethika never holds donors' money. The secret is write-only and sealed with AES-256-GCM, the institution's id as associated data, with `KeyId` for rotation and keys from configuration; a bad key stops the start-up. `givesOnline` reaches the public page through a one-answer platform read | A backup or a SQL read never shows a secret, and one institution's secret cannot sign another's notification. AES-GCM is in .NET, so no package |
+| M11-M13, M29, M31 | **Needs are counted inventory**: a pledge is a conditional `UPDATE` on the need's row (`need_full`, `need_closed`), with the booking engine's guarantee and no Redis lock, since one row serialises itself. `QuantityPledged` means everything spoken for: what arrived plus what open pledges still promise. A need with open pledges cannot be closed. At most five open pledges per donor per need | Two donors on the last units: one wins. The plan's two rules only agree on that one meaning of the counter |
+| M14, M15, M30 | **A donor's session may not write a need**, so pledging runs in `PlatformPledges`, whose only inputs are the caller and the need's `PublicId`. Delivery records an in-kind receipt and moves the counters in one transaction. A void takes the gift out of the need and reopens one it had fulfilled | Closes a hole where any signed-in session could change a need's title. Progress is what arrived, and a need's progress is a total, which a void leaves |
+| M16, M17, M37-M41 | **The monthly report** (Dapper, the first embedded `.sql`). Utilisation = booked days ÷ served days, and served days are the calendar's own answer (`AvailabilityCalendar.GetAsync`, `MealSlotRules.IsServedDay`). A booking belongs to its meal's day and a gift to `DonatedAt` in Colombo. `giving.Needs` gained `OpenedAt` and `EndedAt`. CSVs have their own routes and one writer (`CsvDocument`: BOM, a leading apostrophe against formulas, no phone numbers) | The report cannot disagree with the calendar, a past month holds its own figures, `EXPORT` is a policy `EndpointPolicyTests` can see, and CSV injection is the one way the file could hurt its reader |
+| M18-M20 | **Role-based views on the dashboards that exist**: a giving line on the Day Ledger, "My giving" on the donor's home. Modules `GIVING` and `GIVE`; `DELETE` on donations means void. Seeded methods, categories and units are Sethika's own vocabulary, not drafts of fact | Same rules as every screen. The catalogue's actions are fixed, and `EDIT` would mislead more |
+| M26 | **`PLATFORM.INSTITUTIONS.EDIT`** (step-up): "Bring roles up to date" adds what a template gained, and reads `auth.RolePermissions`' temporal history so a grant the institution took away stays away | Institutions approved earlier held none of the new permissions, and the history tells "gained" from "removed" |
+| M28 | **A step-up survives a token rotation** only when the rotation also presents the access token holding it, with only the time it had left. The httpOnly cookie alone carries nothing (A20 holds) | A rotation no longer throws a step-up away, and a thief of the cookie still inherits none |
+
+Platform reach from a request grew by `PlatformPledges`, `PlatformPayments` and `SqlOnlineGiving`, each keyed
+by what the caller holds.
+
+**Not built, and the report says so** (plan 09 §6): a live sandbox payment (no PayHere account, so the form has
+never been accepted by PayHere itself); the gratitude wall and any public list of donors; refunds from
+Sethika; recurring online gifts; tax receipts; a key vault for M21's keys; need images; pledge reminders;
+charts and per-donor analytics; Excel files; Phase D in the mobile app.
+
 ## Unconfirmed reference data (seeded as drafts)
 CLAUDE.md forbids inventing facts about real institutions. Where the flow cannot run without a row,
 the row is seeded as a visibly marked draft and listed here until someone confirms or replaces it.
@@ -269,6 +329,7 @@ the row is seeded as a visibly marked draft and listed here until someone confir
 | SMS texts for religious services (Sinhala and Tamil) | `11_NotifyTemplates.sql` | listed in `docs/translations-to-review.md` | a Sinhala and a Tamil reviewer |
 | Religions (Sinhala and Tamil names) and memorial rules per faith (which days, their offsets, H24's "day of passing is day 1") | `03_LookupTypes.sql`, `13_MemorialDrafts.sql` | `DRAFT` in every rule name; listed in `docs/translations-to-review.md` | a reviewer of each faith |
 | SMS texts and screen messages for Phase C (Sinhala and Tamil) | `11_NotifyTemplates.sql`, `web/messages` | listed in `docs/translations-to-review.md` | a Sinhala and a Tamil reviewer |
+| SMS texts and screen messages for standing sponsors (Sinhala and Tamil) | `11_NotifyTemplates.sql`, `web/messages` | listed in `docs/translations-to-review.md` | a Sinhala and a Tamil reviewer |
 | Sinhala and Tamil names of districts and institution types | not seeded: `NameSi`/`NameTa` are `NULL`, so the search page shows the English name in every language | — | a Sinhala and a Tamil reviewer |
 
 The registration reject reasons in the same seed are Sethika's own review policy, not facts about
@@ -295,5 +356,6 @@ tables above once the code exists and the choice has held.
 | `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` — religious services, leader roster, conflict-free assignment | `phase-e-religious-services`, `phase-e-donor` | Done. 8.1-8.4 and 8.6 merged (PR #12); 8.5 and 8.7-8.10 (donor requests, assignment endpoints, texts and reminders, screens) pushed to `develop` on 2026-11-01 without a pull request, described in `docs/plans/PHASE-E-DELIVERY.md`; decisions summarised above under "Religious services (Phase E)" |
 | `docs/plans/06-DISCOVERY.md` — public institution pages, cross-institution search, Redis GEO, the month view and the map | `rcsi-on` (with `READ_COMMITTED_SNAPSHOT`, D11) | B.1-B.4 built and committed; decisions summarised above under "Discovery (Phase B)" |
 | `docs/plans/07-ENGAGEMENT.md` — yearly bookings, the Memorial Dana Planner, live slot updates (SignalR), preferred institutions, co-sponsors | `phase-c-engagement` | C.1-C.5 built and committed; decisions summarised above under "Engagement (Phase C)" |
-| `docs/plans/08-STANDING-SPONSORS.md` — the institution's own regular donors on any pattern, day requests, swaps | `standing-sponsors` (after Phase C's PR) | Agreed 2026-11-02 (K1-K12, §8 answered); nothing built |
+| `docs/plans/08-STANDING-SPONSORS.md` — the institution's own regular donors on any pattern, day requests, swaps | `standing-sponsors` (after Phase C's PR) | K.1-K.5 built (K1-K37); decisions summarised above under "Standing sponsors (plan 08)" |
+| `docs/plans/09-GIVING.md` — donations and receipts, PayHere with each institution's own merchant, the needs board and pledges, the monthly report | `standing-sponsors` (one pull request with plan 08) | D.1-D.5 done (M1-M41), pull request #37 to `develop`; decisions summarised above under "Giving (Phase D)"; no live PayHere sandbox payment has been made (Q1) |
 | `docs/plans/PHASE-F-MOBILE.md` — donor mobile app (Expo), mobile sessions, push notifications | `ccr-79f10240-uk4n3v`, `mobile-booking` | F.1-F.4 merged (PR #9, #11: scaffold, mobile sessions, browse and book, my bookings); phone walk-through owed; F.5 push notifications next (S8) |

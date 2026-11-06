@@ -43,6 +43,10 @@ public sealed class AccessServiceRegistrationTests(SethikaTestDatabase database)
             // own reason; the test of this one setting overrides it with an empty value.
             builder.UseSetting("Files:LocalRoot", Path.Combine(Path.GetTempPath(), "sethika-registration-files"));
 
+            // Required outside Development too (plan 09, M10); PaymentConfigurationTests tests the refusals.
+            builder.UseSetting("Payments:PayHere:ApiPublicUrl", "https://api.sethika.example");
+            builder.UseSetting("Payments:PayHere:WebPublicUrl", "https://sethika.example");
+
             foreach (var (key, value) in settings)
             {
                 builder.UseSetting(key, value);

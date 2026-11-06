@@ -1,4 +1,7 @@
 import { expect, request, type APIRequestContext, type Page } from "@playwright/test";
+import en from "../../messages/en.json";
+import si from "../../messages/si.json";
+import ta from "../../messages/ta.json";
 import { sql } from "./sql";
 
 /*  Accounts are made the way a person makes one - OTP, ticket, signup - through the same /api
@@ -44,13 +47,20 @@ export async function latestCode(phone: string, after = 0): Promise<{ code: stri
   await expect
     .poll(
       () => {
-        const [row] = sql(
-          "SELECT TOP 1 CONCAT(Id, '|', Body) FROM notify.Notifications WHERE Channel = 'SMS' AND RIGHT(Recipient, 9) = '$(last9)' ORDER BY Id DESC;",
+        const rows = sql(
+          "SELECT TOP 5 CONCAT(Id, '|', Body) FROM notify.Notifications WHERE Channel = 'SMS' AND RIGHT(Recipient, 9) = '$(last9)' ORDER BY Id DESC;",
           { last9 },
         );
-        const [id, body] = row ? [Number(row.split("|")[0]), row.slice(row.indexOf("|") + 1)] : [0, ""];
-        const code = /\b(\d{6})\b/.exec(body)?.[1];
-        found = code && id > after ? { code, id } : null;
+        found = null;
+        for (const row of rows) {
+          const id = Number(row.split("|")[0]);
+          // Not the tail of a reference (REG-2026-000123): the outbox can deliver one of those just before a code.
+          const code = /(?<![-\d])\b(\d{6})\b/.exec(row.slice(row.indexOf("|") + 1))?.[1];
+          if (code && id > after) {
+            found = { code, id };
+            break;
+          }
+        }
         return found !== null;
       },
       { message: `a code texted to ${phone}`, timeout: 15_000 },
@@ -64,9 +74,8 @@ async function ok(response: Awaited<ReturnType<APIRequestContext["post"]>>, what
   return response;
 }
 
-/** Signs a new donor up through the API and returns how to sign in as them. */
-export async function createAccount(_baseURL: string, fullName = "E2E Applicant", language: "en" | "si" | "ta" = "en"): Promise<Account> {
-  const phone = newPhone();
+/** Signs a new donor up through the API and returns how to sign in as them; at <phone> if given (07x...). */
+export async function createAccount(_baseURL: string, fullName = "E2E Applicant", language: "en" | "si" | "ta" = "en", phone = newPhone()): Promise<Account> {
   const api = await request.newContext({ baseURL: apiURL, extraHTTPHeaders: { "X-Forwarded-For": anotherPhoneAddress() } });
   try {
     await ok(await api.post("/api/auth/otp/request", { data: { phoneNumber: phone, purpose: "signup", language } }), "OTP request");
@@ -135,12 +144,13 @@ export function lastTextId(phone: string): number {
   return Number(row ?? 0);
 }
 
-/** Answers the step-up dialog with the code texted to <account> after text <after>. */
-export async function stepUp(page: Page, account: Account, after: number) {
+/** Answers the step-up dialog with the code texted to <account> after text <after>, on a page in <locale>. */
+export async function stepUp(page: Page, account: Account, after: number, locale: "" | "si" | "ta" = "") {
+  const { title, codeLabel } = (locale === "si" ? si : locale === "ta" ? ta : en).StepUp;
   // By its heading: the step-up can open over another dialog (a sheet whose save needs it).
-  const dialog = page.getByRole("dialog").filter({ has: page.getByRole("heading", { name: "Confirm it's you" }) });
+  const dialog = page.getByRole("dialog").filter({ has: page.getByRole("heading", { name: title }) });
   await expect(dialog).toBeVisible();
   const { code } = await latestCode(account.phone, after);
-  await dialog.getByLabel("6-digit code").fill(code);
+  await dialog.getByLabel(codeLabel).fill(code);
   await expect(dialog).toBeHidden();
 }

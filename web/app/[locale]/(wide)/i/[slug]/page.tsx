@@ -64,7 +64,7 @@ export default async function Page({ params }: PageProps<"/[locale]/i/[slug]">) 
   const institution = read.status === "ok" ? read.value : null;
 
   return (
-    <NextIntlClientProvider messages={pickMessages(messages, [...sharedClientNamespaces, "Discover", "Booking", "Services"])}>
+    <NextIntlClientProvider messages={pickMessages(messages, [...sharedClientNamespaces, "Discover", "Booking", "Services", "Giving"])}>
       {institution && (
         <script
           type="application/ld+json"

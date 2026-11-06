@@ -60,6 +60,7 @@ public sealed record PublicServiceTypeView(
 /// number, phone, email or internal ids.
 /// </summary>
 /// <param name="Services">Active service types, and only while the institution's <c>SERVICES</c> module is on (V12).</param>
+/// <param name="GivesOnline">It has an enabled merchant, so its page offers "Give online" (plan 09, M10). Set by the endpoint.</param>
 public sealed record PublicInstitutionView(
     string Slug,
     string Name,
@@ -80,7 +81,8 @@ public sealed record PublicInstitutionView(
     decimal Latitude,
     decimal Longitude,
     IReadOnlyList<PublicMealSlotView> Slots,
-    IReadOnlyList<PublicServiceTypeView> Services);
+    IReadOnlyList<PublicServiceTypeView> Services,
+    bool GivesOnline = false);
 
 /// <summary>
 /// What the availability calendar is computed from: one institution's active slots and their
@@ -97,6 +99,10 @@ public sealed record AvailabilitySource(
 /// <summary>One of the signed-in donor's bookings.</summary>
 /// <param name="CanCancel">Whether the donor may still cancel it themselves (Q1).</param>
 /// <param name="Yearly">The active yearly booking it belongs to (plan 07, H5), or <see langword="null"/>.</param>
+/// <param name="Regular">
+/// One of the donor's regular days, set up by the institution (plan 08, K3). Only whether it is: the
+/// donor's session does not read the sponsorship itself (K16).
+/// </param>
 public sealed record DonorBookingView(
     string BookingNo,
     string Status,
@@ -119,7 +125,8 @@ public sealed record DonorBookingView(
     string? RejectReason,
     string? CancelReason,
     bool CanCancel,
-    Guid? Yearly);
+    Guid? Yearly,
+    bool Regular);
 
 /// <summary>One of the signed-in donor's active yearly bookings (plan 07, H5).</summary>
 /// <param name="NextDate">The day it books next, or <see langword="null"/> after its last year.</param>

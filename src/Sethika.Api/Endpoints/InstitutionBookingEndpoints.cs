@@ -153,7 +153,7 @@ internal static class InstitutionBookingEndpoints
 
         var result = await handler.AddBlockedDateAsync(actor.InstitutionId, actor.UserId, body, cancellationToken);
         return result.Succeeded
-            ? Results.Json(new { id = result.BlockedDateId, bookings = result.AffectedBookings }, statusCode: StatusCodes.Status201Created)
+            ? Results.Json(new { id = result.BlockedDateId, bookings = result.AffectedBookings, standingDays = result.StandingDays }, statusCode: StatusCodes.Status201Created)
             : Refused(result);
     }
 

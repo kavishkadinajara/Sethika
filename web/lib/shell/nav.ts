@@ -19,15 +19,22 @@ export type NavIcon =
 /* Each key names its label in the Shell messages (sections.*, groups.*, items.*), so a menu entry
    without a translation is a type error. */
 export type SectionKey = "dashboard" | "giving" | "institution" | "platform";
-export type GroupKey = "book" | "request" | "apply" | "bookings" | "services" | "access" | "onboarding" | "administration";
+export type GroupKey = "book" | "request" | "give" | "apply" | "bookings" | "services" | "giving" | "access" | "onboarding" | "administration";
 export type ItemKey =
   | "find"
   | "myBookings"
   | "memorial"
   | "myServices"
+  | "myGiving"
+  | "needsBoard"
+  | "needs"
   | "apply"
   | "calendar"
   | "slots"
+  | "sponsors"
+  | "donations"
+  | "payments"
+  | "reports"
   | "serviceTypes"
   | "leaders"
   | "appointments"
@@ -81,6 +88,13 @@ export const navTree: readonly NavSection[] = [
         items: [{ key: "myServices", href: "/services/mine", icon: "calendar", screen: "MYSERVICES.APPOINTMENTS" }],
       },
       {
+        key: "give",
+        items: [
+          { key: "needsBoard", href: "/needs", icon: "giving" },
+          { key: "myGiving", href: "/giving/mine", icon: "giving", screen: "MYGIVING.DONATIONS" },
+        ],
+      },
+      {
         key: "apply",
         items: [{ key: "apply", href: "/apply", icon: "file", screen: "ONBOARDING.APPLICATION" }],
       },
@@ -95,6 +109,7 @@ export const navTree: readonly NavSection[] = [
         items: [
           { key: "calendar", href: "/bookings/calendar", icon: "calendar", screen: "BOOKINGS.CALENDAR", badge: "bookingsToAnswer" },
           { key: "slots", href: "/bookings/slots", icon: "bowl", screen: "BOOKINGS.SLOTS" },
+          { key: "sponsors", href: "/bookings/sponsors", icon: "users", screen: "BOOKINGS.SPONSORS" },
         ],
       },
       {
@@ -104,6 +119,15 @@ export const navTree: readonly NavSection[] = [
           { key: "schedule", href: "/services/schedule", icon: "ticket", screen: "SERVICES.MYSCHEDULE" },
           { key: "serviceTypes", href: "/services/types", icon: "file", screen: "SERVICES.TYPES" },
           { key: "leaders", href: "/services/leaders", icon: "users", screen: "SERVICES.LEADERS" },
+        ],
+      },
+      {
+        key: "giving",
+        items: [
+          { key: "donations", href: "/giving/donations", icon: "giving", screen: "GIVING.DONATIONS" },
+          { key: "needs", href: "/giving/needs", icon: "file", screen: "GIVING.NEEDS" },
+          { key: "reports", href: "/reports", icon: "file", screen: "GIVING.REPORTS" },
+          { key: "payments", href: "/giving/payments", icon: "key", screen: "GIVING.PAYMENTS" },
         ],
       },
       {

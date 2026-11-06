@@ -69,9 +69,29 @@ DELETE FROM org.ReligiousLeaders;
 DELETE FROM booking.ServiceTypes;
 -- What the booking engine's tests leave (plan 03): history before its booking, blocks and seasons
 -- before their slot, and the outbox trail of every booking.
+-- Standing sponsors (plan 08): let-go days before the requests they name, both before the bookings
+-- they name; the sponsorships after their bookings, the donor book after its sponsorships and bookings.
+-- Giving (plan 09): online orders before the donations they made, donations before the pledges, needs
+-- and donor book rows they name. A donation is never deleted (trg_Donations_Immutable, M7), so the
+-- trigger is off for this one statement, inside the reset's transaction: a failed reset leaves it on.
+DELETE FROM giving.OnlinePayments;
+DISABLE TRIGGER giving.trg_Donations_Immutable ON giving.Donations;
+DELETE FROM giving.Donations;
+ENABLE TRIGGER giving.trg_Donations_Immutable ON giving.Donations;
+DELETE FROM giving.Pledges;
+DELETE FROM giving.Needs;
+DELETE FROM giving.PaymentMerchants;
+DELETE FROM core.OutboxMessages WHERE AggregateType = 'Donation';
+DELETE FROM audit.AuditLogs WHERE EntityName = 'Donation';
+-- Receipt numbers start again at 1 for each fixture institution (M2).
+DELETE FROM core.NumberSeries WHERE SeriesCode = 'RECEIPT' AND ScopeKey IN ('ALPHA', 'BETA');
+DELETE FROM booking.StandingExceptions;
+DELETE FROM booking.DayRequests;
 DELETE FROM booking.BookingStatusHistory;
 DELETE FROM booking.BookingContributors;
 DELETE FROM booking.Bookings;
+DELETE FROM booking.StandingSponsorships;
+DELETE FROM org.InstitutionDonors;
 -- Yearly bookings (plan 07) after the bookings that point at them, before their slot; and their texts' trail.
 DELETE FROM booking.RecurringBookings;
 DELETE FROM core.OutboxMessages WHERE AggregateType = 'RecurringBooking';

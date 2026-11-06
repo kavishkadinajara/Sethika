@@ -1385,3 +1385,657 @@ and My places. Drafts by Claude; `{...}` are filled in by the app.
 | `Share.ask` | Will you give this dana with them? | ඔබ ඔවුන් සමඟ මෙම දානය දෙනවාද? | அவர்களுடன் இந்த தானத்தை வழங்குவீர்களா? | | |
 | `Share.join` | Join | එක්වන්න | சேர் | | |
 | `Share.decline` | Decline | ප්‍රතික්ෂේප කරන්න | மறு | | |
+
+## Standing sponsor texts (2026-11-02, `STANDING_*`, `DAY_REQUEST_*`, plan 08 K.3)
+
+Sent to an institution's regular donor when one of their days changes, and to a donor who asked for a held day
+when the institution answers. `{institution}`, `{date}`, `{time}`, `{last}`, `{other}`, `{bookingNo}` and
+`{requestNo}` are filled in by the app. Drafts, written by the developer; please check them, and keep each as
+short as it can be (SMS segments).
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `STANDING_CREATED` | Sethika: {institution}, {date} {time}. You are now a regular donor here; this is your first day. The institution will tell you of any change. | Sethika: {institution}, {date} {time}. ඔබ දැන් මෙම ආයතනයේ නිත්‍ය දායකයෙකි; මෙය ඔබේ පළමු දිනයයි. වෙනසක් ඇත්නම් ආයතනය දන්වනු ඇත. | Sethika: {institution}, {date} {time}. நீங்கள் இப்போது இந்நிறுவனத்தின் வழக்கமான நன்கொடையாளர்; இது உங்கள் முதல் நாள். மாற்றம் இருந்தால் நிறுவனம் தெரிவிக்கும். | | |
+| `STANDING_SKIPPED` | Sethika: {institution}, {date} {time}. As asked, you will not give on this day; it is open to others. Your other days stay. | Sethika: {institution}, {date} {time}. ඉල්ලූ පරිදි මෙදින ඔබ දානය නොදෙයි; එය අන් අයට විවෘතයි. ඔබේ අනෙක් දින එලෙසම පවතී. | Sethika: {institution}, {date} {time}. கேட்டபடி இந்நாளில் நீங்கள் வழங்கவில்லை; இது மற்றவர்களுக்குத் திறந்துள்ளது. உங்கள் மற்ற நாட்கள் அப்படியே. | | |
+| `STANDING_RELEASED` | Sethika: {institution}, {date} {time}. The institution gave this day of yours to a donor who asked for it. Your other days stay. | Sethika: {institution}, {date} {time}. ඉල්ලීමක් කළ දායකයෙකුට ආයතනය ඔබේ මෙම දිනය ලබා දුන්නා. ඔබේ අනෙක් දින එලෙසම පවතී. | Sethika: {institution}, {date} {time}. கேட்ட ஒரு நன்கொடையாளருக்கு நிறுவனம் உங்கள் இந்நாளை வழங்கியது. உங்கள் மற்ற நாட்கள் அப்படியே. | | |
+| `STANDING_BLOCKED` | Sethika: {institution}, {date} to {last}. The institution needs these days for another use, so your regular days in them are cancelled. | Sethika: {institution}, {date} සිට {last} දක්වා. ආයතනයට මෙම දින වෙනත් කටයුත්තකට අවශ්‍ය බැවින් ඒවායේ ඔබේ නිත්‍ය දින අවලංගුයි. අනෙක් දින එලෙසම පවතී. | Sethika: {institution}, {date} முதல் {last} வரை. இந்நாட்கள் நிறுவனத்துக்கு வேறு தேவைக்கு வேண்டும், எனவே அவற்றில் உங்கள் வழக்கமான நாட்கள் ரத்து. மற்ற நாட்கள் அப்படியே. | | |
+| `STANDING_SWAPPED` | Sethika: {institution}, {date} {time}. Your day {other} was swapped with another regular donor's: this time, please give on {date} instead. | Sethika: {institution}, {date} {time}. ඔබේ {other} දිනය තවත් නිත්‍ය දායකයෙකුගේ දිනයක් සමඟ මාරු කළා: මෙවර කරුණාකර {date} දින දානය දෙන්න. | Sethika: {institution}, {date} {time}. உங்கள் {other} நாள் மற்றொரு வழக்கமான நன்கொடையாளரின் நாளுடன் மாற்றப்பட்டது: இம்முறை தயவுசெய்து {date} அன்று வழங்கவும். | | |
+| `STANDING_SWAPPED_ON` | Sethika: {institution}, {date} {time}. Your regular days were swapped with another donor's: from {date} on, you give on their days. | Sethika: {institution}, {date} {time}. ඔබේ නිත්‍ය දින තවත් නිත්‍ය දායකයෙකුගේ දින සමඟ මාරු කළා: {date} සිට ඔබ දානය දෙන්නේ ඔවුන්ගේ දිනවලයි. | Sethika: {institution}, {date} {time}. உங்கள் வழக்கமான நாட்கள் மற்றொரு வழக்கமான நன்கொடையாளரின் நாட்களுடன் மாற்றப்பட்டன: {date} முதல் அவர்களின் நாட்களில் வழங்குவீர்கள். | | |
+| `DAY_REQUEST_GIVEN` | Sethika {bookingNo}: {institution}, {date} {time}. The institution gave you the day you asked for; it is booked for you. | Sethika {bookingNo}: {institution}, {date} {time}. ඔබ ඉල්ලූ දිනය ආයතනය ඔබට ලබා දුන්නා; එය ඔබට වෙන් කර ඇත. | Sethika {bookingNo}: {institution}, {date} {time}. நீங்கள் கேட்ட நாளை நிறுவனம் உங்களுக்கு வழங்கியது; அது உங்களுக்கு முன்பதிவு செய்யப்பட்டது. | | |
+| `DAY_REQUEST_DECLINED` | Sethika {requestNo}: {institution}, {date} {time}. The institution could not give you the day you asked for. Sign in to see why. | Sethika {requestNo}: {institution}, {date} {time}. ඔබ ඉල්ලූ දිනය ලබා දීමට ආයතනයට නොහැකි විය. හේතුව බැලීමට පිවිසෙන්න. | Sethika {requestNo}: {institution}, {date} {time}. நீங்கள் கேட்ட நாளை நிறுவனத்தால் வழங்க இயலவில்லை. காரணத்தைப் பார்க்க உள்நுழையவும். | | |
+
+## Standing sponsor screens (2026-11-02, `Sponsors`, `Calendar`, `Discover`, `MyBookings`, `Booking.errors`, plan 08 K.4)
+
+Setting up a regular donor's days (pattern picker, preview, result), an arrangement's days (skip, end, swap), the
+calendar's regular donors and asked-for days, asking for a held day, and My bookings' requests. Drafts by Claude;
+`{...}` are filled in by the app, and `{x, plural, ...}` keeps its structure.
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `Sponsors.book.setUp` | Set up regular days | නිත්‍ය දින සකසන්න | வழக்கமான நாட்களை அமைக்கவும் | | |
+| `Sponsors.book.setUpNamed` | Set up regular days for {name} | {name} සඳහා නිත්‍ය දින සකසන්න | {name} க்கு வழக்கமான நாட்களை அமைக்கவும் | | |
+| `Sponsors.book.arrangementsOf` | {name}'s regular days | {name} ගේ නිත්‍ය දින | {name} இன் வழக்கமான நாட்கள் | | |
+| `Sponsors.book.ended` | Ended | අවසන් | முடிந்தது | | |
+| `Sponsors.pattern.Once` | Once, on {date} | එක් වරක්, {date} | ஒரு முறை, {date} | | |
+| `Sponsors.pattern.Daily` | Every day | සෑම දිනකම | ஒவ்வொரு நாளும் | | |
+| `Sponsors.pattern.Weekly` | Every {days} | සෑම {days} | ஒவ்வொரு {days} | | |
+| `Sponsors.pattern.Monthly` | {interval, plural, =1 {Every month} =2 {Every other month} other {Every # months}}, on {count, plural, one {day} other {days}} {days} | {interval, plural, =1 {සෑම මසකම} =2 {මාස දෙකකට වරක්} other {මාස #කට වරක්}}, {count, plural, one {දිනය} other {දින}} {days} | {interval, plural, =1 {ஒவ்வொரு மாதமும்} =2 {இரண்டு மாதங்களுக்கு ஒருமுறை} other {# மாதங்களுக்கு ஒருமுறை}}, {count, plural, one {நாள்} other {நாட்கள்}} {days} | | |
+| `Sponsors.pattern.Yearly` | Every year on {date} | සෑම වසරකම {date} | ஒவ்வொரு ஆண்டும் {date} | | |
+| `Sponsors.pattern.from` | from {date} | {date} සිට | {date} முதல் | | |
+| `Sponsors.pattern.until` | until {date} | {date} දක්වා | {date} வரை | | |
+| `Sponsors.new.title` | Regular days for {name} | {name} ගේ නිත්‍ය දින | {name} இன் வழக்கமான நாட்கள் | | |
+| `Sponsors.new.description` | Each day is booked for them and accepted at once. A day already taken or closed is listed, not booked. | සෑම දිනයක්ම ඔවුන් සඳහා වෙන් කර වහාම පිළිගැනේ. දැනටමත් ගත් හෝ වසා ඇති දිනයක් ලැයිස්තුගත කෙරේ, වෙන් නොකෙරේ. | ஒவ்வொரு நாளும் அவர்களுக்காக முன்பதிவு செய்யப்பட்டு உடனே ஏற்கப்படும். ஏற்கனவே எடுக்கப்பட்ட அல்லது மூடிய நாள் பட்டியலிடப்படும், முன்பதிவு செய்யப்படாது. | | |
+| `Sponsors.new.noSlots` | Add a meal first, on the Meals screen. | පළමුව ආහාර වේල් තිරයෙන් ආහාර වේලක් එක් කරන්න. | முதலில் உணவுகள் திரையில் ஒரு உணவைச் சேர்க்கவும். | | |
+| `Sponsors.new.meal` | Meal | ආහාර වේල | உணவு | | |
+| `Sponsors.new.pattern` | How often | කොපමණ වාරයක් | எத்தனை முறை | | |
+| `Sponsors.new.patterns.Once` | One day | එක් දිනක් | ஒரு நாள் | | |
+| `Sponsors.new.patterns.Daily` | Every day | සෑම දිනකම | ஒவ்வொரு நாளும் | | |
+| `Sponsors.new.patterns.Weekly` | Every week | සෑම සතියකම | ஒவ்வொரு வாரமும் | | |
+| `Sponsors.new.patterns.Monthly` | Every month | සෑම මසකම | ஒவ்வொரு மாதமும் | | |
+| `Sponsors.new.patterns.Yearly` | Every year | සෑම වසරකම | ஒவ்வொரு ஆண்டும் | | |
+| `Sponsors.new.weekDays` | On these days of the week | සතියේ මෙම දිනවල | வாரத்தின் இந்த நாட்களில் | | |
+| `Sponsors.new.monthDays` | On these days of the month | මාසයේ මෙම දිනවල | மாதத்தின் இந்த நாட்களில் | | |
+| `Sponsors.new.monthDaysHint` | A day a month does not have (the 31st in April) is skipped that month. | මාසයක නැති දිනයක් (අප්‍රේල් 31) එම මාසයේ මඟ හැරේ. | ஒரு மாதத்தில் இல்லாத நாள் (ஏப்ரல் 31) அந்த மாதம் தவிர்க்கப்படும். | | |
+| `Sponsors.new.interval` | Repeat | නැවත | மீண்டும் | | |
+| `Sponsors.new.intervals` | {n, plural, =1 {Every month} =2 {Every other month} other {Every # months}} | {n, plural, =1 {සෑම මසකම} =2 {මාස දෙකකට වරක්} other {මාස #කට වරක්}} | {n, plural, =1 {ஒவ்வொரு மாதமும்} =2 {இரண்டு மாதங்களுக்கு ஒருமுறை} other {# மாதங்களுக்கு ஒருமுறை}} | | |
+| `Sponsors.new.intervalHint` | Counted from the month it starts. | ආරම්භ වන මාසයේ සිට ගණන් කෙරේ. | தொடங்கும் மாதத்திலிருந்து கணக்கிடப்படும். | | |
+| `Sponsors.new.yearDate` | On this day each year | සෑම වසරකම මෙම දිනයේ | ஒவ்வொரு ஆண்டும் இந்த நாளில் | | |
+| `Sponsors.new.yearHint` | 29 February is given only in leap years. | පෙබරවාරි 29 ලබා දෙන්නේ අධික අවුරුදුවල පමණි. | பிப்ரவரி 29 நெட்டாண்டுகளில் மட்டுமே. | | |
+| `Sponsors.new.yearMonth` | Month | මාසය | மாதம் | | |
+| `Sponsors.new.yearDay` | Day | දිනය | நாள் | | |
+| `Sponsors.new.onDate` | Day | දිනය | நாள் | | |
+| `Sponsors.new.startDate` | First day | පළමු දිනය | முதல் நாள் | | |
+| `Sponsors.new.endDate` | Last day (optional) | අවසන් දිනය (අවශ්‍ය නම්) | கடைசி நாள் (விருப்பம்) | | |
+| `Sponsors.new.endHint` | Leave empty for no end. | අවසානයක් නැත්නම් හිස්ව තබන්න. | முடிவு இல்லையெனில் காலியாக விடவும். | | |
+| `Sponsors.new.preview` | Next days | ඊළඟ දින | அடுத்த நாட்கள் | | |
+| `Sponsors.new.previewHint` | As the calendar stands now. | දින දර්ශනය දැන් පවතින ආකාරයට. | நாட்காட்டி இப்போது உள்ளபடி. | | |
+| `Sponsors.new.previewWaiting` | Choose the days to see them here. | මෙහි දැකීමට දින තෝරන්න. | இங்கே பார்க்க நாட்களைத் தேர்ந்தெடுக்கவும். | | |
+| `Sponsors.new.previewFailed` | Could not show the days. You can still save. | දින පෙන්විය නොහැකි විය. ඔබට තවමත් සුරැකිය හැක. | நாட்களைக் காட்ட முடியவில்லை. நீங்கள் இன்னும் சேமிக்கலாம். | | |
+| `Sponsors.new.previewNone` | These choices give no days. | මෙම තේරීම් කිසිදු දිනයක් නොදෙයි. | இந்தத் தேர்வுகள் எந்த நாளையும் தரவில்லை. | | |
+| `Sponsors.new.free` | Free | නිදහස් | காலியாக உள்ளது | | |
+| `Sponsors.new.later` | Booked when it opens | විවෘත වූ විට වෙන් කෙරේ | திறக்கும்போது முன்பதிவு செய்யப்படும் | | |
+| `Sponsors.new.headcount` | People to feed | ආහාර දිය යුතු පිරිස | உணவளிக்க வேண்டியவர்கள் | | |
+| `Sponsors.new.headcountHint` | Between {min} and {max} for this meal. | මෙම වේල සඳහා {min} සිට {max} දක්වා. | இந்த உணவுக்கு {min} முதல் {max} வரை. | | |
+| `Sponsors.new.fulfilment` | Who provides the meal | ආහාරය සපයන්නේ කවුද | உணவை யார் வழங்குகிறார் | | |
+| `Sponsors.new.inMemoryOf` | In memory of (optional) | සිහිවීම පිණිස (අවශ්‍ය නම්) | நினைவாக (விருப்பம்) | | |
+| `Sponsors.new.notes` | Notes (optional) | සටහන් (අවශ්‍ය නම්) | குறிப்புகள் (விருப்பம்) | | |
+| `Sponsors.new.cancel` | Cancel | අවලංගු කරන්න | ரத்து செய் | | |
+| `Sponsors.new.create` | Set up | සකසන්න | அமைக்கவும் | | |
+| `Sponsors.new.errors.donor` | This donor is no longer in your book. | මෙම දායකයා තවදුරටත් ඔබේ පොතේ නැත. | இந்த நன்கொடையாளர் இனி உங்கள் பதிவேட்டில் இல்லை. | | |
+| `Sponsors.new.errors.mealSlot` | Choose a meal. | ආහාර වේලක් තෝරන්න. | ஒரு உணவைத் தேர்ந்தெடுக்கவும். | | |
+| `Sponsors.new.errors.pattern` | These choices give no days. | මෙම තේරීම් කිසිදු දිනයක් නොදෙයි. | இந்தத் தேர்வுகள் எந்த நாளையும் தரவில்லை. | | |
+| `Sponsors.new.errors.weekDays` | Choose at least one day of the week. | සතියේ අවම වශයෙන් එක් දිනයක් තෝරන්න. | வாரத்தின் குறைந்தது ஒரு நாளைத் தேர்ந்தெடுக்கவும். | | |
+| `Sponsors.new.errors.monthDays` | Choose at least one day of the month. | මාසයේ අවම වශයෙන් එක් දිනයක් තෝරන්න. | மாதத்தின் குறைந்தது ஒரு நாளைத் தேர்ந்தெடுக்கவும். | | |
+| `Sponsors.new.errors.monthInterval` | Choose how often. | කොපමණ වාරයක්දැයි තෝරන්න. | எத்தனை முறை என்பதைத் தேர்ந்தெடுக்கவும். | | |
+| `Sponsors.new.errors.yearMonth` | Choose a month. | මාසයක් තෝරන්න. | ஒரு மாதத்தைத் தேர்ந்தெடுக்கவும். | | |
+| `Sponsors.new.errors.yearDay` | That month has no such day. | එම මාසයේ එවැනි දිනයක් නැත. | அந்த மாதத்தில் அப்படி ஒரு நாள் இல்லை. | | |
+| `Sponsors.new.errors.startDate` | Choose today or a later day. | අද හෝ පසු දිනයක් තෝරන්න. | இன்று அல்லது பிந்தைய நாளைத் தேர்ந்தெடுக்கவும். | | |
+| `Sponsors.new.errors.endDate` | The last day must be on or after the first. | අවසන් දිනය පළමු දිනයට සමාන හෝ පසු විය යුතුය. | கடைசி நாள் முதல் நாளுக்குச் சமமாகவோ பின்னரோ இருக்க வேண்டும். | | |
+| `Sponsors.new.errors.headcount` | Enter a number of people this meal allows. | මෙම වේලට ඉඩ දෙන පිරිසක් ඇතුළත් කරන්න. | இந்த உணவு அனுமதிக்கும் எண்ணிக்கையை உள்ளிடவும். | | |
+| `Sponsors.new.errors.fulfilment` | Choose who provides the meal. | ආහාරය සපයන්නේ කවුදැයි තෝරන්න. | உணவை யார் வழங்குகிறார் என்பதைத் தேர்ந்தெடுக்கவும். | | |
+| `Sponsors.new.errors.inMemoryOf` | Up to 200 letters. | අකුරු 200ක් දක්වා. | 200 எழுத்துகள் வரை. | | |
+| `Sponsors.new.errors.notes` | Up to 500 letters. | අකුරු 500ක් දක්වා. | 500 எழுத்துகள் வரை. | | |
+| `Sponsors.new.done.booked` | {count, plural, =0 {No day booked yet} one {# day booked} other {# days booked}} | {count, plural, =0 {තවම දිනයක් වෙන් කර නැත} one {දින # ක් වෙන් කෙරිණි} other {දින # ක් වෙන් කෙරිණි}} | {count, plural, =0 {இன்னும் எந்த நாளும் முன்பதிவு செய்யப்படவில்லை} one {# நாள் முன்பதிவு செய்யப்பட்டது} other {# நாட்கள் முன்பதிவு செய்யப்பட்டன}} | | |
+| `Sponsors.new.done.notBooked` | Not booked: | වෙන් නොකළ දින: | முன்பதிவு செய்யப்படாதவை: | | |
+| `Sponsors.new.done.later` | {count, plural, one {# more day is being booked now.} other {# more days are being booked now.}} | {count, plural, one {තවත් දින #ක් දැන් වෙන් කෙරේ.} other {තවත් දින #ක් දැන් වෙන් කෙරේ.}} | {count, plural, one {மேலும் # நாள் இப்போது முன்பதிவு செய்யப்படுகிறது.} other {மேலும் # நாட்கள் இப்போது முன்பதிவு செய்யப்படுகின்றன.}} | | |
+| `Sponsors.new.done.close` | Close | වසන්න | மூடு | | |
+| `Sponsors.clash.slot_inactive` | Meal not offered | වේල ලබා නොදේ | உணவு வழங்கப்படுவதில்லை | | |
+| `Sponsors.clash.institution_not_active` | Not taking bookings | වෙන්කිරීම් භාර නොගනී | முன்பதிவுகள் ஏற்கப்படுவதில்லை | | |
+| `Sponsors.clash.not_on_this_day` | Meal not served that day | එදින වේල සපයන්නේ නැත | அந்த நாளில் உணவு இல்லை | | |
+| `Sponsors.clash.out_of_season` | Out of season | කාලය නොවේ | பருவம் அல்ல | | |
+| `Sponsors.clash.date_blocked` | Closed that day | එදින වසා ඇත | அந்த நாள் மூடப்பட்டுள்ளது | | |
+| `Sponsors.clash.too_soon` | Too soon for this meal's notice | මෙම වේලේ දැනුම්දීමට ඉතා ළඟයි | இந்த உணவின் அறிவிப்புக்கு மிக அருகில் | | |
+| `Sponsors.clash.too_far` | Too far ahead | ඉතා දුරයි | மிகத் தொலைவில் | | |
+| `Sponsors.clash.slot_full` | Full | පිරී ඇත | நிரம்பியது | | |
+| `Sponsors.clash.held` | Held by another regular donor | වෙනත් නිත්‍ය දායකයෙකුට හිමියි | வேறொரு வழக்கமான நன்கொடையாளருக்கு உரியது | | |
+| `Sponsors.clash.alreadyHeld` | Already theirs that day | එදින දැනටමත් ඔවුන්ගේ | அந்த நாள் ஏற்கனவே அவருடையது | | |
+| `Sponsors.clash.alreadyDone` | Already booked | දැනටමත් වෙන් කර ඇත | ஏற்கனவே முன்பதிவு செய்யப்பட்டது | | |
+| `Sponsors.clash.ended` | Ended | අවසන් | முடிந்தது | | |
+| `Sponsors.clash.busy` | Busy: tried again tonight | කාර්යබහුලයි: අද රාත්‍රියේ නැවත උත්සාහ කෙරේ | பரபரப்பு: இன்றிரவு மீண்டும் முயற்சிக்கப்படும் | | |
+| `Sponsors.detail.loading` | Regular days | නිත්‍ය දින | வழக்கமான நாட்கள் | | |
+| `Sponsors.detail.title` | {name}'s regular days | {name} ගේ නිත්‍ය දින | {name} இன் வழக்கமான நாட்கள் | | |
+| `Sponsors.detail.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயற்சிக்கவும் | | |
+| `Sponsors.detail.people` | {count, plural, one {# person} other {# people}} | {count, plural, one {# දෙනා} other {# දෙනා}} | {count, plural, one {# நபர்} other {# நபர்கள்}} | | |
+| `Sponsors.detail.inMemoryOf` | In memory of {name} | {name} සිහිවීම පිණිස | {name} நினைவாக | | |
+| `Sponsors.detail.endedOn` | Ended on {date} | {date} දින අවසන් විය | {date} அன்று முடிந்தது | | |
+| `Sponsors.detail.nextDays` | Next days | ඊළඟ දින | அடுத்த நாட்கள் | | |
+| `Sponsors.detail.noDays` | No more days. | තවත් දින නැත. | மேலும் நாட்கள் இல்லை. | | |
+| `Sponsors.detail.state.booked` | Booked | වෙන් කර ඇත | முன்பதிவு செய்யப்பட்டது | | |
+| `Sponsors.detail.state.cancelled` | Cancelled on the calendar | දින දර්ශනයෙන් අවලංගු කෙරිණි | நாட்காட்டியில் ரத்து செய்யப்பட்டது | | |
+| `Sponsors.detail.state.open` | Not booked yet: tried again tonight | තවම වෙන් කර නැත: අද රාත්‍රියේ නැවත උත්සාහ කෙරේ | இன்னும் முன்பதிவு இல்லை: இன்றிரவு மீண்டும் முயற்சிக்கப்படும் | | |
+| `Sponsors.detail.state.upcoming` | Booked when it opens | විවෘත වූ විට වෙන් කෙරේ | திறக்கும்போது முன்பதிவு செய்யப்படும் | | |
+| `Sponsors.detail.state.Skipped` | Cannot give | දිය නොහැක | வழங்க இயலாது | | |
+| `Sponsors.detail.state.Released` | Given to someone who asked | ඉල්ලූ කෙනෙකුට දෙන ලදී | கேட்டவருக்கு வழங்கப்பட்டது | | |
+| `Sponsors.detail.state.Blocked` | Closed by you | ඔබ විසින් වසා ඇත | நீங்கள் மூடியது | | |
+| `Sponsors.detail.state.MovedTo` | Swapped away | මාරු කර ගියේය | மாற்றி அனுப்பப்பட்டது | | |
+| `Sponsors.detail.state.MovedFrom` | Swapped in | මාරුවෙන් ලැබුණි | மாற்றிப் பெறப்பட்டது | | |
+| `Sponsors.detail.skip` | Cannot give | දිය නොහැක | வழங்க இயலாது | | |
+| `Sponsors.detail.skipNamed` | {date}: cannot give | {date}: දිය නොහැක | {date}: வழங்க இயலாது | | |
+| `Sponsors.detail.skipTitle` | Cannot give on {date}? | {date} දිය නොහැකිද? | {date} அன்று வழங்க இயலாதா? | | |
+| `Sponsors.detail.skipExplain` | The day opens for others and they are told, if they get texts. | දිනය අන් අයට විවෘත වන අතර, කෙටි පණිවිඩ ලැබෙන්නේ නම් ඔවුන්ට දන්වනු ලැබේ. | அந்த நாள் மற்றவர்களுக்குத் திறக்கும்; குறுஞ்செய்திகள் பெறுபவரானால் அவருக்குத் தெரிவிக்கப்படும். | | |
+| `Sponsors.detail.reason` | Reason (optional) | හේතුව (අවශ්‍ය නම්) | காரணம் (விருப்பம்) | | |
+| `Sponsors.detail.reasonHint` | Your staff see it. | ඔබේ කාර්ය මණ්ඩලයට පෙනේ. | உங்கள் ஊழியர்களுக்குத் தெரியும். | | |
+| `Sponsors.detail.skipConfirm` | Let the day go | දිනය නිදහස් කරන්න | நாளை விடுவிக்கவும் | | |
+| `Sponsors.detail.skipped` | {date} is let go. | {date} නිදහස් කෙරිණි. | {date} விடுவிக்கப்பட்டது. | | |
+| `Sponsors.detail.end` | End | අවසන් කරන්න | முடிக்கவும் | | |
+| `Sponsors.detail.endTitle` | End these regular days? | මෙම නිත්‍ය දින අවසන් කරන්නද? | இந்த வழக்கமான நாட்களை முடிக்கவா? | | |
+| `Sponsors.detail.endExplain` | Every booked day after today is let go. Today's meal stays. | අදින් පසු වෙන් කළ සියලු දින නිදහස් කෙරේ. අද දානය ඉතිරි වේ. | இன்றைக்குப் பிறகு முன்பதிவு செய்த ஒவ்வொரு நாளும் விடுவிக்கப்படும். இன்றைய உணவு அப்படியே இருக்கும். | | |
+| `Sponsors.detail.endReasonHint` | Shown on the cancelled days. | අවලංගු කළ දිනවල පෙන්වයි. | ரத்து செய்யப்பட்ட நாட்களில் காட்டப்படும். | | |
+| `Sponsors.detail.endConfirm` | End | අවසන් කරන්න | முடிக்கவும் | | |
+| `Sponsors.detail.ended` | These regular days have ended. | මෙම නිත්‍ය දින අවසන් විය. | இந்த வழக்கமான நாட்கள் முடிந்தன. | | |
+| `Sponsors.detail.swap` | Swap a day | දිනයක් මාරු කරන්න | ஒரு நாளை மாற்றவும் | | |
+| `Sponsors.detail.back` | Back | ආපසු | பின்செல் | | |
+| `Sponsors.detail.close` | Close | වසන්න | மூடு | | |
+| `Sponsors.swap.title` | Swap a day | දිනයක් මාරු කරන්න | ஒரு நாளை மாற்றவும் | | |
+| `Sponsors.swap.description` | Two regular donors of the same meal give on each other's day. Both are told. | එකම වේලේ නිත්‍ය දායකයන් දෙදෙනෙක් එකිනෙකාගේ දිනයේ දන් දෙති. දෙදෙනාටම දන්වනු ලැබේ. | ஒரே உணவின் இரண்டு வழக்கமான நன்கொடையாளர்கள் ஒருவர் மற்றவரின் நாளில் வழங்குவர். இருவருக்கும் தெரிவிக்கப்படும். | | |
+| `Sponsors.swap.noPartner` | No other regular donor gives this meal. | මෙම වේල දෙන වෙනත් නිත්‍ය දායකයෙක් නැත. | இந்த உணவை வழங்கும் வேறு வழக்கமான நன்கொடையாளர் இல்லை. | | |
+| `Sponsors.swap.when` | For how long | කොපමණ කලකට | எவ்வளவு காலம் | | |
+| `Sponsors.swap.once` | This time only | මෙවර පමණක් | இம்முறை மட்டும் | | |
+| `Sponsors.swap.onceHint` | Both days must be booked. | දින දෙකම වෙන් කර තිබිය යුතුය. | இரண்டு நாட்களும் முன்பதிவு செய்யப்பட்டிருக்க வேண்டும். | | |
+| `Sponsors.swap.permanent` | From now on | මින් ඉදිරියට | இனிமேல் | | |
+| `Sponsors.swap.permanentHint` | From the chosen days, each gives on the other's days. | තෝරාගත් දින සිට, එක් එක් අය අනෙකාගේ දිනවල දෙති. | தேர்ந்தெடுத்த நாட்களிலிருந்து, ஒவ்வொருவரும் மற்றவரின் நாட்களில் வழங்குவர். | | |
+| `Sponsors.swap.own` | {name}'s day | {name} ගේ දිනය | {name} இன் நாள் | | |
+| `Sponsors.swap.partner` | With | සමඟ | இவருடன் | | |
+| `Sponsors.swap.partnerDay` | Their day | ඔවුන්ගේ දිනය | அவரது நாள் | | |
+| `Sponsors.swap.choose` | Choose a day | දිනයක් තෝරන්න | ஒரு நாளைத் தேர்ந்தெடுக்கவும் | | |
+| `Sponsors.swap.confirm` | Swap | මාරු කරන්න | மாற்றவும் | | |
+| `Sponsors.swap.done` | Swapped. | මාරු කෙරිණි. | மாற்றப்பட்டது. | | |
+| `Sponsors.swap.back` | Back | ආපසු | பின்செல் | | |
+| `Sponsors.errors.sponsorship_not_found` | These regular days are no longer here. | මෙම නිත්‍ය දින තවදුරටත් මෙහි නැත. | இந்த வழக்கமான நாட்கள் இனி இங்கு இல்லை. | | |
+| `Sponsors.errors.sponsorship_ended` | These regular days have ended. | මෙම නිත්‍ය දින අවසන් වී ඇත. | இந்த வழக்கமான நாட்கள் முடிந்துவிட்டன. | | |
+| `Sponsors.errors.day_already_changed` | That day has already been let go or swapped. | එම දිනය දැනටමත් නිදහස් කර හෝ මාරු කර ඇත. | அந்த நாள் ஏற்கனவே விடுவிக்கப்பட்டது அல்லது மாற்றப்பட்டது. | | |
+| `Sponsors.errors.day_not_booked` | Both days must be booked to swap this time only. | මෙවර පමණක් මාරු කිරීමට දින දෙකම වෙන් කර තිබිය යුතුය. | இம்முறை மட்டும் மாற்ற இரண்டு நாட்களும் முன்பதிவு செய்யப்பட்டிருக்க வேண்டும். | | |
+| `Calendar.standingDot` | A regular donor's day | නිත්‍ය දායකයෙකුගේ දිනය | வழக்கமான நன்கொடையாளரின் நாள் | | |
+| `Calendar.standingLabel` | {count, plural, one {# regular donor.} other {# regular donors.}} | {count, plural, one {නිත්‍ය දායකයන් #.} other {නිත්‍ය දායකයන් #.}} | {count, plural, one {# வழக்கமான நன்கொடையாளர்.} other {# வழக்கமான நன்கொடையாளர்கள்.}} | | |
+| `Calendar.booking.standing` | Regular donor | නිත්‍ය දායක | வழக்கமான நன்கொடையாளர் | | |
+| `Calendar.dayRequests.heading` | Asked for a regular donor's day | නිත්‍ය දායකයෙකුගේ දිනයක් ඉල්ලා ඇත | வழக்கமான நன்கொடையாளரின் நாள் கேட்கப்பட்டுள்ளது | | |
+| `Calendar.dayRequests.intro` | Giving the day lets the regular donor's day go and books the person who asked. | දිනය දීමෙන් නිත්‍ය දායකයාගේ දිනය නිදහස් වී ඉල්ලූ තැනැත්තාට වෙන් කෙරේ. | நாளை வழங்கினால் வழக்கமான நன்கொடையாளரின் நாள் விடுவிக்கப்பட்டு கேட்டவருக்கு முன்பதிவு செய்யப்படும். | | |
+| `Calendar.dayRequests.asks` | {name} asks for this day | {name} මෙම දිනය ඉල්ලයි | {name} இந்த நாளைக் கேட்கிறார் | | |
+| `Calendar.dayRequests.heldBy` | Held by {name} | {name} ට හිමියි | {name} க்கு உரியது | | |
+| `Calendar.dayRequests.whose` | Whose day to give | කාගේ දිනය දිය යුතුද | யாருடைய நாளை வழங்குவது | | |
+| `Calendar.dayRequests.give` | Give them the day | ඔවුන්ට දිනය දෙන්න | அவருக்கு நாளை வழங்கவும் | | |
+| `Calendar.dayRequests.decline` | Keep it | තබා ගන්න | வைத்திருக்கவும் | | |
+| `Calendar.dayRequests.declineReason` | Why? They read this when they sign in. | ඇයි? ඔවුන් පුරනය වූ විට මෙය කියවයි. | ஏன்? அவர் உள்நுழையும்போது இதைப் படிப்பார். | | |
+| `Calendar.dayRequests.declineHint` | Optional. It is not texted. | අවශ්‍ය නම්. කෙටි පණිවිඩයෙන් නොයවයි. | விருப்பம். குறுஞ்செய்தியில் அனுப்பப்படாது. | | |
+| `Calendar.dayRequests.confirmDecline` | Keep it with the regular donor | නිත්‍ය දායකයාට තබා ගන්න | வழக்கமான நன்கொடையாளரிடம் வைத்திருக்கவும் | | |
+| `Calendar.dayRequests.back` | Back | ආපසු | பின்செல் | | |
+| `Calendar.dayRequests.given` | {requestNo}: the day is {name}'s now. Both have been told. | {requestNo}: දිනය දැන් {name} ට. දෙදෙනාටම දන්වා ඇත. | {requestNo}: நாள் இப்போது {name} உடையது. இருவருக்கும் தெரிவிக்கப்பட்டது. | | |
+| `Calendar.dayRequests.declined` | {requestNo}: kept with the regular donor. {name} has been told. | {requestNo}: නිත්‍ය දායකයාට තබා ගැනිණි. {name} ට දන්වා ඇත. | {requestNo}: வழக்கமான நன்கொடையாளரிடம் வைக்கப்பட்டது. {name} க்குத் தெரிவிக்கப்பட்டது. | | |
+| `Discover.reason.held` | Held by a regular donor | නිත්‍ය දායකයෙකුට හිමියි | வழக்கமான நன்கொடையாளருக்கு உரியது | | |
+| `Discover.heldAsk` | Held by a regular donor. You can ask for it. | නිත්‍ය දායකයෙකුට හිමියි. ඔබට එය ඉල්ලිය හැක. | வழக்கமான நன்கொடையாளருக்கு உரியது. நீங்கள் கேட்கலாம். | | |
+| `Discover.legend.held` | Held by a regular donor: ask | නිත්‍ය දායකයෙකුට හිමියි: ඉල්ලන්න | வழக்கமான நன்கொடையாளருக்கு உரியது: கேட்கவும் | | |
+| `Discover.ask.title` | Ask for {date} | {date} ඉල්ලන්න | {date} ஐக் கேட்கவும் | | |
+| `Discover.ask.explain` | A regular donor gives on this day. The institution decides whether to give it to you. Asking holds nothing. | මෙදින නිත්‍ය දායකයෙක් දන් දෙයි. ඔබට එය දෙනවාද යන්න ආයතනය තීරණය කරයි. ඉල්ලීමෙන් කිසිවක් රඳවා නොගනී. | இந்த நாளில் ஒரு வழக்கமான நன்கொடையாளர் வழங்குகிறார். அதை உங்களுக்கு வழங்குவதா என்பதை நிறுவனம் முடிவு செய்யும். கேட்பது எதையும் ஒதுக்காது. | | |
+| `Discover.ask.signInFirst` | Sign in to ask for this day. You will come back here. | මෙම දිනය ඉල්ලීමට පුරනය වන්න. ඔබ නැවත මෙහි පැමිණේ. | இந்த நாளைக் கேட்க உள்நுழையவும். நீங்கள் மீண்டும் இங்கு வருவீர்கள். | | |
+| `Discover.ask.institutionSession` | You are signed in for an institution. Switch to your own account to ask. | ඔබ ආයතනයක් සඳහා පුරනය වී ඇත. ඉල්ලීමට ඔබේම ගිණුමට මාරු වන්න. | நீங்கள் ஒரு நிறுவனத்துக்காக உள்நுழைந்துள்ளீர்கள். கேட்க உங்கள் சொந்தக் கணக்குக்கு மாறவும். | | |
+| `Discover.ask.notAllowed` | This account cannot ask for days. | මෙම ගිණුමට දින ඉල්ලිය නොහැක. | இந்தக் கணக்கால் நாட்களைக் கேட்க முடியாது. | | |
+| `Discover.ask.headcount` | People you would feed | ඔබ ආහාර දෙන පිරිස | நீங்கள் உணவளிப்பவர்கள் | | |
+| `Discover.ask.headcountHint` | Between {min} and {max}. | {min} සිට {max} දක්වා. | {min} முதல் {max} வரை. | | |
+| `Discover.ask.headcountRange` | Enter a number between {min} and {max}. | {min} සිට {max} දක්වා අංකයක් ඇතුළත් කරන්න. | {min} முதல் {max} வரையான எண்ணை உள்ளிடவும். | | |
+| `Discover.ask.fulfilment` | Who provides the meal | ආහාරය සපයන්නේ කවුද | உணவை யார் வழங்குகிறார் | | |
+| `Discover.ask.note` | A note for the institution (optional) | ආයතනයට සටහනක් (අවශ්‍ය නම්) | நிறுவனத்துக்கு ஒரு குறிப்பு (விருப்பம்) | | |
+| `Discover.ask.noteHint` | For example, why this day matters to you. | උදාහරණයක් ලෙස, මෙම දිනය ඔබට වැදගත් වන්නේ ඇයි. | உதாரணமாக, இந்த நாள் உங்களுக்கு ஏன் முக்கியம். | | |
+| `Discover.ask.cancel` | Cancel | අවලංගු කරන්න | ரத்து செய் | | |
+| `Discover.ask.send` | Ask for this day | මෙම දිනය ඉල්ලන්න | இந்த நாளைக் கேட்கவும் | | |
+| `Discover.ask.done` | Asked: {requestNo} | ඉල්ලා ඇත: {requestNo} | கேட்கப்பட்டது: {requestNo} | | |
+| `Discover.ask.doneNext` | We will text you their answer. Your requests are in My bookings. | ඔවුන්ගේ පිළිතුර අපි ඔබට කෙටි පණිවිඩයෙන් දන්වමු. ඔබේ ඉල්ලීම් මගේ වෙන්කිරීම්වල ඇත. | அவர்களின் பதிலைக் குறுஞ்செய்தியில் தெரிவிப்போம். உங்கள் கோரிக்கைகள் எனது முன்பதிவுகளில் உள்ளன. | | |
+| `Discover.ask.myBookings` | My bookings | මගේ වෙන්කිරීම් | எனது முன்பதிவுகள் | | |
+| `Discover.ask.close` | Close | වසන්න | மூடு | | |
+| `MyBookings.regular` | A regular day the institution set up for you | ආයතනය ඔබ සඳහා සැකසූ නිත්‍ය දිනයක් | நிறுவனம் உங்களுக்காக அமைத்த வழக்கமான நாள் | | |
+| `MyBookings.requests.title` | Days I asked for | මා ඉල්ලූ දින | நான் கேட்ட நாட்கள் | | |
+| `MyBookings.requests.status.Open` | Waiting for their answer | ඔවුන්ගේ පිළිතුරට රැඳී ඇත | அவர்களின் பதிலுக்குக் காத்திருக்கிறது | | |
+| `MyBookings.requests.status.Given` | Given to you | ඔබට දෙන ලදී | உங்களுக்கு வழங்கப்பட்டது | | |
+| `MyBookings.requests.status.Declined` | Kept with the regular donor | නිත්‍ය දායකයාට තබා ගැනිණි | வழக்கமான நன்கொடையாளரிடம் வைக்கப்பட்டது | | |
+| `MyBookings.requests.status.Withdrawn` | Withdrawn | ඉවත් කර ගැනිණි | திரும்பப் பெறப்பட்டது | | |
+| `MyBookings.requests.booking` | Booked as {bookingNo} | {bookingNo} ලෙස වෙන් කෙරිණි | {bookingNo} ஆக முன்பதிவு செய்யப்பட்டது | | |
+| `MyBookings.requests.declinedBecause` | Their reason: {reason} | ඔවුන්ගේ හේතුව: {reason} | அவர்களின் காரணம்: {reason} | | |
+| `Booking.errors.day_not_held` | This day is no longer held by a regular donor. The calendar has been refreshed. | මෙම දිනය තවදුරටත් නිත්‍ය දායකයෙකුට හිමි නැත. දින දර්ශනය යාවත්කාලීන කෙරිණි. | இந்த நாள் இனி வழக்கமான நன்கொடையாளருக்கு உரியதல்ல. நாட்காட்டி புதுப்பிக்கப்பட்டது. | | |
+| `Booking.errors.day_request_open` | You have already asked for this day. We will text you their answer. | ඔබ දැනටමත් මෙම දිනය ඉල්ලා ඇත. ඔවුන්ගේ පිළිතුර අපි කෙටි පණිවිඩයෙන් දන්වමු. | நீங்கள் ஏற்கனவே இந்த நாளைக் கேட்டுள்ளீர்கள். அவர்களின் பதிலைக் குறுஞ்செய்தியில் தெரிவிப்போம். | | |
+| `Booking.errors.day_request_answered` | This request has already been answered. | මෙම ඉල්ලීමට දැනටමත් පිළිතුරු දී ඇත. | இந்தக் கோரிக்கைக்கு ஏற்கனவே பதிலளிக்கப்பட்டது. | | |
+| `Booking.errors.day_request_not_found` | This request could not be found. | මෙම ඉල්ලීම සොයාගත නොහැකි විය. | இந்தக் கோரிக்கையைக் கண்டுபிடிக்க முடியவில்லை. | | |
+
+## Standing sponsors' own days (2026-11-04, `MyBookings`, `Booking.errors`, plan 08 K.5)
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `MyBookings.cantGive` | I can't give that day | මට එදින දිය නොහැක | அந்த நாளில் என்னால் வழங்க முடியாது | | |
+| `MyBookings.skipSheet.title` | Can't give on this day? | මෙදින දන් දිය නොහැකිද? | இந்த நாளில் வழங்க முடியாதா? | | |
+| `MyBookings.skipSheet.description` | {bookingNo}. Only this day is let go: your other regular days stay yours. The institution sees it, and the day opens for someone else. | {bookingNo}. මෙම දිනය පමණක් අත්හරිනු ලැබේ: ඔබේ අනෙක් නිත්‍ය දින ඔබටම රැඳේ. ආයතනයට එය පෙනෙන අතර, දිනය වෙනත් අයෙකුට විවෘත වේ. | {bookingNo}. இந்த நாள் மட்டுமே விடப்படும்: உங்கள் மற்ற வழக்கமான நாட்கள் உங்களிடமே இருக்கும். நிறுவனம் இதைப் பார்க்கும், இந்த நாள் வேறொருவருக்குக் கிடைக்கும். | | |
+| `MyBookings.skipSheet.reason` | Reason (optional) | හේතුව (අත්‍යවශ්‍ය නොවේ) | காரணம் (விருப்பத்தேர்வு) | | |
+| `MyBookings.skipSheet.reasonHint` | The institution will see it. | ආයතනයට එය පෙනෙනු ඇත. | நிறுவனம் இதைப் பார்க்கும். | | |
+| `MyBookings.skipSheet.keep` | Keep this day | මෙම දිනය තබා ගන්න | இந்த நாளை வைத்திருங்கள் | | |
+| `MyBookings.skipSheet.confirm` | I can't give that day | මට එදින දිය නොහැක | அந்த நாளில் என்னால் வழங்க முடியாது | | |
+| `MyBookings.skipSheet.done` | {bookingNo} is let go. We will text you to confirm. | {bookingNo} අත්හරින ලදී. තහවුරු කිරීමට අපි ඔබට කෙටි පණිවිඩයක් එවන්නෙමු. | {bookingNo} விடப்பட்டது. உறுதிப்படுத்த உங்களுக்குக் குறுஞ்செய்தி அனுப்புவோம். | | |
+| `Booking.errors.sponsorship_ended` | These regular days have ended. | මෙම නිත්‍ය දින අවසන් වී ඇත. | இந்த வழக்கமான நாட்கள் முடிந்துவிட்டன. | | |
+| `Booking.errors.day_already_changed` | That day has already been let go or swapped. | එම දිනය දැනටමත් නිදහස් කර හෝ මාරු කර ඇත. | அந்த நாள் ஏற்கனவே விடுவிக்கப்பட்டது அல்லது மாற்றப்பட்டது. | | |
+
+## Giving: donations and receipts (2026-11-04, `Giving`, `Shell`, `Admin`, plan 09 D.1)
+
+| Key | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `Giving.money` | LKR {amount} | රු. {amount} | ரூ. {amount} | | |
+| `Giving.itemsCounted` | {items} ({count}) | {items} ({count}) | {items} ({count}) | | |
+| `Giving.methods.CASH` | Cash | මුදල් | ரொக்கம் | | |
+| `Giving.methods.BANK_TRANSFER` | Bank transfer | බැංකු මාරුව | வங்கிப் பரிமாற்றம் | | |
+| `Giving.methods.CHEQUE` | Cheque | චෙක්පත | காசோலை | | |
+| `Giving.methods.CARD` | Card | කාඩ්පත | அட்டை | | |
+| `Giving.methods.PAYHERE` | Online (PayHere) | මාර්ගගත (PayHere) | இணையவழி (PayHere) | | |
+| `Giving.errors.invalid_details` | Some details need fixing. Check the fields marked below. | සමහර විස්තර නිවැරදි කළ යුතුයි. පහත සලකුණු කළ ක්ෂේත්‍ර බලන්න. | சில விவரங்களைத் திருத்த வேண்டும். கீழே குறிக்கப்பட்ட புலங்களைப் பாருங்கள். | | |
+| `Giving.errors.donation_not_found` | There is no such receipt here. It may belong to another institution, or the link is wrong. | මෙහි එවැනි රිසිට්පතක් නැත. එය වෙනත් ආයතනයකට අයත් විය හැක, නැතහොත් සබැඳිය වැරදියි. | இங்கே அப்படி ஒரு பற்றுச்சீட்டு இல்லை. அது வேறு நிறுவனத்தினுடையதாக இருக்கலாம், அல்லது இணைப்பு தவறானது. | | |
+| `Giving.errors.donor_not_found` | That person is not in your donor book any more. Choose them again, or record the gift under a typed name. | එම පුද්ගලයා තවදුරටත් ඔබේ දායක පොතේ නැත. ඔවුන් නැවත තෝරන්න, නැතහොත් නමක් ටයිප් කර පරිත්‍යාගය සටහන් කරන්න. | அந்த நபர் இனி உங்கள் நன்கொடையாளர் புத்தகத்தில் இல்லை. மீண்டும் தேர்ந்தெடுக்கவும், அல்லது தட்டச்சு செய்த பெயரில் நன்கொடையைப் பதிவு செய்யவும். | | |
+| `Giving.errors.stale` | Someone changed this gift while you were looking at it. Look at the list again. | ඔබ බලා සිටියදී කෙනෙකු මෙම පරිත්‍යාගය වෙනස් කළා. ලැයිස්තුව නැවත බලන්න. | நீங்கள் பார்த்துக்கொண்டிருக்கும்போது யாரோ இந்த நன்கொடையை மாற்றினர். பட்டியலை மீண்டும் பாருங்கள். | | |
+| `Giving.errors.already_void` | This gift is voided already. | මෙම පරිත්‍යාගය දැනටමත් අවලංගු කර ඇත. | இந்த நன்கொடை ஏற்கனவே ரத்து செய்யப்பட்டது. | | |
+| `Giving.errors.void_own_record` | You recorded this gift, so someone else must void it. That second pair of eyes is what keeps receipts honest. | මෙම පරිත්‍යාගය සටහන් කළේ ඔබයි, එබැවින් එය අවලංගු කළ යුත්තේ වෙනත් අයෙකි. රිසිට්පත් අවංකව තබන්නේ එම දෙවන ඇස් යුගලයයි. | இந்த நன்கொடையைப் பதிவு செய்தது நீங்கள், எனவே வேறொருவர் அதை ரத்து செய்ய வேண்டும். பற்றுச்சீட்டுகளை நேர்மையாக வைப்பது அந்த இரண்டாவது பார்வையே. | | |
+| `Giving.errors.invalid_month` | That month could not be read. | එම මාසය කියවිය නොහැකි විය. | அந்த மாதத்தைப் படிக்க முடியவில்லை. | | |
+| `Giving.donations.title` | Donations and receipts | පරිත්‍යාග සහ රිසිට්පත් | நன்கொடைகளும் பற்றுச்சீட்டுகளும் | | |
+| `Giving.donations.intro` | Every gift your institution receives, money or items, each with its own receipt number. A gift is never changed or deleted: a mistake is voided by a second person and recorded again. | ඔබේ ආයතනයට ලැබෙන සෑම පරිත්‍යාගයක්ම, මුදල් හෝ ද්‍රව්‍ය, එකිනෙකට වෙනම රිසිට් අංකයක් සමඟ. පරිත්‍යාගයක් කිසිදා වෙනස් කිරීම හෝ මැකීම නොකෙරේ: වැරැද්දක් දෙවන අයෙකු විසින් අවලංගු කර නැවත සටහන් කෙරේ. | உங்கள் நிறுவனம் பெறும் ஒவ்வொரு நன்கொடையும், பணமோ பொருளோ, தனித்தனி பற்றுச்சீட்டு எண்ணுடன். நன்கொடை ஒருபோதும் மாற்றப்படுவதோ நீக்கப்படுவதோ இல்லை: தவறு இரண்டாவது நபரால் ரத்து செய்யப்பட்டு மீண்டும் பதிவு செய்யப்படும். | | |
+| `Giving.donations.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயற்சிக்கவும் | | |
+| `Giving.donations.month` | Month | මාසය | மாதம் | | |
+| `Giving.donations.previousMonth` | Previous month | පෙර මාසය | முந்தைய மாதம் | | |
+| `Giving.donations.nextMonth` | Next month | ඊළඟ මාසය | அடுத்த மாதம் | | |
+| `Giving.donations.record` | Record a gift | පරිත්‍යාගයක් සටහන් කරන්න | நன்கொடையைப் பதிவு செய் | | |
+| `Giving.donations.totals` | {gifts, plural, =0 {No gifts kept} one {# gift} other {# gifts}}: {money} in money, {items, plural, =0 {none in items} one {# of items} other {# of items}}. | පරිත්‍යාග {gifts}: මුදලින් {money}, ද්‍රව්‍ය {items}. | நன்கொடைகள் {gifts}: பணமாக {money}, பொருட்களாக {items}. | | |
+| `Giving.donations.voidedCount` | {count, plural, one {# voided, not counted} other {# voided, not counted}} | අවලංගු {count}, ගණන් නොකෙරේ | ரத்து {count}, கணக்கில் இல்லை | | |
+| `Giving.donations.none` | No gifts recorded in this month. | මෙම මාසයේ පරිත්‍යාග සටහන් කර නැත. | இந்த மாதம் நன்கொடைகள் பதிவு செய்யப்படவில்லை. | | |
+| `Giving.donations.methodLabel` | Paid by | ගෙවූ ආකාරය | செலுத்திய முறை | | |
+| `Giving.donations.allMethods` | All | සියල්ල | அனைத்தும் | | |
+| `Giving.donations.voidedLabel` | Show | පෙන්වන්න | காட்டு | | |
+| `Giving.donations.voidedAll` | All gifts | සියලු පරිත්‍යාග | அனைத்து நன்கொடைகளும் | | |
+| `Giving.donations.voidedKept` | Not voided | අවලංගු නොකළ | ரத்து செய்யாதவை | | |
+| `Giving.donations.voidedOnly` | Voided | අවලංගු කළ | ரத்து செய்தவை | | |
+| `Giving.donations.noMatch` | No gift this month matches what you chose. | ඔබ තේරූ දෙයට ගැළපෙන පරිත්‍යාගයක් මෙම මාසයේ නැත. | நீங்கள் தேர்ந்தெடுத்ததற்குப் பொருந்தும் நன்கொடை இந்த மாதம் இல்லை. | | |
+| `Giving.donations.list` | Gifts this month | මෙම මාසයේ පරිත්‍යාග | இந்த மாத நன்கொடைகள் | | |
+| `Giving.donations.void` | VOID | අවලංගුයි | ரத்து | | |
+| `Giving.donations.fromDonorBook` | donor book | දායක පොත | நன்கொடையாளர் புத்தகம் | | |
+| `Giving.donations.recordedBy` | Recorded by {name} | සටහන් කළේ {name} | பதிவு செய்தவர் {name} | | |
+| `Giving.donations.receipt` | Receipt | රිසිට්පත | பற்றுச்சீட்டு | | |
+| `Giving.donations.receiptNamed` | Receipt {receiptNo} | රිසිට්පත {receiptNo} | பற்றுச்சீட்டு {receiptNo} | | |
+| `Giving.donations.voidNamed` | Void receipt {receiptNo} | රිසිට්පත {receiptNo} අවලංගු කරන්න | பற்றுச்சீட்டு {receiptNo} ஐ ரத்து செய் | | |
+| `Giving.donations.voidAction` | Void | අවලංගු කරන්න | ரத்து செய் | | |
+| `Giving.donations.recorded` | Receipt {receiptNo} recorded. | රිසිට්පත {receiptNo} සටහන් කළා. | பற்றுச்சீட்டு {receiptNo} பதிவு செய்யப்பட்டது. | | |
+| `Giving.donations.voided` | Receipt {receiptNo} voided. | රිසිට්පත {receiptNo} අවලංගු කළා. | பற்றுச்சீட்டு {receiptNo} ரத்து செய்யப்பட்டது. | | |
+| `Giving.record.title` | Record a gift | පරිත්‍යාගයක් සටහන් කරන්න | நன்கொடையைப் பதிவு செய் | | |
+| `Giving.record.description` | The receipt number is given when you save. A gift cannot be changed afterwards, so check it first. | සුරකින විට රිසිට් අංකය ලැබේ. පසුව පරිත්‍යාගය වෙනස් කළ නොහැක, එබැවින් පළමුව පරීක්ෂා කරන්න. | சேமிக்கும்போது பற்றுச்சீட்டு எண் வழங்கப்படும். பின்னர் நன்கொடையை மாற்ற முடியாது, எனவே முதலில் சரிபார்க்கவும். | | |
+| `Giving.record.kind` | What was given | දුන් දේ | வழங்கியது | | |
+| `Giving.record.kindMoney` | Money | මුදල් | பணம் | | |
+| `Giving.record.kindItems` | Items | ද්‍රව්‍ය | பொருட்கள் | | |
+| `Giving.record.amount` | Amount (LKR) | මුදල (රු.) | தொகை (ரூ.) | | |
+| `Giving.record.amountHint` | In rupees, for example 5000 or 2500.50. | රුපියල්වලින්, උදා: 5000 හෝ 2500.50. | ரூபாயில், எ.கா. 5000 அல்லது 2500.50. | | |
+| `Giving.record.method` | Paid by | ගෙවූ ආකාරය | செலுத்திய முறை | | |
+| `Giving.record.items` | What was given | දුන් දේ | வழங்கியது | | |
+| `Giving.record.itemsHint` | For example: 50 exercise books, or a month of dry rations. This is on the receipt; it is never texted. | උදා: අභ්‍යාස පොත් 50, හෝ මසකට වියළි ආහාර. මෙය රිසිට්පතේ ඇත; කිසිදා කෙටි පණිවිඩයකින් නොයවයි. | எ.கா. 50 பயிற்சிப் புத்தகங்கள், அல்லது ஒரு மாத உலர் உணவுப் பொருட்கள். இது பற்றுச்சீட்டில் இருக்கும்; ஒருபோதும் குறுஞ்செய்தியாக அனுப்பப்படாது. | | |
+| `Giving.record.quantity` | How many (optional) | ප්‍රමාණය (අත්‍යවශ්‍ය නැත) | எத்தனை (விருப்பம்) | | |
+| `Giving.record.estimatedValue` | Worth about (LKR, optional) | ආසන්න වටිනාකම (රු., අත්‍යවශ්‍ය නැත) | ஏறத்தாழ மதிப்பு (ரூ., விருப்பம்) | | |
+| `Giving.record.estimatedValueHint` | Only if the giver told you. | දෙන්නා ඔබට කීවොත් පමණි. | கொடுத்தவர் சொன்னால் மட்டும். | | |
+| `Giving.record.date` | Day given | දුන් දිනය | வழங்கிய நாள் | | |
+| `Giving.record.dateHint` | Today, or a day in the last year. | අද, නැතහොත් පසුගිය වසර තුළ දිනයක්. | இன்று, அல்லது கடந்த ஆண்டில் ஒரு நாள். | | |
+| `Giving.record.who` | Who gave | දුන්නේ කවුද | வழங்கியவர் | | |
+| `Giving.record.fromBook` | Someone in the donor book | දායක පොතේ සිටින කෙනෙක් | நன்கொடையாளர் புத்தகத்தில் உள்ள ஒருவர் | | |
+| `Giving.record.walkIn` | Someone else | වෙනත් කෙනෙක් | வேறொருவர் | | |
+| `Giving.record.findDonor` | Find them by name or phone | නමින් හෝ දුරකථනයෙන් සොයන්න | பெயர் அல்லது தொலைபேசி மூலம் தேடவும் | | |
+| `Giving.record.findDonorHint` | Their name and phone come from the donor book, and the receipt is texted only if they agreed to texts. | ඔවුන්ගේ නම සහ දුරකථනය දායක පොතෙන් ලැබේ; ඔවුන් කෙටි පණිවිඩවලට එකඟ වූවා නම් පමණක් රිසිට්පත යවයි. | அவர்களின் பெயரும் தொலைபேசியும் நன்கொடையாளர் புத்தகத்திலிருந்து வரும்; குறுஞ்செய்திகளுக்கு அவர்கள் ஒப்புக்கொண்டிருந்தால் மட்டுமே பற்றுச்சீட்டு அனுப்பப்படும். | | |
+| `Giving.record.chosen` | Chosen: {name} | තෝරා ඇත: {name} | தேர்ந்தெடுக்கப்பட்டது: {name} | | |
+| `Giving.record.donorChoices` | People in the donor book | දායක පොතේ සිටින අය | நன்கொடையாளர் புத்தகத்தில் உள்ளவர்கள் | | |
+| `Giving.record.donorName` | Their name | ඔවුන්ගේ නම | அவர்களின் பெயர் | | |
+| `Giving.record.donorPhone` | Their phone (optional) | ඔවුන්ගේ දුරකථනය (අත්‍යවශ්‍ය නැත) | அவர்களின் தொலைபேசி (விருப்பம்) | | |
+| `Giving.record.donorPhoneHint` | Kept on the receipt only. A phone typed here is never texted. | රිසිට්පතේ පමණක් තබයි. මෙහි ටයිප් කළ දුරකථනයට කිසිදා පණිවිඩ නොයවයි. | பற்றுச்சீட்டில் மட்டும் வைக்கப்படும். இங்கே தட்டச்சு செய்த தொலைபேசிக்கு ஒருபோதும் குறுஞ்செய்தி அனுப்பப்படாது. | | |
+| `Giving.record.note` | Note (optional) | සටහන (අත්‍යවශ්‍ය නැත) | குறிப்பு (விருப்பம்) | | |
+| `Giving.record.noteHint` | Printed on the receipt. | රිසිට්පතේ මුද්‍රණය වේ. | பற்றுச்சீட்டில் அச்சிடப்படும். | | |
+| `Giving.record.cancel` | Cancel | අවලංගු කරන්න | ரத்து | | |
+| `Giving.record.save` | Record the gift | පරිත්‍යාගය සටහන් කරන්න | நன்கொடையைப் பதிவு செய் | | |
+| `Giving.record.errors.kind` | Choose money or items. | මුදල් හෝ ද්‍රව්‍ය තෝරන්න. | பணம் அல்லது பொருட்களைத் தேர்ந்தெடுக்கவும். | | |
+| `Giving.record.errors.amount` | Enter an amount above zero, with at most two decimals. | ශුන්‍යයට වැඩි මුදලක් ඇතුළත් කරන්න, දශමස්ථාන දෙකක් දක්වා. | பூஜ்ஜியத்தை விட அதிகமான தொகையை, இரண்டு தசம இடங்கள் வரை உள்ளிடவும். | | |
+| `Giving.record.errors.method` | Choose how it was paid. | ගෙවූ ආකාරය තෝරන්න. | செலுத்திய முறையைத் தேர்ந்தெடுக்கவும். | | |
+| `Giving.record.errors.items` | Say what was given (up to 500 characters). | දුන් දේ කියන්න (අකුරු 500 දක්වා). | வழங்கியதைச் சொல்லவும் (500 எழுத்துகள் வரை). | | |
+| `Giving.record.errors.quantity` | Enter a number above zero. | ශුන්‍යයට වැඩි සංඛ්‍යාවක් ඇතුළත් කරන්න. | பூஜ்ஜியத்தை விட அதிகமான எண்ணை உள்ளிடவும். | | |
+| `Giving.record.errors.estimatedValue` | Enter an amount above zero, or leave it blank. | ශුන්‍යයට වැඩි මුදලක් ඇතුළත් කරන්න, නැතහොත් හිස්ව තබන්න. | பூஜ்ஜியத்தை விட அதிகமான தொகையை உள்ளிடவும், அல்லது காலியாக விடவும். | | |
+| `Giving.record.errors.date` | Choose today or a day in the last year. | අද හෝ පසුගිය වසර තුළ දිනයක් තෝරන්න. | இன்று அல்லது கடந்த ஆண்டில் ஒரு நாளைத் தேர்ந்தெடுக்கவும். | | |
+| `Giving.record.errors.donor` | Choose the person from the donor book. | දායක පොතෙන් පුද්ගලයා තෝරන්න. | நன்கொடையாளர் புத்தகத்திலிருந்து நபரைத் தேர்ந்தெடுக்கவும். | | |
+| `Giving.record.errors.donorName` | Enter the giver's name. | දුන් අයගේ නම ඇතුළත් කරන්න. | வழங்கியவரின் பெயரை உள்ளிடவும். | | |
+| `Giving.record.errors.donorPhone` | Enter a Sri Lankan phone number, or leave it blank. | ශ්‍රී ලාංකික දුරකථන අංකයක් ඇතුළත් කරන්න, නැතහොත් හිස්ව තබන්න. | இலங்கைத் தொலைபேசி எண்ணை உள்ளிடவும், அல்லது காலியாக விடவும். | | |
+| `Giving.record.errors.note` | A note is at most 300 characters. | සටහනක් අකුරු 300 දක්වා විය හැක. | குறிப்பு 300 எழுத்துகள் வரை இருக்கலாம். | | |
+| `Giving.void.title` | Void receipt {receiptNo} | රිසිට්පත {receiptNo} අවලංගු කරන්න | பற்றுச்சீட்டு {receiptNo} ஐ ரத்து செய் | | |
+| `Giving.void.description` | {gift} from {name}. | {name} ගෙන් {gift}. | {name} இடமிருந்து {gift}. | | |
+| `Giving.void.explain` | Voiding keeps the gift in the list, marked VOID, and takes it out of every total. It cannot be undone. If the gift was recorded wrongly, record it again afterwards. | අවලංගු කිරීමෙන් පරිත්‍යාගය ලැයිස්තුවේ අවලංගු ලෙස සලකුණු කර තබා සියලු එකතුවලින් ඉවත් කරයි. එය ආපසු හැරවිය නොහැක. පරිත්‍යාගය වැරදියට සටහන් කළා නම්, පසුව එය නැවත සටහන් කරන්න. | ரத்து செய்வது நன்கொடையை பட்டியலில் ரத்து எனக் குறித்து வைத்து, எல்லா மொத்தங்களிலிருந்தும் நீக்கும். இதைத் திரும்பப் பெற முடியாது. நன்கொடை தவறாகப் பதிவு செய்யப்பட்டிருந்தால், பின்னர் மீண்டும் பதிவு செய்யவும். | | |
+| `Giving.void.reason` | Why is it voided? | අවලංගු කරන්නේ ඇයි? | ஏன் ரத்து செய்யப்படுகிறது? | | |
+| `Giving.void.reasonHint` | The committee will read this. At most 300 characters. | කමිටුව මෙය කියවයි. අකුරු 300 දක්වා. | குழு இதைப் படிக்கும். 300 எழுத்துகள் வரை. | | |
+| `Giving.void.reasonMissing` | Say why it is voided. | අවලංගු කරන්නේ ඇයිදැයි කියන්න. | ஏன் ரத்து செய்யப்படுகிறது என்று சொல்லவும். | | |
+| `Giving.void.cancel` | Keep it | තබා ගන්න | வைத்திரு | | |
+| `Giving.void.confirm` | Void the gift | පරිත්‍යාගය අවලංගු කරන්න | நன்கொடையை ரத்து செய் | | |
+| `Giving.receipt.pageTitle` | Receipt | රිසිට්පත | பற்றுச்சீட்டு | | |
+| `Giving.receipt.label` | Receipt {receiptNo} | රිසිට්පත {receiptNo} | பற்றுச்சீட்டு {receiptNo} | | |
+| `Giving.receipt.signIn` | Sign in to see this receipt. | මෙම රිසිට්පත බැලීමට පිවිසෙන්න. | இந்தப் பற்றுச்சீட்டைப் பார்க்க உள்நுழையவும். | | |
+| `Giving.receipt.signInLink` | Sign in | පිවිසෙන්න | உள்நுழை | | |
+| `Giving.receipt.print` | Print or save as PDF | මුද්‍රණය කරන්න හෝ PDF ලෙස සුරකින්න | அச்சிடு அல்லது PDF ஆகச் சேமி | | |
+| `Giving.receipt.backMine` | Back to my giving | මගේ පරිත්‍යාග වෙත | என் நன்கொடைகளுக்கு | | |
+| `Giving.receipt.backList` | Back to donations | පරිත්‍යාග වෙත | நன்கொடைகளுக்கு | | |
+| `Giving.receipt.void` | VOID | අවලංගුයි | ரத்து | | |
+| `Giving.receipt.voidedOn` | Voided on {date} by {name}. | {date} දින {name} විසින් අවලංගු කළා. | {date} அன்று {name} ரத்து செய்தார். | | |
+| `Giving.receipt.voidReason` | Reason: {reason} | හේතුව: {reason} | காரணம்: {reason} | | |
+| `Giving.receipt.title` | Receipt | රිසිට්පත | பற்றுச்சீட்டு | | |
+| `Giving.receipt.receivedFrom` | Received from | ලැබුණේ | பெற்றது | | |
+| `Giving.receipt.amount` | Amount | මුදල | தொகை | | |
+| `Giving.receipt.method` | Paid by | ගෙවූ ආකාරය | செலுத்திய முறை | | |
+| `Giving.receipt.items` | Items | ද්‍රව්‍ය | பொருட்கள் | | |
+| `Giving.receipt.quantity` | How many | ප්‍රමාණය | எத்தனை | | |
+| `Giving.receipt.estimatedValue` | Worth about | ආසන්න වටිනාකම | ஏறத்தாழ மதிப்பு | | |
+| `Giving.receipt.money` | LKR {amount} | රු. {amount} | ரூ. {amount} | | |
+| `Giving.receipt.given` | Given on | දුන් දිනය | வழங்கிய நாள் | | |
+| `Giving.receipt.note` | Note | සටහන | குறிப்பு | | |
+| `Giving.receipt.recordedBy` | Recorded by | සටහන් කළේ | பதிவு செய்தவர் | | |
+| `Giving.receipt.recordedOn` | {name}, {date} at {time} | {name}, {date} {time} | {name}, {date} {time} | | |
+| `Giving.receipt.thanks` | With thanks for your gift. | ඔබේ පරිත්‍යාගයට ස්තූතියි. | உங்கள் நன்கொடைக்கு நன்றி. | | |
+| `Giving.receipt.notTax` | An acknowledgement of a gift received, issued through Sethika. It is not a tax receipt. | Sethika හරහා නිකුත් කළ, ලැබුණු පරිත්‍යාගයක් පිළිගැනීමකි. මෙය බදු රිසිට්පතක් නොවේ. | Sethika வழியாக வழங்கப்பட்ட, பெற்ற நன்கொடைக்கான ஒப்புகை. இது வரிப் பற்றுச்சீட்டு அல்ல. | | |
+| `Giving.mine.title` | My giving | මගේ පරිත්‍යාග | என் நன்கொடைகள் | | |
+| `Giving.mine.intro` | The gifts institutions have recorded for you, with their receipts. | ආයතන ඔබ වෙනුවෙන් සටහන් කළ පරිත්‍යාග, ඒවායේ රිසිට්පත් සමඟ. | நிறுவனங்கள் உங்களுக்காகப் பதிவு செய்த நன்கொடைகள், அவற்றின் பற்றுச்சீட்டுகளுடன். | | |
+| `Giving.mine.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயற்சிக்கவும் | | |
+| `Giving.mine.none` | No gifts recorded for you yet. When an institution records your gift, its receipt appears here. | ඔබ වෙනුවෙන් තවම පරිත්‍යාග සටහන් කර නැත. ආයතනයක් ඔබේ පරිත්‍යාගය සටහන් කළ විට, එහි රිසිට්පත මෙහි දිස් වේ. | உங்களுக்காக இன்னும் நன்கொடைகள் பதிவு செய்யப்படவில்லை. ஒரு நிறுவனம் உங்கள் நன்கொடையைப் பதிவு செய்தால், அதன் பற்றுச்சீட்டு இங்கே தோன்றும். | | |
+| `Giving.mine.list` | My gifts | මගේ පරිත්‍යාග | என் நன்கொடைகள் | | |
+| `Giving.mine.void` | VOID | අවලංගුයි | ரத்து | | |
+| `Giving.mine.receipt` | Receipt | රිසිට්පත | பற்றுச்சீட்டு | | |
+| `Giving.mine.receiptNamed` | Receipt {receiptNo} | රිසිට්පත {receiptNo} | பற்றுச்சீட்டு {receiptNo} | | |
+| `Shell.groups.give` | My giving | මගේ පරිත්‍යාග | என் நன்கொடைகள் | | |
+| `Shell.groups.giving` | Giving | පරිත්‍යාග | நன்கொடைகள் | | |
+| `Shell.items.myGiving` | My giving | මගේ පරිත්‍යාග | என் நன்கொடைகள் | | |
+| `Shell.items.donations` | Donations and receipts | පරිත්‍යාග සහ රිසිට්පත් | நன்கொடைகளும் பற்றுச்சீட்டுகளும் | | |
+| `Admin.institutions.sync` | Bring roles up to date | භූමිකා යාවත්කාලීන කරන්න | பங்குகளைப் புதுப்பிக்கவும் | | |
+| `Admin.institutions.syncNamed` | Bring {name}'s roles up to date | {name} හි භූමිකා යාවත්කාලීන කරන්න | {name} இன் பங்குகளைப் புதுப்பிக்கவும் | | |
+| `Admin.institutions.synced` | {name}: {modules, plural, =0 {no module} one {# module} other {# modules}}, {roles, plural, =0 {no role} one {# role} other {# roles}} and {grants, plural, =0 {no permission} one {# permission} other {# permissions}} added. | {name}: මොඩියුල {modules}ක්, භූමිකා {roles}ක් සහ අවසර {grants}ක් එක් කළා. | {name}: {modules} தொகுதிகள், {roles} பங்குகள், {grants} அனுமதிகள் சேர்க்கப்பட்டன. | | |
+| `Admin.institutions.syncedNothing` | {name} already holds everything its templates give. Nothing was added. | {name} සතුව එහි ආකෘති දෙන සියල්ල දැනටමත් ඇත. කිසිවක් එක් නොකළා. | {name} இன் வார்ப்புருக்கள் தருவது அனைத்தும் ஏற்கனவே உள்ளது. எதுவும் சேர்க்கப்படவில்லை. | | |
+
+## Giving lists (2026-11-04, `core.LookupValues`, plan 09 M20)
+
+| List / code | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `PAYMENT_METHOD.CASH` | Cash | මුදල් | ரொக்கம் | | |
+| `PAYMENT_METHOD.BANK_TRANSFER` | Bank transfer | බැංකු මාරුව | வங்கிப் பரிமாற்றம் | | |
+| `PAYMENT_METHOD.CHEQUE` | Cheque | චෙක්පත | காசோலை | | |
+| `PAYMENT_METHOD.CARD` | Card | කාඩ්පත | அட்டை | | |
+| `PAYMENT_METHOD.PAYHERE` | Online (PayHere) | මාර්ගගත (PayHere) | இணையவழி (PayHere) | | |
+| `NEED_CATEGORY.DRY_RATIONS` | Dry rations | වියළි ආහාර | உலர் உணவுப் பொருட்கள் | | |
+| `NEED_CATEGORY.STATIONERY` | Stationery | ලිපි ද්‍රව්‍ය | எழுதுபொருட்கள் | | |
+| `NEED_CATEGORY.TOILETRIES` | Toiletries | සනීපාරක්ෂක ද්‍රව්‍ය | கழிப்பறைப் பொருட்கள் | | |
+| `NEED_CATEGORY.MEDICINE` | Medicine | ඖෂධ | மருந்துகள் | | |
+| `NEED_CATEGORY.CLOTHING` | Clothing | ඇඳුම් | ஆடைகள் | | |
+| `NEED_CATEGORY.KITCHEN_CLEANING` | Kitchen and cleaning | මුළුතැන්ගෙයි සහ පිරිසිදු කිරීමේ ද්‍රව්‍ය | சமையலறை மற்றும் சுத்தம் செய்யும் பொருட்கள் | | |
+| `NEED_CATEGORY.OTHER` | Other | වෙනත් | மற்றவை | | |
+| `UNIT.PIECES` | Pieces | කෑලි | துண்டுகள் | | |
+| `UNIT.PACKETS` | Packets | පැකට් | பொதிகள் | | |
+| `UNIT.KG` | Kilograms | කිලෝග්‍රෑම් | கிலோகிராம் | | |
+| `UNIT.LITRES` | Litres | ලීටර් | லிட்டர் | | |
+| `UNIT.BOXES` | Boxes | පෙට්ටි | பெட்டிகள் | | |
+| `UNIT.SETS` | Sets | කට්ටල | தொகுப்புகள் | | |
+
+## Receipt texts (2026-11-04, `DONATION_RECEIPT`, `DONATION_RECEIPT_ITEMS`, plan 09 M5)
+
+| Template | English | Sinhala (draft) | Tamil (draft) | Reviewer (si) | Reviewer (ta) |
+|---|---|---|---|---|---|
+| `DONATION_RECEIPT` | Sethika {receiptNo}: {institution}, LKR {amount}. Your gift was received. Thank you. | Sethika {receiptNo}: {institution}, රු. {amount}. ඔබේ පරිත්‍යාගය ලැබුණා. ස්තූතියි. | Sethika {receiptNo}: {institution}, ரூ. {amount}. உங்கள் நன்கொடை கிடைத்தது. நன்றி. | | |
+| `DONATION_RECEIPT_ITEMS` | Sethika {receiptNo}: {institution}. Your gift of items was received. Thank you. | Sethika {receiptNo}: {institution}. ඔබේ ද්‍රව්‍ය පරිත්‍යාගය ලැබුණා. ස්තූතියි. | Sethika {receiptNo}: {institution}. உங்கள் பொருள் நன்கொடை கிடைத்தது. நன்றி. | | |
+
+## Giving: needs and pledges (2026-11-05, `Giving`, `Shell`, plan 09 D.2)
+
+Drafts by Claude, not reviewed by a Sinhala or Tamil speaker. "Pledge" is written පොරොන්දුව / உறுதிமொழி and "need" අවශ්‍යතාව / தேவை throughout.
+
+| Key | English | Sinhala | Tamil |
+|---|---|---|---|
+| `Giving.errors.need_not_found` | There is no such need here. It may have been taken down. | මෙහි එවැනි අවශ්‍යතාවක් නැත. එය ඉවත් කර තිබෙන්නට පුළුවන. | இங்கு அப்படி ஒரு தேவை இல்லை. அது நீக்கப்பட்டிருக்கலாம். |
+| `Giving.errors.pledge_not_found` | There is no such pledge here. | මෙහි එවැනි පොරොන්දුවක් නැත. | இங்கு அப்படி ஒரு உறுதிமொழி இல்லை. |
+| `Giving.errors.need_full` | There is not that much left of this need: others pledged first. Look again and pledge what is left. | මෙම අවශ්‍යතාවෙන් ඒ තරම් ප්‍රමාණයක් ඉතිරි නැත: අන් අය කලින් පොරොන්දු වී ඇත. නැවත බලා ඉතිරි ප්‍රමාණය පොරොන්දු වන්න. | இந்தத் தேவையில் அவ்வளவு மீதமில்லை: மற்றவர்கள் முன்பே உறுதியளித்துவிட்டார்கள். மீண்டும் பார்த்து மீதமுள்ளதை உறுதியளியுங்கள். |
+| `Giving.errors.need_closed` | This need is no longer taking anything. | මෙම අවශ්‍යතාව තවදුරටත් කිසිවක් භාර ගන්නේ නැත. | இந்தத் தேவை இனி எதையும் ஏற்காது. |
+| `Giving.errors.need_wrong_status` | This need cannot take that step now. Look at the list again. | මේ අවස්ථාවේ මෙම අවශ්‍යතාවට එම පියවර ගත නොහැක. ලැයිස්තුව නැවත බලන්න. | இப்போது இந்தத் தேவையில் அந்தப் படியை எடுக்க முடியாது. பட்டியலை மீண்டும் பாருங்கள். |
+| `Giving.errors.quantity_below_pledged` | That is less than people have already pledged or brought. Cancel a pledge first if the need really is smaller. | එය දැනටමත් පොරොන්දු වූ හෝ ලැබුණු ප්‍රමාණයට වඩා අඩුය. අවශ්‍යතාව ඇත්තටම අඩු නම් පළමුව පොරොන්දුවක් අවලංගු කරන්න. | அது ஏற்கெனவே உறுதியளிக்கப்பட்ட அல்லது பெறப்பட்ட அளவை விடக் குறைவு. தேவை உண்மையில் குறைந்திருந்தால் முதலில் ஓர் உறுதிமொழியை ரத்து செய்யுங்கள். |
+| `Giving.errors.open_pledges` | People still have open pledges on this need. Mark each one delivered or cancel it first. | මෙම අවශ්‍යතාවට තවමත් විවෘත පොරොන්දු තිබේ. පළමුව එක් එක් පොරොන්දුව ලැබුණු බව සටහන් කරන්න හෝ අවලංගු කරන්න. | இந்தத் தேவையில் இன்னும் திறந்த உறுதிமொழிகள் உள்ளன. முதலில் ஒவ்வொன்றையும் பெறப்பட்டதாகக் குறியுங்கள் அல்லது ரத்து செய்யுங்கள். |
+| `Giving.errors.need_has_gifts` | Gifts have come for this need, so it cannot be cancelled. Close it instead: what came stays counted. | මෙම අවශ්‍යතාවට පරිත්‍යාග ලැබී ඇති නිසා එය අවලංගු කළ නොහැක. ඒ වෙනුවට එය වසන්න: ලැබුණු දේ ගණනට ඉතිරි වේ. | இந்தத் தேவைக்கு நன்கொடைகள் வந்துள்ளதால் இதை ரத்து செய்ய முடியாது. பதிலாக மூடுங்கள்: வந்தவை கணக்கில் இருக்கும். |
+| `Giving.errors.pledge_not_open` | This pledge is already delivered or cancelled. | මෙම පොරොන්දුව දැනටමත් ලැබී හෝ අවලංගු වී ඇත. | இந்த உறுதிமொழி ஏற்கெனவே பெறப்பட்டது அல்லது ரத்து செய்யப்பட்டது. |
+| `Giving.errors.too_many_pledges` | You already have 5 open pledges on this need. Deliver or cancel one first. | මෙම අවශ්‍යතාවට ඔබට දැනටමත් විවෘත පොරොන්දු 5ක් තිබේ. පළමුව එකක් ලබා දෙන්න හෝ අවලංගු කරන්න. | இந்தத் தேவையில் உங்களிடம் ஏற்கெனவே 5 திறந்த உறுதிமொழிகள் உள்ளன. முதலில் ஒன்றை வழங்குங்கள் அல்லது ரத்து செய்யுங்கள். |
+| `Giving.progress.label` | Progress | ප්‍රගතිය | முன்னேற்றம் |
+| `Giving.progress.figures` | {received} received, {pledged} spoken for, of {needed} {unit} | {unit} {needed}න් {received}ක් ලැබී ඇත, {pledged}ක් වෙන් වී ඇත | {needed} {unit} இல் {received} பெறப்பட்டது, {pledged} ஒதுக்கப்பட்டது |
+| `Giving.priority.Low` | Low | අඩු | குறைவு |
+| `Giving.priority.Normal` | Normal | සාමාන්‍ය | சாதாரணம் |
+| `Giving.priority.Urgent` | Urgent | හදිසි | அவசரம் |
+| `Giving.board.title` | Needs board | අවශ්‍යතා පුවරුව | தேவைகள் பலகை |
+| `Giving.board.intro` | What institutions are asking for right now. Pledge what you can bring, and the institution records it when it arrives. | ආයතන මේ මොහොතේ ඉල්ලන දේ. ඔබට ගෙන ආ හැකි දේ පොරොන්දු වන්න; එය ලැබුණු විට ආයතනය එය සටහන් කරයි. | நிறுவனங்கள் இப்போது கேட்பவை. உங்களால் கொண்டு வர முடிந்ததை உறுதியளியுங்கள்; அது வந்ததும் நிறுவனம் பதிவு செய்யும். |
+| `Giving.board.filters` | Narrow the board | පුවරුව පටු කරන්න | பலகையைச் சுருக்குங்கள் |
+| `Giving.board.district` | District | දිස්ත්‍රික්කය | மாவட்டம் |
+| `Giving.board.type` | Kind of place | ස්ථාන වර්ගය | இட வகை |
+| `Giving.board.category` | Category | ප්‍රවර්ගය | பிரிவு |
+| `Giving.board.all` | All | සියල්ල | அனைத்தும் |
+| `Giving.board.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயலுங்கள் |
+| `Giving.board.none` | No institution has an open need right now. | දැනට කිසිම ආයතනයකට විවෘත අවශ්‍යතාවක් නැත. | இப்போது எந்த நிறுவனத்திலும் திறந்த தேவை இல்லை. |
+| `Giving.board.noMatch` | No open need matches what you chose. | ඔබ තෝරාගත් දෙයට ගැළපෙන විවෘත අවශ්‍යතාවක් නැත. | நீங்கள் தேர்ந்தெடுத்ததற்குப் பொருந்தும் திறந்த தேவை இல்லை. |
+| `Giving.board.list` | Open needs | විවෘත අවශ්‍යතා | திறந்த தேவைகள் |
+| `Giving.board.deadline` | By {date} | {date} වන විට | {date} க்குள் |
+| `Giving.board.pledge` | Pledge | පොරොන්දු වන්න | உறுதியளி |
+| `Giving.board.pledgeNamed` | Pledge to {need} | {need} සඳහා පොරොන්දු වන්න | {need} க்கு உறுதியளி |
+| `Giving.board.allPledged` | All of this is pledged. Thank you. | මේ සියල්ල පොරොන්දු වී ඇත. ස්තුතියි. | இவை அனைத்தும் உறுதியளிக்கப்பட்டுள்ளன. நன்றி. |
+| `Giving.board.pledged` | Your pledge is recorded. Thank you. | ඔබේ පොරොන්දුව සටහන් විය. ස්තුතියි. | உங்கள் உறுதிமொழி பதிவானது. நன்றி. |
+| `Giving.board.onPage` | What we need | අපට අවශ්‍ය දේ | எங்களுக்குத் தேவையானவை |
+| `Giving.board.onPageIntro` | Pledge what you can bring. | ඔබට ගෙන ආ හැකි දේ පොරොන්දු වන්න. | உங்களால் கொண்டு வர முடிந்ததை உறுதியளியுங்கள். |
+| `Giving.pledge.title` | Pledge to {need} | {need} සඳහා පොරොන්දු වන්න | {need} க்கு உறுதியளி |
+| `Giving.pledge.left` | {count} {unit} still needed. | තවත් {unit} {count}ක් අවශ්‍යයි. | இன்னும் {count} {unit} தேவை. |
+| `Giving.pledge.signInFirst` | Sign in to pledge, so the institution knows who is coming. You will come back to this need. | පොරොන්දු වීමට පුරනය වන්න, එවිට එන්නේ කවුදැයි ආයතනය දනී. ඔබ නැවත මෙම අවශ්‍යතාවටම පැමිණේවි. | உறுதியளிக்க உள்நுழையுங்கள்; அப்போது யார் வருகிறார் என்று நிறுவனம் அறியும். நீங்கள் இந்தத் தேவைக்கே திரும்புவீர்கள். |
+| `Giving.pledge.institutionSession` | You are working in an institution. Pledges are made from your own account. | ඔබ දැන් ආයතනයක වැඩ කරයි. පොරොන්දු වන්නේ ඔබේම ගිණුමෙනි. | நீங்கள் ஒரு நிறுவனத்தில் பணிபுரிகிறீர்கள். உறுதிமொழிகள் உங்கள் சொந்தக் கணக்கிலிருந்து அளிக்கப்படும். |
+| `Giving.pledge.notAllowed` | This account cannot pledge. | මෙම ගිණුමට පොරොන්දු විය නොහැක. | இந்தக் கணக்கால் உறுதியளிக்க முடியாது. |
+| `Giving.pledge.quantity` | How many ({unit}) | ප්‍රමාණය ({unit}) | எத்தனை ({unit}) |
+| `Giving.pledge.quantityInvalid` | Enter a number above zero, with at most two decimals. | බිංදුවට වැඩි, දශමස්ථාන දෙකකට නොවැඩි අංකයක් ඇතුළත් කරන්න. | பூஜ்ஜியத்தை விட அதிகமான, இரண்டு தசம இடங்களுக்கு மிகாத எண்ணை உள்ளிடுங்கள். |
+| `Giving.pledge.expected` | When you expect to bring it (optional) | ගෙන ඒමට බලාපොරොත්තු වන දිනය (අත්‍යවශ්‍ය නොවේ) | கொண்டு வர எதிர்பார்க்கும் நாள் (விருப்பத்திற்குரியது) |
+| `Giving.pledge.expectedHint` | This helps the institution plan. | මෙය ආයතනයට සැලසුම් කිරීමට උදව් වේ. | இது நிறுவனம் திட்டமிட உதவும். |
+| `Giving.pledge.expectedInvalid` | Choose today or a day within the next year. | අද හෝ ඉදිරි වසර තුළ දිනයක් තෝරන්න. | இன்று அல்லது அடுத்த ஓராண்டுக்குள் ஒரு நாளைத் தேர்ந்தெடுங்கள். |
+| `Giving.pledge.cancel` | Not now | දැන් නොවේ | இப்போது வேண்டாம் |
+| `Giving.pledge.save` | Pledge | පොරොන්දු වන්න | உறுதியளி |
+| `Giving.needs.title` | Needs | අවශ්‍යතා | தேவைகள் |
+| `Giving.needs.intro` | Ask for what your institution needs. A need stays a draft until you open it onto the public board, and it tracks what is pledged and what arrives. | ඔබේ ආයතනයට අවශ්‍ය දේ ඉල්ලන්න. පොදු පුවරුවට විවෘත කරන තුරු අවශ්‍යතාව කෙටුම්පතක් ලෙස පවතින අතර, පොරොන්දු වූ දේත් ලැබුණු දේත් එහි සටහන් වේ. | உங்கள் நிறுவனத்துக்குத் தேவையானதைக் கேளுங்கள். பொதுப் பலகையில் திறக்கும் வரை தேவை வரைவாகவே இருக்கும்; உறுதியளிக்கப்பட்டதும் வந்ததும் அதில் கணக்கிடப்படும். |
+| `Giving.needs.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயலுங்கள் |
+| `Giving.needs.add` | Add a need | අවශ්‍යතාවක් එක් කරන්න | தேவையைச் சேர் |
+| `Giving.needs.none` | No needs yet. | තවම අවශ්‍යතා නැත. | இன்னும் தேவைகள் இல்லை. |
+| `Giving.needs.list` | Your needs | ඔබේ අවශ්‍යතා | உங்கள் தேவைகள் |
+| `Giving.needs.deadline` | By {date} | {date} වන විට | {date} க்குள் |
+| `Giving.needs.status.Draft` | Draft | කෙටුම්පත | வரைவு |
+| `Giving.needs.status.Open` | Open | විවෘතයි | திறந்துள்ளது |
+| `Giving.needs.status.Fulfilled` | Fulfilled | සම්පූර්ණයි | நிறைவேறியது |
+| `Giving.needs.status.Closed` | Closed | වසා ඇත | மூடப்பட்டது |
+| `Giving.needs.status.Cancelled` | Cancelled | අවලංගුයි | ரத்து செய்யப்பட்டது |
+| `Giving.needs.pledges` | Pledges ({count}) | පොරොන්දු ({count}) | உறுதிமொழிகள் ({count}) |
+| `Giving.needs.pledgesNamed` | Pledges on {need} | {need} සඳහා පොරොන්දු | {need} இன் உறுதிமொழிகள் |
+| `Giving.needs.open` | Open on the board | පුවරුවට විවෘත කරන්න | பலகையில் திற |
+| `Giving.needs.openNamed` | Open {need} on the board | {need} පුවරුවට විවෘත කරන්න | {need} ஐப் பலகையில் திற |
+| `Giving.needs.edit` | Change | වෙනස් කරන්න | மாற்று |
+| `Giving.needs.editNamed` | Change {need} | {need} වෙනස් කරන්න | {need} ஐ மாற்று |
+| `Giving.needs.close` | Close | වසන්න | மூடு |
+| `Giving.needs.closeNamed` | Close {need} | {need} වසන්න | {need} ஐ மூடு |
+| `Giving.needs.cancel` | Cancel | අවලංගු කරන්න | ரத்து செய் |
+| `Giving.needs.cancelNamed` | Cancel {need} | {need} අවලංගු කරන්න | {need} ஐ ரத்து செய் |
+| `Giving.needs.added` | Need added as a draft. | අවශ්‍යතාව කෙටුම්පතක් ලෙස එක් විය. | தேவை வரைவாகச் சேர்க்கப்பட்டது. |
+| `Giving.needs.saved` | Need changed. | අවශ්‍යතාව වෙනස් විය. | தேவை மாற்றப்பட்டது. |
+| `Giving.needs.stepped.open` | {need} is on the board. | {need} පුවරුවේ ඇත. | {need} பலகையில் உள்ளது. |
+| `Giving.needs.stepped.close` | {need} is closed. | {need} වසා ඇත. | {need} மூடப்பட்டது. |
+| `Giving.needs.stepped.cancel` | {need} is cancelled. | {need} අවලංගු විය. | {need} ரத்து செய்யப்பட்டது. |
+| `Giving.needForm.addTitle` | Add a need | අවශ්‍යතාවක් එක් කරන්න | தேவையைச் சேர் |
+| `Giving.needForm.addDescription` | It stays a draft, seen by nobody, until you open it. | ඔබ විවෘත කරන තුරු එය කෙටුම්පතක් ලෙස පවතින අතර කිසිවෙකුට නොපෙනේ. | நீங்கள் திறக்கும் வரை இது யாருக்கும் தெரியாத வரைவாக இருக்கும். |
+| `Giving.needForm.editTitle` | Change this need | මෙම අවශ්‍යතාව වෙනස් කරන්න | இந்தத் தேவையை மாற்று |
+| `Giving.needForm.editDescription` | The quantity cannot go below what is already pledged or received. | දැනටමත් පොරොන්දු වූ හෝ ලැබුණු ප්‍රමාණයට වඩා අඩු කළ නොහැක. | ஏற்கெனவே உறுதியளிக்கப்பட்ட அல்லது பெறப்பட்ட அளவை விடக் குறைக்க முடியாது. |
+| `Giving.needForm.title` | What is needed | අවශ්‍ය දේ | என்ன தேவை |
+| `Giving.needForm.titleHint` | For example: school books for Grade 5. | උදාහරණයක් ලෙස: 5 ශ්‍රේණියට පාසල් පොත්. | உதாரணமாக: தரம் 5 க்கான பாடசாலைப் புத்தகங்கள். |
+| `Giving.needForm.description` | More about it (optional) | ඒ ගැන වැඩි විස්තර (අත්‍යවශ්‍ය නොවේ) | மேலும் விவரம் (விருப்பத்திற்குரியது) |
+| `Giving.needForm.category` | Category | ප්‍රවර්ගය | பிரிவு |
+| `Giving.needForm.quantity` | How many | ප්‍රමාණය | எத்தனை |
+| `Giving.needForm.unit` | Counted in | ගණන් කරන ඒකකය | அளவீடு |
+| `Giving.needForm.priority` | Priority | ප්‍රමුඛතාව | முன்னுரிமை |
+| `Giving.needForm.deadline` | Needed by (optional) | අවශ්‍ය දිනය (අත්‍යවශ්‍ය නොවේ) | தேவைப்படும் நாள் (விருப்பத்திற்குரியது) |
+| `Giving.needForm.cancel` | Cancel | අවලංගු කරන්න | ரத்து செய் |
+| `Giving.needForm.saveAdd` | Add the need | අවශ්‍යතාව එක් කරන්න | தேவையைச் சேர் |
+| `Giving.needForm.saveEdit` | Save | සුරකින්න | சேமி |
+| `Giving.needForm.errors.title` | Say what is needed (up to 150 characters). | අවශ්‍ය දේ කියන්න (අකුරු 150 දක්වා). | என்ன தேவை என்று சொல்லுங்கள் (150 எழுத்துகள் வரை). |
+| `Giving.needForm.errors.description` | At most 1,000 characters. | අකුරු 1,000කට නොවැඩි විය යුතුය. | அதிகபட்சம் 1,000 எழுத்துகள். |
+| `Giving.needForm.errors.category` | Choose a category. | ප්‍රවර්ගයක් තෝරන්න. | ஒரு பிரிவைத் தேர்ந்தெடுங்கள். |
+| `Giving.needForm.errors.unit` | The unit cannot change once something is pledged. | යමක් පොරොන්දු වූ පසු ඒකකය වෙනස් කළ නොහැක. | ஏதாவது உறுதியளிக்கப்பட்ட பின் அளவீட்டை மாற்ற முடியாது. |
+| `Giving.needForm.errors.quantity` | Enter a number above zero, with at most two decimals. | බිංදුවට වැඩි, දශමස්ථාන දෙකකට නොවැඩි අංකයක් ඇතුළත් කරන්න. | பூஜ்ஜியத்தை விட அதிகமான, இரண்டு தசம இடங்களுக்கு மிகாத எண்ணை உள்ளிடுங்கள். |
+| `Giving.needForm.errors.priority` | Choose a priority. | ප්‍රමුඛතාවක් තෝරන්න. | முன்னுரிமையைத் தேர்ந்தெடுங்கள். |
+| `Giving.needForm.errors.deadline` | Choose today or a later day. | අද හෝ පසු දිනයක් තෝරන්න. | இன்று அல்லது பிந்திய நாளைத் தேர்ந்தெடுங்கள். |
+| `Giving.pledges.title` | Pledges on {need} | {need} සඳහා පොරොන්දු | {need} இன் உறுதிமொழிகள் |
+| `Giving.pledges.description` | Who promised what, and what became of it. | කවුරු කුමක් පොරොන්දු වූවාද, එය කෙසේ අවසන් වූවාද. | யார் என்ன உறுதியளித்தார், அது என்ன ஆனது. |
+| `Giving.pledges.none` | No pledges yet. | තවම පොරොන්දු නැත. | இன்னும் உறுதிமொழிகள் இல்லை. |
+| `Giving.pledges.list` | Pledges | පොරොන්දු | உறுதிமொழிகள் |
+| `Giving.pledges.status.Pledged` | Waiting | බලාපොරොත්තුවෙන් | காத்திருக்கிறது |
+| `Giving.pledges.status.Delivered` | Delivered | ලැබුණි | பெறப்பட்டது |
+| `Giving.pledges.status.Cancelled` | Cancelled | අවලංගුයි | ரத்து செய்யப்பட்டது |
+| `Giving.pledges.promised` | Promised {count} {unit} | {unit} {count}ක් පොරොන්දු විය | {count} {unit} உறுதியளித்தது |
+| `Giving.pledges.expected` | expected {date} | බලාපොරොත්තු දිනය {date} | எதிர்பார்க்கும் நாள் {date} |
+| `Giving.pledges.came` | {count} {unit} came | {unit} {count}ක් ලැබුණි | {count} {unit} வந்தது |
+| `Giving.pledges.reasonShown` | Reason: {reason} | හේතුව: {reason} | காரணம்: {reason} |
+| `Giving.pledges.receiptNamed` | Receipt {receiptNo} | රිසිට්පත {receiptNo} | பற்றுச்சீட்டு {receiptNo} |
+| `Giving.pledges.receive` | Mark delivered | ලැබුණු බව සටහන් කරන්න | பெறப்பட்டதாகக் குறி |
+| `Giving.pledges.receiveNamed` | Mark {name}'s pledge delivered | {name}ගේ පොරොන්දුව ලැබුණු බව සටහන් කරන්න | {name} இன் உறுதிமொழியைப் பெறப்பட்டதாகக் குறி |
+| `Giving.pledges.cancelPledge` | Cancel | අවලංගු කරන්න | ரத்து செய் |
+| `Giving.pledges.cancelNamed` | Cancel {name}'s pledge | {name}ගේ පොරොන්දුව අවලංගු කරන්න | {name} இன் உறுதிமொழியை ரத்து செய் |
+| `Giving.pledges.close` | Close | වසන්න | மூடு |
+| `Giving.pledges.back` | Back | ආපසු | பின்செல் |
+| `Giving.pledges.received` | Delivered. Receipt {receiptNo} recorded. | ලැබුණි. රිසිට්පත {receiptNo} සටහන් විය. | பெறப்பட்டது. பற்றுச்சீட்டு {receiptNo} பதிவானது. |
+| `Giving.pledges.cancelled` | Pledge cancelled. | පොරොන්දුව අවලංගු විය. | உறுதிமொழி ரத்து செய்யப்பட்டது. |
+| `Giving.pledges.receiveTitle` | What {name} brought | {name} ගෙනා දේ | {name} கொண்டு வந்தவை |
+| `Giving.pledges.receiveDescription` | They promised {count} {unit}. This records a receipt, which cannot be changed afterwards. | ඔවුන් {unit} {count}ක් පොරොන්දු විය. මෙයින් රිසිට්පතක් සටහන් වන අතර පසුව එය වෙනස් කළ නොහැක. | அவர் {count} {unit} உறுதியளித்தார். இது பற்றுச்சீட்டைப் பதிவு செய்யும்; பின்னர் அதை மாற்ற முடியாது. |
+| `Giving.pledges.cameLabel` | How many came ({unit}) | ලැබුණු ප්‍රමාණය ({unit}) | எத்தனை வந்தது ({unit}) |
+| `Giving.pledges.cameHint` | What did not come goes back to the need. | නොලැබුණු ප්‍රමාණය නැවත අවශ්‍යතාවට එක් වේ. | வராதது மீண்டும் தேவைக்குச் சேரும். |
+| `Giving.pledges.cameInvalid` | Enter a number above zero, at most {count}. | බිංදුවට වැඩි, {count}ට නොවැඩි අංකයක් ඇතුළත් කරන්න. | பூஜ்ஜியத்தை விட அதிகமான, {count} க்கு மிகாத எண்ணை உள்ளிடுங்கள். |
+| `Giving.pledges.receiveConfirm` | Record the delivery | ලැබීම සටහන් කරන්න | பெறுதலைப் பதிவு செய் |
+| `Giving.pledges.cancelTitle` | Cancel {name}'s pledge | {name}ගේ පොරොන්දුව අවලංගු කරන්න | {name} இன் உறுதிமொழியை ரத்து செய் |
+| `Giving.pledges.cancelDescription` | What they promised goes back to the need. They will see your reason in My giving. | ඔවුන් පොරොන්දු වූ ප්‍රමාණය නැවත අවශ්‍යතාවට එක් වේ. ඔබේ හේතුව ඔවුන්ට මගේ පරිත්‍යාග තුළ පෙනේ. | அவர் உறுதியளித்தது மீண்டும் தேவைக்குச் சேரும். உங்கள் காரணத்தை அவர் எனது கொடைகளில் காண்பார். |
+| `Giving.pledges.reason` | Why is it cancelled? | අවලංගු කරන්නේ ඇයි? | ஏன் ரத்து செய்யப்படுகிறது? |
+| `Giving.pledges.reasonMissing` | Say why it is cancelled. | අවලංගු කරන හේතුව කියන්න. | ரத்து செய்வதற்கான காரணத்தைச் சொல்லுங்கள். |
+| `Giving.pledges.cancelConfirm` | Cancel the pledge | පොරොන්දුව අවලංගු කරන්න | உறுதிமொழியை ரத்து செய் |
+| `Giving.myPledges.title` | My pledges | මගේ පොරොන්දු | எனது உறுதிமொழிகள் |
+| `Giving.myPledges.none` | You have not pledged to any need yet. | ඔබ තවම කිසිම අවශ්‍යතාවකට පොරොන්දු වී නැත. | நீங்கள் இன்னும் எந்தத் தேவைக்கும் உறுதியளிக்கவில்லை. |
+| `Giving.myPledges.seeBoard` | See the needs board | අවශ්‍යතා පුවරුව බලන්න | தேவைகள் பலகையைப் பாருங்கள் |
+| `Giving.myPledges.list` | My pledges | මගේ පොරොන්දු | எனது உறுதிமொழிகள் |
+| `Giving.myPledges.status.Pledged` | Waiting for delivery | ලබා දීමට බලාපොරොත්තුවෙන් | வழங்கக் காத்திருக்கிறது |
+| `Giving.myPledges.status.Delivered` | Delivered | ලැබුණි | பெறப்பட்டது |
+| `Giving.myPledges.status.Cancelled` | Cancelled | අවලංගුයි | ரத்து செய்யப்பட்டது |
+| `Giving.myPledges.promised` | Promised {count} {unit} | {unit} {count}ක් පොරොන්දු විය | {count} {unit} உறுதியளித்தது |
+| `Giving.myPledges.expected` | expected {date} | බලාපොරොත්තු දිනය {date} | எதிர்பார்க்கும் நாள் {date} |
+| `Giving.myPledges.came` | {count} {unit} received | {unit} {count}ක් ලැබුණි | {count} {unit} பெறப்பட்டது |
+| `Giving.myPledges.reasonShown` | Reason: {reason} | හේතුව: {reason} | காரணம்: {reason} |
+| `Giving.myPledges.receipt` | Receipt | රිසිට්පත | பற்றுச்சீட்டு |
+| `Giving.myPledges.receiptNamed` | Receipt {receiptNo} | රිසිට්පත {receiptNo} | பற்றுச்சீட்டு {receiptNo} |
+| `Giving.myPledges.cancel` | Cancel my pledge | මගේ පොරොන්දුව අවලංගු කරන්න | எனது உறுதிமொழியை ரத்து செய் |
+| `Giving.myPledges.cancelNamed` | Cancel my pledge to {need} | {need} සඳහා මගේ පොරොන්දුව අවලංගු කරන්න | {need} க்கான எனது உறுதிமொழியை ரத்து செய் |
+| `Giving.myPledges.cancelled` | Your pledge is cancelled. | ඔබේ පොරොන්දුව අවලංගු විය. | உங்கள் உறுதிமொழி ரத்து செய்யப்பட்டது. |
+| `Giving.record.need` | For a need (optional) | අවශ්‍යතාවක් සඳහා (අත්‍යවශ්‍ය නොවේ) | ஒரு தேவைக்காக (விருப்பத்திற்குரியது) |
+| `Giving.record.needHint` | Items count toward the need, so say how many. | භාණ්ඩ අවශ්‍යතාවට ගණන් වේ, ඒ නිසා ප්‍රමාණය කියන්න. | பொருட்கள் தேவையில் கணக்கிடப்படும், எனவே எத்தனை என்று சொல்லுங்கள். |
+| `Giving.record.needNone` | Not for a need | අවශ්‍යතාවක් සඳහා නොවේ | தேவைக்காக அல்ல |
+| `Shell.items.needsBoard` | Needs board | අවශ්‍යතා පුවරුව | தேவைகள் பலகை |
+| `Shell.items.needs` | Needs | අවශ්‍යතා | தேவைகள் |
+| `Shell.public.needs` | Needs board | අවශ්‍යතා පුවරුව | தேவைகள் பலகை |
+| `Giving.give.heading` | Give money | මුදල් පරිත්‍යාග කරන්න | பணம் நன்கொடை அளியுங்கள் |
+| `Giving.give.intro` | Your gift goes straight to {name} through PayHere. Sethika never holds it. | ඔබේ පරිත්‍යාගය PayHere හරහා කෙලින්ම {name} වෙත යයි. Sethika එය කිසිවිටෙක තබා නොගනී. | உங்கள் நன்கொடை PayHere வழியாக நேரடியாக {name} க்குச் செல்லும். Sethika அதை ஒருபோதும் வைத்திருப்பதில்லை. |
+| `Giving.give.open` | Give online | මාර්ගගතව පරිත්‍යාග කරන්න | இணையவழியில் நன்கொடை அளியுங்கள் |
+| `Giving.give.openNeed` | Give money | මුදල් දෙන්න | பணம் அளியுங்கள் |
+| `Giving.give.openNeedNamed` | Give money toward {need} | {need} සඳහා මුදල් දෙන්න | {need} க்காகப் பணம் அளியுங்கள் |
+| `Giving.give.title` | Give to {name} | {name} වෙත පරිත්‍යාග කරන්න | {name} க்கு நன்கொடை அளியுங்கள் |
+| `Giving.give.titleNeed` | Give toward {need} | {need} සඳහා පරිත්‍යාග කරන්න | {need} க்காக நன்கொடை அளியுங்கள் |
+| `Giving.give.description` | You pay on PayHere's secure page, and the money goes to {name}. Your receipt comes once PayHere confirms it. | ඔබ ගෙවන්නේ PayHere හි ආරක්ෂිත පිටුවෙනි, මුදල {name} වෙත යයි. PayHere තහවුරු කළ පසු ඔබේ රිසිට්පත ලැබේ. | நீங்கள் PayHere இன் பாதுகாப்பான பக்கத்தில் செலுத்துவீர்கள், பணம் {name} க்குச் செல்லும். PayHere உறுதிப்படுத்தியதும் உங்கள் பற்றுச்சீட்டு கிடைக்கும். |
+| `Giving.give.signInFirst` | Sign in to give, so your receipt comes to you. You will come back here. | පරිත්‍යාග කිරීමට පුරනය වන්න, එවිට රිසිට්පත ඔබට ලැබේ. ඔබ නැවත මෙහිම පැමිණේවි. | நன்கொடை அளிக்க உள்நுழையுங்கள்; அப்போது பற்றுச்சீட்டு உங்களுக்குக் கிடைக்கும். நீங்கள் இங்கேயே திரும்புவீர்கள். |
+| `Giving.give.institutionSession` | You are working in an institution. Gifts are made from your own account. | ඔබ දැන් ආයතනයක වැඩ කරයි. පරිත්‍යාග කරන්නේ ඔබේම ගිණුමෙනි. | நீங்கள் ஒரு நிறுவனத்தில் பணிபுரிகிறீர்கள். நன்கொடைகள் உங்கள் சொந்தக் கணக்கிலிருந்து அளிக்கப்படும். |
+| `Giving.give.notAllowed` | This account cannot give online. | මෙම ගිණුමට මාර්ගගතව පරිත්‍යාග කළ නොහැක. | இந்தக் கணக்கால் இணையவழியில் நன்கொடை அளிக்க முடியாது. |
+| `Giving.give.amount` | Amount (LKR) | මුදල (රු.) | தொகை (ரூ.) |
+| `Giving.give.amountHint` | From LKR 100 to LKR 1,000,000. | රු. 100 සිට රු. 1,000,000 දක්වා. | ரூ. 100 முதல் ரூ. 1,000,000 வரை. |
+| `Giving.give.amountInvalid` | Enter an amount from 100 to 1,000,000, with at most two decimals. | 100 සිට 1,000,000 දක්වා මුදලක් ඇතුළත් කරන්න, දශමස්ථාන දෙකකට නොවැඩිව. | 100 முதல் 1,000,000 வரையான தொகையை, அதிகபட்சம் இரண்டு தசம இடங்களுடன் உள்ளிடுங்கள். |
+| `Giving.give.detailsHint` | PayHere asks for these. Sethika passes them on and does not keep them. | PayHere මේවා ඉල්ලයි. Sethika ඒවා PayHere වෙත යවයි, තබා නොගනී. | PayHere இவற்றைக் கேட்கிறது. Sethika இவற்றை அனுப்பும், வைத்திருக்காது. |
+| `Giving.give.email` | Email | ඊමේල් | மின்னஞ்சல் |
+| `Giving.give.emailInvalid` | Enter a valid email address. | වලංගු ඊමේල් ලිපිනයක් ඇතුළත් කරන්න. | சரியான மின்னஞ்சல் முகவரியை உள்ளிடுங்கள். |
+| `Giving.give.address` | Address | ලිපිනය | முகவரி |
+| `Giving.give.addressInvalid` | Enter your address. | ඔබේ ලිපිනය ඇතුළත් කරන්න. | உங்கள் முகவரியை உள்ளிடுங்கள். |
+| `Giving.give.city` | City | නගරය | நகரம் |
+| `Giving.give.cityInvalid` | Enter your city. | ඔබේ නගරය ඇතුළත් කරන්න. | உங்கள் நகரத்தை உள்ளிடுங்கள். |
+| `Giving.give.cancel` | Not now | දැන් නොවේ | இப்போது வேண்டாம் |
+| `Giving.give.save` | Go to PayHere | PayHere වෙත යන්න | PayHere க்குச் செல்லுங்கள் |
+| `Giving.return.pageTitle` | Your gift | ඔබේ පරිත්‍යාගය | உங்கள் நன்கொடை |
+| `Giving.return.paidTitle` | Thank you | ස්තූතියි | நன்றி |
+| `Giving.return.paidBody` | {name} received your gift of {money}. | ඔබේ {money} පරිත්‍යාගය {name} වෙත ලැබුණි. | உங்கள் {money} நன்கொடை {name} க்குக் கிடைத்தது. |
+| `Giving.return.receipt` | See receipt {receiptNo} | රිසිට්පත {receiptNo} බලන්න | பற்றுச்சீட்டு {receiptNo} ஐப் பாருங்கள் |
+| `Giving.return.mine` | My giving | මගේ පරිත්‍යාග | என் நன்கொடைகள் |
+| `Giving.return.waitingTitle` | Waiting for PayHere | PayHere බලාපොරොත්තුවෙන් | PayHere க்காகக் காத்திருக்கிறது |
+| `Giving.return.waitingBody` | PayHere has not confirmed this payment yet. Your receipt will come here and to My giving as soon as it does. | PayHere තවම මෙම ගෙවීම තහවුරු කර නැත. තහවුරු කළ වහාම ඔබේ රිසිට්පත මෙහිත්, මගේ පරිත්‍යාග තුළත් දිස් වේ. | PayHere இந்தக் கட்டணத்தை இன்னும் உறுதிப்படுத்தவில்லை. உறுதிப்படுத்தியதும் உங்கள் பற்றுச்சீட்டு இங்கும் என் நன்கொடைகளிலும் தோன்றும். |
+| `Giving.return.checkAgain` | Check again | නැවත බලන්න | மீண்டும் பாருங்கள் |
+| `Giving.return.failedTitle` | The payment did not go through | ගෙවීම සාර්ථක වූයේ නැත | கட்டணம் நிறைவேறவில்லை |
+| `Giving.return.failedBody` | No gift was recorded. You can try again from the page of {name}. | කිසිදු පරිත්‍යාගයක් සටහන් නොවීය. {name} පිටුවෙන් නැවත උත්සාහ කළ හැක. | நன்கொடை எதுவும் பதிவாகவில்லை. {name} பக்கத்திலிருந்து மீண்டும் முயற்சிக்கலாம். |
+| `Giving.return.leftTitle` | The payment was not finished | ගෙවීම අවසන් කළේ නැත | கட்டணம் முடிக்கப்படவில்லை |
+| `Giving.return.leftBody` | No gift was recorded. You can give again from the page of {name} whenever you wish. | කිසිදු පරිත්‍යාගයක් සටහන් නොවීය. ඔබ කැමති විටෙක {name} පිටුවෙන් නැවත පරිත්‍යාග කළ හැක. | நன்கொடை எதுவும் பதிவாகவில்லை. நீங்கள் விரும்பும்போது {name} பக்கத்திலிருந்து மீண்டும் அளிக்கலாம். |
+| `Giving.return.backToPlace` | Back to {name} | {name} වෙත ආපසු | {name} க்குத் திரும்பு |
+| `Giving.payments.title` | Online payments | මාර්ගගත ගෙවීම් | இணையவழிக் கட்டணங்கள் |
+| `Giving.payments.intro` | Let donors give online through your own PayHere merchant account. The money goes straight to you, never through Sethika. | ඔබේම PayHere වෙළෙන්දා ගිණුම හරහා දායකයන්ට මාර්ගගතව පරිත්‍යාග කිරීමට ඉඩ දෙන්න. මුදල කෙලින්ම ඔබට ලැබේ, Sethika හරහා කිසිවිටෙක නොයයි. | உங்கள் சொந்த PayHere வணிகர் கணக்கின் மூலம் நன்கொடையாளர்கள் இணையவழியில் அளிக்க அனுமதியுங்கள். பணம் நேரடியாக உங்களுக்கு வரும், Sethika வழியாக ஒருபோதும் செல்லாது. |
+| `Giving.payments.howTo` | In your PayHere account, open Integrations and add Sethika's web address. When PayHere approves it, which can take a day, copy the merchant ID and the merchant secret here. | ඔබේ PayHere ගිණුමේ Integrations විවෘත කර Sethika හි වෙබ් ලිපිනය එක් කරන්න. PayHere එය අනුමත කළ පසු (දිනක් පමණ ගත විය හැක), Merchant ID සහ Merchant Secret මෙහි පිටපත් කරන්න. | உங்கள் PayHere கணக்கில் Integrations ஐத் திறந்து Sethika இணைய முகவரியைச் சேருங்கள். PayHere அதை அங்கீகரித்ததும் (ஒரு நாள் ஆகலாம்), Merchant ID மற்றும் Merchant Secret ஐ இங்கே நகலெடுங்கள். |
+| `Giving.payments.refunds` | Refunds are made in your PayHere portal. Then void the gift in Donations and receipts. | මුදල් ආපසු දීම ඔබේ PayHere ද්වාරයෙන් කරන්න. ඉන්පසු පරිත්‍යාග සහ රිසිට්පත් තුළ එම පරිත්‍යාගය අවලංගු කරන්න. | பணத்தைத் திரும்பக் கொடுப்பது உங்கள் PayHere தளத்தில் செய்யப்படும். பின்னர் நன்கொடைகள் மற்றும் பற்றுச்சீட்டுகளில் அந்த நன்கொடையை ரத்து செய்யுங்கள். |
+| `Giving.payments.merchantId` | Merchant ID | Merchant ID | Merchant ID |
+| `Giving.payments.merchantIdInvalid` | Enter the merchant ID from PayHere: letters and digits only. | PayHere හි Merchant ID ඇතුළත් කරන්න: අකුරු සහ ඉලක්කම් පමණි. | PayHere இன் Merchant ID ஐ உள்ளிடுங்கள்: எழுத்துகளும் எண்களும் மட்டும். |
+| `Giving.payments.secret` | Merchant secret | Merchant Secret | Merchant Secret |
+| `Giving.payments.secretNew` | Stored encrypted. Nobody can read it back, not even you. | සංකේතනය කර ගබඩා වේ. එය නැවත කියවීමට කිසිවෙකුට, ඔබටවත්, නොහැක. | குறியாக்கம் செய்து சேமிக்கப்படும். அதை யாராலும், உங்களாலும்கூட, மீண்டும் படிக்க முடியாது. |
+| `Giving.payments.secretKeep` | Saved and encrypted. Leave this empty to keep it. A new merchant ID needs its own secret. | සංකේතනය කර සුරැකී ඇත. එය එලෙසම තබා ගැනීමට මෙය හිස්ව තබන්න. නව Merchant ID එකකට එහිම Secret එකක් අවශ්‍යයි. | சேமிக்கப்பட்டு குறியாக்கம் செய்யப்பட்டுள்ளது. அதை வைத்திருக்க இதை வெறுமையாக விடுங்கள். புதிய Merchant ID க்கு அதற்கான Secret தேவை. |
+| `Giving.payments.secretInvalid` | Enter the merchant secret from PayHere. | PayHere හි Merchant Secret ඇතුළත් කරන්න. | PayHere இன் Merchant Secret ஐ உள்ளிடுங்கள். |
+| `Giving.payments.enabled` | Donors can give online | දායකයන්ට මාර්ගගතව පරිත්‍යාග කළ හැක | நன்கொடையாளர்கள் இணையவழியில் அளிக்கலாம் |
+| `Giving.payments.enabledHint` | When this is off, your page does not offer it. | මෙය අක්‍රිය විට, ඔබේ පිටුවේ එය නොපෙන්වයි. | இது முடக்கப்பட்டிருக்கும்போது, உங்கள் பக்கத்தில் இது காட்டப்படாது. |
+| `Giving.payments.savedBy` | Last saved on {date} by {name}. | අවසන් වරට {date} දින {name} විසින් සුරකින ලදී. | கடைசியாக {date} அன்று {name} சேமித்தார். |
+| `Giving.payments.save` | Save | සුරකින්න | சேமி |
+| `Giving.payments.saved` | The online payment settings are saved. | මාර්ගගත ගෙවීම් සැකසුම් සුරකින ලදී. | இணையவழிக் கட்டண அமைப்புகள் சேமிக்கப்பட்டன. |
+| `Giving.payments.stale` | Someone saved these settings while you were looking at them. Open the page again. | ඔබ බලා සිටියදී කෙනෙකු මෙම සැකසුම් සුරැකුවා. පිටුව නැවත විවෘත කරන්න. | நீங்கள் பார்த்துக்கொண்டிருக்கும்போது யாரோ இந்த அமைப்புகளைச் சேமித்தனர். பக்கத்தை மீண்டும் திறங்கள். |
+| `Giving.payments.readOnly` | Only someone who may change the merchant can save these settings. | මෙම සැකසුම් සුරැකිය හැක්කේ වෙළෙන්දා වෙනස් කිරීමට අවසර ඇති අයට පමණි. | வணிகரை மாற்ற அனுமதி உள்ளவர் மட்டுமே இந்த அமைப்புகளைச் சேமிக்க முடியும். |
+| `Giving.payments.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயற்சிக்கவும் |
+| `Giving.errors.online_giving_off` | This place is not taking online gifts right now. | මෙම ස්ථානය දැනට මාර්ගගත පරිත්‍යාග භාර ගන්නේ නැත. | இந்த இடம் தற்போது இணையவழி நன்கொடைகளை ஏற்கவில்லை. |
+| `Giving.errors.payment_not_found` | There is no such payment on this account. | මෙම ගිණුමේ එවැනි ගෙවීමක් නැත. | இந்தக் கணக்கில் அப்படி ஒரு கட்டணம் இல்லை. |
+| `Giving.errors.phone_required` | Your account needs a confirmed phone number before you can give. | පරිත්‍යාග කිරීමට පෙර ඔබේ ගිණුමට තහවුරු කළ දුරකථන අංකයක් අවශ්‍යයි. | நன்கொடை அளிக்கும் முன் உங்கள் கணக்கில் உறுதிப்படுத்தப்பட்ட தொலைபேசி எண் தேவை. |
+| `Shell.items.payments` | Online payments | මාර්ගගත ගෙවීම් | இணையவழிக் கட்டணங்கள் |
+| `Giving.report.title` | Monthly report | මාසික වාර්තාව | மாதாந்திர அறிக்கை |
+| `Giving.report.intro` | The month's bookings, gifts and needs, for your committee. Save it as a file or print it. | මාසයේ වෙන්කිරීම්, පරිත්‍යාග සහ අවශ්‍යතා, ඔබේ කමිටුව සඳහා. එය ගොනුවක් ලෙස සුරකින්න හෝ මුද්‍රණය කරන්න. | மாதத்தின் முன்பதிவுகள், நன்கொடைகள் மற்றும் தேவைகள், உங்கள் குழுவுக்காக. கோப்பாகச் சேமியுங்கள் அல்லது அச்சிடுங்கள். |
+| `Giving.report.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயற்சிக்கவும் |
+| `Giving.report.month` | Month | මාසය | மாதம் |
+| `Giving.report.previousMonth` | Previous month | පෙර මාසය | முந்தைய மாதம் |
+| `Giving.report.nextMonth` | Next month | ඊළඟ මාසය | அடுத்த மாதம் |
+| `Giving.report.csv` | Save as CSV | CSV ලෙස සුරකින්න | CSV ஆகச் சேமி |
+| `Giving.report.print` | Print or save as PDF | මුද්‍රණය කරන්න හෝ PDF ලෙස සුරකින්න | அச்சிடு அல்லது PDF ஆகச் சேமி |
+| `Giving.report.article` | The month's report | මාසයේ වාර්තාව | மாதத்தின் அறிக்கை |
+| `Giving.report.printTitle` | Monthly report: {month} | මාසික වාර්තාව: {month} | மாதாந்திர அறிக்கை: {month} |
+| `Giving.report.notOver` | This month is not over. Utilisation counts the days up to today. | මෙම මාසය තවම අවසන් නැත. භාවිතය ගණන් කරන්නේ අද දක්වා දින පමණි. | இந்த மாதம் இன்னும் முடியவில்லை. பயன்பாடு இன்று வரையிலான நாட்களை மட்டுமே கணக்கிடுகிறது. |
+| `Giving.report.bookings` | Bookings by status | තත්ත්වය අනුව වෙන්කිරීම් | நிலையின்படி முன்பதிவுகள் |
+| `Giving.report.bookingsTotal` | All bookings | සියලු වෙන්කිරීම් | அனைத்து முன்பதிவுகளும் |
+| `Giving.report.utilisation` | Utilisation per meal slot | ආහාර වේල අනුව භාවිතය | உணவு நேரத்தின்படி பயன்பாடு |
+| `Giving.report.utilisationNote` | Days with an approved or completed booking, out of the days the slot served. | වේල පැවති දින අතරින්, අනුමත කළ හෝ සම්පූර්ණ කළ වෙන්කිරීමක් තිබූ දින. | உணவு நேரம் நடந்த நாட்களில், அங்கீகரிக்கப்பட்ட அல்லது நிறைவடைந்த முன்பதிவு இருந்த நாட்கள். |
+| `Giving.report.noSlots` | No meal slots this month. | මෙම මාසයේ ආහාර වේල් නැත. | இந்த மாதம் உணவு நேரங்கள் இல்லை. |
+| `Giving.report.used` | {booked} of {served} days ({percent}%) | දින {served} න් {booked} ({percent}%) | {served} நாட்களில் {booked} ({percent}%) |
+| `Giving.report.noDays` | No days served | දින කිසිවක් නොපැවතිණි | நடந்த நாட்கள் இல்லை |
+| `Giving.report.retired` | {booked} days booked; no longer offered | දින {booked} ක් වෙන් විය; දැන් පිරිනමන්නේ නැත | {booked} நாட்கள் முன்பதிவு; இப்போது வழங்கப்படவில்லை |
+| `Giving.report.money` | Money received by method | ක්‍රමය අනුව ලැබුණු මුදල් | முறையின்படி பெற்ற பணம் |
+| `Giving.report.moneyTotal` | All money received | ලැබුණු සියලු මුදල් | பெற்ற மொத்தப் பணம் |
+| `Giving.report.noMoney` | No money received this month. | මෙම මාසයේ මුදල් ලැබී නැත. | இந்த மாதம் பணம் பெறப்படவில்லை. |
+| `Giving.report.gifts` | {count, plural, one {# gift} other {# gifts}} | {count, plural, one {පරිත්‍යාග #} other {පරිත්‍යාග #}} | {count, plural, one {# நன்கொடை} other {# நன்கொடைகள்}} |
+| `Giving.report.giftsWorth` | {count, plural, one {# gift} other {# gifts}}, estimated {value} | {count, plural, one {පරිත්‍යාග #} other {පරිත්‍යාග #}}, ඇස්තමේන්තුව {value} | {count, plural, one {# நன்கொடை} other {# நன்கொடைகள்}}, மதிப்பீடு {value} |
+| `Giving.report.inKind` | Gifts of items by category | ප්‍රවර්ගය අනුව භාණ්ඩ පරිත්‍යාග | வகையின்படி பொருள் நன்கொடைகள் |
+| `Giving.report.inKindNote` | A gift takes the category of the need it came for. | පරිත්‍යාගයකට හිමි වන්නේ එය ලැබුණු අවශ්‍යතාවයේ ප්‍රවර්ගයයි. | ஒரு நன்கொடை அது வந்த தேவையின் வகையைப் பெறும். |
+| `Giving.report.noItems` | No gifts of items this month. | මෙම මාසයේ භාණ්ඩ පරිත්‍යාග නැත. | இந்த மாதம் பொருள் நன்கொடைகள் இல்லை. |
+| `Giving.report.noNeed` | Not for a need | අවශ්‍යතාවයක් සඳහා නොවේ | ஒரு தேவைக்காக அல்ல |
+| `Giving.report.needs` | Needs | අවශ්‍යතා | தேவைகள் |
+| `Giving.report.needsOpened` | Opened this month | මෙම මාසයේ විවෘත කළ | இந்த மாதம் திறக்கப்பட்டவை |
+| `Giving.report.needsFulfilled` | Fulfilled this month | මෙම මාසයේ සම්පූර්ණ වූ | இந்த மாதம் நிறைவேறியவை |
+| `Giving.report.needsStillOpen` | Open now | දැන් විවෘත | இப்போது திறந்திருப்பவை |
+| `Giving.report.needsStillOpenThen` | Still open as the month ended | මාසය අවසානයේ තවමත් විවෘත | மாத முடிவில் இன்னும் திறந்திருந்தவை |
+| `Giving.report.voided` | Voided gifts | අවලංගු කළ පරිත්‍යාග | ரத்து செய்யப்பட்ட நன்கொடைகள் |
+| `Giving.report.voidedNote` | Listed here and left out of every total above. | මෙහි ලැයිස්තුගත කර ඇති අතර ඉහත කිසිදු එකතුවකට ඇතුළත් නොවේ. | இங்கே பட்டியலிடப்பட்டு, மேலே உள்ள எந்த மொத்தத்திலும் சேர்க்கப்படவில்லை. |
+| `Giving.report.noVoided` | No gifts of this month were voided. | මෙම මාසයේ පරිත්‍යාග කිසිවක් අවලංගු කර නැත. | இந்த மாதத்தின் நன்கொடைகள் எதுவும் ரத்து செய்யப்படவில்லை. |
+| `Giving.report.voidedBy` | Voided by {name} on {date}: {reason} | {date} දින {name} විසින් අවලංගු කරන ලදී: {reason} | {date} அன்று {name} ரத்து செய்தார்: {reason} |
+| `Giving.donations.csv` | Save as CSV | CSV ලෙස සුරකින්න | CSV ஆகச் சேமி |
+| `Dashboard.giving.title` | Giving this month | මෙම මාසයේ පරිත්‍යාග | இந்த மாத நன்கொடைகள் |
+| `Dashboard.giving.openReport` | Open the report | වාර්තාව විවෘත කරන්න | அறிக்கையைத் திற |
+| `Dashboard.giving.openDonations` | Open the gifts | පරිත්‍යාග විවෘත කරන්න | நன்கொடைகளைத் திற |
+| `Dashboard.giving.money` | Money received | ලැබුණු මුදල් | பெற்ற பணம் |
+| `Dashboard.giving.amount` | LKR {amount} | රු. {amount} | ரூ. {amount} |
+| `Dashboard.giving.openNeeds` | Open needs | විවෘත අවශ්‍යතා | திறந்த தேவைகள் |
+| `Dashboard.giving.pledgesDue` | Pledges due this week | මෙම සතියේ ලැබිය යුතු පොරොන්දු | இந்த வாரம் வரவேண்டிய உறுதிமொழிகள் |
+| `Dashboard.myGiving.title` | My giving | මගේ පරිත්‍යාග | எனது நன்கொடைகள் |
+| `Dashboard.myGiving.all` | All my giving | මගේ සියලු පරිත්‍යාග | எனது அனைத்து நன்கொடைகளும் |
+| `Dashboard.myGiving.none` | Your gifts and pledges will show here. | ඔබේ පරිත්‍යාග සහ පොරොන්දු මෙහි පෙන්වයි. | உங்கள் நன்கொடைகளும் உறுதிமொழிகளும் இங்கே காட்டப்படும். |
+| `Dashboard.myGiving.gifts` | My latest gifts | මගේ නවතම පරිත්‍යාග | எனது சமீபத்திய நன்கொடைகள் |
+| `Dashboard.myGiving.pledges` | Pledges still to give | තවම දිය යුතු පොරොන්දු | இன்னும் அளிக்க வேண்டிய உறுதிமொழிகள் |
+| `Dashboard.myGiving.amount` | LKR {amount} | රු. {amount} | ரூ. {amount} |
+| `Dashboard.myGiving.receiptNamed` | Receipt {receiptNo} | රිසිට්පත {receiptNo} | ரசீது {receiptNo} |
+| `Dashboard.myGiving.pledged` | {count} pledged | {count} ක් පොරොන්දු විය | {count} உறுதியளிக்கப்பட்டது |
+| `Dashboard.myGiving.pledgedBy` | {count} pledged, by {date} | {count} ක් පොරොන්දු විය, {date} වන විට | {count} உறுதியளிக்கப்பட்டது, {date} க்குள் |
+| `Shell.items.reports` | Monthly report | මාසික වාර්තාව | மாதாந்திர அறிக்கை |

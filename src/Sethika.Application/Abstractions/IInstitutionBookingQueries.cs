@@ -37,6 +37,7 @@ public sealed record InstitutionListingView(string Slug, bool Listed);
 
 /// <summary>One booking on the institution's calendar.</summary>
 /// <param name="DonorPhone">For arranging the meal with the donor.</param>
+/// <param name="Standing">A regular donor's day (plan 08, K3): its sponsorship's <c>PublicId</c>; otherwise <see langword="null"/>.</param>
 public sealed record CalendarBookingView(
     string BookingNo,
     string Status,
@@ -48,7 +49,8 @@ public sealed record CalendarBookingView(
     string? Notes,
     DateTime CreatedAt,
     string? RejectReason,
-    string? CancelReason);
+    string? CancelReason,
+    Guid? Standing);
 
 /// <summary>A slot on a day that has been booked: its places, and the bookings that took them.</summary>
 /// <param name="Status">The slot-day's: <c>Open</c> or <c>Full</c>.</param>

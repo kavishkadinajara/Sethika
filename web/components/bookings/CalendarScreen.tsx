@@ -19,10 +19,13 @@ import type { CalendarBooking, Decision, SharedWith, SlotDay } from "@/lib/booki
 import { useSession } from "@/lib/auth/useSession";
 import { usePermissions } from "@/lib/permissions/usePermissions";
 import { markShellStale } from "@/lib/shell/summary";
+import { listDayRequests } from "@/lib/sponsors/api";
+import type { InstitutionDayRequest } from "@/lib/sponsors/types";
 import { cn, focusRing } from "@/lib/utils";
 import { BookingStatusBadge } from "./BookingStatusBadge";
 import { Bowl } from "./Bowl";
 import { BowlCalendar } from "./BowlCalendar";
+import { DayRequestTray } from "./DayRequestTray";
 import { useBookingError } from "./useBookingError";
 import { useDates } from "./useDates";
 import { useLiveAvailability } from "./useLiveAvailability";
@@ -64,6 +67,7 @@ export function CalendarScreen() {
   }
   const [days, setDays] = useState<SlotDay[] | null>(null);
   const [waiting, setWaiting] = useState<SlotDay[] | null>(null);
+  const [openAsks, setOpenAsks] = useState<InstitutionDayRequest[]>([]);
   const [failure, setFailure] = useState<BookingFailure | null>(null);
 
   /** A month shown afresh; `quiet` keeps the days on screen while a live change refetches them. */
@@ -74,8 +78,10 @@ export function CalendarScreen() {
     else setFailure(result.failure);
   }, []);
 
+  // Requests for a regular donor's day (plan 08, K6) sit beside the booking requests; left out if unread.
   const loadWaiting = useCallback(async () => {
-    const result = await getCalendar(today, addDays(today, TRAY_DAYS - 1), "Requested");
+    const [result, dayRequests] = await Promise.all([getCalendar(today, addDays(today, TRAY_DAYS - 1), "Requested"), listDayRequests()]);
+    if (dayRequests.ok) setOpenAsks(dayRequests.value.filter((r) => r.status === "Open"));
     if (result.ok) setWaiting(result.value);
     else setFailure(result.failure);
   }, [today]);
@@ -128,6 +134,7 @@ export function CalendarScreen() {
       )}
 
       <Tray days={waiting} onDecided={reload} />
+      <DayRequestTray requests={openAsks} onAnswered={reload} />
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_24rem]">
         <Card className="p-4 sm:p-6">
@@ -147,6 +154,9 @@ export function CalendarScreen() {
             <p className="flex items-center gap-2 text-sm text-muted">
               <span aria-hidden className="size-2.5 rounded-full bg-accent" /> {t("waitingDot")}
             </p>
+            <p className="flex items-center gap-2 text-sm text-muted">
+              <span aria-hidden className="size-2.5 rounded-full border-2 border-brand" /> {t("standingDot")}
+            </p>
           </BowlCalendar>
         </Card>
 
@@ -165,15 +175,18 @@ export function CalendarScreen() {
     const taken = booked.reduce((sum, d) => sum + d.bookedSponsors, 0);
     const places = booked.reduce((sum, d) => sum + d.maxSponsors, 0);
     const requests = booked.flatMap((d) => d.bookings).filter((b) => b.status === "Requested").length;
+    // A regular donor's day (plan 08, K3): their booking still holds its place.
+    const standing = booked.flatMap((d) => d.bookings).filter((b) => b.standing && (b.status === "Approved" || b.status === "Completed")).length;
 
     return {
       content: (
         <span className="relative">
           <Bowl fill={places ? taken / places : 0} className="text-brand" />
           {requests > 0 && <span className="absolute -top-0.5 -right-1.5 size-2.5 rounded-full bg-accent ring-2 ring-surface" />}
+          {standing > 0 && <span data-standing className="absolute -bottom-0.5 -left-1.5 size-2.5 rounded-full border-2 border-brand bg-surface" />}
         </span>
       ),
-      label: `${long}. ${t("dayLabel", { taken, places })}${requests > 0 ? ` ${t("waitingLabel", { count: requests })}` : ""}`,
+      label: `${long}. ${t("dayLabel", { taken, places })}${requests > 0 ? ` ${t("waitingLabel", { count: requests })}` : ""}${standing > 0 ? ` ${t("standingLabel", { count: standing })}` : ""}`,
       disabled: false,
     };
   }
@@ -342,7 +355,10 @@ export function BookingItem({
               {inLocale(locale, day.slotName, day.slotNameSi, day.slotNameTa)} {day.startTime}
             </p>
           )}
-          <p className="font-semibold text-fg">{booking.donorName}</p>
+          <p className="font-semibold text-fg">
+            {booking.donorName}
+            {booking.standing && <span className="ml-2 rounded-full border border-brand/50 px-2 py-0.5 align-middle text-xs font-medium text-brand">{t("standing")}</span>}
+          </p>
           <a href={`tel:${booking.donorPhone}`} className={cn(textLink, focusRing, "min-h-0 justify-self-start py-1 tabular-nums")}>
             {booking.donorPhone}
           </a>

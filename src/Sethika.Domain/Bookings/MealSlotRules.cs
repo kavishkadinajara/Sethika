@@ -91,6 +91,16 @@ public static class MealSlotRules
         return slot.IsActive && slot.RunsOn(date) && InSeason(slot, seasons, date);
     }
 
+    /// <summary>
+    /// Whether a day <see cref="Openings"/> judged is a day the slot served: laid on and not blocked,
+    /// however full it is and however far from today. The monthly report asks it of the calendar's own
+    /// answer (plan 09, M16), so the two cannot disagree about which days there were.
+    /// </summary>
+    /// <param name="refused">What <see cref="Openings"/> said of the day.</param>
+    public static bool IsServedDay(string? refused) =>
+        refused is not (BookingErrors.SlotInactive or BookingErrors.InstitutionNotActive or BookingErrors.NotOnThisDay
+            or BookingErrors.OutOfSeason or BookingErrors.DateBlocked);
+
     /// <summary>A slot's own seasons cover <paramref name="date"/>; a slot with none runs all year.</summary>
     private static bool InSeason(MealSlot slot, IEnumerable<MealSlotSeason> seasons, DateOnly date)
     {
@@ -162,6 +172,25 @@ public static class MealSlotRules
         }
 
         return new SlotDayOpenings(refused, sponsors, headcount);
+    }
+
+    /// <summary>
+    /// Whether a day <see cref="Openings"/> found full is full only through standing days (plan 08, K6):
+    /// letting one of them go would open it, so a donor may ask for it. A day closed or blocked is not
+    /// held, whoever is on it.
+    /// </summary>
+    /// <param name="openings">What <see cref="Openings"/> said of the day.</param>
+    /// <param name="instance">The slot-day.</param>
+    /// <param name="standing">Its active standing bookings.</param>
+    /// <param name="standingHeadcount">The most people one of them brings.</param>
+    public static bool IsHeld(MealSlot slot, SlotDayOpenings openings, SlotInstance? instance, int standing, int standingHeadcount)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+
+        return openings.Refused == BookingErrors.SlotFull
+               && standing > 0
+               && instance is { Status: SlotInstanceStatus.Open or SlotInstanceStatus.Full }
+               && instance.RemainingHeadcount + standingHeadcount >= slot.MinHeadcount;
     }
 }
 

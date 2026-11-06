@@ -24,7 +24,7 @@ namespace Sethika.Application.Access.Session;
 /// requests presenting the same token at once, exactly one finds it still unrevoked. It needs no
 /// lock hint, so the handler does not know it runs on SQL Server (plan A16).
 /// </remarks>
-public sealed class SessionHandler(ISethikaDbContext db, ITokenService tokens, TimeProvider timeProvider, ISupportTickets supportTickets)
+public sealed class SessionHandler(ISethikaDbContext db, ITokenService tokens, TimeProvider timeProvider, ISupportTickets supportTickets, IStepUpGrants stepUps)
 {
     /// <summary>How long after a rotation the spent token is treated as a race, not a theft.</summary>
     public static readonly TimeSpan RotationGracePeriod = TimeSpan.FromSeconds(10);
@@ -187,6 +187,13 @@ public sealed class SessionHandler(ISethikaDbContext db, ITokenService tokens, T
             .ConfigureAwait(false);
 
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        // Plan 09, M28: a step-up survives the token's rotation only when the request also showed the
+        // access token holding it - the same person's, mid-session. A refresh cookie alone carries none.
+        if (command.PresentedAccess is { } access && access.UserId == presented.UserId)
+        {
+            await stepUps.CarryAsync(presented.UserId, access.TokenId, issued.Access.JwtId, cancellationToken).ConfigureAwait(false);
+        }
 
         // A support session's institution is not among the user's own; listed so the client can name it.
         if (active is not null && !institutions.Any(i => i.Id == active.Id))

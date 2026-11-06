@@ -13,6 +13,7 @@
 :r .\Seed\11_NotifyTemplates.sql
 :r .\Seed\12_OnboardingDrafts.sql
 :r .\Seed\13_MemorialDrafts.sql
+:r .\Seed\14_GivingLookups.sql
 /* TODO (confirm with real institutions before seeding):
    - org.DocumentTypes + org.InstitutionTypeRequiredDocuments + org.VerificationChecklistItems:
      seeded as marked DRAFTs in 12_OnboardingDrafts.sql until the real lists are confirmed

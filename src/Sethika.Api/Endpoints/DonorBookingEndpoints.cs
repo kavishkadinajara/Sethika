@@ -7,6 +7,7 @@ using Sethika.Application.Abstractions;
 using Sethika.Application.Bookings.Discovery;
 using Sethika.Application.Bookings.Engine;
 using Sethika.Application.Bookings.Recurring;
+using Sethika.Application.Bookings.Sponsors;
 using Sethika.Domain.Bookings;
 
 namespace Sethika.Api.Endpoints;
@@ -60,6 +61,9 @@ internal static class DonorBookingEndpoints
         bookings.MapGet("/mine", ListMineAsync).WithMetadata(new HasPermissionAttribute(MineView));
         bookings.MapPost("/{bookingNo}/cancel", CancelAsync).WithMetadata(new HasPermissionAttribute(MineEdit)).WakesOutbox();
 
+        // A linked standing sponsor's "I can't give that day" (plan 08, K24, K35).
+        bookings.MapPost("/{bookingNo}/skip", SkipRegularDayAsync).WithMetadata(new HasPermissionAttribute(MineEdit)).WakesOutbox();
+
         // Yearly bookings (plan 07, H5): the donor's list, and stopping one.
         bookings.MapGet("/recurring", ListYearlyAsync).WithMetadata(new HasPermissionAttribute(MineView));
         bookings.MapPost("/recurring/{publicId:guid}/stop", StopYearlyAsync).WithMetadata(new HasPermissionAttribute(MineEdit));
@@ -72,9 +76,9 @@ internal static class DonorBookingEndpoints
     private static async Task<IResult> ListInstitutionsAsync(IDonorBookingQueries queries, CancellationToken cancellationToken) =>
         Results.Ok(await queries.ListInstitutionsAsync(cancellationToken));
 
-    private static async Task<IResult> GetInstitutionAsync(string slug, IDonorBookingQueries queries, CancellationToken cancellationToken) =>
+    private static async Task<IResult> GetInstitutionAsync(string slug, IDonorBookingQueries queries, IOnlineGiving onlineGiving, CancellationToken cancellationToken) =>
         IsSlug(slug) && await queries.GetInstitutionAsync(slug, cancellationToken) is { } institution
-            ? Results.Ok(institution)
+            ? Results.Ok(institution with { GivesOnline = await onlineGiving.IsOnAsync(institution.Slug, cancellationToken) })
             : ApiErrors.Error(StatusCodes.Status404NotFound, InstitutionNotFound);
 
     private static async Task<IResult> GetAvailabilityAsync(string slug, string? month, AvailabilityCalendar calendar, CancellationToken cancellationToken)
@@ -150,6 +154,31 @@ internal static class DonorBookingEndpoints
         return result.Succeeded
             ? Results.Ok(new { bookingNo = bookingNo.Trim(), status = result.Status })
             : ApiErrors.Error(StatusOf(result.Error!, BookingDecisionResult.NotFound), result.Error!);
+    }
+
+    private static async Task<IResult> SkipRegularDayAsync(
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReasonBody? body,
+        string bookingNo,
+        ICurrentUserContext currentUser,
+        IOwnStandingDays standingDays,
+        CancellationToken cancellationToken)
+    {
+        var result = await standingDays.SkipAsync(currentUser.UserId!.Value, bookingNo, body?.Reason, cancellationToken);
+        if (result.Succeeded)
+        {
+            return Results.NoContent();
+        }
+
+        var status = result.Error switch
+        {
+            SponsorshipChangeResult.InvalidDetails => StatusCodes.Status400BadRequest,
+            BookingDecisionResult.NotFound or SponsorshipChangeResult.NotFound => StatusCodes.Status404NotFound,
+            _ => StatusCodes.Status409Conflict,
+        };
+
+        return result.Fields.Count > 0
+            ? Results.Json(new { code = result.Error, fields = result.Fields }, statusCode: status)
+            : ApiErrors.Error(status, result.Error!);
     }
 
     private static async Task<IResult> ListYearlyAsync(ICurrentUserContext currentUser, IDonorBookingQueries queries, CancellationToken cancellationToken) =>

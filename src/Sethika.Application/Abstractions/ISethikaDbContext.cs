@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Sethika.Domain.Access;
 using Sethika.Domain.Bookings;
 using Sethika.Domain.Core;
+using Sethika.Domain.Giving;
 using Sethika.Domain.Institutions;
 using Sethika.Domain.Onboarding;
 using Sethika.Domain.Services;
@@ -88,6 +89,17 @@ public interface ISethikaDbContext
     DbSet<MemorialPlan> MemorialPlans { get; }
     DbSet<MemorialRule> MemorialRules { get; }
 
+    // An institution's donor book (plan 08, K1): its institution's alone, by RLS.
+    DbSet<InstitutionDonor> InstitutionDonors { get; }
+
+    // Standing sponsorships and the days let go from them (plan 08, K2, K4): the institution's alone.
+    // Work on one sponsorship's days takes IStandingLocks first, so it is done one change at a time.
+    DbSet<StandingSponsorship> StandingSponsorships { get; }
+    DbSet<StandingDayChange> StandingExceptions { get; }
+
+    // A donor asking for a standing day (plan 08, K6): the institution's and the asker's.
+    DbSet<DayRequest> DayRequests { get; }
+
     // Religious services (Phase E). An appointment's leaders and history are reached through it.
     // Time blocks have a set of their own: handlers write and delete them beside the assignment or
     // leave they belong to, and their primary key is the overlap guarantee (V2).
@@ -97,6 +109,22 @@ public interface ISethikaDbContext
     DbSet<LeaderTimeOff> LeaderTimeOff { get; }
     DbSet<LeaderTimeBlock> LeaderTimeBlocks { get; }
     DbSet<ServiceAppointment> ServiceAppointments { get; }
+
+    // Giving (plan 09). A donation is never edited or deleted, only voided (M6, M7): the database's
+    // trigger refuses anything else. Lookup values are reference data the application only reads.
+    DbSet<Donation> Donations { get; }
+
+    // A need's counters move only by a conditional UPDATE (NeedCounters, M13): never through a tracked Need.
+    DbSet<Need> Needs { get; }
+    DbSet<Pledge> Pledges { get; }
+
+    // An order's status moves only by a conditional UPDATE (OnlinePaymentHandler, M9). A merchant's secret
+    // is ciphertext here (M21), and a donor's session cannot read the row at all (RLS fn_Tenant).
+    DbSet<OnlinePayment> OnlinePayments { get; }
+    DbSet<PaymentMerchant> PaymentMerchants { get; }
+
+    DbSet<LookupValue> LookupValues { get; }
+    DbSet<LookupType> LookupTypes { get; }
 
     /// <summary>For transactions that span a set-based update and tracked inserts.</summary>
     DatabaseFacade Database { get; }

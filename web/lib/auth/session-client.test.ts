@@ -132,7 +132,8 @@ describe("the fetch wrapper", () => {
     expect(response.status).toBe(200);
     expect(h.calls.map((c) => [c.path, c.bearer])).toEqual([
       ["/api/bookings/calendar", "token-1"],
-      ["/api/auth/session/refresh", null],
+      // The token in hand goes with the refresh, to carry a step-up it holds (plan 09, M28).
+      ["/api/auth/session/refresh", "token-1"],
       ["/api/bookings/calendar", "token-2"],
     ]);
   });
@@ -151,7 +152,7 @@ describe("the fetch wrapper", () => {
     );
     // Hold the refresh open until every call has been refused and is waiting on it.
     await vi.waitFor(() => {
-      expect(h.calls.filter((c) => c.bearer === "token-1")).toHaveLength(5);
+      expect(h.calls.filter((c) => c.bearer === "token-1" && !c.path.endsWith("/refresh"))).toHaveLength(5);
       expect(h.refreshes().length).toBeGreaterThan(0);
     });
     refreshAnswer.resolve(sessionBody("token-2", h.clock.now));

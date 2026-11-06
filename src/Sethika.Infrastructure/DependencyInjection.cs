@@ -54,7 +54,9 @@ public static class DependencyInjection
         services.AddScoped<INumberSeries, SqlNumberSeries>();
         services.AddScoped<IRegistrationLocks, SqlRegistrationLocks>();
         services.AddScoped<IBookingRowLocks, SqlBookingRowLocks>();
+        services.AddScoped<IStandingLocks, SqlStandingLocks>();
         services.AddScoped<IInstitutionModules, SqlInstitutionModules>();
+        services.AddScoped<IRoleGrantHistory, SqlRoleGrantHistory>();
         services.AddScoped<ISlotInventory, SqlSlotInventory>();
 
         services.AddScoped<IDbConnectionFactory>(serviceProvider =>
@@ -78,8 +80,21 @@ public static class DependencyInjection
         services.AddScoped<IMemorialQueries, MemorialQueries>();
         services.AddScoped<ISharingQueries, SharingQueries>();
         services.AddScoped<IShareLinks>(_ => new SqlShareLinks(connectionString));
+        services.AddScoped<IStandingHolds>(_ => new SqlStandingHolds(connectionString));
+        services.AddScoped<IDonorBookLinks>(_ => new SqlDonorBookLinks(connectionString));
+        services.AddScoped<IOwnStandingDays, PlatformOwnStandingDays>();
+        services.AddScoped<IOwnPledges, PlatformPledges>();
+        services.AddScoped<IPlatformPayments, PlatformPayments>();
+        services.AddScoped<IOnlineGiving>(_ => new SqlOnlineGiving(connectionString));
         services.AddScoped<IBookingNotificationQueries, BookingNotificationQueries>();
         services.AddScoped<IServiceSetupQueries, ServiceSetupQueries>();
+        services.AddScoped<IDonorBookQueries, DonorBookQueries>();
+        services.AddScoped<IGivingQueries, GivingQueries>();
+        services.AddScoped<IReportQueries, ReportQueries>();
+        services.AddScoped<INeedQueries, NeedQueries>();
+        services.AddScoped<IPaymentQueries, PaymentQueries>();
+        services.AddScoped<IStandingSponsorshipQueries, StandingSponsorshipQueries>();
+        services.AddScoped<IDayRequestQueries, DayRequestQueries>();
         services.AddScoped<IDonorAppointmentQueries, DonorAppointmentQueries>();
         services.AddScoped<IAppointmentQueries, AppointmentQueries>();
         services.AddScoped<IAppointmentNotificationQueries, AppointmentNotificationQueries>();
@@ -219,6 +234,30 @@ public static class DependencyInjection
         return services;
     }
 
+    /// <summary>
+    /// Registers what online giving needs from configuration: the keys that seal merchant secrets (plan 09,
+    /// M21) and the addresses PayHere is given (M10).
+    /// </summary>
+    /// <remarks>
+    /// Read at registration for the same reason as <see cref="AddSethikaAccess"/>: a missing key fails the
+    /// start-up, not a donor's payment.
+    /// </remarks>
+    public static IServiceCollection AddSethikaPayments(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        bool isDevelopment)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var options = configuration.GetSection(PaymentOptions.SectionName).Get<PaymentOptions>() ?? new PaymentOptions();
+
+        services.AddSingleton<IMerchantSecrets>(AesGcmMerchantSecrets.Create(options));
+        services.AddSingleton<IPayHereSite>(ConfiguredPayHereSite.Create(options.PayHere, isDevelopment));
+
+        return services;
+    }
+
     /// <summary>Registers where uploaded files are kept (plan 02, B4).</summary>
     /// <remarks>
     /// Read at registration for the same reason as <see cref="AddSethikaAccess"/>: a host that
@@ -305,6 +344,7 @@ public static class DependencyInjection
         services.AddTransient<OutboxJob>();
         services.AddTransient<BookingReminderJob>();
         services.AddTransient<RecurringBookingJob>();
+        services.AddTransient<StandingBookingJob>();
         services.AddTransient<MemorialReminderJob>();
         services.AddTransient<AppointmentReminderJob>();
         services.AddTransient<GeoIndexRebuildJob>();
@@ -313,11 +353,13 @@ public static class DependencyInjection
         if (!jobs.Enabled)
         {
             services.AddSingleton<IOutboxWake, NoOutboxWake>();
+            services.AddSingleton<IStandingBookingWake, NoStandingBookingWake>();
             return services;
         }
 
         // A change that wrote an outbox message queues the outbox job at once (plan 07, H10).
         services.AddScoped<IOutboxWake, HangfireOutboxWake>();
+        services.AddScoped<IStandingBookingWake, HangfireStandingBookingWake>();
 
         services.AddHangfire(hangfire => hangfire
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)

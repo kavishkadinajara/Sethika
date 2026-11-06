@@ -143,7 +143,8 @@ public sealed class DonorBookingQueries(IDbConnectionFactory connections) : IDon
                s.NameSi AS SlotNameSi, s.NameTa AS SlotNameTa, b.Headcount AS Headcount,
                b.FulfilmentMode AS FulfilmentMode, b.InMemoryOf AS InMemoryOf, b.Notes AS Notes,
                b.CreatedAt AS CreatedAt, b.RejectReason AS RejectReason, b.CancelReason AS CancelReason,
-               r.PublicId AS Yearly
+               r.PublicId AS Yearly,
+               CAST(CASE WHEN b.StandingSponsorshipId IS NULL THEN 0 ELSE 1 END AS BIT) AS Regular
         FROM booking.Bookings AS b
         JOIN booking.SlotInstances AS si ON si.Id = b.SlotInstanceId AND si.InstitutionId = b.InstitutionId
         JOIN booking.MealSlots AS s ON s.Id = si.MealSlotId AND s.InstitutionId = si.InstitutionId
@@ -242,7 +243,7 @@ public sealed class DonorBookingQueries(IDbConnectionFactory connections) : IDon
             r.BookingNo, r.Status, r.Date, r.StartTime, r.EndTime, r.Institution, r.InstitutionName,
             r.InstitutionNameSi, r.InstitutionNameTa, r.MealSlot, r.SlotName, r.SlotNameSi, r.SlotNameTa,
             r.Headcount, r.FulfilmentMode, r.InMemoryOf, r.Notes, r.CreatedAt, r.RejectReason, r.CancelReason,
-            Booking.DonorMayCancel(r.Status, r.Date, today), r.Yearly))];
+            Booking.DonorMayCancel(r.Status, r.Date, today), r.Yearly, r.Regular))];
     }
 
     public async Task<IReadOnlyList<PublicInstitutionSummary>> ListPlacesAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -352,6 +353,7 @@ public sealed class DonorBookingQueries(IDbConnectionFactory connections) : IDon
         public string? RejectReason { get; init; }
         public string? CancelReason { get; init; }
         public Guid? Yearly { get; init; }
+        public bool Regular { get; init; }
     }
 
     private sealed class YearlyRow

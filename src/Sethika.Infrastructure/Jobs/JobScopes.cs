@@ -40,9 +40,12 @@ public static class JobScopes
     /// connection it opens is stamped <c>IsPlatform = 1</c> and Row-Level Security lets it see all tenants.
     /// </summary>
     /// <remarks>
-    /// For jobs only. Called from a request it would hand that request the platform's reach, so
-    /// nothing under <c>Sethika.Api</c> calls it. The scope is new, so nothing in it can have asked
-    /// who the user is before it was marked.
+    /// For jobs, and for three narrow request-side calls: <c>PlatformOwnStandingDays</c> (plan 08, K35)
+    /// runs a single skip of the caller's own standing day in a scope of its own, and
+    /// <c>PlatformPledges</c> (plan 09, M14) a donor's own pledge or its cancel, and
+    /// <c>PlatformPayments</c> (M8-M10) a donor's order and PayHere's signed notification. Called from a request
+    /// otherwise, it would hand that request the platform's reach, so nothing under <c>Sethika.Api</c>
+    /// calls it. The scope is new, so nothing in it can have asked who the user is before it was marked.
     /// </remarks>
     public static AsyncServiceScope CreatePlatformScope(this IServiceScopeFactory scopes)
     {

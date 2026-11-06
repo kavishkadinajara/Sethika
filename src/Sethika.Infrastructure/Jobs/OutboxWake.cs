@@ -38,3 +38,30 @@ internal sealed class NoOutboxWake : IOutboxWake
     {
     }
 }
+
+/// <summary>Starts <see cref="StandingBookingJob"/> now (plan 08, K3); a failure is logged and the night's run books the days.</summary>
+internal sealed partial class HangfireStandingBookingWake(IBackgroundJobClient jobs, ILogger<HangfireStandingBookingWake> logger) : IStandingBookingWake
+{
+    public void Wake()
+    {
+        try
+        {
+            jobs.Enqueue<StandingBookingJob>(job => job.RunAsync(CancellationToken.None));
+        }
+        catch (BackgroundJobClientException ex)
+        {
+            LogWakeFailed(logger, ex);
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not start the standing job; the night's run books the days.")]
+    private static partial void LogWakeFailed(ILogger logger, Exception exception);
+}
+
+/// <summary>A host with its jobs off (tests, tools): the days wait for a run.</summary>
+internal sealed class NoStandingBookingWake : IStandingBookingWake
+{
+    public void Wake()
+    {
+    }
+}

@@ -32,6 +32,7 @@ const temple: PublicInstitution = {
   longitude: 80.1063,
   slots: [],
   services: [],
+  givesOnline: false,
 };
 
 describe("addresses in three languages", () => {

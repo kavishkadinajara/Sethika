@@ -33,6 +33,12 @@ internal sealed class RecurringJobs(IRecurringJobManager jobs) : IHostedService
             RecurringBookingJob.Cron,
             new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(SriLankaTime.ZoneId) });
 
+        jobs.AddOrUpdate<StandingBookingJob>(
+            StandingBookingJob.RecurringJobId,
+            job => job.RunAsync(CancellationToken.None),
+            StandingBookingJob.Cron,
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(SriLankaTime.ZoneId) });
+
         jobs.AddOrUpdate<MemorialReminderJob>(
             MemorialReminderJob.RecurringJobId,
             job => job.RunAsync(CancellationToken.None),

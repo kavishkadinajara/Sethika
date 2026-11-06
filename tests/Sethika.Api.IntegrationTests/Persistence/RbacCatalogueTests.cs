@@ -175,7 +175,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
             var after = await connection.QuerySingleAsync(Snapshot, transaction: transaction);
 
             Assert.Equal((IDictionary<string, object>)before, (IDictionary<string, object>)after);
-            Assert.Equal(47, (int)after.Permissions);
+            Assert.Equal(66, (int)after.Permissions);
         }
     }
 
@@ -196,7 +196,7 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
                 seed.Replace(StaffApprove, "    ('BOOKINGS.CALENDAR.VIEW'),\n", StringComparison.Ordinal), transaction: transaction);
 
             Assert.DoesNotContain("BOOKINGS.CALENDAR.APPROVE", await AlphaCodesAsync(connection, transaction, database.AlphaInstitutionId));
-            Assert.Equal(10, await connection.ExecuteScalarAsync<int>(
+            Assert.Equal(14, await connection.ExecuteScalarAsync<int>(
                 """
                 SELECT COUNT(*) FROM auth.RoleLevelPermissions c JOIN auth.RoleLevels l ON l.Id = c.RoleLevelId
                 WHERE l.Code = 'STAFF';
@@ -312,8 +312,8 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
     // ------------------------------------------------------------------ system role grants (plan 02, B1)
 
     [Theory]
-    [InlineData("DONOR", "MYBOOKINGS.BOOKINGS.CREATE,MYBOOKINGS.BOOKINGS.EDIT,MYBOOKINGS.BOOKINGS.VIEW,MYMEMORIAL.PLANS.CREATE,MYMEMORIAL.PLANS.EDIT,MYMEMORIAL.PLANS.VIEW,MYSERVICES.APPOINTMENTS.CREATE,MYSERVICES.APPOINTMENTS.EDIT,MYSERVICES.APPOINTMENTS.VIEW,ONBOARDING.APPLICATION.CREATE,ONBOARDING.APPLICATION.EDIT,ONBOARDING.APPLICATION.VIEW")]
-    [InlineData("PLATFORM_ADMIN", "ONBOARDING.REQUESTS.APPROVE,ONBOARDING.REQUESTS.EDIT,ONBOARDING.REQUESTS.REJECT,ONBOARDING.REQUESTS.VIEW,PLATFORM.INSTITUTIONS.EXECUTE,PLATFORM.INSTITUTIONS.VIEW,PLATFORM.USERS.CREATE,PLATFORM.USERS.EDIT,PLATFORM.USERS.VIEW")]
+    [InlineData("DONOR", "MYBOOKINGS.BOOKINGS.CREATE,MYBOOKINGS.BOOKINGS.EDIT,MYBOOKINGS.BOOKINGS.VIEW,MYGIVING.DONATIONS.CREATE,MYGIVING.DONATIONS.EDIT,MYGIVING.DONATIONS.VIEW,MYMEMORIAL.PLANS.CREATE,MYMEMORIAL.PLANS.EDIT,MYMEMORIAL.PLANS.VIEW,MYSERVICES.APPOINTMENTS.CREATE,MYSERVICES.APPOINTMENTS.EDIT,MYSERVICES.APPOINTMENTS.VIEW,ONBOARDING.APPLICATION.CREATE,ONBOARDING.APPLICATION.EDIT,ONBOARDING.APPLICATION.VIEW")]
+    [InlineData("PLATFORM_ADMIN", "ONBOARDING.REQUESTS.APPROVE,ONBOARDING.REQUESTS.EDIT,ONBOARDING.REQUESTS.REJECT,ONBOARDING.REQUESTS.VIEW,PLATFORM.INSTITUTIONS.EDIT,PLATFORM.INSTITUTIONS.EXECUTE,PLATFORM.INSTITUTIONS.VIEW,PLATFORM.USERS.CREATE,PLATFORM.USERS.EDIT,PLATFORM.USERS.VIEW")]
     [InlineData("PLATFORM_REVIEWER", "ONBOARDING.REQUESTS.EDIT,ONBOARDING.REQUESTS.VIEW,PLATFORM.INSTITUTIONS.VIEW,PLATFORM.USERS.VIEW")]
     public async Task EachSystemRoleHoldsExactlyItsGrants(string roleCode, string expected)
     {
@@ -380,7 +380,8 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
     public async Task StaffMayDecideBookingsButNeverSetUpTheSlots()
     {
         // Deciding, completing and cancelling a booking is the day's work; what is offered, and when,
-        // is the institution's to set. A new staff member starts able to read, not to decide.
+        // is the institution's to set. A new staff member starts able to read, not to decide. Staff see
+        // the standing sponsors, and never set them up (plan 08, K11).
         await using var connection = new SqlConnection(database.ConnectionString);
 
         var ceiling = await connection.QueryAsync<string>(
@@ -402,12 +403,40 @@ public sealed class RbacCatalogueTests(SethikaTestDatabase database) : IAsyncLif
             """);
 
         Assert.Equal(
-            ["BOOKINGS.CALENDAR.APPROVE", "BOOKINGS.CALENDAR.EDIT", "BOOKINGS.CALENDAR.REJECT", "BOOKINGS.CALENDAR.VIEW", "BOOKINGS.SLOTS.VIEW"],
+            ["BOOKINGS.CALENDAR.APPROVE", "BOOKINGS.CALENDAR.EDIT", "BOOKINGS.CALENDAR.REJECT", "BOOKINGS.CALENDAR.VIEW", "BOOKINGS.SLOTS.VIEW",
+             "BOOKINGS.SPONSORS.VIEW"],
             ceiling);
         Assert.Equal(
-            ["BOOKINGS.CALENDAR.VIEW", "BOOKINGS.SLOTS.VIEW", "INSTITUTION.PROFILE.VIEW",
-             "SERVICES.APPOINTMENTS.VIEW", "SERVICES.LEADERS.VIEW", "SERVICES.TYPES.VIEW"],
+            ["BOOKINGS.CALENDAR.VIEW", "BOOKINGS.SLOTS.VIEW", "BOOKINGS.SPONSORS.VIEW", "GIVING.DONATIONS.CREATE", "GIVING.DONATIONS.VIEW",
+             "GIVING.NEEDS.VIEW", "INSTITUTION.PROFILE.VIEW", "SERVICES.APPOINTMENTS.VIEW", "SERVICES.LEADERS.VIEW", "SERVICES.TYPES.VIEW"],
             template);
+    }
+
+    [Fact]
+    public async Task GivingIsCore_VoidingAndTheMerchantNeedAStepUp_AndTheMerchantIsTheOwnersAlone()
+    {
+        // Plan 09, M19: every institution receives gifts; staff record them, those who answer to the
+        // committee void them and read the report; the payment merchant is the owner's.
+        await using var connection = new SqlConnection(database.ConnectionString);
+
+        Assert.True(await connection.ExecuteScalarAsync<bool>("SELECT IsCore FROM auth.Modules WHERE Code = 'GIVING';"));
+
+        var mfa = await connection.QueryAsync<string>(
+            "SELECT Code FROM auth.Permissions WHERE RequiresMfa = 1 AND (Code LIKE 'GIVING.%' OR Code LIKE 'PLATFORM.INSTITUTIONS.%') ORDER BY Code;");
+        Assert.Equal(["GIVING.DONATIONS.DELETE", "GIVING.PAYMENTS.EDIT", "PLATFORM.INSTITUTIONS.EDIT", "PLATFORM.INSTITUTIONS.EXECUTE"], mfa);
+
+        const string Template = """
+            SELECT p.Code FROM auth.Roles r
+            JOIN auth.RolePermissions rp ON rp.RoleId = r.Id
+            JOIN auth.Permissions p      ON p.Id = rp.PermissionId
+            WHERE r.Code = @role AND r.IsTemplate = 1 AND r.InstitutionId IS NULL AND p.Code LIKE 'GIVING.%'
+            ORDER BY p.Code;
+            """;
+
+        var owner = (await connection.QueryAsync<string>(Template, new { role = "OWNER" })).ToList();
+        var manager = (await connection.QueryAsync<string>(Template, new { role = "MANAGER" })).ToList();
+        Assert.Equal(12, owner.Count);
+        Assert.Equal(owner.Where(c => !c.StartsWith("GIVING.PAYMENTS.", StringComparison.Ordinal)), manager);
     }
 
     [Fact]

@@ -99,6 +99,7 @@ const booking = (bookingNo: string, date: string, startTime: string, over: Parti
   cancelReason: null,
   canCancel: true,
   yearly: null,
+  regular: false,
   ...over,
 });
 

@@ -87,9 +87,10 @@ export function createSessionClient(options: SessionClientOptions) {
   // ---- rotations: refresh and switch institution share one slot ------------------------------
 
   /** One POST to a session endpoint with the CSRF header. */
-  function postSession(path: string, body?: unknown, csrf = readCsrfToken()) {
+  function postSession(path: string, body?: unknown, csrf = readCsrfToken(), accessToken: string | null = null) {
     const headers: Record<string, string> = {};
     if (csrf) headers[CSRF_HEADER] = csrf;
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
     if (body !== undefined) headers["Content-Type"] = "application/json";
     return http(`${SESSION_PATH}/${path}`, {
       method: "POST",
@@ -109,7 +110,9 @@ export function createSessionClient(options: SessionClientOptions) {
 
       let response: Response;
       try {
-        response = await postSession(path, body, csrf);
+        // Plan 09, M28: the access token in hand goes with a rotation, so a step-up it holds moves to
+        // its successor. The cookie alone carries none; after a reload there is no token, and none moves.
+        response = await postSession(path, body, csrf, token());
       } catch {
         return "unavailable";
       }

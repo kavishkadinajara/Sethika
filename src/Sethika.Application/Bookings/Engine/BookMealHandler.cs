@@ -136,7 +136,7 @@ public sealed class BookMealHandler(
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
         var fulfilment = command.Fulfilment!.Trim();
-        var (slot, refused) = await CheckAsync(id, command.Date, now, command.Headcount, fulfilment, cancellationToken).ConfigureAwait(false);
+        var (slot, refused) = await CheckAsync(db, id, command.Date, now, command.Headcount, fulfilment, cancellationToken).ConfigureAwait(false);
         if (refused is not null)
         {
             return BookMealResult.Failed(refused);
@@ -269,7 +269,7 @@ public sealed class BookMealHandler(
 
     private async Task<RecurringYearResult> TakeYearAsync(RecurringBooking yearly, int year, DateOnly date, Donor donor, DateTime now, CancellationToken cancellationToken)
     {
-        var (slot, refused) = await CheckAsync(yearly.MealSlotId, date, now, yearly.Headcount, yearly.FulfilmentMode, cancellationToken).ConfigureAwait(false);
+        var (slot, refused) = await CheckAsync(db, yearly.MealSlotId, date, now, yearly.Headcount, yearly.FulfilmentMode, cancellationToken).ConfigureAwait(false);
         if (refused is not null)
         {
             NotBooked(yearly, year, date, ClosedReason, now);
@@ -342,9 +342,10 @@ public sealed class BookMealHandler(
 
     /// <summary>
     /// Reads the slot, its institution's status and its blocks fresh, inside the lock, and asks the
-    /// rules (C4): a block added or a slot switched off a moment ago counts.
+    /// rules (C4): a block added or a slot switched off a moment ago counts. A standing day is judged
+    /// by the same rules (<see cref="StandingDayBooker"/>, plan 08, K3).
     /// </summary>
-    private async Task<(MealSlot Slot, string? Refused)> CheckAsync(int slotId, DateOnly date, DateTime now, short headcount, string fulfilment, CancellationToken cancellationToken)
+    internal static async Task<(MealSlot Slot, string? Refused)> CheckAsync(ISethikaDbContext db, int slotId, DateOnly date, DateTime now, short headcount, string fulfilment, CancellationToken cancellationToken)
     {
         var slot = await db.MealSlots
             .AsNoTracking()

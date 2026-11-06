@@ -50,6 +50,11 @@ internal static class AdminEndpoints
         admin.MapPost("/institutions/{slug}/support", IssueSupportTicketAsync)
             .WithMetadata(new HasPermissionAttribute(PlatformSupport.Permission));
 
+        // Plan 09, Q4: what the institution's roles and modules gained since it was approved, added.
+        // RequiresMfa, so the step-up middleware asks first.
+        admin.MapPost("/institutions/{slug}/sync-templates", SyncTemplatesAsync)
+            .WithMetadata(new HasPermissionAttribute("PLATFORM.INSTITUTIONS.EDIT"));
+
         admin.MapGet("/users", GetUsersAsync)
             .WithMetadata(new HasPermissionAttribute("PLATFORM.USERS.VIEW"));
 
@@ -74,6 +79,24 @@ internal static class AdminEndpoints
             .WithMetadata(new HasPermissionAttribute("PLATFORM.USERS.EDIT"));
 
         return app;
+    }
+
+    private static async Task<IResult> SyncTemplatesAsync(string slug, ICurrentUserContext user, TemplateSyncHandler handler, CancellationToken cancellationToken)
+    {
+        if (user.UserId is not { } actorId)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (slug.Length > MaxSlugLength)
+        {
+            return ApiErrors.Error(StatusCodes.Status404NotFound, "institution_not_found");
+        }
+
+        var result = await handler.SyncAsync(slug, actorId, cancellationToken);
+        return result.Found
+            ? Results.Ok(new { modules = result.Modules, roles = result.Roles, grants = result.Grants })
+            : ApiErrors.Error(StatusCodes.Status404NotFound, "institution_not_found");
     }
 
     private static async Task<IResult> GetInstitutionsAsync(

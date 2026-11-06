@@ -11,13 +11,17 @@ import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHea
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
 import { Link } from "@/i18n/navigation";
-import { cancelMyBooking, listMyBookings, listSharedWithMe, listYearly, type BookingFailure } from "@/lib/bookings/api";
+import { cancelMyBooking, listMyBookings, listSharedWithMe, listYearly, skipMyRegularDay, type BookingFailure } from "@/lib/bookings/api";
 import { asDate, colomboToday, daysBetween } from "@/lib/bookings/calendar";
 import { inLocale } from "@/lib/bookings/names";
 import type { DonorBooking, SharedBooking, YearlyBooking } from "@/lib/bookings/types";
+import { listMyDayRequests } from "@/lib/sponsors/api";
+import { canLetGoOwnDay } from "@/lib/sponsors/pattern";
+import type { MyDayRequest } from "@/lib/sponsors/types";
 import { cn, focusRing } from "@/lib/utils";
 import { BookingStatusBadge } from "./BookingStatusBadge";
 import { EmptyState } from "./EmptyState";
+import { MyDayRequests } from "./MyDayRequests";
 import { ShareSheet } from "./ShareSheet";
 import { SharedWithMe } from "./SharedWithMe";
 import { YearlyBookings } from "./YearlyBookings";
@@ -30,7 +34,9 @@ const MAX_REASON = 300;
 /**
  * The donor's bookings (plan 03, 5.7): what is coming, soonest first, and what has been, latest
  * first. A booking says where and when as a date stub, what became of it, and why if it did not
- * go ahead. Cancelling is offered only while the donor may still do it (Q1).
+ * go ahead. Cancelling is offered only while the donor may still do it (Q1). A regular day the
+ * institution set up is not cancelled but let go ("I can't give that day", plan 08 K24): today or
+ * later, by the institution's own rules, so it is recorded, never booked again, and the donor is texted.
  */
 export function MyBookings() {
   const t = useTranslations("MyBookings");
@@ -38,15 +44,18 @@ export function MyBookings() {
   const [failed, setFailed] = useState(false);
   const [yearly, setYearly] = useState<YearlyBooking[]>([]);
   const [shared, setShared] = useState<SharedBooking[]>([]);
+  const [requests, setRequests] = useState<MyDayRequest[]>([]);
   const [cancelling, setCancelling] = useState<DonorBooking | null>(null);
+  const [skipping, setSkipping] = useState<DonorBooking | null>(null);
   const [sharing, setSharing] = useState<DonorBooking | null>(null);
 
   // The bookings decide the page; the yearly ones and those shared with the donor (plan 07) are
   // sections beside them, left out if they cannot be read.
   const load = useCallback(async () => {
     setFailed(false);
-    const [result, yearlyResult, sharedResult] = await Promise.all([listMyBookings(), listYearly(), listSharedWithMe()]);
+    const [result, yearlyResult, sharedResult, requestsResult] = await Promise.all([listMyBookings(), listYearly(), listSharedWithMe(), listMyDayRequests()]);
     if (yearlyResult.ok) setYearly(yearlyResult.value);
+    if (requestsResult.ok) setRequests(requestsResult.value);
     if (sharedResult.ok) setShared(sharedResult.value);
     if (result.ok) setBookings(result.value);
     else setFailed(true);
@@ -77,7 +86,7 @@ export function MyBookings() {
     );
   }
 
-  if (bookings.length === 0 && yearly.length === 0 && shared.length === 0) {
+  if (bookings.length === 0 && yearly.length === 0 && shared.length === 0 && requests.length === 0) {
     return (
       <div className="grid gap-5">
         <EmptyState>{t("none")}</EmptyState>
@@ -95,10 +104,11 @@ export function MyBookings() {
 
   return (
     <div className="grid gap-10">
-      <Section title={t("upcoming")} empty={t("noneUpcoming")} bookings={upcoming} today={today} onCancel={setCancelling} onShare={setSharing} />
+      <Section title={t("upcoming")} empty={t("noneUpcoming")} bookings={upcoming} today={today} onCancel={setCancelling} onSkip={setSkipping} onShare={setSharing} />
+      {requests.length > 0 && <MyDayRequests requests={requests} />}
       {yearly.length > 0 && <YearlyBookings yearly={yearly} onStopped={() => void load()} />}
       {shared.length > 0 && <SharedWithMe shared={shared} />}
-      {past.length > 0 && <Section title={t("past")} bookings={past} today={today} onCancel={setCancelling} onShare={setSharing} />}
+      {past.length > 0 && <Section title={t("past")} bookings={past} today={today} onCancel={setCancelling} onSkip={setSkipping} onShare={setSharing} />}
 
       {sharing && <ShareSheet booking={sharing} onClose={() => setSharing(null)} />}
 
@@ -108,6 +118,18 @@ export function MyBookings() {
           onClose={() => setCancelling(null)}
           onCancelled={() => {
             setCancelling(null);
+            void load();
+          }}
+        />
+      )}
+
+      {skipping && (
+        <CancelSheet
+          booking={skipping}
+          skip
+          onClose={() => setSkipping(null)}
+          onCancelled={() => {
+            setSkipping(null);
             void load();
           }}
         />
@@ -122,6 +144,7 @@ function Section({
   bookings,
   today,
   onCancel,
+  onSkip,
   onShare,
 }: {
   title: string;
@@ -129,6 +152,7 @@ function Section({
   bookings: DonorBooking[];
   today: string;
   onCancel: (booking: DonorBooking) => void;
+  onSkip: (booking: DonorBooking) => void;
   onShare: (booking: DonorBooking) => void;
 }) {
   return (
@@ -140,7 +164,13 @@ function Section({
         <ul className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
           {bookings.map((booking) => (
             <li key={booking.bookingNo}>
-              <BookingCard booking={booking} today={today} onCancel={() => onCancel(booking)} onShare={() => onShare(booking)} />
+              <BookingCard
+                booking={booking}
+                today={today}
+                onCancel={() => onCancel(booking)}
+                onSkip={() => onSkip(booking)}
+                onShare={() => onShare(booking)}
+              />
             </li>
           ))}
         </ul>
@@ -149,7 +179,19 @@ function Section({
   );
 }
 
-function BookingCard({ booking, today, onCancel, onShare }: { booking: DonorBooking; today: string; onCancel: () => void; onShare: () => void }) {
+function BookingCard({
+  booking,
+  today,
+  onCancel,
+  onSkip,
+  onShare,
+}: {
+  booking: DonorBooking;
+  today: string;
+  onCancel: () => void;
+  onSkip: () => void;
+  onShare: () => void;
+}) {
   const t = useTranslations("MyBookings");
   const fulfilment = useTranslations("Booking.fulfilment");
   const dates = useDates();
@@ -157,6 +199,9 @@ function BookingCard({ booking, today, onCancel, onShare }: { booking: DonorBook
   const day = asDate(booking.date);
   const away = daysBetween(today, booking.date);
   const live = booking.status === "Requested" || booking.status === "Approved";
+  // A regular day is let go rather than cancelled, today too, as the institution may (K24).
+  const canSkip = canLetGoOwnDay(booking, today);
+  const canCancel = booking.canCancel && !booking.regular;
 
   return (
     <article className="flex overflow-hidden rounded-bowl border border-hairline bg-surface shadow-lift">
@@ -190,6 +235,7 @@ function BookingCard({ booking, today, onCancel, onShare }: { booking: DonorBook
           {t("people", { count: booking.headcount })} · {fulfilment(booking.fulfilmentMode)} · {booking.bookingNo}
         </p>
         {booking.yearly && live && <p className="text-sm font-medium text-brand">{t("partOfYearly")}</p>}
+        {booking.regular && <p className="text-sm font-medium text-brand">{t("regular")}</p>}
 
         {booking.inMemoryOf && <p className="font-tagline text-base italic text-fg">{t("inMemoryOf", { name: booking.inMemoryOf })}</p>}
 
@@ -202,16 +248,21 @@ function BookingCard({ booking, today, onCancel, onShare }: { booking: DonorBook
         {booking.status === "Requested" && <p className="text-sm text-muted">{t("waiting")}</p>}
 
         {/* Sharing needs a booking that is still to come (H36: Open). */}
-        {((live && away >= 0) || booking.canCancel) && (
+        {((live && away >= 0) || canCancel) && (
           <div className="-ml-3 flex flex-wrap gap-1 pt-1">
             {live && away >= 0 && (
               <Button variant="ghost" onClick={onShare}>
                 {t("shareThis")}
               </Button>
             )}
-            {booking.canCancel && (
+            {canCancel && (
               <Button variant="ghost" onClick={onCancel} className="text-danger hover:bg-danger/10">
                 {t("cancel")}
+              </Button>
+            )}
+            {canSkip && (
+              <Button variant="ghost" onClick={onSkip} className="text-danger hover:bg-danger/10">
+                {t("cantGive")}
               </Button>
             )}
           </div>
@@ -221,8 +272,9 @@ function BookingCard({ booking, today, onCancel, onShare }: { booking: DonorBook
   );
 }
 
-function CancelSheet({ booking, onClose, onCancelled }: { booking: DonorBooking; onClose: () => void; onCancelled: () => void }) {
-  const t = useTranslations("MyBookings.cancelSheet");
+/** Cancelling a booking, or with `skip` letting a regular day go: the same sheet, its own words and call. */
+function CancelSheet({ booking, skip = false, onClose, onCancelled }: { booking: DonorBooking; skip?: boolean; onClose: () => void; onCancelled: () => void }) {
+  const t = useTranslations(skip ? "MyBookings.skipSheet" : "MyBookings.cancelSheet");
   const toast = useToast();
   const wide = useWide();
   const errorMessage = useBookingError();
@@ -234,7 +286,7 @@ function CancelSheet({ booking, onClose, onCancelled }: { booking: DonorBooking;
     event.preventDefault();
     setSubmitting(true);
     setFailure(null);
-    const result = await cancelMyBooking(booking.bookingNo, reason.trim() || null);
+    const result = await (skip ? skipMyRegularDay : cancelMyBooking)(booking.bookingNo, reason.trim() || null);
     setSubmitting(false);
     if (result.ok) {
       toast({ variant: "success", title: t("done", { bookingNo: booking.bookingNo }) });
