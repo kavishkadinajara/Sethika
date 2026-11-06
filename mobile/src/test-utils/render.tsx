@@ -51,6 +51,9 @@ function screenOf(root: TestInstance) {
       return found;
     },
     queryTestId: (id: string): TestInstance | null => root.queryAll((node) => node.props.testID === id)[0] ?? null,
+    /** The host elements a test picks by their props, for what a donor sees but no text names. */
+    where: (matchesProps: (props: Record<string, unknown>) => boolean): TestInstance[] =>
+      root.queryAll((node) => matchesProps(node.props as Record<string, unknown>)),
   };
   return screen;
 }

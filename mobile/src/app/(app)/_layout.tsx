@@ -4,21 +4,17 @@ import { useEffect } from "react";
 import { ProfileProvider, useProfile } from "@/auth/profile-provider";
 import { useI18n } from "@/i18n/i18n-provider";
 import { isLanguage } from "@/i18n/translate";
+import { tabBarLook } from "@/theme/tab-bar";
 import { usePalette } from "@/theme/use-theme";
 
 export default function AppLayout() {
   const palette = usePalette();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
 
   return (
     <ProfileProvider>
       <AccountLanguage />
-      <NativeTabs
-        backgroundColor={palette.surface}
-        indicatorColor={palette.subtle}
-        labelStyle={{ selected: { color: palette.primary } }}
-        iconColor={{ selected: palette.primary }}
-      >
+      <NativeTabs {...tabBarLook(palette, language)}>
         <NativeTabs.Trigger name="index">
           <NativeTabs.Trigger.Label>{t("App.tabs.explore")}</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />

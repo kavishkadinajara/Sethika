@@ -1,7 +1,7 @@
 # Plan F — Mobile app (donors first)
 
 Status: **F.1 to F.4 built and merged**; F.5, F.6, F.7 and the UI/UX upgrade are planned in §10 on
-branch `mobile-f5`, **agreed with the user 2026-11-06 (scope B, the map kept); F.0 built, U.1 next**. Added to scope on
+branch `mobile-f5`, **agreed with the user 2026-11-06 (scope B, the map kept); F.0 and U.1 built, F.5a next**. Added to scope on
 2026-10-24 after the supervisor suggested that a mobile application part would strengthen the
 project. It was built **in parallel** with the backend phases; every API the remaining slices call
 has now merged into `develop`.
@@ -202,7 +202,7 @@ The base comes before the new screens, so F.5 to F.7 are built once, on the fina
 plan days; plans 08 and 09 ran at 1.5 to 3 times faster than estimated.
 
 - [x] **F.0 Repair (0.15).** `.npmrc`, lockfile, F18a; F35 on the phone and in the API (`regular_day`, 409; `canCancel` false on a regular day). Found on the way: `read()` took the skip's empty 204 as a failure, so a day let go would have shown an error. Lint and typecheck clean, Jest 117, web vitest 279, domain `BookingTests` 55, integration `StandingSponsorLinkTests` + `DonorBookingEndpointsTests` 32, format clean. Mutants: app 10/10, .NET 4/4. Mobile CI is proved locally only until the branch is pushed
-- [ ] **U.1 The base (0.3).** Tokens, F19's test, depth, `Text`/`Button`/`Card`/`Screen`, splash, tab bar
+- [x] **U.1 The base (0.3).** Tokens, F19's test, depth, `Text`/`Button`/`Card`/`Screen`, splash, tab bar. All 21 tokens match `globals.css` in both themes, and F19's test also covers the brand colours, the dark lift and the splash. Added on the way: si/ta get the web's 1.65 leading at every size, a `date` text variant for F22, the root view follows the theme, and the splash waits for a saved theme. A busy button now really keeps its width, the card rim is the web's short one, and Android's pull-to-refresh disc is off white. Lint and typecheck clean, Jest 157 (cold run), Android and web bundles build. Mutants: 49 of 50 killed. The survivor showed a line I had added was redundant, as `Pressable` already derives `disabled`, so the line and its test went. Look checked in a web export at 320 px in both themes, English only, signed out, with the token store stubbed: Explore, My bookings, Profile and sign-in all viewed; expo-symbols icons come out blank there, so icons were not checked. **Not seen on a phone**, so the native tab bar, the splash and the inset edge wait for the walk-through. Explore's green panel stays until U.2 replaces it (F21). To check on the phone: "Show password" ran out of its field at 320 px in the web export, probably a web-only effect
 - [ ] **F.5a Push, backend (0.6).** Table, device endpoints, decorator, Expo sender, templates, receipts job. Tests: a re-run sends nothing, a forced race sends once, two devices one each, SMS failure then retry, no template no push, a disabled device, a moved token reaches only its new owner, logout-all, `EndpointPolicyTests`
 - [ ] **F.5b Push, app (0.25).** Permission after sign-in, channel before token, the Profile switch, a tap opens My bookings, removal on sign-out
 - [ ] **F.7 Today (0.4).** Permissions provider, institution picker, Today tab, served

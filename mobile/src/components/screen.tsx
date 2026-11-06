@@ -6,6 +6,7 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
+  useColorScheme,
   View,
   type StyleProp,
   type ViewStyle,
@@ -13,8 +14,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useI18n } from "@/i18n/i18n-provider";
-import { bowl, brand, lift, radius, spacing } from "@/theme/colors";
-import { usePalette } from "@/theme/use-theme";
+import { bowl, radius, spacing } from "@/theme/colors";
+import { useLift, usePalette } from "@/theme/use-theme";
 
 import { Text } from "./text";
 
@@ -37,7 +38,14 @@ export function Screen({ children, edges = ["top", "bottom"], refreshing = false
           keyboardShouldPersistTaps="handled"
           refreshControl={
             onRefresh ? (
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.primary} colors={[palette.primary]} />
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={palette.primary}
+                colors={[palette.primary]}
+                // Android draws the spinner on a white disc unless told otherwise.
+                progressBackgroundColor={palette.surface}
+              />
             ) : undefined
           }
         >
@@ -67,15 +75,19 @@ export function ScreenHeader({ eyebrow, title, voice, aside }: { eyebrow?: strin
   );
 }
 
-/** The mark and name above an auth screen's title, with the tagline in the human voice. */
+const MARK = {
+  light: require("@/assets/images/splash-icon.png"),
+  dark: require("@/assets/images/splash-icon-dark.png"),
+};
+
+/** The mark and name above an auth screen's title: the ivory bowl on black, the green one on ivory. */
 export function BrandHeader() {
   const { t } = useI18n();
+  const scheme = useColorScheme();
   return (
     <View style={styles.brand}>
       <View style={styles.brandRow}>
-        <View style={[styles.markWell, { backgroundColor: brand.ivory }]}>
-          <Image source={require("@/assets/images/splash-icon.png")} style={styles.mark} accessibilityIgnoresInvertColors />
-        </View>
+        <Image source={scheme === "dark" ? MARK.dark : MARK.light} style={styles.mark} accessibilityIgnoresInvertColors />
         <Text variant="heading" style={styles.wordmark}>
           {t("Brand.name")}
         </Text>
@@ -107,6 +119,7 @@ export function FormError({ message }: { message: string | null }) {
  */
 export function Card({ children, rim = false, style }: { children: ReactNode; rim?: boolean; style?: StyleProp<ViewStyle> }) {
   const palette = usePalette();
+  const lift = useLift();
   return (
     <View style={[styles.card, lift, { backgroundColor: palette.surface, borderColor: palette.hairline }, style]}>
       {rim && <View style={[styles.rim, { backgroundColor: palette.accent }]} />}
@@ -135,11 +148,11 @@ const styles = StyleSheet.create({
   headerText: { flex: 1, gap: 2 },
   brand: { gap: spacing.xs, marginBottom: spacing.sm },
   brandRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  markWell: { width: 48, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  mark: { width: 36, height: 36 },
+  mark: { width: 44, height: 44 },
   wordmark: { letterSpacing: 0.3 },
   error: { borderLeftWidth: 4, borderRadius: radius.sm, padding: spacing.md },
   card: { ...bowl, borderWidth: 1, padding: spacing.md, gap: spacing.sm, overflow: "visible" },
-  rim: { position: "absolute", top: -1, left: 28, right: 28, height: 3, borderBottomLeftRadius: 3, borderBottomRightRadius: 3 },
+  // The web's rim: a short line near the left of the top edge, not a bar across it (DESIGN.md).
+  rim: { position: "absolute", top: -1, left: 20, width: 48, height: 3, borderBottomLeftRadius: 3, borderBottomRightRadius: 3 },
   sectionTitle: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.sm },
 });

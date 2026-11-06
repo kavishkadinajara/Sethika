@@ -9,8 +9,8 @@ import { Icon } from "@/components/icon";
 import { Text } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { useI18n } from "@/i18n/i18n-provider";
-import { bowl, cup, lift, radius, spacing } from "@/theme/colors";
-import { usePalette } from "@/theme/use-theme";
+import { bowl, cup, radius, spacing } from "@/theme/colors";
+import { useLift, usePalette } from "@/theme/use-theme";
 
 import { EmptyState, Failed, Loading } from "./states";
 
@@ -132,6 +132,7 @@ export function InstitutionDirectory({ refreshKey = 0, onSettled }: Props) {
 function InstitutionCard({ institution }: { institution: PublicInstitutionSummary }) {
   const { language } = useI18n();
   const palette = usePalette();
+  const lift = useLift();
   const name = localName(language, institution);
   const type = inLocale(language, institution.typeName, institution.typeNameSi, institution.typeNameTa);
   const district = inLocale(language, institution.district, institution.districtSi, institution.districtTa);
