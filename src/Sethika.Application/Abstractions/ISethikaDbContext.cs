@@ -118,6 +118,11 @@ public interface ISethikaDbContext
     DbSet<Need> Needs { get; }
     DbSet<Pledge> Pledges { get; }
 
+    // An order's status moves only by a conditional UPDATE (OnlinePaymentHandler, M9). A merchant's secret
+    // is ciphertext here (M21), and a donor's session cannot read the row at all (RLS fn_Tenant).
+    DbSet<OnlinePayment> OnlinePayments { get; }
+    DbSet<PaymentMerchant> PaymentMerchants { get; }
+
     DbSet<LookupValue> LookupValues { get; }
     DbSet<LookupType> LookupTypes { get; }
 

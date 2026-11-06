@@ -1926,3 +1926,61 @@ Drafts by Claude, not reviewed by a Sinhala or Tamil speaker. "Pledge" is writte
 | `Shell.items.needsBoard` | Needs board | අවශ්‍යතා පුවරුව | தேவைகள் பலகை |
 | `Shell.items.needs` | Needs | අවශ්‍යතා | தேவைகள் |
 | `Shell.public.needs` | Needs board | අවශ්‍යතා පුවරුව | தேவைகள் பலகை |
+| `Giving.give.heading` | Give money | මුදල් පරිත්‍යාග කරන්න | பணம் நன்கொடை அளியுங்கள் |
+| `Giving.give.intro` | Your gift goes straight to {name} through PayHere. Sethika never holds it. | ඔබේ පරිත්‍යාගය PayHere හරහා කෙලින්ම {name} වෙත යයි. Sethika එය කිසිවිටෙක තබා නොගනී. | உங்கள் நன்கொடை PayHere வழியாக நேரடியாக {name} க்குச் செல்லும். Sethika அதை ஒருபோதும் வைத்திருப்பதில்லை. |
+| `Giving.give.open` | Give online | මාර්ගගතව පරිත්‍යාග කරන්න | இணையவழியில் நன்கொடை அளியுங்கள் |
+| `Giving.give.openNeed` | Give money | මුදල් දෙන්න | பணம் அளியுங்கள் |
+| `Giving.give.openNeedNamed` | Give money toward {need} | {need} සඳහා මුදල් දෙන්න | {need} க்காகப் பணம் அளியுங்கள் |
+| `Giving.give.title` | Give to {name} | {name} වෙත පරිත්‍යාග කරන්න | {name} க்கு நன்கொடை அளியுங்கள் |
+| `Giving.give.titleNeed` | Give toward {need} | {need} සඳහා පරිත්‍යාග කරන්න | {need} க்காக நன்கொடை அளியுங்கள் |
+| `Giving.give.description` | You pay on PayHere's secure page, and the money goes to {name}. Your receipt comes once PayHere confirms it. | ඔබ ගෙවන්නේ PayHere හි ආරක්ෂිත පිටුවෙනි, මුදල {name} වෙත යයි. PayHere තහවුරු කළ පසු ඔබේ රිසිට්පත ලැබේ. | நீங்கள் PayHere இன் பாதுகாப்பான பக்கத்தில் செலுத்துவீர்கள், பணம் {name} க்குச் செல்லும். PayHere உறுதிப்படுத்தியதும் உங்கள் பற்றுச்சீட்டு கிடைக்கும். |
+| `Giving.give.signInFirst` | Sign in to give, so your receipt comes to you. You will come back here. | පරිත්‍යාග කිරීමට පුරනය වන්න, එවිට රිසිට්පත ඔබට ලැබේ. ඔබ නැවත මෙහිම පැමිණේවි. | நன்கொடை அளிக்க உள்நுழையுங்கள்; அப்போது பற்றுச்சீட்டு உங்களுக்குக் கிடைக்கும். நீங்கள் இங்கேயே திரும்புவீர்கள். |
+| `Giving.give.institutionSession` | You are working in an institution. Gifts are made from your own account. | ඔබ දැන් ආයතනයක වැඩ කරයි. පරිත්‍යාග කරන්නේ ඔබේම ගිණුමෙනි. | நீங்கள் ஒரு நிறுவனத்தில் பணிபுரிகிறீர்கள். நன்கொடைகள் உங்கள் சொந்தக் கணக்கிலிருந்து அளிக்கப்படும். |
+| `Giving.give.notAllowed` | This account cannot give online. | මෙම ගිණුමට මාර්ගගතව පරිත්‍යාග කළ නොහැක. | இந்தக் கணக்கால் இணையவழியில் நன்கொடை அளிக்க முடியாது. |
+| `Giving.give.amount` | Amount (LKR) | මුදල (රු.) | தொகை (ரூ.) |
+| `Giving.give.amountHint` | From LKR 100 to LKR 1,000,000. | රු. 100 සිට රු. 1,000,000 දක්වා. | ரூ. 100 முதல் ரூ. 1,000,000 வரை. |
+| `Giving.give.amountInvalid` | Enter an amount from 100 to 1,000,000, with at most two decimals. | 100 සිට 1,000,000 දක්වා මුදලක් ඇතුළත් කරන්න, දශමස්ථාන දෙකකට නොවැඩිව. | 100 முதல் 1,000,000 வரையான தொகையை, அதிகபட்சம் இரண்டு தசம இடங்களுடன் உள்ளிடுங்கள். |
+| `Giving.give.detailsHint` | PayHere asks for these. Sethika passes them on and does not keep them. | PayHere මේවා ඉල්ලයි. Sethika ඒවා PayHere වෙත යවයි, තබා නොගනී. | PayHere இவற்றைக் கேட்கிறது. Sethika இவற்றை அனுப்பும், வைத்திருக்காது. |
+| `Giving.give.email` | Email | ඊමේල් | மின்னஞ்சல் |
+| `Giving.give.emailInvalid` | Enter a valid email address. | වලංගු ඊමේල් ලිපිනයක් ඇතුළත් කරන්න. | சரியான மின்னஞ்சல் முகவரியை உள்ளிடுங்கள். |
+| `Giving.give.address` | Address | ලිපිනය | முகவரி |
+| `Giving.give.addressInvalid` | Enter your address. | ඔබේ ලිපිනය ඇතුළත් කරන්න. | உங்கள் முகவரியை உள்ளிடுங்கள். |
+| `Giving.give.city` | City | නගරය | நகரம் |
+| `Giving.give.cityInvalid` | Enter your city. | ඔබේ නගරය ඇතුළත් කරන්න. | உங்கள் நகரத்தை உள்ளிடுங்கள். |
+| `Giving.give.cancel` | Not now | දැන් නොවේ | இப்போது வேண்டாம் |
+| `Giving.give.save` | Go to PayHere | PayHere වෙත යන්න | PayHere க்குச் செல்லுங்கள் |
+| `Giving.return.pageTitle` | Your gift | ඔබේ පරිත්‍යාගය | உங்கள் நன்கொடை |
+| `Giving.return.paidTitle` | Thank you | ස්තූතියි | நன்றி |
+| `Giving.return.paidBody` | {name} received your gift of {money}. | ඔබේ {money} පරිත්‍යාගය {name} වෙත ලැබුණි. | உங்கள் {money} நன்கொடை {name} க்குக் கிடைத்தது. |
+| `Giving.return.receipt` | See receipt {receiptNo} | රිසිට්පත {receiptNo} බලන්න | பற்றுச்சீட்டு {receiptNo} ஐப் பாருங்கள் |
+| `Giving.return.mine` | My giving | මගේ පරිත්‍යාග | என் நன்கொடைகள் |
+| `Giving.return.waitingTitle` | Waiting for PayHere | PayHere බලාපොරොත්තුවෙන් | PayHere க்காகக் காத்திருக்கிறது |
+| `Giving.return.waitingBody` | PayHere has not confirmed this payment yet. Your receipt will come here and to My giving as soon as it does. | PayHere තවම මෙම ගෙවීම තහවුරු කර නැත. තහවුරු කළ වහාම ඔබේ රිසිට්පත මෙහිත්, මගේ පරිත්‍යාග තුළත් දිස් වේ. | PayHere இந்தக் கட்டணத்தை இன்னும் உறுதிப்படுத்தவில்லை. உறுதிப்படுத்தியதும் உங்கள் பற்றுச்சீட்டு இங்கும் என் நன்கொடைகளிலும் தோன்றும். |
+| `Giving.return.checkAgain` | Check again | නැවත බලන්න | மீண்டும் பாருங்கள் |
+| `Giving.return.failedTitle` | The payment did not go through | ගෙවීම සාර්ථක වූයේ නැත | கட்டணம் நிறைவேறவில்லை |
+| `Giving.return.failedBody` | No gift was recorded. You can try again from the page of {name}. | කිසිදු පරිත්‍යාගයක් සටහන් නොවීය. {name} පිටුවෙන් නැවත උත්සාහ කළ හැක. | நன்கொடை எதுவும் பதிவாகவில்லை. {name} பக்கத்திலிருந்து மீண்டும் முயற்சிக்கலாம். |
+| `Giving.return.leftTitle` | The payment was not finished | ගෙවීම අවසන් කළේ නැත | கட்டணம் முடிக்கப்படவில்லை |
+| `Giving.return.leftBody` | No gift was recorded. You can give again from the page of {name} whenever you wish. | කිසිදු පරිත්‍යාගයක් සටහන් නොවීය. ඔබ කැමති විටෙක {name} පිටුවෙන් නැවත පරිත්‍යාග කළ හැක. | நன்கொடை எதுவும் பதிவாகவில்லை. நீங்கள் விரும்பும்போது {name} பக்கத்திலிருந்து மீண்டும் அளிக்கலாம். |
+| `Giving.return.backToPlace` | Back to {name} | {name} වෙත ආපසු | {name} க்குத் திரும்பு |
+| `Giving.payments.title` | Online payments | මාර්ගගත ගෙවීම් | இணையவழிக் கட்டணங்கள் |
+| `Giving.payments.intro` | Let donors give online through your own PayHere merchant account. The money goes straight to you, never through Sethika. | ඔබේම PayHere වෙළෙන්දා ගිණුම හරහා දායකයන්ට මාර්ගගතව පරිත්‍යාග කිරීමට ඉඩ දෙන්න. මුදල කෙලින්ම ඔබට ලැබේ, Sethika හරහා කිසිවිටෙක නොයයි. | உங்கள் சொந்த PayHere வணிகர் கணக்கின் மூலம் நன்கொடையாளர்கள் இணையவழியில் அளிக்க அனுமதியுங்கள். பணம் நேரடியாக உங்களுக்கு வரும், Sethika வழியாக ஒருபோதும் செல்லாது. |
+| `Giving.payments.howTo` | In your PayHere account, open Integrations and add Sethika's web address. When PayHere approves it, which can take a day, copy the merchant ID and the merchant secret here. | ඔබේ PayHere ගිණුමේ Integrations විවෘත කර Sethika හි වෙබ් ලිපිනය එක් කරන්න. PayHere එය අනුමත කළ පසු (දිනක් පමණ ගත විය හැක), Merchant ID සහ Merchant Secret මෙහි පිටපත් කරන්න. | உங்கள் PayHere கணக்கில் Integrations ஐத் திறந்து Sethika இணைய முகவரியைச் சேருங்கள். PayHere அதை அங்கீகரித்ததும் (ஒரு நாள் ஆகலாம்), Merchant ID மற்றும் Merchant Secret ஐ இங்கே நகலெடுங்கள். |
+| `Giving.payments.refunds` | Refunds are made in your PayHere portal. Then void the gift in Donations and receipts. | මුදල් ආපසු දීම ඔබේ PayHere ද්වාරයෙන් කරන්න. ඉන්පසු පරිත්‍යාග සහ රිසිට්පත් තුළ එම පරිත්‍යාගය අවලංගු කරන්න. | பணத்தைத் திரும்பக் கொடுப்பது உங்கள் PayHere தளத்தில் செய்யப்படும். பின்னர் நன்கொடைகள் மற்றும் பற்றுச்சீட்டுகளில் அந்த நன்கொடையை ரத்து செய்யுங்கள். |
+| `Giving.payments.merchantId` | Merchant ID | Merchant ID | Merchant ID |
+| `Giving.payments.merchantIdInvalid` | Enter the merchant ID from PayHere: letters and digits only. | PayHere හි Merchant ID ඇතුළත් කරන්න: අකුරු සහ ඉලක්කම් පමණි. | PayHere இன் Merchant ID ஐ உள்ளிடுங்கள்: எழுத்துகளும் எண்களும் மட்டும். |
+| `Giving.payments.secret` | Merchant secret | Merchant Secret | Merchant Secret |
+| `Giving.payments.secretNew` | Stored encrypted. Nobody can read it back, not even you. | සංකේතනය කර ගබඩා වේ. එය නැවත කියවීමට කිසිවෙකුට, ඔබටවත්, නොහැක. | குறியாக்கம் செய்து சேமிக்கப்படும். அதை யாராலும், உங்களாலும்கூட, மீண்டும் படிக்க முடியாது. |
+| `Giving.payments.secretKeep` | Saved and encrypted. Leave this empty to keep it. A new merchant ID needs its own secret. | සංකේතනය කර සුරැකී ඇත. එය එලෙසම තබා ගැනීමට මෙය හිස්ව තබන්න. නව Merchant ID එකකට එහිම Secret එකක් අවශ්‍යයි. | சேமிக்கப்பட்டு குறியாக்கம் செய்யப்பட்டுள்ளது. அதை வைத்திருக்க இதை வெறுமையாக விடுங்கள். புதிய Merchant ID க்கு அதற்கான Secret தேவை. |
+| `Giving.payments.secretInvalid` | Enter the merchant secret from PayHere. | PayHere හි Merchant Secret ඇතුළත් කරන්න. | PayHere இன் Merchant Secret ஐ உள்ளிடுங்கள். |
+| `Giving.payments.enabled` | Donors can give online | දායකයන්ට මාර්ගගතව පරිත්‍යාග කළ හැක | நன்கொடையாளர்கள் இணையவழியில் அளிக்கலாம் |
+| `Giving.payments.enabledHint` | When this is off, your page does not offer it. | මෙය අක්‍රිය විට, ඔබේ පිටුවේ එය නොපෙන්වයි. | இது முடக்கப்பட்டிருக்கும்போது, உங்கள் பக்கத்தில் இது காட்டப்படாது. |
+| `Giving.payments.savedBy` | Last saved on {date} by {name}. | අවසන් වරට {date} දින {name} විසින් සුරකින ලදී. | கடைசியாக {date} அன்று {name} சேமித்தார். |
+| `Giving.payments.save` | Save | සුරකින්න | சேமி |
+| `Giving.payments.saved` | The online payment settings are saved. | මාර්ගගත ගෙවීම් සැකසුම් සුරකින ලදී. | இணையவழிக் கட்டண அமைப்புகள் சேமிக்கப்பட்டன. |
+| `Giving.payments.stale` | Someone saved these settings while you were looking at them. Open the page again. | ඔබ බලා සිටියදී කෙනෙකු මෙම සැකසුම් සුරැකුවා. පිටුව නැවත විවෘත කරන්න. | நீங்கள் பார்த்துக்கொண்டிருக்கும்போது யாரோ இந்த அமைப்புகளைச் சேமித்தனர். பக்கத்தை மீண்டும் திறங்கள். |
+| `Giving.payments.readOnly` | Only someone who may change the merchant can save these settings. | මෙම සැකසුම් සුරැකිය හැක්කේ වෙළෙන්දා වෙනස් කිරීමට අවසර ඇති අයට පමණි. | வணிகரை மாற்ற அனுமதி உள்ளவர் மட்டுமே இந்த அமைப்புகளைச் சேமிக்க முடியும். |
+| `Giving.payments.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயற்சிக்கவும் |
+| `Giving.errors.online_giving_off` | This place is not taking online gifts right now. | මෙම ස්ථානය දැනට මාර්ගගත පරිත්‍යාග භාර ගන්නේ නැත. | இந்த இடம் தற்போது இணையவழி நன்கொடைகளை ஏற்கவில்லை. |
+| `Giving.errors.payment_not_found` | There is no such payment on this account. | මෙම ගිණුමේ එවැනි ගෙවීමක් නැත. | இந்தக் கணக்கில் அப்படி ஒரு கட்டணம் இல்லை. |
+| `Giving.errors.phone_required` | Your account needs a confirmed phone number before you can give. | පරිත්‍යාග කිරීමට පෙර ඔබේ ගිණුමට තහවුරු කළ දුරකථන අංකයක් අවශ්‍යයි. | நன்கொடை அளிக்கும் முன் உங்கள் கணக்கில் உறுதிப்படுத்தப்பட்ட தொலைபேசி எண் தேவை. |
+| `Shell.items.payments` | Online payments | මාර්ගගත ගෙවීම් | இணையவழிக் கட்டணங்கள் |

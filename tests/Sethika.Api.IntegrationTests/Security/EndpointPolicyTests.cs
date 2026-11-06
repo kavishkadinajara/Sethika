@@ -64,6 +64,9 @@ public sealed class EndpointPolicyTests(SethikaTestDatabase database)
         "GET /api/needs",
         "GET /api/needs/lookups",
 
+        // PayHere's server has no account here: its signature is the credential (plan 09, M9).
+        "POST /api/payments/payhere/notify",
+
         // The live calendars' hub (plan 07, H9, H29): it hints at the same open days, so the same
         // anyone may hear them. SignalR maps the connection and its negotiation for every method.
         "* /api/hubs/availability",

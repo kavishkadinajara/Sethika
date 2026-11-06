@@ -5,7 +5,8 @@
     signed server-to-server notification turns an order Paid, and with it records the donation in the
     same transaction (M9). OrderId is what PayHere is given and sends back; MerchantId is the
     institution's own merchant the order was made for (M10), so a notification signed with another
-    institution's secret is refused. RLS fn_TenantOrOwner: the institution and the donor who paid. */
+    institution's secret is refused. RLS: the institution and the donor who paid read it (fn_TenantOrOwner);
+    the order and the notification both run as the platform, so no donor's session writes it (M34).  */
 CREATE TABLE giving.OnlinePayments (
     Id                BIGINT        IDENTITY(1,1) PRIMARY KEY,
     OrderId           UNIQUEIDENTIFIER NOT NULL,        -- v7, set in C#; PayHere's order_id

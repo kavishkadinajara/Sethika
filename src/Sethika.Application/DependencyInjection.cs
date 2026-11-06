@@ -23,6 +23,7 @@ using Sethika.Application.Bookings.Sponsors;
 using Sethika.Application.Bookings.Today;
 using Sethika.Application.Giving.Donations;
 using Sethika.Application.Giving.Needs;
+using Sethika.Application.Giving.Payments;
 using Sethika.Application.Onboarding.Applying;
 using Sethika.Application.Onboarding.Approval;
 using Sethika.Application.Onboarding.Notifications;
@@ -79,6 +80,8 @@ public static class DependencyInjection
         services.AddScoped<ShareHandler>();
         services.AddScoped<DonorBookHandler>();
         services.AddScoped<DonationHandler>();
+        services.AddScoped<PaymentMerchantHandler>();
+        services.AddScoped<OnlinePaymentHandler>();
         services.AddScoped<NeedHandler>();
         services.AddScoped<PledgeHandler>();
         services.AddScoped<StandingDayBooker>();

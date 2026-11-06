@@ -48,6 +48,8 @@ export type PublicInstitution = PublicInstitutionSummary & {
   latitude: number;
   longitude: number;
   slots: PublicMealSlot[];
+  /** It has an enabled merchant, so its page offers "Give online" (plan 09, M10). */
+  givesOnline: boolean;
   /** Religious services it takes requests for; empty while its SERVICES module is off (V25, V26). */
   services: PublicServiceType[];
 };

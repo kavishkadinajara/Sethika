@@ -51,7 +51,8 @@
       "myGiving": "My giving",
       "donations": "Donations and receipts",
       "needsBoard": "Needs board",
-      "needs": "Needs"
+      "needs": "Needs",
+      "payments": "Online payments"
     },
     "context": {
       "platform": "Platform team",
@@ -2370,7 +2371,10 @@
       "open_pledges": "People still have open pledges on this need. Mark each one delivered or cancel it first.",
       "need_has_gifts": "Gifts have come for this need, so it cannot be cancelled. Close it instead: what came stays counted.",
       "pledge_not_open": "This pledge is already delivered or cancelled.",
-      "too_many_pledges": "You already have 5 open pledges on this need. Deliver or cancel one first."
+      "too_many_pledges": "You already have 5 open pledges on this need. Deliver or cancel one first.",
+      "online_giving_off": "This place is not taking online gifts right now.",
+      "payment_not_found": "There is no such payment on this account.",
+      "phone_required": "Your account needs a confirmed phone number before you can give."
     },
     "donations": {
       "title": "Donations and receipts",
@@ -2650,6 +2654,66 @@
       "cancel": "Cancel my pledge",
       "cancelNamed": "Cancel my pledge to {need}",
       "cancelled": "Your pledge is cancelled."
+    },
+    "give": {
+      "heading": "Give money",
+      "intro": "Your gift goes straight to {name} through PayHere. Sethika never holds it.",
+      "open": "Give online",
+      "openNeed": "Give money",
+      "openNeedNamed": "Give money toward {need}",
+      "title": "Give to {name}",
+      "titleNeed": "Give toward {need}",
+      "description": "You pay on PayHere's secure page, and the money goes to {name}. Your receipt comes once PayHere confirms it.",
+      "signInFirst": "Sign in to give, so your receipt comes to you. You will come back here.",
+      "institutionSession": "You are working in an institution. Gifts are made from your own account.",
+      "notAllowed": "This account cannot give online.",
+      "amount": "Amount (LKR)",
+      "amountHint": "From LKR 100 to LKR 1,000,000.",
+      "amountInvalid": "Enter an amount from 100 to 1,000,000, with at most two decimals.",
+      "detailsHint": "PayHere asks for these. Sethika passes them on and does not keep them.",
+      "email": "Email",
+      "emailInvalid": "Enter a valid email address.",
+      "address": "Address",
+      "addressInvalid": "Enter your address.",
+      "city": "City",
+      "cityInvalid": "Enter your city.",
+      "cancel": "Not now",
+      "save": "Go to PayHere"
+    },
+    "return": {
+      "pageTitle": "Your gift",
+      "paidTitle": "Thank you",
+      "paidBody": "{name} received your gift of {money}.",
+      "receipt": "See receipt {receiptNo}",
+      "mine": "My giving",
+      "waitingTitle": "Waiting for PayHere",
+      "waitingBody": "PayHere has not confirmed this payment yet. Your receipt will come here and to My giving as soon as it does.",
+      "checkAgain": "Check again",
+      "failedTitle": "The payment did not go through",
+      "failedBody": "No gift was recorded. You can try again from the page of {name}.",
+      "leftTitle": "The payment was not finished",
+      "leftBody": "No gift was recorded. You can give again from the page of {name} whenever you wish.",
+      "backToPlace": "Back to {name}"
+    },
+    "payments": {
+      "title": "Online payments",
+      "intro": "Let donors give online through your own PayHere merchant account. The money goes straight to you, never through Sethika.",
+      "howTo": "In your PayHere account, open Integrations and add Sethika's web address. When PayHere approves it, which can take a day, copy the merchant ID and the merchant secret here.",
+      "refunds": "Refunds are made in your PayHere portal. Then void the gift in Donations and receipts.",
+      "merchantId": "Merchant ID",
+      "merchantIdInvalid": "Enter the merchant ID from PayHere: letters and digits only.",
+      "secret": "Merchant secret",
+      "secretNew": "Stored encrypted. Nobody can read it back, not even you.",
+      "secretKeep": "Saved and encrypted. Leave this empty to keep it. A new merchant ID needs its own secret.",
+      "secretInvalid": "Enter the merchant secret from PayHere.",
+      "enabled": "Donors can give online",
+      "enabledHint": "When this is off, your page does not offer it.",
+      "savedBy": "Last saved on {date} by {name}.",
+      "save": "Save",
+      "saved": "The online payment settings are saved.",
+      "stale": "Someone saved these settings while you were looking at them. Open the page again.",
+      "readOnly": "Only someone who may change the merchant can save these settings.",
+      "retry": "Try again"
     }
   }
 }

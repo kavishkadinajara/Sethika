@@ -24,6 +24,9 @@ const givingCodes = [
   "need_has_gifts",
   "pledge_not_open",
   "too_many_pledges",
+  "online_giving_off",
+  "payment_not_found",
+  "phone_required",
 ] as const;
 type GivingCode = (typeof givingCodes)[number];
 

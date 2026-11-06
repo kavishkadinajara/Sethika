@@ -76,9 +76,9 @@ internal static class DonorBookingEndpoints
     private static async Task<IResult> ListInstitutionsAsync(IDonorBookingQueries queries, CancellationToken cancellationToken) =>
         Results.Ok(await queries.ListInstitutionsAsync(cancellationToken));
 
-    private static async Task<IResult> GetInstitutionAsync(string slug, IDonorBookingQueries queries, CancellationToken cancellationToken) =>
+    private static async Task<IResult> GetInstitutionAsync(string slug, IDonorBookingQueries queries, IOnlineGiving onlineGiving, CancellationToken cancellationToken) =>
         IsSlug(slug) && await queries.GetInstitutionAsync(slug, cancellationToken) is { } institution
-            ? Results.Ok(institution)
+            ? Results.Ok(institution with { GivesOnline = await onlineGiving.IsOnAsync(institution.Slug, cancellationToken) })
             : ApiErrors.Error(StatusCodes.Status404NotFound, InstitutionNotFound);
 
     private static async Task<IResult> GetAvailabilityAsync(string slug, string? month, AvailabilityCalendar calendar, CancellationToken cancellationToken)

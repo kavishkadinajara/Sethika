@@ -1,10 +1,15 @@
 import { json, jsonBody, send } from "@/lib/onboarding/api";
 import { publicGet, type BookingResult } from "@/lib/bookings/api";
 import type {
+  CheckoutForm,
   DonationInput,
   DonationListItem,
+  GiveInput,
   LookupItem,
+  MerchantInput,
+  MerchantSettings,
   MyDonation,
+  MyPayment,
   MyPledge,
   NeedInput,
   NeedListItem,
@@ -105,4 +110,27 @@ export async function listMyPledges(): Promise<BookingResult<MyPledge[]>> {
 
 export async function cancelMyPledge(publicId: string): Promise<BookingResult<Done>> {
   return json(await send(`${MY_PLEDGES}/${encodeURIComponent(publicId)}/cancel`, { method: "POST" }));
+}
+
+// ---- online giving (plan 09, D.3) -----------------------------------------------------------------
+
+const MERCHANT = "/api/institution/payments/merchant";
+
+export async function getMerchant(): Promise<BookingResult<{ merchant: MerchantSettings | null }>> {
+  return json(await send(MERCHANT, { method: "GET" }));
+}
+
+/** Saves the merchant (M10), behind a step-up. A `secret` of null keeps the stored one. */
+export async function saveMerchant(input: MerchantInput): Promise<BookingResult<{ version: string }>> {
+  return json(await send(MERCHANT, jsonBody("PUT", input)));
+}
+
+/** Writes the order and answers PayHere's signed form (M8). */
+export async function startGift(slug: string, input: GiveInput): Promise<BookingResult<CheckoutForm>> {
+  return json(await send(`/api/institutions/${encodeURIComponent(slug)}/give`, jsonBody("POST", input)));
+}
+
+/** One of the donor's own orders, as the notification left it (M9). */
+export async function getMyPayment(orderId: string): Promise<BookingResult<MyPayment>> {
+  return json(await send(`/api/me/payments/${encodeURIComponent(orderId)}`, { method: "GET" }));
 }

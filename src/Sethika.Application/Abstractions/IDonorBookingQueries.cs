@@ -60,6 +60,7 @@ public sealed record PublicServiceTypeView(
 /// number, phone, email or internal ids.
 /// </summary>
 /// <param name="Services">Active service types, and only while the institution's <c>SERVICES</c> module is on (V12).</param>
+/// <param name="GivesOnline">It has an enabled merchant, so its page offers "Give online" (plan 09, M10). Set by the endpoint.</param>
 public sealed record PublicInstitutionView(
     string Slug,
     string Name,
@@ -80,7 +81,8 @@ public sealed record PublicInstitutionView(
     decimal Latitude,
     decimal Longitude,
     IReadOnlyList<PublicMealSlotView> Slots,
-    IReadOnlyList<PublicServiceTypeView> Services);
+    IReadOnlyList<PublicServiceTypeView> Services,
+    bool GivesOnline = false);
 
 /// <summary>
 /// What the availability calendar is computed from: one institution's active slots and their

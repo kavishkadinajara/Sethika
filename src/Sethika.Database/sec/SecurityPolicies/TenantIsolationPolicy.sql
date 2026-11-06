@@ -20,9 +20,11 @@ CREATE SECURITY POLICY sec.TenantIsolationPolicy
     ADD BLOCK  PREDICATE sec.fn_Contributor(InstitutionId, UserId, InvitedBy) ON booking.BookingContributors AFTER UPDATE,
     /* giving (plan 09). A donation: its institution and the donor's account may read it (the receipt,
        M4); only the institution writes it (a donor's session cannot make itself a receipt; an online gift
-       is recorded as the platform, M9), and never edits it (trg_Donations_Immutable, M7). An online
-       gift (M8) and a pledge (M13): the institution and the donor; a donor's own pledge and cancel run
-       as the platform (M14). A merchant and its secret (M10): the institution alone.                */
+       is recorded as the platform, M9), and never edits it (trg_Donations_Immutable, M7). A pledge (M13):
+       the institution and the donor; a donor's own pledge and cancel run as the platform (M14). An online
+       gift (M8): the institution and the donor read it, and a donor's session writes nothing, because
+       the order and the notification both run as the platform, so a donor cannot mark their own order
+       paid (M34). A merchant and its secret (M10): the institution alone.                           */
     ADD FILTER PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Donations,
     ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON giving.Donations AFTER INSERT,
     ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON giving.Donations AFTER UPDATE,
@@ -30,8 +32,8 @@ CREATE SECURITY POLICY sec.TenantIsolationPolicy
     ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Pledges AFTER INSERT,
     ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.Pledges AFTER UPDATE,
     ADD FILTER PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.OnlinePayments,
-    ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.OnlinePayments AFTER INSERT,
-    ADD BLOCK  PREDICATE sec.fn_TenantOrOwner(InstitutionId, DonorUserId) ON giving.OnlinePayments AFTER UPDATE,
+    ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON giving.OnlinePayments AFTER INSERT,
+    ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON giving.OnlinePayments AFTER UPDATE,
     ADD FILTER PREDICATE sec.fn_Tenant(InstitutionId) ON giving.PaymentMerchants,
     ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON giving.PaymentMerchants AFTER INSERT,
     ADD BLOCK  PREDICATE sec.fn_Tenant(InstitutionId) ON giving.PaymentMerchants AFTER UPDATE,

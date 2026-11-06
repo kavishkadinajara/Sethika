@@ -84,11 +84,14 @@ public static class DependencyInjection
         services.AddScoped<IDonorBookLinks>(_ => new SqlDonorBookLinks(connectionString));
         services.AddScoped<IOwnStandingDays, PlatformOwnStandingDays>();
         services.AddScoped<IOwnPledges, PlatformPledges>();
+        services.AddScoped<IPlatformPayments, PlatformPayments>();
+        services.AddScoped<IOnlineGiving>(_ => new SqlOnlineGiving(connectionString));
         services.AddScoped<IBookingNotificationQueries, BookingNotificationQueries>();
         services.AddScoped<IServiceSetupQueries, ServiceSetupQueries>();
         services.AddScoped<IDonorBookQueries, DonorBookQueries>();
         services.AddScoped<IGivingQueries, GivingQueries>();
         services.AddScoped<INeedQueries, NeedQueries>();
+        services.AddScoped<IPaymentQueries, PaymentQueries>();
         services.AddScoped<IStandingSponsorshipQueries, StandingSponsorshipQueries>();
         services.AddScoped<IDayRequestQueries, DayRequestQueries>();
         services.AddScoped<IDonorAppointmentQueries, DonorAppointmentQueries>();
@@ -226,6 +229,30 @@ public static class DependencyInjection
 
         // Stateless over the singleton multiplexer, like the step-up grants.
         services.AddSingleton<IPasswordResetTickets, RedisPasswordResetTickets>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers what online giving needs from configuration: the keys that seal merchant secrets (plan 09,
+    /// M21) and the addresses PayHere is given (M10).
+    /// </summary>
+    /// <remarks>
+    /// Read at registration for the same reason as <see cref="AddSethikaAccess"/>: a missing key fails the
+    /// start-up, not a donor's payment.
+    /// </remarks>
+    public static IServiceCollection AddSethikaPayments(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        bool isDevelopment)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var options = configuration.GetSection(PaymentOptions.SectionName).Get<PaymentOptions>() ?? new PaymentOptions();
+
+        services.AddSingleton<IMerchantSecrets>(AesGcmMerchantSecrets.Create(options));
+        services.AddSingleton<IPayHereSite>(ConfiguredPayHereSite.Create(options.PayHere, isDevelopment));
 
         return services;
     }

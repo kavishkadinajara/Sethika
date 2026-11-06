@@ -23,19 +23,19 @@ const keys = (sections: NavSection[]) =>
 describe("visible menu", () => {
   it("gives a donor the dashboard and giving, and nothing of an institution or the platform", () => {
     const donor = holding("MYBOOKINGS.BOOKINGS.VIEW", "ONBOARDING.APPLICATION.VIEW");
-    expect(keys(visibleNav(donor))).toEqual(["dashboard[]", "giving[find,myBookings,apply]"]);
+    expect(keys(visibleNav(donor))).toEqual(["dashboard[]", "giving[find,myBookings,needsBoard,apply]"]);
   });
 
   it("gives a donor who may ask for services their requests, in a group of its own", () => {
     const donor = holding("MYBOOKINGS.BOOKINGS.VIEW", "MYSERVICES.APPOINTMENTS.VIEW");
     const giving = visibleNav(donor).find((s) => s.key === "giving");
-    expect(giving?.groups.map((g) => `${g.key}[${g.items.map((i) => i.key).join(",")}]`)).toEqual(["book[find,myBookings]", "request[myServices]"]);
+    expect(giving?.groups.map((g) => `${g.key}[${g.items.map((i) => i.key).join(",")}]`)).toEqual(["book[find,myBookings]", "request[myServices]", "give[needsBoard]"]);
   });
 
   it("drops a link whose VIEW is missing, and a group left empty by that", () => {
     const noApplying = holding("MYBOOKINGS.BOOKINGS.VIEW");
     const giving = visibleNav(noApplying).find((s) => s.key === "giving");
-    expect(giving?.groups.map((g) => g.key)).toEqual(["book"]);
+    expect(giving?.groups.map((g) => g.key)).toEqual(["book", "give"]);
   });
 
   it("shows an institution's screens only for the VIEW actually held", () => {
@@ -55,9 +55,14 @@ describe("visible menu", () => {
     expect(keys(visibleNav(owner))).toContain("institution[appointments,serviceTypes,leaders]");
   });
 
+  it("shows the online payment settings to whoever may view them, after the needs (plan 09, M10)", () => {
+    expect(keys(visibleNav(holding("GIVING.NEEDS.VIEW", "GIVING.PAYMENTS.VIEW")))).toContain("institution[needs,payments]");
+    expect(keys(visibleNav(holding("GIVING.NEEDS.VIEW", "GIVING.PAYMENTS.EDIT")))).toContain("institution[needs]");
+  });
+
   it("needs VIEW, not another action on the same screen", () => {
     const approverOnly = holding("BOOKINGS.CALENDAR.APPROVE", "ONBOARDING.REQUESTS.APPROVE");
-    expect(keys(visibleNav(approverOnly))).toEqual(["dashboard[]", "giving[find]"]);
+    expect(keys(visibleNav(approverOnly))).toEqual(["dashboard[]", "giving[find,needsBoard]"]);
   });
 
   it("gives a platform reviewer the registrations", () => {
@@ -65,7 +70,7 @@ describe("visible menu", () => {
   });
 
   it("keeps the public links for someone holding nothing", () => {
-    expect(keys(visibleNav(holding()))).toEqual(["dashboard[]", "giving[find]"]);
+    expect(keys(visibleNav(holding()))).toEqual(["dashboard[]", "giving[find,needsBoard]"]);
   });
 });
 
@@ -157,8 +162,8 @@ describe("jump to", () => {
   const found = (query: string) => matchJump(targets, query).map((t) => t.key);
 
   it("offers every screen the user may view, once, in menu order", () => {
-    expect(targets.map((t) => t.key)).toEqual(["dashboard", "find", "myBookings", "calendar", "slots"]);
-    expect(found("")).toEqual(["dashboard", "find", "myBookings", "calendar", "slots"]);
+    expect(targets.map((t) => t.key)).toEqual(["dashboard", "find", "myBookings", "needsBoard", "calendar", "slots"]);
+    expect(found("")).toEqual(["dashboard", "find", "myBookings", "needsBoard", "calendar", "slots"]);
   });
 
   it("never offers a screen the menu hides", () => {

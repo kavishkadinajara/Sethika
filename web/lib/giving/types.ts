@@ -183,3 +183,38 @@ export type NeedInput = {
   deadline: string | null;
   version?: string;
 };
+
+/*  Online giving (plan 09, D.3), as PaymentEndpoints.cs sends it. */
+
+/** The merchant as the screen reads it. There is no secret here, in any form (M10). */
+export type MerchantSettings = {
+  merchantId: string;
+  isEnabled: boolean;
+  updatedAt: string;
+  updatedByName: string;
+  version: string;
+};
+
+export type MerchantInput = { merchantId: string; secret: string | null; enabled: boolean; version: string | null };
+
+/** The give sheet's body. `email`, `address` and `city` go on to PayHere and are not stored (M33). */
+export type GiveInput = { amount: number; need: string | null; email: string; address: string; city: string };
+
+/** What the browser posts to PayHere (M8). */
+export type CheckoutForm = { orderId: string; action: string; fields: Record<string, string> };
+
+export type PaymentStatus = "Pending" | "Paid" | "Failed" | "Cancelled";
+
+/** An order on the return page: only what the notification left (M9). */
+export type MyPayment = {
+  orderId: string;
+  amount: number;
+  currencyCode: string;
+  status: PaymentStatus;
+  institutionName: string;
+  institutionNameSi: string | null;
+  institutionNameTa: string | null;
+  institutionSlug: string;
+  receiptPublicId: string | null;
+  receiptNo: string | null;
+};

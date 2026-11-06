@@ -1,6 +1,6 @@
 # Plan 09 — Phase D: giving and insight (donations, receipts, needs board, reports)
 
-Status: **agreed 2026-11-04 (answers in §8). D.1 built 2026-11-04. D.2 built 2026-11-05 (not committed; box in §7). D.3-D.5 not started.** Branch: `standing-sponsors`
+Status: **agreed 2026-11-04 (answers in §8). D.1 built 2026-11-04. D.2 built 2026-11-05. D.3 built 2026-11-06 (not committed; box in §7). D.4-D.5 not started.** Branch: `standing-sponsors`
 (plan 08 and Phase D go to develop in one pull request, the user 2026-11-04). Decision numbers here are
 **M1, M2, …**.
 
@@ -107,6 +107,16 @@ or pledges for standing days" to this phase: recording a donation from a donor b
 | M30 | **Voiding a gift against a need takes it out of the need** (both counters, in the void's transaction), and a need it had fulfilled is open again; a closed need stays closed with the true count. The pledge of a voided receipt stays `Delivered`, because the delivery happened; the correction is recording the gift again | M6: a voided gift leaves every total, and a need's progress is a total. M6 did not say so, and without it a need would stay fulfilled on a void receipt |
 | M31 | **`giving.Pledges` gains `PublicId`** (UUID v7 from code, `UNIQUE`). §3 left it out, but staff and donors address a pledge in URLs. `UPDATE Needs` comes before the pledge's `INSERT` (M13 said the other order): the row lock it takes is what makes the "at most 5 open pledges" count safe against a donor racing themselves. A passed deadline takes a need off the board and refuses pledges (`need_closed`) while it stays `Open` for staff. An unlisted institution's needs show on its own page only | CLAUDE.md: never `Id` in a URL. The table was empty everywhere, so the column is a plain `ALTER` |
 
+### Decided while building D.3 (2026-11-06)
+
+| # | Decision | Why |
+|---|---|---|
+| M32 | **The notification claims the order in two steps, and a signed success beats an earlier failure.** `CK_OnlinePay_Paid` ties `Paid` to a `DonationId`, so M9's one UPDATE cannot come first: a conditional UPDATE claims the row (`Status <> 'Paid'`), the gift is written, a second UPDATE marks it paid, all in one transaction. The claim is `<> 'Paid'`, not M9's `= 'Pending'`, because a success after a failure means the donor retried and the money was taken. A failure still ends only a pending order, so nothing undoes a paid one | The row lock from the claim makes a second notification wait, find it paid, and stop before taking a receipt number, so the book stays gap-free. Ignoring a late success would leave money received with no receipt: the one outcome worse than a retry |
+| M33 | **The give sheet also asks for email, address and city, and Sethika passes them on without keeping them.** PayHere's Checkout API requires `email`, `address`, `city` and `country` (M8 listed none of them), and Sethika's accounts are phone-first. The API checks them, puts them in the form, and stores them nowhere, not on the order and not in the audit row. `country` is fixed to Sri Lanka; `first_name` and `last_name` split the account's name, a single name filling both. The sheet's text says so | Inventing an email would send PayHere's own receipt nowhere and might fail its validation (no sandbox to try it on, Q1). Asking is the only choice certain to be valid; not storing them keeps the data Sethika holds to what it needs |
+| M34 | **The order runs as the platform too, and a donor's session writes nothing on `giving.OnlinePayments`.** M8 left it in the donor's session, but the merchant's row is `fn_Tenant`, so `PlatformPayments` runs both the order and the notification (`IPlatformPayments`, as M14). The table's block predicates change from `fn_TenantOrOwner` to `fn_Tenant`; reading stays `fn_TenantOrOwner` | Once nothing needs a donor's write, leaving it open only lets a raw session mark its own order. The same reasoning as M25 |
+| M35 | **What a notification may not refuse, and what it cannot do.** Every refusal answers the same 400, and the reason goes to the log, so the endpoint does not reveal which orders exist. Once genuine, a success is honoured even if the merchant was disabled or the need closed since the order: PayHere already took the money. A merchant whose id changed since the order has another secret, so that order cannot be checked and stays pending. Status `0` or an unknown code changes nothing. A chargeback on a paid gift changes nothing either: staff void it (M10). An order whose notification never comes stays `Pending`, with no job to expire it | The notification reports what already happened, so it records and never judges. Pending rows have no receipt and appear in no total, so a stale one costs nothing but a row |
+| M36 | **`givesOnline` on `GET /api/institutions/{slug}`, through a one-answer platform read** (`SqlOnlineGiving`, as K25's `SqlStandingHolds`): the public page has no session that could read a merchant. "Give money" on a need shows on the institution's own page only. The public board does not know about merchants, and adding it would mean a platform read per row. PayHere's secret is per domain, so each institution must add Sethika's address under Integrations and wait for approval: the settings screen says so | The page needs a yes or a no, never the merchant. The board stays the anonymous query it was (M12) |
+
 ## 3. Schema changes (one publish)
 
 - `giving.Donations`: `PublicId UNIQUEIDENTIFIER NOT NULL` (UUID v7 from code, `UNIQUE`), `Quantity DECIMAL(10,2) NULL`,
@@ -196,8 +206,32 @@ or pledges for standing days" to this phase: recording a donation from a donor b
   `PledgeTests`, vitest `lib/giving/needs`, e2e `e2e/giving/needs.spec.ts`. Mutants C# 36/36 killed, SQL RLS
   2/2; the unmutated control of the giving classes and neighbours is 74/74. The full `dotnet test` and full
   e2e run before the PR (D.5). Decisions M29-M31 above.
-- [ ] **D.3** PayHere sandbox: each institution's merchant settings and the encrypted secret (M10, M21), the
+- [x] **D.3** PayHere sandbox: each institution's merchant settings and the encrypted secret (M10, M21), the
   order, the checkout form, the notification, the return page. ~0.8
+  *Built 2026-11-06, not committed.* One schema change: `giving.OnlinePayments`' block predicates (M34),
+  published to Sethika_Test; **not yet to the dev Sethika** (the code runs either way: only the two block predicates differ). API: `PaymentEndpoints` (`/api/institution/payments/merchant`,
+  `POST /api/institutions/{slug}/give`, `/api/me/payments/{orderId}`, anonymous
+  `POST /api/payments/payhere/notify`), `PaymentMerchantHandler`, `OnlinePaymentHandler`, `PlatformPayments`,
+  `SqlOnlineGiving`, `PaymentQueries`; `PayHereSignature` (domain), `AesGcmMerchantSecrets`,
+  `ConfiguredPayHereSite`, `AddSethikaPayments` (a bad key or address stops the start-up). Screens:
+  `/giving/payments`, "Give online" and the give sheet on `/i/[slug]`, "Give money" on its needs,
+  `/giving/return/[orderId]`; strings en/si/ta (drafts in `docs/translations-to-review.md`). No test calls
+  PayHere: e2e answers its address with a stand-in page and posts a signed notification through the web
+  app's `/api` rewrite. The formulas were checked against PayHere's Checkout API page (updated 4 Sep 2026);
+  the vectors in `PayHereSignatureTests` were computed with Python's hashlib. **No real sandbox payment has
+  been made** (Q1), so the form has not been accepted by PayHere itself. Tests: `PaymentEndpointsTests`,
+  `PaymentConfigurationTests`, domain `PayHereSignatureTests`, vitest `lib/giving/payments`, e2e
+  `e2e/giving/payments.spec.ts` (desktop 5, phone 4 with si/ta at 320 px). Mutants: C# 87/89 killed (Q1, Q2
+  survive because RLS hides the row: the query's own filter is the second wall, as D5 and D11), SQL RLS 4/4,
+  vitest 12/12, e2e 10/10. They found a vacuous test (the audit read took an old run's row) and four gaps, all
+  closed. Control on unmutated code: integration 154/154 (payment classes, donations, needs, endpoint
+  policy, EF mapping), domain giving 32/32, vitest 273/273, format, lint and tsc clean, `next build` clean, e2e
+  giving 26/26 with one worker. `NotifyPerClient` has no test: reaching it takes 3,000 posts. With two workers
+  a cold `next dev` sometimes answers a first page load 500 (`Unexpected end of JSON input`, Next's own
+  frames, 3 runs of 4, on `/giving/payments`, `/giving/mine` and D.2's `/giving/needs`); D.5's full e2e
+  may meet it. `latestCode` no longer takes the tail of a reference (`REG-2026-000123`) for a code. The full `dotnet test`
+  and full e2e run before the PR (D.5). Decisions M32-M36 above. `lib/shell/nav.test.ts` had 6 failures left
+  by D.2's public `needsBoard` link: fixed here.
 - [ ] **D.4** The monthly report, CSV, print; dashboard lines (M18). ~0.5
 - [ ] **D.5** Close-out: DECISIONS "Giving (Phase D)" + Plans row, report chapter `docs/report/PHASE-D.md`,
   full `dotnet test` + full e2e with plan 08, push and the pull request to develop (asking first). ~0.25

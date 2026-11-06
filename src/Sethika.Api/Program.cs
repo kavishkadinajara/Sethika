@@ -39,6 +39,7 @@ builder.Services.AddSethikaPermissions(redisConnectionString);
 // one-time codes going to the log - fails to start rather than failing its first signup.
 builder.Services.AddSethikaAccess(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddSethikaFiles(builder.Configuration, builder.Environment.IsDevelopment());
+builder.Services.AddSethikaPayments(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddSethikaJobs(builder.Configuration, sqlConnectionString);
 builder.Services.AddSethikaApplication();
 
@@ -133,6 +134,7 @@ app.MapSharingEndpoints();
 app.MapDonorBookEndpoints();
 app.MapGivingEndpoints();
 app.MapNeedEndpoints();
+app.MapPaymentEndpoints();
 app.MapSponsorshipEndpoints();
 app.MapDayRequestEndpoints();
 app.MapSearchEndpoints();

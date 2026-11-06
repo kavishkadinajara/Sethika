@@ -8,9 +8,10 @@ import { NeedCards } from "./NeedCards";
 
 /**
  * An institution's open needs on its own page (plan 09, M12). Quiet when it has none, like its services:
- * a page with no needs shows nothing rather than an empty heading.
+ * a page with no needs shows nothing rather than an empty heading. Where the institution takes gifts
+ * online, each need also offers "Give money" (M8).
  */
-export function InstitutionNeeds({ slug }: { slug: string }) {
+export function InstitutionNeeds({ slug, givesOnline }: { slug: string; givesOnline: boolean }) {
   const t = useTranslations("Giving.board");
   const [needs, setNeeds] = useState<PublicNeed[]>([]);
 
@@ -33,7 +34,7 @@ export function InstitutionNeeds({ slug }: { slug: string }) {
         {t("onPage")}
       </h2>
       <p className="max-w-prose text-muted">{t("onPageIntro")}</p>
-      <NeedCards needs={needs} base={`/i/${slug}`} showPlace={false} onChanged={() => void load()} />
+      <NeedCards needs={needs} base={`/i/${slug}`} showPlace={false} givesOnline={givesOnline} onChanged={() => void load()} />
     </section>
   );
 }

@@ -33,6 +33,7 @@ export type ItemKey =
   | "slots"
   | "sponsors"
   | "donations"
+  | "payments"
   | "serviceTypes"
   | "leaders"
   | "appointments"
@@ -124,6 +125,7 @@ export const navTree: readonly NavSection[] = [
         items: [
           { key: "donations", href: "/giving/donations", icon: "giving", screen: "GIVING.DONATIONS" },
           { key: "needs", href: "/giving/needs", icon: "file", screen: "GIVING.NEEDS" },
+          { key: "payments", href: "/giving/payments", icon: "key", screen: "GIVING.PAYMENTS" },
         ],
       },
       {

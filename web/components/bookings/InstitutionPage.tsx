@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FormError } from "@/components/auth/FormError";
+import { GiveOnline } from "@/components/giving/GiveOnline";
 import { InstitutionNeeds } from "@/components/giving/InstitutionNeeds";
 import { ServicesOffered } from "@/components/services/ServicesOffered";
 import { textLink } from "@/components/auth/links";
@@ -230,7 +231,9 @@ export function InstitutionPage({ slug, initial = null }: { slug: string; initia
 
       <ServicesOffered institution={institution} />
 
-      <InstitutionNeeds slug={slug} />
+      <GiveOnline institution={institution} />
+
+      <InstitutionNeeds slug={slug} givesOnline={institution.givesOnline} />
     </div>
   );
 
