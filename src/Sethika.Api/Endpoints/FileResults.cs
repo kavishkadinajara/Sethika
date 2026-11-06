@@ -23,4 +23,15 @@ internal static class FileResults
 
         return Results.File(content, file.ContentType, fileDownloadName: file.OriginalName);
     }
+
+    /// <summary>A report as a download (plan 09, M17): the same headers, because it holds donors' names.</summary>
+    public static IResult Csv(HttpContext httpContext, byte[] content, string fileName)
+    {
+        ArgumentNullException.ThrowIfNull(httpContext);
+
+        httpContext.Response.Headers.XContentTypeOptions = "nosniff";
+        httpContext.Response.Headers.CacheControl = "private, no-store";
+
+        return Results.File(content, "text/csv; charset=utf-8", fileName);
+    }
 }

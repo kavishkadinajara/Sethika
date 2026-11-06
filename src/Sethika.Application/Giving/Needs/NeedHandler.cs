@@ -85,7 +85,7 @@ public sealed class NeedHandler(ISethikaDbContext db, TimeProvider timeProvider)
             return NeedResult.Invalid([.. details.Invalid]);
         }
 
-        if (need.ChangeQuantity(input.Quantity!.Value) is { } refused)
+        if (need.ChangeQuantity(input.Quantity!.Value, now) is { } refused)
         {
             return NeedResult.Failed(refused);
         }
@@ -98,17 +98,17 @@ public sealed class NeedHandler(ISethikaDbContext db, TimeProvider timeProvider)
 
     /// <summary>Puts a draft on the public board.</summary>
     public Task<NeedResult> PublishAsync(int institutionId, Guid userId, Guid publicId, NeedStepInput input, CancellationToken cancellationToken = default) =>
-        StepAsync(institutionId, userId, publicId, input, "Publish", need => need.Publish(), cancellationToken);
+        StepAsync(institutionId, userId, publicId, input, "Publish", (need, now) => need.Publish(now), cancellationToken);
 
     /// <summary>Stops an open need taking more; what came stays counted.</summary>
     public Task<NeedResult> CloseAsync(int institutionId, Guid userId, Guid publicId, NeedStepInput input, CancellationToken cancellationToken = default) =>
-        StepAsync(institutionId, userId, publicId, input, "Close", need => need.Close(), cancellationToken);
+        StepAsync(institutionId, userId, publicId, input, "Close", (need, now) => need.Close(now), cancellationToken);
 
     /// <summary>Withdraws a need nothing came for.</summary>
     public Task<NeedResult> CancelAsync(int institutionId, Guid userId, Guid publicId, NeedStepInput input, CancellationToken cancellationToken = default) =>
-        StepAsync(institutionId, userId, publicId, input, "Cancel", need => need.Cancel(), cancellationToken);
+        StepAsync(institutionId, userId, publicId, input, "Cancel", (need, now) => need.Cancel(now), cancellationToken);
 
-    private async Task<NeedResult> StepAsync(int institutionId, Guid userId, Guid publicId, NeedStepInput input, string action, Func<Need, string?> step, CancellationToken cancellationToken)
+    private async Task<NeedResult> StepAsync(int institutionId, Guid userId, Guid publicId, NeedStepInput input, string action, Func<Need, DateTime, string?> step, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(input);
 
@@ -123,12 +123,12 @@ public sealed class NeedHandler(ISethikaDbContext db, TimeProvider timeProvider)
             return NeedResult.Invalid("version");
         }
 
-        if (step(need) is { } refused)
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        if (step(need, now) is { } refused)
         {
             return NeedResult.Failed(refused);
         }
 
-        var now = timeProvider.GetUtcNow().UtcDateTime;
         need.UpdatedAt = now;
         need.UpdatedBy = userId;
         return await SaveAsync(need, input.Version, institutionId, userId, action, now, cancellationToken).ConfigureAwait(false);

@@ -1,9 +1,9 @@
-using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Sethika.Api.Security;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Giving.Donations;
-using Sethika.Domain.Bookings;
+using Sethika.Application.Giving.Payments;
+using Sethika.Application.Giving.Reports;
 using Sethika.Domain.Giving;
 
 namespace Sethika.Api.Endpoints;
@@ -23,6 +23,7 @@ internal static class GivingEndpoints
     private const string DonationsView = "GIVING.DONATIONS.VIEW";
     private const string DonationsCreate = "GIVING.DONATIONS.CREATE";
     private const string DonationsVoid = "GIVING.DONATIONS.DELETE";
+    private const string DonationsExport = "GIVING.DONATIONS.EXPORT";
     private const string MyGivingView = "MYGIVING.DONATIONS.VIEW";
 
     /// <summary><c>ReceiptNo</c> is <c>VARCHAR(30)</c>.</summary>
@@ -33,6 +34,7 @@ internal static class GivingEndpoints
         var institution = app.MapGroup("/api/institution/donations");
 
         institution.MapGet("", ListAsync).WithMetadata(new HasPermissionAttribute(DonationsView));
+        institution.MapGet("/csv", CsvAsync).WithMetadata(new HasPermissionAttribute(DonationsExport));
         institution.MapGet("/methods", MethodsAsync).WithMetadata(new HasPermissionAttribute(DonationsView));
         institution.MapGet("/{publicId:guid}", InstitutionReceiptAsync).WithMetadata(new HasPermissionAttribute(DonationsView));
         institution.MapPost("", RecordAsync).WithMetadata(new HasPermissionAttribute(DonationsCreate));
@@ -53,18 +55,31 @@ internal static class GivingEndpoints
             return NoInstitution();
         }
 
-        DateOnly first;
-        if (string.IsNullOrEmpty(month))
+        if (!ReportMonth.TryRead(month, timeProvider, out var first))
         {
-            var today = SriLankaTime.Today(timeProvider.GetUtcNow().UtcDateTime);
-            first = new DateOnly(today.Year, today.Month, 1);
-        }
-        else if (!DateOnly.TryParseExact(month + "-01", "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out first))
-        {
-            return ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_month");
+            return ApiErrors.Error(StatusCodes.Status400BadRequest, ReportMonth.Invalid);
         }
 
         return Results.Ok(await queries.ListDonationsAsync(institutionId, userId, first, cancellationToken));
+    }
+
+    /// <summary>The month's list as a file (M27), voided gifts marked, in the caller's language.</summary>
+    private static async Task<IResult> CsvAsync(string? month, string? lang, HttpContext httpContext, ICurrentUserContext currentUser, IGivingQueries queries, TimeProvider timeProvider, CancellationToken cancellationToken)
+    {
+        if (currentUser is not { UserId: { } userId, InstitutionId: { } institutionId })
+        {
+            return NoInstitution();
+        }
+
+        if (!ReportMonth.TryRead(month, timeProvider, out var first))
+        {
+            return ApiErrors.Error(StatusCodes.Status400BadRequest, ReportMonth.Invalid);
+        }
+
+        var rows = await queries.ListDonationsAsync(institutionId, userId, first, cancellationToken);
+        var methods = await queries.ListCounterMethodsAsync([.. DonationHandler.CounterMethods, OnlinePaymentHandler.MethodCode], cancellationToken);
+
+        return FileResults.Csv(httpContext, ReportCsv.Donations(rows, methods, lang), $"sethika-donations-{first:yyyy-MM}.csv");
     }
 
     /// <summary>The methods a gift at the counter may be recorded with, in en/si/ta (M20).</summary>

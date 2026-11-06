@@ -346,7 +346,7 @@ public sealed class DonationHandler(ISethikaDbContext db, INumberSeries numbers,
     {
         if (donation.Kind == Donation.InKind)
         {
-            return await db.CountArrivalAsync(needId, donation.Quantity!.Value, cancellationToken).ConfigureAwait(false) == 1
+            return await db.CountArrivalAsync(needId, donation.Quantity!.Value, donation.RecordedAt, cancellationToken).ConfigureAwait(false) == 1
                 ? null
                 : await db.WhyNotAsync(needId, cancellationToken).ConfigureAwait(false);
         }

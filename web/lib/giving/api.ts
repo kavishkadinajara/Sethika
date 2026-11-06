@@ -1,13 +1,16 @@
 import { json, jsonBody, send } from "@/lib/onboarding/api";
 import { publicGet, type BookingResult } from "@/lib/bookings/api";
+import { csvPath } from "./report";
 import type {
   CheckoutForm,
   DonationInput,
   DonationListItem,
   GiveInput,
+  GivingSummary,
   LookupItem,
   MerchantInput,
   MerchantSettings,
+  MonthlyReport,
   MyDonation,
   MyPayment,
   MyPledge,
@@ -51,6 +54,34 @@ export async function getReceipt(publicId: string, mine: boolean): Promise<Booki
 
 export async function listMyDonations(): Promise<BookingResult<MyDonation[]>> {
   return json(await send(MINE, { method: "GET" }));
+}
+
+// ---- the report and the files (plan 09, D.4) ------------------------------------------------------
+
+const REPORT = "/api/institution/reports/monthly";
+
+/** Through apiFetch, because the file needs the Bearer token: a plain link would carry none. */
+async function file(path: string): Promise<BookingResult<Blob>> {
+  const result = await send(path, { method: "GET" });
+  return result.ok ? { ok: true, value: await result.value.blob() } : result;
+}
+
+export async function getMonthlyReport(month: string): Promise<BookingResult<MonthlyReport>> {
+  return json(await send(`${REPORT}?month=${encodeURIComponent(month)}`, { method: "GET" }));
+}
+
+/** The report as a CSV, the names in `locale` (M17). */
+export function downloadReportCsv(month: string, locale: string): Promise<BookingResult<Blob>> {
+  return file(csvPath(`${REPORT}/csv`, month, locale));
+}
+
+/** The month's gifts as a CSV (M27). */
+export function downloadDonationsCsv(month: string, locale: string): Promise<BookingResult<Blob>> {
+  return file(csvPath(`${DONATIONS}/csv`, month, locale));
+}
+
+export async function getGivingSummary(): Promise<BookingResult<GivingSummary>> {
+  return json(await send("/api/institution/giving/summary", { method: "GET" }));
 }
 
 // ---- needs and pledges (plan 09, D.2) -------------------------------------------------------------

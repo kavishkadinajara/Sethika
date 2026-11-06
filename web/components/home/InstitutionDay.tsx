@@ -15,6 +15,7 @@ import { colomboTime, institutionSentence } from "@/lib/dashboard/sentence";
 import { usePermissions } from "@/lib/permissions/usePermissions";
 import { markShellStale, onShellStale } from "@/lib/shell/summary";
 import { cn, focusRing } from "@/lib/utils";
+import { GivingLine } from "./GivingLine";
 import { colomboClock, DayHeader, Panel, PanelEmpty, PanelPlaceholder, useNow } from "./ledger-ui";
 import { InvitationsCard } from "./InvitationsCard";
 
@@ -99,6 +100,8 @@ export function InstitutionDay({ name }: { name: string }) {
           </button>
         </p>
       )}
+
+      <GivingLine />
 
       {reads && (
         <>

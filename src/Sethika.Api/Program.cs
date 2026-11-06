@@ -134,6 +134,7 @@ app.MapSharingEndpoints();
 app.MapDonorBookEndpoints();
 app.MapGivingEndpoints();
 app.MapNeedEndpoints();
+app.MapReportEndpoints();
 app.MapPaymentEndpoints();
 app.MapSponsorshipEndpoints();
 app.MapDayRequestEndpoints();

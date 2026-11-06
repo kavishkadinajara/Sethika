@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FormError } from "@/components/auth/FormError";
 import { textLink } from "@/components/auth/links";
@@ -11,14 +11,16 @@ import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
 import { Link } from "@/i18n/navigation";
 import type { BookingFailure } from "@/lib/bookings/api";
-import { listCounterMethods, listDonations } from "@/lib/giving/api";
+import { downloadDonationsCsv, listCounterMethods, listDonations } from "@/lib/giving/api";
 import { canVoid, filterDonations, monthOf, shiftMonth, totals, type DonationFilter } from "@/lib/giving/money";
+import { csvName } from "@/lib/giving/report";
 import type { DonationListItem, LookupItem } from "@/lib/giving/types";
 import { usePermissions } from "@/lib/permissions/usePermissions";
 import { colomboParts } from "@/lib/services/time";
 import { cn, focusRing } from "@/lib/utils";
 import { useGiftText } from "./GiftText";
 import { RecordDonationSheet } from "./RecordDonationSheet";
+import { saveBlob } from "./saveBlob";
 import { useGivingError } from "./useGivingError";
 import { VoidDonationSheet } from "./VoidDonationSheet";
 
@@ -34,7 +36,9 @@ export function DonationsScreen() {
   const errorMessage = useGivingError();
   const { money, method, gift } = useGiftText();
   const { can } = usePermissions();
+  const locale = useLocale();
   const canRecord = can("GIVING.DONATIONS.CREATE");
+  const canExport = can("GIVING.DONATIONS.EXPORT");
   const canVoidAny = can("GIVING.DONATIONS.DELETE");
   const toast = useToast();
 
@@ -63,6 +67,13 @@ export function DonationsScreen() {
   useEffect(() => {
     void listCounterMethods().then((result) => result.ok && setMethods(result.value));
   }, []);
+
+  async function saveCsv() {
+    setFailure(null);
+    const result = await downloadDonationsCsv(month, locale);
+    if (!result.ok) return setFailure(result.failure);
+    saveBlob(result.value, csvName("donations", month));
+  }
 
   const shown = useMemo(() => (rows ? filterDonations(rows, filter) : []), [rows, filter]);
   const sums = useMemo(() => totals(rows ?? []), [rows]);
@@ -112,7 +123,14 @@ export function DonationsScreen() {
             ›
           </Button>
         </div>
-        {canRecord && <Button onClick={() => setRecording(true)}>{t("record")}</Button>}
+        <div className="flex flex-wrap gap-3">
+          {canExport && (
+            <Button variant="outline" onClick={() => void saveCsv()}>
+              {t("csv")}
+            </Button>
+          )}
+          {canRecord && <Button onClick={() => setRecording(true)}>{t("record")}</Button>}
+        </div>
       </div>
 
       <p className="text-fg" data-testid="giving-totals">

@@ -1,3 +1,5 @@
+import type { BookingStatus } from "@/lib/bookings/types";
+
 /*  Giving (plan 09, D.1), as GivingEndpoints.cs sends it. Kinds are the stored values. */
 
 export type DonationKind = "Money" | "InKind";
@@ -61,6 +63,47 @@ export type Receipt = {
 };
 
 /** A gift in the donor's My giving. */
+/** The month's report (plan 09, M16), as MonthlyReportHandler answers it. */
+export type MonthlyReport = {
+  month: string;
+  monthOver: boolean;
+  name: string;
+  nameSi: string | null;
+  nameTa: string | null;
+  bookings: { status: BookingStatus; count: number }[];
+  utilisation: {
+    mealSlot: string;
+    name: string;
+    nameSi: string | null;
+    nameTa: string | null;
+    bookedDays: number;
+    /** Null when the days can no longer be judged: a retired slot, an institution not active. */
+    servedDays: number | null;
+    percent: number | null;
+  }[];
+  money: { code: string; name: string; nameSi: string | null; nameTa: string | null; gifts: number; amount: number }[];
+  moneyTotal: number;
+  /** A null code is gifts that came for no need. */
+  inKind: { code: string | null; name: string | null; nameSi: string | null; nameTa: string | null; gifts: number; estimatedValue: number | null }[];
+  voided: {
+    publicId: string;
+    receiptNo: string;
+    donatedAt: string;
+    donorName: string;
+    kind: DonationKind;
+    amount: number | null;
+    items: string | null;
+    quantity: number | null;
+    voidReason: string;
+    voidedAt: string;
+    voidedByName: string;
+  }[];
+  needs: { opened: number; fulfilled: number; stillOpen: number };
+};
+
+/** The giving line on the Day Ledger (M18). */
+export type GivingSummary = { money: number; openNeeds: number; pledgesDue: number };
+
 export type MyDonation = {
   publicId: string;
   receiptNo: string;

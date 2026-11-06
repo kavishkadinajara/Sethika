@@ -52,7 +52,8 @@
       "donations": "Donations and receipts",
       "needsBoard": "Needs board",
       "needs": "Needs",
-      "payments": "Online payments"
+      "payments": "Online payments",
+      "reports": "Monthly report"
     },
     "context": {
       "platform": "Platform team",
@@ -246,6 +247,26 @@
     "decision": {
       "Approved": "{name} was approved.",
       "Rejected": "{name} was not accepted."
+    },
+    "giving": {
+      "title": "Giving this month",
+      "openReport": "Open the report",
+      "openDonations": "Open the gifts",
+      "money": "Money received",
+      "amount": "LKR {amount}",
+      "openNeeds": "Open needs",
+      "pledgesDue": "Pledges due this week"
+    },
+    "myGiving": {
+      "title": "My giving",
+      "all": "All my giving",
+      "none": "Your gifts and pledges will show here.",
+      "gifts": "My latest gifts",
+      "pledges": "Pledges still to give",
+      "amount": "LKR {amount}",
+      "receiptNamed": "Receipt {receiptNo}",
+      "pledged": "{count} pledged",
+      "pledgedBy": "{count} pledged, by {date}"
     }
   },
   "Login": {
@@ -2403,7 +2424,8 @@
       "voidNamed": "Void receipt {receiptNo}",
       "voidAction": "Void",
       "recorded": "Receipt {receiptNo} recorded.",
-      "voided": "Receipt {receiptNo} voided."
+      "voided": "Receipt {receiptNo} voided.",
+      "csv": "Save as CSV"
     },
     "record": {
       "title": "Record a gift",
@@ -2714,6 +2736,45 @@
       "stale": "Someone saved these settings while you were looking at them. Open the page again.",
       "readOnly": "Only someone who may change the merchant can save these settings.",
       "retry": "Try again"
+    },
+    "report": {
+      "title": "Monthly report",
+      "intro": "The month's bookings, gifts and needs, for your committee. Save it as a file or print it.",
+      "retry": "Try again",
+      "month": "Month",
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month",
+      "csv": "Save as CSV",
+      "print": "Print or save as PDF",
+      "article": "The month's report",
+      "printTitle": "Monthly report: {month}",
+      "notOver": "This month is not over. Utilisation counts the days up to today.",
+      "bookings": "Bookings by status",
+      "bookingsTotal": "All bookings",
+      "utilisation": "Utilisation per meal slot",
+      "utilisationNote": "Days with an approved or completed booking, out of the days the slot served.",
+      "noSlots": "No meal slots this month.",
+      "used": "{booked} of {served} days ({percent}%)",
+      "noDays": "No days served",
+      "retired": "{booked} days booked; no longer offered",
+      "money": "Money received by method",
+      "moneyTotal": "All money received",
+      "noMoney": "No money received this month.",
+      "gifts": "{count, plural, one {# gift} other {# gifts}}",
+      "giftsWorth": "{count, plural, one {# gift} other {# gifts}}, estimated {value}",
+      "inKind": "Gifts of items by category",
+      "inKindNote": "A gift takes the category of the need it came for.",
+      "noItems": "No gifts of items this month.",
+      "noNeed": "Not for a need",
+      "needs": "Needs",
+      "needsOpened": "Opened this month",
+      "needsFulfilled": "Fulfilled this month",
+      "needsStillOpen": "Open now",
+      "needsStillOpenThen": "Still open as the month ended",
+      "voided": "Voided gifts",
+      "voidedNote": "Listed here and left out of every total above.",
+      "noVoided": "No gifts of this month were voided.",
+      "voidedBy": "Voided by {name} on {date}: {reason}"
     }
   }
 }

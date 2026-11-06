@@ -240,7 +240,7 @@ public sealed class PledgeHandler(ISethikaDbContext db, INumberSeries numbers, T
             .NextAsync(NumberSeriesDefinition.Receipt, scope, SriLankaTime.Today(now).Year, cancellationToken)
             .ConfigureAwait(false);
 
-        await db.DeliverAsync(pledge.NeedId, pledge.Quantity, quantity, cancellationToken).ConfigureAwait(false);
+        await db.DeliverAsync(pledge.NeedId, pledge.Quantity, quantity, now, cancellationToken).ConfigureAwait(false);
 
         var gift = new Donation
         {

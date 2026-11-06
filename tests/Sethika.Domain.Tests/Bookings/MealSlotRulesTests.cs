@@ -391,4 +391,18 @@ public class MealSlotRulesTests
     [Fact]
     public void ADayNobodyBooked_IsNotHeld() =>
         Assert.False(IsHeld(Slot(), day: null, standing: 1, standingHeadcount: 25));
+
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData(BookingErrors.TooSoon, true)]
+    [InlineData(BookingErrors.TooFar, true)]
+    [InlineData(BookingErrors.SlotFull, true)]
+    [InlineData(BookingErrors.Held, true)]
+    [InlineData(BookingErrors.NotOnThisDay, false)]
+    [InlineData(BookingErrors.OutOfSeason, false)]
+    [InlineData(BookingErrors.DateBlocked, false)]
+    [InlineData(BookingErrors.SlotInactive, false)]
+    [InlineData(BookingErrors.InstitutionNotActive, false)]
+    public void AServedDay_IsOneTheSlotWasLaidOn_HoweverFullOrFarAway(string? refused, bool served) =>
+        Assert.Equal(served, MealSlotRules.IsServedDay(refused));
 }

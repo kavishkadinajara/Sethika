@@ -21,6 +21,10 @@ CREATE TABLE giving.Needs (
     UpdatedAt        DATETIME2(3)  NULL,
     UpdatedBy        UNIQUEIDENTIFIER NULL REFERENCES auth.Users(Id),
     RowVersion       ROWVERSION,
+    -- Added by D.4 (M37) at the end of the table, so the deploy is an ALTER: when it went on the board,
+    -- and when it left it (fulfilled, closed or cancelled). A void that reopens it clears EndedAt (M30).
+    OpenedAt         DATETIME2(3)  NULL,
+    EndedAt          DATETIME2(3)  NULL,
     CONSTRAINT UQ_Needs_Tenant UNIQUE (Id, InstitutionId),
     CONSTRAINT CK_Needs_Pledged  CHECK (QuantityPledged >= 0 AND QuantityPledged <= QuantityNeeded),
     CONSTRAINT CK_Needs_Received CHECK (QuantityReceived >= 0 AND QuantityReceived <= QuantityNeeded)

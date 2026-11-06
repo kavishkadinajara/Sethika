@@ -72,6 +72,12 @@ public class Need
     public Guid? UpdatedBy { get; set; }
     public byte[] RowVersion { get; set; } = [];
 
+    /// <summary>When it went on the board; <see langword="null"/> for a draft (M37).</summary>
+    public DateTime? OpenedAt { get; private set; }
+
+    /// <summary>When it left the board, fulfilled, closed or cancelled; <see langword="null"/> while it stands (M37).</summary>
+    public DateTime? EndedAt { get; private set; }
+
     /// <summary>What open pledges still promise.</summary>
     public decimal OpenPledged => QuantityPledged - QuantityReceived;
 
@@ -83,7 +89,7 @@ public class Need
     /// the need has what it asked for, so it is fulfilled.
     /// </summary>
     /// <returns>The refusal, or <see langword="null"/>.</returns>
-    public string? ChangeQuantity(decimal quantity)
+    public string? ChangeQuantity(decimal quantity, DateTime now)
     {
         if (quantity < QuantityPledged)
         {
@@ -94,13 +100,14 @@ public class Need
         if (Status == NeedStatus.Open && QuantityReceived >= quantity)
         {
             Status = NeedStatus.Fulfilled;
+            EndedAt = now;
         }
 
         return null;
     }
 
     /// <summary>Puts a draft on the board.</summary>
-    public string? Publish()
+    public string? Publish(DateTime now)
     {
         if (Status != NeedStatus.Draft)
         {
@@ -108,6 +115,7 @@ public class Need
         }
 
         Status = NeedStatus.Open;
+        OpenedAt = now;
         return null;
     }
 
@@ -115,7 +123,7 @@ public class Need
     /// Stops it taking more, keeping what came. Open pledges must be settled first (M29): each is a
     /// person's promise, delivered or cancelled by name, never swept away.
     /// </summary>
-    public string? Close()
+    public string? Close(DateTime now)
     {
         if (Status != NeedStatus.Open)
         {
@@ -128,11 +136,12 @@ public class Need
         }
 
         Status = NeedStatus.Closed;
+        EndedAt = now;
         return null;
     }
 
     /// <summary>Withdraws a need nothing came for; one that received gifts is closed instead, so those stay counted.</summary>
-    public string? Cancel()
+    public string? Cancel(DateTime now)
     {
         if (!IsEditable)
         {
@@ -150,6 +159,7 @@ public class Need
         }
 
         Status = NeedStatus.Cancelled;
+        EndedAt = now;
         return null;
     }
 }

@@ -1984,3 +1984,58 @@ Drafts by Claude, not reviewed by a Sinhala or Tamil speaker. "Pledge" is writte
 | `Giving.errors.payment_not_found` | There is no such payment on this account. | මෙම ගිණුමේ එවැනි ගෙවීමක් නැත. | இந்தக் கணக்கில் அப்படி ஒரு கட்டணம் இல்லை. |
 | `Giving.errors.phone_required` | Your account needs a confirmed phone number before you can give. | පරිත්‍යාග කිරීමට පෙර ඔබේ ගිණුමට තහවුරු කළ දුරකථන අංකයක් අවශ්‍යයි. | நன்கொடை அளிக்கும் முன் உங்கள் கணக்கில் உறுதிப்படுத்தப்பட்ட தொலைபேசி எண் தேவை. |
 | `Shell.items.payments` | Online payments | මාර්ගගත ගෙවීම් | இணையவழிக் கட்டணங்கள் |
+| `Giving.report.title` | Monthly report | මාසික වාර්තාව | மாதாந்திர அறிக்கை |
+| `Giving.report.intro` | The month's bookings, gifts and needs, for your committee. Save it as a file or print it. | මාසයේ වෙන්කිරීම්, පරිත්‍යාග සහ අවශ්‍යතා, ඔබේ කමිටුව සඳහා. එය ගොනුවක් ලෙස සුරකින්න හෝ මුද්‍රණය කරන්න. | மாதத்தின் முன்பதிவுகள், நன்கொடைகள் மற்றும் தேவைகள், உங்கள் குழுவுக்காக. கோப்பாகச் சேமியுங்கள் அல்லது அச்சிடுங்கள். |
+| `Giving.report.retry` | Try again | නැවත උත්සාහ කරන්න | மீண்டும் முயற்சிக்கவும் |
+| `Giving.report.month` | Month | මාසය | மாதம் |
+| `Giving.report.previousMonth` | Previous month | පෙර මාසය | முந்தைய மாதம் |
+| `Giving.report.nextMonth` | Next month | ඊළඟ මාසය | அடுத்த மாதம் |
+| `Giving.report.csv` | Save as CSV | CSV ලෙස සුරකින්න | CSV ஆகச் சேமி |
+| `Giving.report.print` | Print or save as PDF | මුද්‍රණය කරන්න හෝ PDF ලෙස සුරකින්න | அச்சிடு அல்லது PDF ஆகச் சேமி |
+| `Giving.report.article` | The month's report | මාසයේ වාර්තාව | மாதத்தின் அறிக்கை |
+| `Giving.report.printTitle` | Monthly report: {month} | මාසික වාර්තාව: {month} | மாதாந்திர அறிக்கை: {month} |
+| `Giving.report.notOver` | This month is not over. Utilisation counts the days up to today. | මෙම මාසය තවම අවසන් නැත. භාවිතය ගණන් කරන්නේ අද දක්වා දින පමණි. | இந்த மாதம் இன்னும் முடியவில்லை. பயன்பாடு இன்று வரையிலான நாட்களை மட்டுமே கணக்கிடுகிறது. |
+| `Giving.report.bookings` | Bookings by status | තත්ත්වය අනුව වෙන්කිරීම් | நிலையின்படி முன்பதிவுகள் |
+| `Giving.report.bookingsTotal` | All bookings | සියලු වෙන්කිරීම් | அனைத்து முன்பதிவுகளும் |
+| `Giving.report.utilisation` | Utilisation per meal slot | ආහාර වේල අනුව භාවිතය | உணவு நேரத்தின்படி பயன்பாடு |
+| `Giving.report.utilisationNote` | Days with an approved or completed booking, out of the days the slot served. | වේල පැවති දින අතරින්, අනුමත කළ හෝ සම්පූර්ණ කළ වෙන්කිරීමක් තිබූ දින. | உணவு நேரம் நடந்த நாட்களில், அங்கீகரிக்கப்பட்ட அல்லது நிறைவடைந்த முன்பதிவு இருந்த நாட்கள். |
+| `Giving.report.noSlots` | No meal slots this month. | මෙම මාසයේ ආහාර වේල් නැත. | இந்த மாதம் உணவு நேரங்கள் இல்லை. |
+| `Giving.report.used` | {booked} of {served} days ({percent}%) | දින {served} න් {booked} ({percent}%) | {served} நாட்களில் {booked} ({percent}%) |
+| `Giving.report.noDays` | No days served | දින කිසිවක් නොපැවතිණි | நடந்த நாட்கள் இல்லை |
+| `Giving.report.retired` | {booked} days booked; no longer offered | දින {booked} ක් වෙන් විය; දැන් පිරිනමන්නේ නැත | {booked} நாட்கள் முன்பதிவு; இப்போது வழங்கப்படவில்லை |
+| `Giving.report.money` | Money received by method | ක්‍රමය අනුව ලැබුණු මුදල් | முறையின்படி பெற்ற பணம் |
+| `Giving.report.moneyTotal` | All money received | ලැබුණු සියලු මුදල් | பெற்ற மொத்தப் பணம் |
+| `Giving.report.noMoney` | No money received this month. | මෙම මාසයේ මුදල් ලැබී නැත. | இந்த மாதம் பணம் பெறப்படவில்லை. |
+| `Giving.report.gifts` | {count, plural, one {# gift} other {# gifts}} | {count, plural, one {පරිත්‍යාග #} other {පරිත්‍යාග #}} | {count, plural, one {# நன்கொடை} other {# நன்கொடைகள்}} |
+| `Giving.report.giftsWorth` | {count, plural, one {# gift} other {# gifts}}, estimated {value} | {count, plural, one {පරිත්‍යාග #} other {පරිත්‍යාග #}}, ඇස්තමේන්තුව {value} | {count, plural, one {# நன்கொடை} other {# நன்கொடைகள்}}, மதிப்பீடு {value} |
+| `Giving.report.inKind` | Gifts of items by category | ප්‍රවර්ගය අනුව භාණ්ඩ පරිත්‍යාග | வகையின்படி பொருள் நன்கொடைகள் |
+| `Giving.report.inKindNote` | A gift takes the category of the need it came for. | පරිත්‍යාගයකට හිමි වන්නේ එය ලැබුණු අවශ්‍යතාවයේ ප්‍රවර්ගයයි. | ஒரு நன்கொடை அது வந்த தேவையின் வகையைப் பெறும். |
+| `Giving.report.noItems` | No gifts of items this month. | මෙම මාසයේ භාණ්ඩ පරිත්‍යාග නැත. | இந்த மாதம் பொருள் நன்கொடைகள் இல்லை. |
+| `Giving.report.noNeed` | Not for a need | අවශ්‍යතාවයක් සඳහා නොවේ | ஒரு தேவைக்காக அல்ல |
+| `Giving.report.needs` | Needs | අවශ්‍යතා | தேவைகள் |
+| `Giving.report.needsOpened` | Opened this month | මෙම මාසයේ විවෘත කළ | இந்த மாதம் திறக்கப்பட்டவை |
+| `Giving.report.needsFulfilled` | Fulfilled this month | මෙම මාසයේ සම්පූර්ණ වූ | இந்த மாதம் நிறைவேறியவை |
+| `Giving.report.needsStillOpen` | Open now | දැන් විවෘත | இப்போது திறந்திருப்பவை |
+| `Giving.report.needsStillOpenThen` | Still open as the month ended | මාසය අවසානයේ තවමත් විවෘත | மாத முடிவில் இன்னும் திறந்திருந்தவை |
+| `Giving.report.voided` | Voided gifts | අවලංගු කළ පරිත්‍යාග | ரத்து செய்யப்பட்ட நன்கொடைகள் |
+| `Giving.report.voidedNote` | Listed here and left out of every total above. | මෙහි ලැයිස්තුගත කර ඇති අතර ඉහත කිසිදු එකතුවකට ඇතුළත් නොවේ. | இங்கே பட்டியலிடப்பட்டு, மேலே உள்ள எந்த மொத்தத்திலும் சேர்க்கப்படவில்லை. |
+| `Giving.report.noVoided` | No gifts of this month were voided. | මෙම මාසයේ පරිත්‍යාග කිසිවක් අවලංගු කර නැත. | இந்த மாதத்தின் நன்கொடைகள் எதுவும் ரத்து செய்யப்படவில்லை. |
+| `Giving.report.voidedBy` | Voided by {name} on {date}: {reason} | {date} දින {name} විසින් අවලංගු කරන ලදී: {reason} | {date} அன்று {name} ரத்து செய்தார்: {reason} |
+| `Giving.donations.csv` | Save as CSV | CSV ලෙස සුරකින්න | CSV ஆகச் சேமி |
+| `Dashboard.giving.title` | Giving this month | මෙම මාසයේ පරිත්‍යාග | இந்த மாத நன்கொடைகள் |
+| `Dashboard.giving.openReport` | Open the report | වාර්තාව විවෘත කරන්න | அறிக்கையைத் திற |
+| `Dashboard.giving.openDonations` | Open the gifts | පරිත්‍යාග විවෘත කරන්න | நன்கொடைகளைத் திற |
+| `Dashboard.giving.money` | Money received | ලැබුණු මුදල් | பெற்ற பணம் |
+| `Dashboard.giving.amount` | LKR {amount} | රු. {amount} | ரூ. {amount} |
+| `Dashboard.giving.openNeeds` | Open needs | විවෘත අවශ්‍යතා | திறந்த தேவைகள் |
+| `Dashboard.giving.pledgesDue` | Pledges due this week | මෙම සතියේ ලැබිය යුතු පොරොන්දු | இந்த வாரம் வரவேண்டிய உறுதிமொழிகள் |
+| `Dashboard.myGiving.title` | My giving | මගේ පරිත්‍යාග | எனது நன்கொடைகள் |
+| `Dashboard.myGiving.all` | All my giving | මගේ සියලු පරිත්‍යාග | எனது அனைத்து நன்கொடைகளும் |
+| `Dashboard.myGiving.none` | Your gifts and pledges will show here. | ඔබේ පරිත්‍යාග සහ පොරොන්දු මෙහි පෙන්වයි. | உங்கள் நன்கொடைகளும் உறுதிமொழிகளும் இங்கே காட்டப்படும். |
+| `Dashboard.myGiving.gifts` | My latest gifts | මගේ නවතම පරිත්‍යාග | எனது சமீபத்திய நன்கொடைகள் |
+| `Dashboard.myGiving.pledges` | Pledges still to give | තවම දිය යුතු පොරොන්දු | இன்னும் அளிக்க வேண்டிய உறுதிமொழிகள் |
+| `Dashboard.myGiving.amount` | LKR {amount} | රු. {amount} | ரூ. {amount} |
+| `Dashboard.myGiving.receiptNamed` | Receipt {receiptNo} | රිසිට්පත {receiptNo} | ரசீது {receiptNo} |
+| `Dashboard.myGiving.pledged` | {count} pledged | {count} ක් පොරොන්දු විය | {count} உறுதியளிக்கப்பட்டது |
+| `Dashboard.myGiving.pledgedBy` | {count} pledged, by {date} | {count} ක් පොරොන්දු විය, {date} වන විට | {count} உறுதியளிக்கப்பட்டது, {date} க்குள் |
+| `Shell.items.reports` | Monthly report | මාසික වාර්තාව | மாதாந்திர அறிக்கை |

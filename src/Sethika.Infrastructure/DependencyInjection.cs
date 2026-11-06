@@ -90,6 +90,7 @@ public static class DependencyInjection
         services.AddScoped<IServiceSetupQueries, ServiceSetupQueries>();
         services.AddScoped<IDonorBookQueries, DonorBookQueries>();
         services.AddScoped<IGivingQueries, GivingQueries>();
+        services.AddScoped<IReportQueries, ReportQueries>();
         services.AddScoped<INeedQueries, NeedQueries>();
         services.AddScoped<IPaymentQueries, PaymentQueries>();
         services.AddScoped<IStandingSponsorshipQueries, StandingSponsorshipQueries>();

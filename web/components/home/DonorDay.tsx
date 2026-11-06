@@ -15,6 +15,7 @@ import { usePermissions } from "@/lib/permissions/usePermissions";
 import { cn, focusRing } from "@/lib/utils";
 import { DayHeader, Panel, PanelEmpty, PanelPlaceholder, useNow } from "./ledger-ui";
 import { InvitationsCard } from "./InvitationsCard";
+import { MyGivingPanel } from "./MyGivingPanel";
 
 /** How many meals "Your table" lists, and how many places "Places you give to" names. */
 const TABLE_SHOWN = 5;
@@ -73,6 +74,7 @@ export function DonorDay() {
           </Panel>
         )}
         <div className="grid gap-6">
+          <MyGivingPanel />
           {kept && (
             <Panel title={t("panels.myPlaces")}>
               {kept.length === 0 ? <PanelEmpty>{t("panels.noPlaces")}</PanelEmpty> : <MyPlaces places={kept} />}

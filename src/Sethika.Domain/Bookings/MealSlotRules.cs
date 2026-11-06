@@ -91,6 +91,16 @@ public static class MealSlotRules
         return slot.IsActive && slot.RunsOn(date) && InSeason(slot, seasons, date);
     }
 
+    /// <summary>
+    /// Whether a day <see cref="Openings"/> judged is a day the slot served: laid on and not blocked,
+    /// however full it is and however far from today. The monthly report asks it of the calendar's own
+    /// answer (plan 09, M16), so the two cannot disagree about which days there were.
+    /// </summary>
+    /// <param name="refused">What <see cref="Openings"/> said of the day.</param>
+    public static bool IsServedDay(string? refused) =>
+        refused is not (BookingErrors.SlotInactive or BookingErrors.InstitutionNotActive or BookingErrors.NotOnThisDay
+            or BookingErrors.OutOfSeason or BookingErrors.DateBlocked);
+
     /// <summary>A slot's own seasons cover <paramref name="date"/>; a slot with none runs all year.</summary>
     private static bool InSeason(MealSlot slot, IEnumerable<MealSlotSeason> seasons, DateOnly date)
     {

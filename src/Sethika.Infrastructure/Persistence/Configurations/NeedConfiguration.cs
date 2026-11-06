@@ -26,6 +26,8 @@ internal sealed class NeedConfiguration : IEntityTypeConfiguration<Need>
         builder.Property(n => n.Status).HasColumnType("varchar(20)").IsRequired();
         builder.Property(n => n.CreatedAt).HasColumnType("datetime2(3)");
         builder.Property(n => n.UpdatedAt).HasColumnType("datetime2(3)");
+        builder.Property(n => n.OpenedAt).HasColumnType("datetime2(3)");
+        builder.Property(n => n.EndedAt).HasColumnType("datetime2(3)");
         builder.Property(n => n.RowVersion).IsRowVersion();
     }
 }

@@ -1,6 +1,6 @@
 # Plan 09 — Phase D: giving and insight (donations, receipts, needs board, reports)
 
-Status: **agreed 2026-11-04 (answers in §8). D.1 built 2026-11-04. D.2 built 2026-11-05. D.3 built 2026-11-06 (box in §7). D.4-D.5 not started.** Branch: `standing-sponsors`
+Status: **agreed 2026-11-04 (answers in §8). D.1 built 2026-11-04. D.2 built 2026-11-05. D.3 and D.4 built 2026-11-06 (boxes in §7). D.5 not started.** Branch: `standing-sponsors`
 (plan 08 and Phase D go to develop in one pull request, the user 2026-11-04). Decision numbers here are
 **M1, M2, …**.
 
@@ -117,6 +117,16 @@ or pledges for standing days" to this phase: recording a donation from a donor b
 | M35 | **What a notification may not refuse, and what it cannot do.** Every refusal answers the same 400, and the reason goes to the log, so the endpoint does not reveal which orders exist. Once genuine, a success is honoured even if the merchant was disabled or the need closed since the order: PayHere already took the money. A merchant whose id changed since the order has another secret, so that order cannot be checked and stays pending. Status `0` or an unknown code changes nothing. A chargeback on a paid gift changes nothing either: staff void it (M10). An order whose notification never comes stays `Pending`, with no job to expire it | The notification reports what already happened, so it records and never judges. Pending rows have no receipt and appear in no total, so a stale one costs nothing but a row |
 | M36 | **`givesOnline` on `GET /api/institutions/{slug}`, through a one-answer platform read** (`SqlOnlineGiving`, as K25's `SqlStandingHolds`): the public page has no session that could read a merchant. "Give money" on a need shows on the institution's own page only. The public board does not know about merchants, and adding it would mean a platform read per row. PayHere's secret is per domain, so each institution must add Sethika's address under Integrations and wait for approval: the settings screen says so | The page needs a yes or a no, never the merchant. The board stays the anonymous query it was (M12) |
 
+### Decided while building D.4 (2026-11-06)
+
+| # | Decision | Why |
+|---|---|---|
+| M37 | **What utilisation counts.** Served days are the calendar's own answer: `AvailabilityCalendar.GetAsync`, the month read behind the same judge as `DaysAsync` (one read for every slot, not one per slot), then `MealSlotRules.IsServedDay` on each day's reason: a slot not on that weekday, out of season or blocked did not serve, while `too_soon`, `too_far`, full and held days did. A slot counts from the Colombo day it was made. A month not over counts up to today, and says so. Booked days are only served days, so a booking on a day blocked afterwards is left out and the figure never passes 100%. The calendar knows only an active institution's active slots: a slot retired since, if it was booked that month, shows its booked days and no served days, and so does every slot of an institution not active. There is no history of a slot's rules, so a past month is judged by its rules as they stand now | The rule stays in one place, as the user asked, and the report cannot disagree with the calendar. A new slot would otherwise look barely used, and a month half gone would count days that have not happened. Saying nothing about a retired slot's days is honest; a guess is not |
+| M38 | **The files have their own routes**, `GET /api/institution/reports/monthly/csv` and `/api/institution/donations/csv`, not M17's `?format=csv`. Each takes `month` and `lang` | A route has one policy, so `EXPORT` is the endpoint's `[HasPermission]`, which `EndpointPolicyTests` sees. A query string would need a check inside the handler, which nothing sees (CLAUDE.md: every endpoint has a permission policy) |
+| M39 | **Which month a thing belongs to, and what is added up.** A booking belongs to the day of its meal; a gift to `DonatedAt` in Colombo, voided ones too, so a gift voided later leaves the month it was given in and a report run again shows that. Gifts of items take the category of their need, since a donation has no category of its own, and a gift for no need stands alone; their quantities are not summed (books and kilograms) but their estimated values are. "Pledges due this week" is today and the next six days, and overdue pledges too: they are still owed | A committee reads the month that happened, not the month it was typed in. M16 said "by category" without saying where a gift's category comes from |
+| M40 | **`giving.Needs` gains `OpenedAt` and `EndedAt`.** Nothing recorded when a need opened or was fulfilled: `UpdatedAt` is not touched by the counters, and fulfilment happens inside them. `Publish` sets `OpenedAt`; closing, cancelling, the counters and a quantity brought down to what arrived set `EndedAt`, in the same UPDATE as the status; a void that reopens a need clears it (M30), and a closed need keeps it. "Still open" is opened before the month's end and not ended by it, so a past month's report holds its own figure. The columns are nullable with no CHECK: needs from before D.4 have no dates and count in none of the three | Reading the audit log would miss fulfilment, which has no row of its own. Those older rows are test data in the dev database; nothing is in production |
+| M41 | **What the files do to what people typed.** One writer, `CsvDocument`: UTF-8 with a BOM, CRLF, quotes where needed, and a leading apostrophe on any cell starting `=`, `+`, `-`, `@`, tab or return, because donors' names and items are typed by people and the file is opened by a committee. Names kept in three languages come in `lang`; headings stay English and statuses and kinds are the stored words. Phone numbers are not in either file. `month` must be between 2000 and 2100: `?month=0001-01` used to be a 500 on D.1's list, because the month's edge cannot be turned into UTC | CSV injection is the one way this file can hurt the person who opens it. Translating the headings would add 30 strings to review for a file the screen already shows in their language |
+
 ## 3. Schema changes (one publish)
 
 - `giving.Donations`: `PublicId UNIQUEIDENTIFIER NOT NULL` (UUID v7 from code, `UNIQUE`), `Quantity DECIMAL(10,2) NULL`,
@@ -232,7 +242,24 @@ or pledges for standing days" to this phase: recording a donation from a donor b
   may meet it. `latestCode` no longer takes the tail of a reference (`REG-2026-000123`) for a code. The full `dotnet test`
   and full e2e run before the PR (D.5). Decisions M32-M36 above. `lib/shell/nav.test.ts` had 6 failures left
   by D.2's public `needsBoard` link: fixed here.
-- [ ] **D.4** The monthly report, CSV, print; dashboard lines (M18). ~0.5
+- [x] **D.4** The monthly report, CSV, print; dashboard lines (M18). ~0.5
+  *Built 2026-11-06.* One schema change: `giving.Needs.OpenedAt` and `EndedAt` (M40), published to Sethika_Test
+  and the dev Sethika (user OK); the publish script held only that ALTER and the security policy's drop and
+  create. API: `ReportEndpoints` (`/api/institution/reports/monthly`, `/monthly/csv`,
+  `/api/institution/giving/summary`), `/api/institution/donations/csv`, `MonthlyReportHandler`, `ReportQueries`
+  with `Queries/Sql/MonthlyReport.sql` (the project's first embedded `.sql`), `CsvDocument`, `ReportCsv`,
+  `MealSlotRules.IsServedDay`. Screens: `/reports` (print layout, CSV), a CSV button on `/giving/donations`,
+  `GivingLine` on the Day Ledger, `MyGivingPanel` on the donor's home, "Monthly report" in the menu; strings
+  en/si/ta (drafts in `docs/translations-to-review.md`). Tests: `ReportEndpointsTests` 27, `CsvDocumentTests` and
+  `ReportCsvTests` 28, domain `NeedTests` and `MealSlotRulesTests` additions, vitest `lib/giving/report`, e2e
+  `e2e/giving/report.spec.ts` (desktop 5, phone 5 with si/ta at 320 px). Mutants: C# 89/89 killed, vitest 9/9, e2e
+  15/15. X15 survived at first: staff were kept off the report only by the API's 403, so the test now reads the
+  gate's own words. Writing the mutants also found gaps closed before the run: rounding, a retired slot in a
+  month not over, a gift voided in another month, the query filters behind RLS, and the Colombo date in the files.
+  Control on unmutated code: integration 181/181 (reports, needs, donations, payments, endpoint policy, EF mapping,
+  catalogue), domain giving and slot rules 89/89, application 99/99, vitest 279/279, e2e giving and shell 73/73
+  with one worker, `dotnet format`, `tsc`, `eslint` and `next build` clean. The full `dotnet test` and full e2e run
+  before the PR (D.5). Decisions M37-M41 above.
 - [ ] **D.5** Close-out: DECISIONS "Giving (Phase D)" + Plans row, report chapter `docs/report/PHASE-D.md`,
   full `dotnet test` + full e2e with plan 08, push and the pull request to develop (asking first). ~0.25
 

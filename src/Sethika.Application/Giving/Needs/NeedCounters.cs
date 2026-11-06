@@ -29,14 +29,15 @@ internal static class NeedCounters
             .ExecuteUpdateAsync(set => set.SetProperty(n => n.QuantityPledged, n => n.QuantityPledged - quantity), cancellationToken);
 
     /// <summary>A pledge delivered (M15): what came counts as received, what did not is given back.</summary>
-    public static Task<int> DeliverAsync(this ISethikaDbContext db, int needId, decimal pledged, decimal received, CancellationToken cancellationToken) =>
+    public static Task<int> DeliverAsync(this ISethikaDbContext db, int needId, decimal pledged, decimal received, DateTime now, CancellationToken cancellationToken) =>
         db.Needs
             .Where(n => n.Id == needId)
             .ExecuteUpdateAsync(
                 set => set
                     .SetProperty(n => n.QuantityPledged, n => n.QuantityPledged - (pledged - received))
                     .SetProperty(n => n.QuantityReceived, n => n.QuantityReceived + received)
-                    .SetProperty(n => n.Status, n => n.Status == NeedStatus.Open && n.QuantityReceived + received >= n.QuantityNeeded ? NeedStatus.Fulfilled : n.Status),
+                    .SetProperty(n => n.Status, n => n.Status == NeedStatus.Open && n.QuantityReceived + received >= n.QuantityNeeded ? NeedStatus.Fulfilled : n.Status)
+                    .SetProperty(n => n.EndedAt, n => n.Status == NeedStatus.Open && n.QuantityReceived + received >= n.QuantityNeeded ? now : n.EndedAt),
                 cancellationToken);
 
     /// <summary>
@@ -44,14 +45,15 @@ internal static class NeedCounters
     /// once, so both counters move, if the need is open and has room.
     /// </summary>
     /// <returns>1 when it did; 0 when not, and <see cref="WhyNotAsync"/> says why.</returns>
-    public static Task<int> CountArrivalAsync(this ISethikaDbContext db, int needId, decimal quantity, CancellationToken cancellationToken) =>
+    public static Task<int> CountArrivalAsync(this ISethikaDbContext db, int needId, decimal quantity, DateTime now, CancellationToken cancellationToken) =>
         db.Needs
             .Where(n => n.Id == needId && n.Status == NeedStatus.Open && n.QuantityPledged + quantity <= n.QuantityNeeded)
             .ExecuteUpdateAsync(
                 set => set
                     .SetProperty(n => n.QuantityPledged, n => n.QuantityPledged + quantity)
                     .SetProperty(n => n.QuantityReceived, n => n.QuantityReceived + quantity)
-                    .SetProperty(n => n.Status, n => n.QuantityReceived + quantity >= n.QuantityNeeded ? NeedStatus.Fulfilled : n.Status),
+                    .SetProperty(n => n.Status, n => n.QuantityReceived + quantity >= n.QuantityNeeded ? NeedStatus.Fulfilled : n.Status)
+                    .SetProperty(n => n.EndedAt, n => n.QuantityReceived + quantity >= n.QuantityNeeded ? now : n.EndedAt),
                 cancellationToken);
 
     /// <summary>
@@ -65,7 +67,8 @@ internal static class NeedCounters
                 set => set
                     .SetProperty(n => n.QuantityPledged, n => n.QuantityPledged - quantity)
                     .SetProperty(n => n.QuantityReceived, n => n.QuantityReceived - quantity)
-                    .SetProperty(n => n.Status, n => n.Status == NeedStatus.Fulfilled ? NeedStatus.Open : n.Status),
+                    .SetProperty(n => n.Status, n => n.Status == NeedStatus.Fulfilled ? NeedStatus.Open : n.Status)
+                    .SetProperty(n => n.EndedAt, n => n.Status == NeedStatus.Fulfilled ? null : n.EndedAt),
                 cancellationToken);
 
     /// <summary>Why a conditional move found no row: an open need has no room, any other takes nothing.</summary>
