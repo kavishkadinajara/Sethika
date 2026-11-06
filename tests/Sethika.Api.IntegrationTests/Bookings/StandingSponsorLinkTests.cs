@@ -401,6 +401,28 @@ public sealed class StandingSponsorLinkTests(SethikaTestDatabase database) : IAs
     }
 
     [Fact]
+    public async Task ALinkedSponsor_CannotCancelARegularDay_OnlyLetItGo()
+    {
+        var (sponsor, _, slotId, standing, day, booking) = await LinkedSponsorAsync();
+
+        await AssertRefusedAsync(
+            await SendAsync(ClientFor(sponsor, null), HttpMethod.Post, $"/api/bookings/{booking.BookingNo}/cancel", new { reason = "Away" }),
+            HttpStatusCode.Conflict,
+            BookingErrors.RegularDay);
+
+        // Nothing moved: the booking stands, the place is held, and no day change was recorded.
+        Assert.Equal(BookingStatus.Approved, Assert.Single(await BookingsOfAsync(standing.Id), b => b.Id == booking.Id).Status);
+        Assert.Equal(1, await BookedSponsorsAsync(slotId, day));
+        Assert.Empty(await DayChangesAsync(standing.Id, day));
+
+        // My bookings says so, so no client offers what would be refused.
+        var mine = (await BodyOf(await SendAsync(ClientFor(sponsor, null), HttpMethod.Get, "/api/bookings/mine"))).EnumerateArray().ToList();
+        var listed = Assert.Single(mine, b => b.GetProperty("bookingNo").GetString() == booking.BookingNo);
+        Assert.True(listed.GetProperty("regular").GetBoolean());
+        Assert.False(listed.GetProperty("canCancel").GetBoolean());
+    }
+
+    [Fact]
     public async Task ASkip_WithoutAReason_ReadsAsTheSponsorCannotGive()
     {
         var (sponsor, _, _, standing, day, booking) = await LinkedSponsorAsync();

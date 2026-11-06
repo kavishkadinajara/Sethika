@@ -91,6 +91,7 @@ export function booking(overrides: Partial<DonorBooking> = {}): DonorBooking {
     rejectReason: null,
     cancelReason: null,
     canCancel: true,
+    regular: false,
     ...overrides,
   };
 }

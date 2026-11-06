@@ -7,7 +7,7 @@ import { useSession } from "@/auth/session-provider";
 import { useBookingApi } from "@/bookings/api";
 import { colomboToday, daysBetween } from "@/bookings/calendar";
 import { bookingErrorKey } from "@/bookings/errors";
-import { splitBookings } from "@/bookings/mine";
+import { canLetGoOwnDay, splitBookings } from "@/bookings/mine";
 import { inLocale } from "@/bookings/names";
 import type { BookingStatus, DonorBooking } from "@/bookings/types";
 import { useDates } from "@/bookings/use-dates";
@@ -29,7 +29,8 @@ const MAX_REASON = 300;
 /**
  * The donor's bookings (plan 03, 5.7): what is coming, soonest first, and what has been, latest
  * first. Each says where and when, what became of it, and why if it did not go ahead. Cancelling
- * is offered only where the API says the donor may still do it (`canCancel`, Q1).
+ * is offered only where the API says the donor may still do it (`canCancel`, Q1). A regular day the
+ * institution set up is not cancelled but let go (plan 08, K24), today included.
  */
 type Props = {
   /** Changes when the donor pulls to refresh: the list is fetched again. */
@@ -67,6 +68,7 @@ function BookingList({ refreshKey, onSettled }: Required<Pick<Props, "refreshKey
   const [bookings, setBookings] = useState<DonorBooking[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [cancelling, setCancelling] = useState<DonorBooking | null>(null);
+  const [lettingGo, setLettingGo] = useState<DonorBooking | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const palette = usePalette();
 
@@ -121,9 +123,10 @@ function BookingList({ refreshKey, onSettled }: Required<Pick<Props, "refreshKey
         bookings={upcoming}
         today={today}
         onCancel={setCancelling}
+        onLetGo={setLettingGo}
         featureFirst
       />
-      {past.length > 0 && <Section title={t("MyBookings.past")} bookings={past} today={today} onCancel={setCancelling} />}
+      {past.length > 0 && <Section title={t("MyBookings.past")} bookings={past} today={today} onCancel={setCancelling} onLetGo={setLettingGo} />}
 
       {cancelling && (
         <CancelSheet
@@ -132,6 +135,18 @@ function BookingList({ refreshKey, onSettled }: Required<Pick<Props, "refreshKey
           onCancelled={() => {
             setNotice(t("MyBookings.cancelSheet.done", { bookingNo: cancelling.bookingNo }));
             setCancelling(null);
+            void load();
+          }}
+        />
+      )}
+      {lettingGo && (
+        <CancelSheet
+          booking={lettingGo}
+          letGo
+          onClose={() => setLettingGo(null)}
+          onCancelled={() => {
+            setNotice(t("MyBookings.skipSheet.done", { bookingNo: lettingGo.bookingNo }));
+            setLettingGo(null);
             void load();
           }}
         />
@@ -146,6 +161,7 @@ function Section({
   bookings,
   today,
   onCancel,
+  onLetGo,
   featureFirst = false,
 }: {
   title: string;
@@ -153,6 +169,7 @@ function Section({
   bookings: DonorBooking[];
   today: string;
   onCancel: (booking: DonorBooking) => void;
+  onLetGo: (booking: DonorBooking) => void;
   /** The soonest booking leads, with the gold rim: the one card that matters most here. */
   featureFirst?: boolean;
 }) {
@@ -182,6 +199,7 @@ function Section({
             today={today}
             featured={featureFirst && index === 0}
             onCancel={() => onCancel(booking)}
+            onLetGo={() => onLetGo(booking)}
           />
         ))
       )}
@@ -194,11 +212,13 @@ function BookingCard({
   today,
   featured,
   onCancel,
+  onLetGo,
 }: {
   booking: DonorBooking;
   today: string;
   featured: boolean;
   onCancel: () => void;
+  onLetGo: () => void;
 }) {
   const { t, language } = useI18n();
   const dates = useDates();
@@ -258,6 +278,11 @@ function BookingCard({
           {t("MyBookings.people", { count: booking.headcount })} · {t(`Booking.fulfilment.${booking.fulfilmentMode}`)} · {booking.bookingNo}
         </Text>
         {booking.inMemoryOf && <Text variant="voice">{t("MyBookings.inMemoryOf", { name: booking.inMemoryOf })}</Text>}
+        {booking.regular && (
+          <Text variant="label" style={{ color: palette.brand }}>
+            {t("MyBookings.regular")}
+          </Text>
+        )}
 
         {booking.status === "Rejected" && booking.rejectReason && (
           <View style={[styles.reason, { backgroundColor: palette.dangerSoft }]}>
@@ -274,6 +299,11 @@ function BookingCard({
         {booking.canCancel && (
           <View style={styles.cancel}>
             <Button label={t("MyBookings.cancel")} variant="danger" onPress={onCancel} />
+          </View>
+        )}
+        {canLetGoOwnDay(booking, today) && (
+          <View style={styles.cancel}>
+            <Button label={t("MyBookings.cantGive")} variant="danger" onPress={onLetGo} />
           </View>
         )}
       </View>
@@ -310,8 +340,20 @@ function StatusBadge({ status }: { status: BookingStatus }) {
   );
 }
 
-function CancelSheet({ booking, onClose, onCancelled }: { booking: DonorBooking; onClose: () => void; onCancelled: () => void }) {
+/** Cancelling a booking, or with `letGo` letting a regular day go: the same sheet, its own words and call. */
+function CancelSheet({
+  booking,
+  letGo = false,
+  onClose,
+  onCancelled,
+}: {
+  booking: DonorBooking;
+  letGo?: boolean;
+  onClose: () => void;
+  onCancelled: () => void;
+}) {
   const { t } = useI18n();
+  const sheet = letGo ? "MyBookings.skipSheet" : "MyBookings.cancelSheet";
   const api = useBookingApi();
   const palette = usePalette();
   const [reason, setReason] = useState("");
@@ -321,7 +363,7 @@ function CancelSheet({ booking, onClose, onCancelled }: { booking: DonorBooking;
   async function submit() {
     setBusy(true);
     setFailure(null);
-    const result = await api.cancel(booking.bookingNo, reason.trim() || null);
+    const result = await (letGo ? api.letGo : api.cancel)(booking.bookingNo, reason.trim() || null);
     setBusy(false);
     if (result.ok) onCancelled();
     else setFailure(t(bookingErrorKey(result.failure)));
@@ -336,12 +378,12 @@ function CancelSheet({ booking, onClose, onCancelled }: { booking: DonorBooking;
             <Icon name="calendar" size={26} color={palette.danger} />
           </View>
           <Text variant="title" accessibilityRole="header">
-            {t("MyBookings.cancelSheet.title")}
+            {t(`${sheet}.title`)}
           </Text>
-          <Text variant="muted">{t("MyBookings.cancelSheet.description", { bookingNo: booking.bookingNo })}</Text>
+          <Text variant="muted">{t(`${sheet}.description`, { bookingNo: booking.bookingNo })}</Text>
           <TextField
-            label={t("MyBookings.cancelSheet.reason")}
-            help={t("MyBookings.cancelSheet.reasonHint")}
+            label={t(`${sheet}.reason`)}
+            help={t(`${sheet}.reasonHint`)}
             value={reason}
             onChangeText={setReason}
             maxLength={MAX_REASON}
@@ -349,8 +391,8 @@ function CancelSheet({ booking, onClose, onCancelled }: { booking: DonorBooking;
             numberOfLines={3}
           />
           <FormError message={failure} />
-          <Button label={t("MyBookings.cancelSheet.confirm")} busy={busy} onPress={() => void submit()} />
-          <Button label={t("MyBookings.cancelSheet.keep")} variant="secondary" disabled={busy} onPress={onClose} />
+          <Button label={t(`${sheet}.confirm`)} busy={busy} onPress={() => void submit()} />
+          <Button label={t(`${sheet}.keep`)} variant="secondary" disabled={busy} onPress={onClose} />
         </ScrollView>
       </SafeAreaView>
     </Modal>

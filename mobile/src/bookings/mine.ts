@@ -9,6 +9,11 @@ export function isUpcoming(booking: DonorBooking, today: string): boolean {
   return booking.date >= today && (booking.status === "Requested" || booking.status === "Approved");
 }
 
+/** A regular day may be let go while it can still happen, today included (plan 08, K24). */
+export function canLetGoOwnDay(booking: DonorBooking, today: string): boolean {
+  return booking.regular && isUpcoming(booking, today);
+}
+
 export function splitBookings(bookings: readonly DonorBooking[], today: string): { upcoming: DonorBooking[]; past: DonorBooking[] } {
   const soonest = (a: DonorBooking, b: DonorBooking) =>
     a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime) || a.bookingNo.localeCompare(b.bookingNo);

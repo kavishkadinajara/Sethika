@@ -248,7 +248,8 @@ public class Booking
 
     /// <summary>
     /// Requested or Approved → Cancelled, by the donor who booked, until the end of the day before
-    /// the meal (Q1). After that only the institution can. Gives the place back.
+    /// the meal (Q1). After that only the institution can. Gives the place back. A regular day is not
+    /// cancelled but let go (plan 08, K24): the skip records the day, a cancel would not.
     /// </summary>
     /// <param name="slotDate">The booking's slot-day.</param>
     /// <param name="today">Today in Sri Lanka (<see cref="SriLankaTime"/>).</param>
@@ -262,6 +263,11 @@ public class Booking
         if (Status is not (BookingStatus.Requested or BookingStatus.Approved))
         {
             return BookingResult.Fail(BookingErrors.InvalidTransition);
+        }
+
+        if (StandingSponsorshipId is not null)
+        {
+            return BookingResult.Fail(BookingErrors.RegularDay);
         }
 
         if (!DonorMayStillCancel(slotDate, today))
@@ -284,8 +290,9 @@ public class Booking
     /// cancel button.
     /// </summary>
     /// <param name="today">Today in Sri Lanka (<see cref="SriLankaTime"/>).</param>
-    public static bool DonorMayCancel(string status, DateOnly slotDate, DateOnly today) =>
-        status is BookingStatus.Requested or BookingStatus.Approved && DonorMayStillCancel(slotDate, today);
+    /// <param name="regular">It is a standing day, so it is let go instead.</param>
+    public static bool DonorMayCancel(string status, DateOnly slotDate, DateOnly today, bool regular) =>
+        !regular && status is BookingStatus.Requested or BookingStatus.Approved && DonorMayStillCancel(slotDate, today);
 
     /// <summary>Q1: until the end of the day before the meal.</summary>
     private static bool DonorMayStillCancel(DateOnly slotDate, DateOnly today) => today < slotDate;

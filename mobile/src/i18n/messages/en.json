@@ -173,6 +173,7 @@
       "booking_not_found": "This booking could not be found.",
       "invalid_transition": "This booking has already moved on. The list has been refreshed.",
       "cancel_window_closed": "It is too late to cancel this booking yourself. Please call the institution.",
+      "regular_day": "This is a regular day the institution set up for you. Use \"I can't give that day\" instead.",
       "too_early": "This can only be marked on or after the day of the meal.",
       "reason_required": "Please give a reason.",
       "reason_too_long": "Please keep the reason under 300 characters.",
@@ -351,7 +352,18 @@
       "keep": "Keep booking",
       "confirm": "Cancel booking",
       "done": "{bookingNo} is cancelled."
-    }
+    },
+    "cantGive": "I can't give that day",
+    "skipSheet": {
+      "title": "Can't give on this day?",
+      "description": "{bookingNo}. Only this day is let go: your other regular days stay yours. The institution sees it, and the day opens for someone else.",
+      "reason": "Reason (optional)",
+      "reasonHint": "The institution will see it.",
+      "keep": "Keep this day",
+      "confirm": "I can't give that day",
+      "done": "{bookingNo} is let go. We will text you to confirm."
+    },
+    "regular": "A regular day the institution set up for you"
   },
   "App": {
     "tabs": {

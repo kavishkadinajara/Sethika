@@ -92,6 +92,9 @@ public static class BookingErrors
     /// <summary>A donor may cancel only until the end of the day before the meal (Q1).</summary>
     public const string CancelWindowClosed = "cancel_window_closed";
 
+    /// <summary>A regular day is let go through the skip, which records it, never cancelled (plan 08, K24).</summary>
+    public const string RegularDay = "regular_day";
+
     /// <summary>A meal can be marked completed or missed only on or after its day.</summary>
     public const string TooEarly = "too_early";
 

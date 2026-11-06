@@ -43,6 +43,16 @@ describe("the institution reads", () => {
 });
 
 describe("booking and cancelling", () => {
+  it("takes a 204 as done: letting a regular day go answers with no body", async () => {
+    const { api, signedIn } = harness(() => new Response(null, { status: 204 }));
+
+    const result = await api.letGo("BK-2026-000123", "Away");
+
+    expect(result.ok).toBe(true);
+    expect(signedIn.map((c) => [c.path, c.init?.method])).toEqual([["/api/bookings/BK-2026-000123/skip", "POST"]]);
+    expect(JSON.parse(String(signedIn[0].init?.body))).toEqual({ reason: "Away" });
+  });
+
   it("go with the session, as JSON", async () => {
     const { api, anonymous, signedIn } = harness((path) =>
       path === "/api/bookings" ? json(201, { bookingNo: "BK-2026-000123", status: "Requested" }) : json(200, {}),

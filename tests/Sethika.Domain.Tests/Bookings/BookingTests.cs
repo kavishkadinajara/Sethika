@@ -171,10 +171,27 @@ public class BookingTests
             var today = SlotDay.AddDays(-daysBefore);
             var cancelled = InStatus(status).CancelAsDonor(null, Donor, SlotDay, today, Now).Succeeded;
 
-            Assert.Equal(cancelled, Booking.DonorMayCancel(status, SlotDay, today));
+            Assert.Equal(cancelled, Booking.DonorMayCancel(status, SlotDay, today, regular: false));
         }
 
-        Assert.Equal(status is BookingStatus.Requested or BookingStatus.Approved, Booking.DonorMayCancel(status, SlotDay, SlotDay.AddDays(-1)));
+        Assert.Equal(status is BookingStatus.Requested or BookingStatus.Approved, Booking.DonorMayCancel(status, SlotDay, SlotDay.AddDays(-1), regular: false));
+    }
+
+    [Theory]
+    [InlineData(BookingStatus.Requested)]
+    [InlineData(BookingStatus.Approved)]
+    public void ARegularDayIsLetGo_TheDonorNeverCancelsIt(string status)
+    {
+        var booking = InStatus(status);
+        booking.StandingSponsorshipId = 7;
+        var today = SlotDay.AddDays(-5);
+
+        Assert.Equal(BookingErrors.RegularDay, booking.CancelAsDonor("Sick", Donor, SlotDay, today, Now).Error);
+        Assert.Equal(status, booking.Status);
+        Assert.False(Booking.DonorMayCancel(status, SlotDay, today, regular: true));
+
+        // The institution still can.
+        Assert.True(booking.CancelAsInstitution("The hall is closed", Staff, Now).Succeeded);
     }
 
     [Fact]

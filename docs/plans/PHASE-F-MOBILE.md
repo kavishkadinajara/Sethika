@@ -1,11 +1,11 @@
 # Plan F — Mobile app (donors first)
 
-Status: **F.1 and F.2 built** (branch `ccr-79f10240-uk4n3v`, merged); **F.3 and F.4 built** (branch
-`mobile-booking`, awaiting review); F.5 and F.7 can start (plan 03 merged), F.6 waits for Phase B. Added to scope on 2026-10-24 after the supervisor suggested that a
-mobile application part would strengthen the project. It is built **in parallel** with the backend
-phases: the slices that need no new API start now, and each later slice starts when the API it calls
-has merged into `develop` (§7).
-Last updated 2026-10-25. Update this line and the §8 boxes whenever either changes.
+Status: **F.1 to F.4 built and merged**; F.5, F.6, F.7 and the UI/UX upgrade are planned in §10 on
+branch `mobile-f5`, **agreed with the user 2026-11-06 (scope B, the map kept); F.0 built, U.1 next**. Added to scope on
+2026-10-24 after the supervisor suggested that a mobile application part would strengthen the
+project. It was built **in parallel** with the backend phases; every API the remaining slices call
+has now merged into `develop`.
+Last updated 2026-11-06. Update this line and the §8 and §10.4 boxes whenever either changes.
 
 ---
 
@@ -89,9 +89,10 @@ phone) is a natural follow-up but not promised.
 | F.2 Mobile sessions: §4 auth endpoints + tests over HTTP; sign-in / OTP / signup screens; secure store; single-flight silent refresh (same rules as `web/lib/auth/session-client.ts`) | auth (merged) | **Done** |
 | F.3 Explore + institution page + month availability | plan 03 §5.5 GET endpoints | **Built** (`mobile-booking`) |
 | F.4 Book, my bookings, cancel | plan 03 §5.5 booking endpoints | **Built** (`mobile-booking`) |
-| F.5 Push: `notify.MobileDevices`, device endpoints, outbox push sender, push templates, dedup tests | plan 03 §5.6 notifications | when plan 03 merges |
-| F.6 Near me (location permission, distance list, then map) | Phase B search + Redis GEO | when Phase B merges |
-| F.7 Staff "Today" tab + mark served | plan 03 institution API + a `served` transition | when plan 03 merges |
+| F.5 Push: `notify.MobileDevices`, device endpoints, outbox push sender, push templates, dedup tests | plan 03 §5.6 notifications | Ready, §10 |
+| F.6 Near me (location permission, distance list, then map) | Phase B search + Redis GEO | Ready, §10 |
+| F.7 Staff "Today" tab + mark served | plan 03 institution API + a `served` transition | Ready, §10 (`/complete` is the transition) |
+| UI/UX upgrade like the web's plan 05: true-black dark, the same design language, every screen on the new base (required, the user, 2026-11-06) | nothing | Ready, §10 (U.1, U.2) |
 
 Branch: one per slice group, numbered like the others when cut (F.1–F.2 first). Rules for working in
 parallel:
@@ -137,3 +138,98 @@ in `docs/DECISIONS.md` (left to the session that owns that file).
 | F15 | The booking sheet and the cancel sheet are React Native `Modal`s (page sheet); choosing sign-in closes the sheet first | A screen pushed while a modal is open would open under it |
 | F16 | **Component tests use `test-renderer`**, which jest-expo already installs, through a small helper (`src/test-utils/render.tsx`), not React Native Testing Library | Adding RNTL with `npm install` (npm 10 and 11 alike) rewrote `package-lock.json` and dropped `@react-native/jest-preset` (a required peer of jest-expo; Jest stops), `@react-native/babel-preset` and `@react-native/metro-config` (peers of react-native-worklets) with about 30 other entries. That lockfile fragility is its own decision; until it is made, no package is added |
 | F17 | The calendar's month arrows stop at this month and at the month of the slot's last bookable day (`MaxAdvanceDays`); opening on a month with no open day moves on once, as on the web | The API judges every day; the arrows only stop the donor paging into months that cannot hold an open day |
+
+## 10. Plan for F.5, F.6, F.7 and the UI/UX upgrade (agreed 2026-11-06)
+
+Branch `mobile-f5`, cut from `develop` at 4a1202c. Hard limits: the hardening day is 2026-11-08 and is
+not cut; the deadline is 2026-11-10. This section supersedes §4's `DELETE` row and the "controlled
+by `notify.UserPreferences`" part of F5.
+
+### 10.1 What the comparison with the web found
+
+The web moved on after F.3 and F.4 (plan 05, then plans 06-09). The app's light theme still matches
+the web value for value. Its dark theme does not.
+
+| Area | The app today | The web today | What changes |
+|---|---|---|---|
+| Dark tokens (`theme/colors.ts`) | Green canvas `#0E2A21`, mint primary `#79CBA5`. 14 of 17 dark values are old, and the file's header still says they match | True black, Offering Gold primary (R1). Also has `accentStrong`, `dangerStrong`, `onDanger`, `scrim` | All values copied, the 4 missing tokens added, a test keeps them equal (F19) |
+| Depth (`lift`) | A green-tinted shadow in both themes | Dark: a faint light top edge and a black shadow (R5) | Two lifts, by theme (F20) |
+| Brand panels (Explore, signed-out Profile) | Estate Green field in both themes | Retired: "never a green field on the black", and the dashboard's greeting panel went in plan 05 | Replaced by the Day frame (F21) |
+| Splash and first paint | Dark splash is `#0E2A21` | Black | `app.json` |
+| Home | A greeting, then the directory | The Day Ledger: large italic date, one sentence composed from data, *Your table*, places | Day frame on Explore (F22) |
+| My bookings | Cards, no ledger lines. The type lacks `regular` and `yearly`, and Cancel is shown on a regular day | Hides Cancel on a regular day, offers "I can't give that day" | Fixed in F.0 (F35) |
+| Find | Client-side filter over `/api/institutions` | `/find`: day, time, type, near me, map | Near me only (F33) |
+| Staff | "This is an institution session": a dead end | Institution Day Ledger | The Today tab (F23) |
+| Institution page | Palette-driven, so it inherits the new base | Adds heart, live updates, services, needs, give online | Not ported (10.5) |
+
+The rest of the screens (sign-in, sign-up, code steps, booking sheet, calendar) read the palette, so
+most of their change comes with the base; each is still walked in both themes.
+
+### 10.2 Decisions
+
+| # | Decision | Why |
+|---|----------|-----|
+| F18 | **`mobile/.npmrc` pins `legacy-peer-deps=false`, and the lockfile is regenerated with it.** This closes F16: the machine's `~/.npmrc` has `legacy-peer-deps=true`, so npm here skips peers and every install dropped `@react-native/jest-preset` and the rest. F16's "no package is added" rule ends with it | 36 lockfile entries added, none removed, no version changed; a real `npm ci` installs cleanly. The same missing peer stopped `jest` on this machine too. **`npm ci --dry-run` is not safe here: it emptied `node_modules`.** A real `npm ci` puts it back |
+| F18a | `testTimeout: 30000` in the app's Jest config | With the install fixed, a run with no Jest cache (always the case in CI) failed 19 tests: a suite's first test pays for transforming React Native, passes Jest's 5 s limit, and its unfinished `act()` then breaks the tests after it. CI had stopped at `npm ci`, so nobody had seen this. Passes 112/112 cold at 2 workers |
+| F19 | **A test compares `theme/colors.ts` with `web/app/globals.css`**, both themes, every shared token | The file claimed to match and silently stopped matching for a week. A comment cannot keep two files equal |
+| F20 | Dark depth is a 1 px light top edge plus a black shadow; light keeps the green-tinted one | R5, and a green shadow on black reads as mud |
+| F21 | No brand panels. The green field goes from both themes on Explore and Profile, so light and dark share one layout | Plan 05 removed the dashboard's panel on the web for the same reason. One layout is also less to test |
+| F22 | **The Day Ledger sits at the top of Explore; no new tab.** A large Fraunces italic date (upright in si/ta, Fraunces being Latin only), one sentence from a port of `donorSentence`, *Your table* (the next 3 meals), then the directory. A visitor gets the date and an invitation | Three tabs stay three. A donor opens the app to see what is next, then to look for a place. Line height needs care: on the web, Sinhala's vowel signs ran into the line above at tight leading |
+| F23 | **The Today tab is the institution's Day Ledger on a phone**: the sentence, then each meal as a bowl with its sponsors. It reads `GET /api/institution/today` and `GET /api/institution/bookings?from&to`. No API change | Both endpoints exist. The web's 05:00-21:00 timeline line is left out: at 320 pt the list says the same thing |
+| F24 | **Served is `POST /api/institution/bookings/{no}/complete`**, shown only with `BOOKINGS.CALENDAR.EDIT`, for `Approved` bookings, behind a confirm step. No-show stays on the web | The API already has the rule (on or after the slot-day) and needs no step-up. Completed cannot be undone, so a thumb slip needs a second tap. §0 promises served only |
+| F25 | The app reads `GET /api/me/permissions` into a small provider, and Profile gets the institution picker over the existing `switchInstitution` | The app has neither today, and F.7 cannot work without them. Hiding the tab is UX only; the API's check is the security |
+| F26 | **Push rides on the texts: a decorator around `IUserTextMessages`** sends the SMS, then a push when a `Channel = 'Push'` template of that code exists | The processor allows one handler per event type and throws on a second. A decorator needs no handler changed, covers the reminder job too, and makes the set of pushed events seed data. `SendToPhoneAsync` is not decorated: a roster number has no account |
+| F27 | 5 templates x 3 languages: `BOOKING_CONFIRMED`, `_APPROVED`, `_REJECTED`, `_CANCELLED`, `_REMINDER`. Not `_REQUESTED`, standing or yearly texts | Exactly §0's promise. A push about a request the donor made a second ago is noise. Values are never typed text (E2) |
+| F28 | One `notify.Notifications` row per device, `DedupKey = push:{key}:{deviceId}`, claimed by `UX_Notifications_Dedup` before the send, exactly as `SmsSenderBase` does. `Recipient` holds the token, `ProviderMessageId` the ticket | The SMS already holds the plain key, so push needs its own. Per device means a second phone is not blocked by the first. The longest pushed key, with its prefix and a device id, is about 80 of 120 characters |
+| F29 | **A push failure never fails the SMS or the outbox message**: it is recorded `Failed`, logged, and not retried. A `push-receipts` job (15 min, as Expo advises; receipts last 24 h) moves rows to `Delivered` or `Failed`. `DeviceNotRegistered`, on a ticket or a receipt, sets `DisabledAt` | F5: SMS is the guarantee and push is in addition. An `ok` ticket only means Expo took it |
+| F30 | `Push:Provider` is `Console` by default and `Expo` by configuration, as SMS does. Tests stub only the HTTP boundary and keep real SQL Server | No test or e2e run calls Expo. Dedup, disabling and ownership are still proved against the real index |
+| F31 | **The push token never goes in a URL**: `POST /api/me/devices/remove` with the token in the body replaces §4's `DELETE /api/me/devices/{token}`. The app removes the device before it ends the session; logout-all disables the user's devices on the server | URLs land in logs, and the token is what lets anyone push to that phone. After logout the access token is gone |
+| F32 | **The Profile switch is per device**: on registers, off removes. No use of `notify.UserPreferences` | Nothing in the code reads that table, SMS included, so F5's wording described something never built. A device toggle does what the donor means with no new endpoint |
+| F33 | **Near me is `GET /api/search?date&near&radiusKm`, unchanged.** Permission is asked only when the donor taps Near me, foreground only, and the point goes straight to the API (G8: used and forgotten). Refusal keeps the directory working and says why. Today and tomorrow chips | The search answers with `distanceKm`. It returns places with a meal open that day, so the list says so instead of implying these are all the places |
+| F34 | **The map stays (the user, 2026-11-06, against the proposal to cut it), built last as its own slice, F.6b.** This settles F8: a `react-native-webview` page running Leaflet over OpenStreetMap, the web's own map | `expo-maps` needs a Google Maps key on Android, and MapLibre needs its own native setup and tile source. WebView + Leaflet needs no key, runs in Expo Go, and draws the same map as `FindMap.tsx`. OSM's tile policy expects a Referer, so the page gets a `baseUrl`; that is checked first. Built last so it cannot delay the required work |
+| F35 | **A regular day is fixed on the phone**: `regular` joins the type, Cancel goes, "I can't give that day" calls the existing `POST /api/bookings/{no}/skip` | Today the phone offers Cancel where the web hides it (plan 08, K24). The web only hides it: `DonorMayCancel` does not look at `regular`, so the API takes the cancel too. The standing job does not book that day again (it passes over a day with a booking in any status), but the day is not recorded as let go. **The API now refuses it too (the user, 2026-11-06)**: a button hidden in the UI is not the rule |
+| F36 | Screens are proved with Jest (`test-renderer`) and mutants. Screenshots from a web export at 320 px are tried as a look check only; the real phone decides | React Native has no Playwright. `react-native-web` is already a dependency, but `NativeTabs` may not render there; if so, the report says the look was checked on the phone only |
+| F37 | Packages: `expo-notifications`, `expo-location`, and `react-native-webview` for F.6b, via `npx expo install`; Leaflet is bundled into the map page. No NuGet package. Everything but push still runs in Expo Go; registration is skipped there | Expo Go has had no remote push on Android since SDK 53 |
+
+### 10.3 Schema and seed
+
+`notify.MobileDevices` as in §3, and 15 `Push` rows in `11_NotifyTemplates.sql`, published to
+`Sethika_Test` and, with the user's OK, the dev `Sethika` (e2e runs against it).
+
+### 10.4 Slices, in build order
+
+The base comes before the new screens, so F.5 to F.7 are built once, on the final look. Estimates are
+plan days; plans 08 and 09 ran at 1.5 to 3 times faster than estimated.
+
+- [x] **F.0 Repair (0.15).** `.npmrc`, lockfile, F18a; F35 on the phone and in the API (`regular_day`, 409; `canCancel` false on a regular day). Found on the way: `read()` took the skip's empty 204 as a failure, so a day let go would have shown an error. Lint and typecheck clean, Jest 117, web vitest 279, domain `BookingTests` 55, integration `StandingSponsorLinkTests` + `DonorBookingEndpointsTests` 32, format clean. Mutants: app 10/10, .NET 4/4. Mobile CI is proved locally only until the branch is pushed
+- [ ] **U.1 The base (0.3).** Tokens, F19's test, depth, `Text`/`Button`/`Card`/`Screen`, splash, tab bar
+- [ ] **F.5a Push, backend (0.6).** Table, device endpoints, decorator, Expo sender, templates, receipts job. Tests: a re-run sends nothing, a forced race sends once, two devices one each, SMS failure then retry, no template no push, a disabled device, a moved token reaches only its new owner, logout-all, `EndpointPolicyTests`
+- [ ] **F.5b Push, app (0.25).** Permission after sign-in, channel before token, the Profile switch, a tap opens My bookings, removal on sign-out
+- [ ] **F.7 Today (0.4).** Permissions provider, institution picker, Today tab, served
+- [ ] **F.6a Near me (0.25).** Location permission and the distance list
+- [ ] **U.2 Every screen (0.6).** The Day frame, ledger lines in My bookings, every other screen walked in both themes and three languages at 320 pt
+- [ ] **F.6b The map (0.5).** F34, reached from the near-me list, numbered pins as on the web, each opening the place's page; the list stays the accessible way to the same data
+- [ ] **F.8 Close-out (0.25).** `docs/report` chapter, DECISIONS Plans row, this file, translations; then the full runs and the PR
+
+About 3.2 plan days remain after F.0, against 2026-11-07 alone. It fits only at about three times the
+estimated pace, so if the day runs out F.6b is the one left unfinished, and the user decides then. Each slice is mutation-tested; the full `dotnet test` and e2e run once, right before the PR.
+
+### 10.5 Cut, in this order if a day slips
+
+Already out of the plan above:
+
+1. iOS push (F7: no Mac or Apple account), per-event push settings, push for standing and yearly texts
+2. No-show, approve and decline on the phone
+3. Heart and My places, yearly and shared sections, day requests, memorial, services, needs, giving, live updates. These stay on the web; §6 says most of this already, and the report must say the rest
+
+If more has to go: first the map (F.6b), which the user decides at that point, then the `push-receipts` job (`DeviceNotRegistered` on the ticket still disables
+a device, so F4's receipt half moves to a known gap), then *Your table* on Explore. Never the hardening
+day, tests, mutants, or the true-black base.
+
+### 10.6 What needs the user
+
+| When | What |
+|---|---|
+| Done, 2026-11-06 | Scope B, the map kept, the packages and the schema publish agreed, and the API refuses a regular day's cancel |
+| By noon 2026-11-07 | An Expo account and EAS project, a Firebase project, `google-services.json`, the FCM V1 key uploaded to Expo, then a development build APK. Real push cannot be tested without these. Nothing else waits on them: if they are late, the report says push was proved against a stub only |
+| Evening 2026-11-07 or morning 2026-11-08 | **One** real-phone walk-through: the owed F.3/F.4 list and everything new, on the final look, three languages, light and dark. Walking the old screens first would be repeated work |

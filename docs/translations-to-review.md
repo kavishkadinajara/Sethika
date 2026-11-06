@@ -2039,3 +2039,13 @@ Drafts by Claude, not reviewed by a Sinhala or Tamil speaker. "Pledge" is writte
 | `Dashboard.myGiving.pledged` | {count} pledged | {count} ක් පොරොන්දු විය | {count} உறுதியளிக்கப்பட்டது |
 | `Dashboard.myGiving.pledgedBy` | {count} pledged, by {date} | {count} ක් පොරොන්දු විය, {date} වන විට | {count} உறுதியளிக்கப்பட்டது, {date} க்குள் |
 | `Shell.items.reports` | Monthly report | මාසික වාර්තාව | மாதாந்திர அறிக்கை |
+
+## Mobile F.0: a regular day (2026-11-06, `Booking.errors`, plan F, F35)
+
+`MyBookings.cantGive`, `MyBookings.skipSheet.*` and `MyBookings.regular` are copied into the app
+unchanged from the web, so the "Standing sponsors' own days" section above covers them. The one new
+string, in both `web/messages` and the app:
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) |
+|---|---|---|---|
+| `Booking.errors.regular_day` | This is a regular day the institution set up for you. Use "I can't give that day" instead. | මෙය ආයතනය ඔබ සඳහා සැකසූ නිත්‍ය දිනයකි. ඒ වෙනුවට "මට එදින දිය නොහැක" තෝරන්න. | இது நிறுவனம் உங்களுக்காக அமைத்த வழக்கமான நாள். அதற்குப் பதிலாக "அந்த நாளில் என்னால் வழங்க முடியாது" என்பதைத் தேர்ந்தெடுங்கள். |

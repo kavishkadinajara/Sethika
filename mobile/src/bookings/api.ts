@@ -49,6 +49,10 @@ export function createBookingApi(signedIn: Fetch, anonymous: Fetch = (path) => g
 
     cancel: (bookingNo: string, reason: string | null): Promise<BookingResult<unknown>> =>
       read(() => signedIn(`/api/bookings/${encodeURIComponent(bookingNo)}/cancel`, post({ reason }))),
+
+    /** Lets one of the donor's regular days go (plan 08, K24). */
+    letGo: (bookingNo: string, reason: string | null): Promise<BookingResult<unknown>> =>
+      read(() => signedIn(`/api/bookings/${encodeURIComponent(bookingNo)}/skip`, post({ reason }))),
   };
 }
 
@@ -67,6 +71,8 @@ async function read<T>(call: () => Promise<Response>): Promise<BookingResult<T>>
   } catch {
     return { ok: false, failure: { status: 0, code: null, fields: [] } };
   }
+
+  if (response.status === 204) return { ok: true, value: undefined as T };
 
   if (response.ok) {
     try {

@@ -28,6 +28,7 @@ const bookingCodes = [
   "booking_not_found",
   "invalid_transition",
   "cancel_window_closed",
+  "regular_day",
   "too_early",
   "reason_required",
   "reason_too_long",

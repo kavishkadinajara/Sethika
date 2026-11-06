@@ -88,6 +88,38 @@ it("cancels with the reason given, then shows the list again", async () => {
   expect(mockApi.sent.filter((request) => request.path === "/api/bookings/mine")).toHaveLength(2);
 });
 
+it("lets a regular day go, never cancels it, and shows the list again", async () => {
+  const regular = booking({ bookingNo: "BK-2026-000006", date: "2026-11-10", status: "Approved", canCancel: false, regular: true });
+  mockApi.serve({
+    "GET /api/bookings/mine": () => json(200, [regular]),
+    "POST /api/bookings/BK-2026-000006/skip": () => new Response(null, { status: 204 }),
+  });
+  const screen = await render(<MyBookings />);
+
+  screen.getText("A regular day the institution set up for you");
+  expect(screen.queryText("Cancel booking")).toBeNull();
+  await press(screen.getText("I can't give that day"));
+  screen.getText("Can't give on this day?");
+  await type(screen.getLabel("Reason (optional)"), " Away in Kandy ");
+  await press(screen.allMatching("I can't give that day").at(-1)!);
+
+  expect(mockApi.sent.find((request) => request.method === "POST")).toEqual({
+    method: "POST",
+    path: "/api/bookings/BK-2026-000006/skip",
+    body: { reason: "Away in Kandy" },
+    signedIn: true,
+  });
+  screen.getText("BK-2026-000006 is let go. We will text you to confirm.");
+  expect(mockApi.sent.filter((request) => request.path === "/api/bookings/mine")).toHaveLength(2);
+});
+
+it("offers no letting go on an ordinary booking", async () => {
+  const screen = await render(<MyBookings />);
+
+  expect(screen.queryText("I can't give that day")).toBeNull();
+  expect(screen.queryText("A regular day the institution set up for you")).toBeNull();
+});
+
 it("says why a cancel was refused", async () => {
   const screen = await render(<MyBookings />);
   mockApi.also({ "POST /api/bookings/BK-2026-000001/cancel": () => json(409, { code: "cancel_window_closed" }) });

@@ -111,4 +111,6 @@ export type DonorBooking = {
   cancelReason: string | null;
   /** Whether the donor may still cancel it themselves (plan 03, Q1). The API decides, not the app. */
   canCancel: boolean;
+  /** One of the donor's regular days, set up by the institution: let go, never cancelled (plan 08, K24). */
+  regular: boolean;
 };

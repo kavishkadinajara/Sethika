@@ -32,6 +32,7 @@ export const BOOKING_CODES = [
   "booking_not_found",
   "invalid_transition",
   "cancel_window_closed",
+  "regular_day",
   "reason_too_long",
   "stale",
 ] as const;
