@@ -1,6 +1,6 @@
 # Plan 09 — Phase D: giving and insight (donations, receipts, needs board, reports)
 
-Status: **agreed 2026-11-04 (answers in §8). D.1 built 2026-11-04. D.2 built 2026-11-05. D.3 built 2026-11-06 (not committed; box in §7). D.4-D.5 not started.** Branch: `standing-sponsors`
+Status: **agreed 2026-11-04 (answers in §8). D.1 built 2026-11-04. D.2 built 2026-11-05. D.3 built 2026-11-06 (box in §7). D.4-D.5 not started.** Branch: `standing-sponsors`
 (plan 08 and Phase D go to develop in one pull request, the user 2026-11-04). Decision numbers here are
 **M1, M2, …**.
 
@@ -208,8 +208,8 @@ or pledges for standing days" to this phase: recording a donation from a donor b
   e2e run before the PR (D.5). Decisions M29-M31 above.
 - [x] **D.3** PayHere sandbox: each institution's merchant settings and the encrypted secret (M10, M21), the
   order, the checkout form, the notification, the return page. ~0.8
-  *Built 2026-11-06, not committed.* One schema change: `giving.OnlinePayments`' block predicates (M34),
-  published to Sethika_Test; **not yet to the dev Sethika** (the code runs either way: only the two block predicates differ). API: `PaymentEndpoints` (`/api/institution/payments/merchant`,
+  *Built 2026-11-06.* One schema change: `giving.OnlinePayments`' block predicates (M34),
+  published to Sethika_Test and the dev Sethika (user OK). API: `PaymentEndpoints` (`/api/institution/payments/merchant`,
   `POST /api/institutions/{slug}/give`, `/api/me/payments/{orderId}`, anonymous
   `POST /api/payments/payhere/notify`), `PaymentMerchantHandler`, `OnlinePaymentHandler`, `PlatformPayments`,
   `SqlOnlineGiving`, `PaymentQueries`; `PayHereSignature` (domain), `AesGcmMerchantSecrets`,
