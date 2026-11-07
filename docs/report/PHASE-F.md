@@ -397,13 +397,21 @@ day requests, the memorial planner, services, needs, giving and live updates, wh
 offline booking; "Search this area" and dark tiles on the map (F73). Nothing on the plan's cut order had
 to be cut, and the map, the first in line, was kept.
 
-Open, for the user to decide:
+Fixed after the full run, with the user's agreement (F74):
 
-- **A failed SMS is never resent (plan 10.6).** This predates push and affects every deduped text.
-  `SmsSenderBase` leaves the `Failed` row holding the dedup key, so the outbox's retry is refused the
-  insert, returns quietly, and the message is marked processed. It undercuts F5's "SMS is the guarantee".
-  One effect of the decorator: the retry does go on to push, so a donor with the app gets the push and
-  not the text, while a donor without the app gets nothing and nothing says so.
+- **A failed SMS was never resent (plan 10.6).** This predated push and affected every deduped text.
+  `SmsSenderBase` left the `Failed` row holding the dedup key, so the outbox's retry was refused the
+  insert, returned quietly, and the message was marked processed. It undercut F5's "SMS is the
+  guarantee": a donor with the app got the push and not the text, and a donor without it got nothing.
+  Now, when the key is taken, one `UPDATE ... WHERE Status = 'Failed'` takes the row back as `Queued`
+  and the text is sent again on the same row, with `Attempts` raised. A `Sent` row is never taken, and
+  a second retry while the first is still with the gateway finds the row `Queued` and sends nothing.
+  Four new tests in `TextLkSmsSenderTests`; 9 mutants, all killed, after one survivor (keeping the
+  status unchanged) showed the first concurrency test never really overlapped, so it was replaced by
+  one that holds the first retry inside the gateway. This change came after the whole-suite run in
+  section 10; the SMS, push, outbox, jobs and sign-in tests were run again on it.
+- **Still not covered:** a send whose process dies between claiming the row and the gateway's answer
+  leaves the row `Queued`, and nothing takes a `Queued` row back.
 
 Known gaps:
 
