@@ -400,10 +400,13 @@ describe("the push switch", () => {
   it("reads the phone again on coming back from its settings, and only then", async () => {
     let changed: (state: string) => void = () => {};
     const remove = jest.fn();
-    const listen = jest.spyOn(AppState, "addEventListener").mockImplementation((_, handler) => {
-      changed = handler as typeof changed;
+    // Replaced and put back by hand: React Native's Jest setup makes addEventListener a mock
+    // already, and mockRestore() on a spy of it left it returning undefined for every later test.
+    const original = AppState.addEventListener;
+    AppState.addEventListener = jest.fn((_: string, handler: (state: string) => void) => {
+      changed = handler;
       return { remove };
-    });
+    }) as unknown as typeof AppState.addEventListener;
     mockPhone.stored.set(CHOICE_KEY, "on");
     mockPhone.phone.permission = permissions.BLOCKED;
     const screen = await render(page());
@@ -420,8 +423,8 @@ describe("the push switch", () => {
     expect(screen.queryText(BLOCKED)).toBeNull();
 
     screen.unmount();
+    AppState.addEventListener = original;
     expect(remove).toHaveBeenCalled();
-    listen.mockRestore();
   });
 
   it("is not there in Expo Go", async () => {
