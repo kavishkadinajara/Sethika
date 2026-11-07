@@ -361,18 +361,23 @@ went to the console.
 This is the part of the phase that is not finished, stated plainly so that the rest is not read as more
 than it is.
 
-**The finished app has never been opened on a real phone.** The one walk-through is still owed: the F.3
+**The first part of the walk-through was done on 2026-11-07.** The user ran the finished app in Expo Go on their own Android phone, against
+the real API on a fresh, empty database (`SethikaWalk`), with real texts through Text.lk. Signing in, signing
+out and a forgotten password worked, and the codes arrived as real SMS. The database agrees: two texts
+`Sent`, each with Text.lk's message id and no error, one account, and two refresh tokens, one of them revoked
+by the sign-out. A fresh database was used so that the reminder job could not text the e2e accounts' made-up
+numbers. The rest of the walk-through is still owed: the F.3
 and F.4 list, plus everything new, on the final look, in three languages, light and dark. The plan
 planned it for the evening of 2026-11-07 or the morning of 2026-11-08.
 
 | Part | On a real phone | Against the real API or service |
 |---|---|---|
-| Sign in, sign up, sessions (F.1, F.2) | Not recorded apart from the partial try in the next row | Session client run against a live API from a script, in F.2 |
+| Sign in, sign up, sessions (F.1, F.2) | **Seen 2026-11-07** by the user on their Android phone (Expo Go): sign in and sign out work. Languages, themes and a cold start were not recorded | **Yes**: the real API, and the codes as real SMS through Text.lk |
 | Browse, book, My bookings, cancel (F.3, F.4) | Partly, by the user, 2026-10-25, on the old look. Unfinished | Only in that partial try |
 | A regular day, "I can't give that day" (F.0) | Never | The API side by integration tests. The app never |
 | The redesign (U.1, U.2) | Never. Native tab bar, splash, inset edges, real fonts and icons all unseen | Never: the walk used a stub |
 | Push (F.5a, F.5b) | Never. No token has been fetched, and the prompt, channel, banner, cold-start tap and status-bar icon are all unseen | **Expo has never been called.** The stub's answers come from Expo's documentation |
-| Forgotten and changed password (F.2b) | Never | The app never. The routes by integration tests |
+| Forgotten and changed password (F.2b) | **Forgotten password seen 2026-11-07** by the user, working. Changing a password was not recorded | **Yes** for the forgotten password, with its code as a real SMS. The routes also by integration tests |
 | Today, the picker, Served (F.7) | Never. The tab appearing and going is read from `expo-router`'s code only (F57) | The app never. The routes by integration tests |
 | Near me (F.6a) | Never. No real fix, location off, or the phone's question | The app never |
 | The map (F.6b) | Never. The page and the screen around it have not been seen together, and `userAgent` and `baseUrl` are proved only as props | Real OSM tiles in Chromium only. The app never called the API |
