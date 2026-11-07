@@ -360,7 +360,7 @@ function Fact({ icon, words }: { icon: IconName; words: string }) {
   return (
     <View style={[styles.fact, { backgroundColor: palette.canvas, borderColor: palette.hairline }]}>
       <Icon name={icon} size={14} />
-      <Text variant="caption" style={{ color: palette.fg }}>
+      <Text variant="caption" style={[styles.factWords, { color: palette.fg }]}>
         {words}
       </Text>
     </View>
@@ -418,7 +418,9 @@ const styles = StyleSheet.create({
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: "center", justifyContent: "center" },
   radioDot: { width: 10, height: 10, borderRadius: 5 },
   facts: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs + 2 },
+  factWords: { flexShrink: 1 },
   fact: {
+    maxWidth: "100%",
     flexDirection: "row",
     alignItems: "center",
     gap: 4,

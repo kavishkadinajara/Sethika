@@ -1,7 +1,7 @@
 import {
   addDays,
   addMonths,
-  colomboPartOfDay,
+  colomboTime,
   colomboToday,
   dayOfWeek,
   daysBetween,
@@ -14,6 +14,14 @@ import {
 
 /*  The calendar's arithmetic, on Colombo dates as strings (the API's own). The phone's time zone
     never enters: the tests run in whatever zone the machine has, and must pass in all of them. */
+
+describe("colomboTime", () => {
+  it("is Colombo's clock, not UTC's, on 24 hours", () => {
+    expect(colomboTime(new Date("2026-11-19T04:00:00Z"))).toBe("09:30");
+    expect(colomboTime(new Date("2026-11-19T18:29:00Z"))).toBe("23:59");
+    expect(colomboTime(new Date("2026-11-19T18:30:00Z"))).toBe("00:00");
+  });
+});
 
 describe("colomboToday", () => {
   it("is Colombo's date, not UTC's: from 18:30 UTC it is already tomorrow there", () => {
@@ -73,16 +81,5 @@ describe("monthWindow", () => {
     expect(monthWindow("2026-10-25", 90)).toEqual({ first: "2026-10", last: "2027-01" });
     expect(monthWindow("2026-10-25", 6)).toEqual({ first: "2026-10", last: "2026-10" });
     expect(monthWindow("2026-10-25", 7)).toEqual({ first: "2026-10", last: "2026-11" });
-  });
-});
-
-describe("colomboPartOfDay", () => {
-  it("greets by the hour in Colombo (UTC+5:30), not the phone's or UTC's", () => {
-    expect(colomboPartOfDay(new Date("2026-11-19T18:29:59Z"))).toBe("evening");
-    expect(colomboPartOfDay(new Date("2026-11-19T18:30:00Z"))).toBe("morning");
-    expect(colomboPartOfDay(new Date("2026-11-20T06:29:59Z"))).toBe("morning");
-    expect(colomboPartOfDay(new Date("2026-11-20T06:30:00Z"))).toBe("afternoon");
-    expect(colomboPartOfDay(new Date("2026-11-20T12:29:59Z"))).toBe("afternoon");
-    expect(colomboPartOfDay(new Date("2026-11-20T12:30:00Z"))).toBe("evening");
   });
 });

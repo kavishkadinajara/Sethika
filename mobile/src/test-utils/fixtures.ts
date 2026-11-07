@@ -1,4 +1,16 @@
-import type { Availability, DayAvailability, DonorBooking, PublicInstitution, PublicMealSlot } from "@/bookings/types";
+import type {
+  Availability,
+  CalendarBooking,
+  DayAvailability,
+  DonorBooking,
+  PublicInstitution,
+  PublicMealSlot,
+  SearchAnswer,
+  SearchPlace,
+  SearchSlot,
+  SlotDay,
+  TableSlot,
+} from "@/bookings/types";
 
 /*  The API's answers as DonorBookingEndpoints.cs sends them, for the booking tests. The ids are
     public ones; the names are made up for tests and stand for no real institution.           */
@@ -53,6 +65,26 @@ export function institution(overrides: Partial<PublicInstitution> = {}): PublicI
   };
 }
 
+/** A meal as the search sends it (SearchSlotView). */
+export function searchSlot(overrides: Partial<SearchSlot> = {}): SearchSlot {
+  return { mealSlot: LUNCH, name: "Lunch", nameSi: null, nameTa: null, startTime: "11:30", endTime: "13:00", sponsors: 4, headcount: 60, ...overrides };
+}
+
+/** A place as the search sends it (SearchResultView), measured from a searched point. */
+export function searchPlace(overrides: Partial<SearchPlace> = {}): SearchPlace {
+  const { slug, name, nameSi, nameTa, type, typeName, typeNameSi, typeNameTa, district, districtSi, districtTa, city, latitude, longitude } = institution();
+  return {
+    slug, name, nameSi, nameTa, type, typeName, typeNameSi, typeNameTa, district, districtSi, districtTa, city, latitude, longitude,
+    distanceKm: 2.35,
+    slots: [searchSlot()],
+    ...overrides,
+  };
+}
+
+export function searchAnswer(date: string, results: SearchPlace[]): SearchAnswer {
+  return { date, results, more: false };
+}
+
 export function day(date: string, overrides: Partial<DayAvailability> = {}): DayAvailability {
   return { date, bookable: true, reason: null, sponsors: 4, headcount: 60, ...overrides };
 }
@@ -91,6 +123,55 @@ export function booking(overrides: Partial<DonorBooking> = {}): DonorBooking {
     rejectReason: null,
     cancelReason: null,
     canCancel: true,
+    regular: false,
+    ...overrides,
+  };
+}
+
+export function tableSlot(overrides: Partial<TableSlot> = {}): TableSlot {
+  return {
+    mealSlot: LUNCH,
+    name: "Lunch",
+    nameSi: null,
+    nameTa: null,
+    startTime: "11:30",
+    endTime: "13:00",
+    maxSponsors: 4,
+    bookedSponsors: 0,
+    requested: 0,
+    state: "Open",
+    ...overrides,
+  };
+}
+
+export function calendarBooking(overrides: Partial<CalendarBooking> = {}): CalendarBooking {
+  return {
+    bookingNo: "BK-2026-000001",
+    status: "Approved",
+    donorName: "Nimali Perera",
+    donorPhone: "+94770000000",
+    headcount: 25,
+    fulfilmentMode: "InstitutionPrepares",
+    inMemoryOf: null,
+    notes: null,
+    standing: null,
+    ...overrides,
+  };
+}
+
+export function slotDay(overrides: Partial<SlotDay> = {}): SlotDay {
+  return {
+    date: "2026-11-10",
+    mealSlot: LUNCH,
+    slotName: "Lunch",
+    slotNameSi: null,
+    slotNameTa: null,
+    startTime: "11:30",
+    endTime: "13:00",
+    maxSponsors: 4,
+    bookedSponsors: 1,
+    status: "Open",
+    bookings: [],
     ...overrides,
   };
 }

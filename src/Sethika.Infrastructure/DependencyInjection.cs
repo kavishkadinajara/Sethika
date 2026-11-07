@@ -5,6 +5,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Sethika.Application.Abstractions;
 using Sethika.Domain.Access;
@@ -198,6 +199,10 @@ public static class DependencyInjection
 
         AddSmsSender(services, smsSection.Get<SmsOptions>() ?? new SmsOptions(), isDevelopment);
 
+        var pushSection = configuration.GetSection(PushOptions.SectionName);
+        services.Configure<PushOptions>(pushSection);
+        AddPushGateway(services, pushSection.Get<PushOptions>() ?? new PushOptions(), isDevelopment);
+
         services.Configure<IdentityOptions>(options =>
         {
             // Identity's default lockout is five minutes. Five guesses per five minutes is 1 440 a
@@ -340,7 +345,17 @@ public static class DependencyInjection
 
         services.Configure<OutboxOptions>(configuration.GetSection(OutboxOptions.SectionName));
         services.AddScoped<OutboxProcessor>();
-        services.AddScoped<IUserTextMessages, UserTextMessages>();
+
+        // Every text goes through the push decorator (plan F, F26). Registered by hand: the
+        // container has no decorators, and the inner one must not resolve to the outer one.
+        services.AddScoped<UserTextMessages>();
+        services.AddScoped<IUserTextMessages>(provider => new PushingUserTextMessages(
+            provider.GetRequiredService<UserTextMessages>(),
+            provider.GetRequiredService<IDbConnectionFactory>(),
+            provider.GetRequiredService<IPushGateway>(),
+            provider.GetRequiredService<ILogger<PushingUserTextMessages>>()));
+        services.AddScoped<PushReceipts>();
+
         services.AddTransient<OutboxJob>();
         services.AddTransient<BookingReminderJob>();
         services.AddTransient<RecurringBookingJob>();
@@ -348,6 +363,7 @@ public static class DependencyInjection
         services.AddTransient<MemorialReminderJob>();
         services.AddTransient<AppointmentReminderJob>();
         services.AddTransient<GeoIndexRebuildJob>();
+        services.AddTransient<PushReceiptsJob>();
 
         var jobs = configuration.GetSection(JobsOptions.SectionName).Get<JobsOptions>() ?? new JobsOptions();
         if (!jobs.Enabled)
@@ -371,6 +387,38 @@ public static class DependencyInjection
         services.AddHostedService<RecurringJobs>();
 
         return services;
+    }
+
+    /// <summary>Registers the gateway named by <c>Push:Provider</c>, or refuses to start.</summary>
+    private static void AddPushGateway(IServiceCollection services, PushOptions push, bool isDevelopment)
+    {
+        if (string.Equals(push.Provider, PushOptions.ConsoleProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!isDevelopment)
+            {
+                throw new InvalidOperationException(
+                    "Push:Provider is Console outside Development: no push would be delivered, and every " +
+                    "one would be written to the log. Set Push:Provider to Expo.");
+            }
+
+            services.AddScoped<IPushGateway, ConsolePushGateway>();
+            return;
+        }
+
+        if (string.Equals(push.Provider, PushOptions.ExpoProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            // A typed factory client, for the same reasons as the SMS gateways'.
+            services.AddHttpClient<IPushGateway, ExpoPushGateway>(client =>
+            {
+                client.BaseAddress = new Uri(push.ExpoBaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(push.ExpoTimeoutSeconds);
+            });
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Push:Provider '{push.Provider}' is not recognised. Use {PushOptions.ConsoleProvider} " +
+            $"(Development only) or {PushOptions.ExpoProvider}.");
     }
 
     /// <summary>Registers the sender named by <c>Sms:Provider</c>, or refuses to start.</summary>

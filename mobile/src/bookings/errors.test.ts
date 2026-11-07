@@ -22,6 +22,8 @@ describe("bookingErrorKey", () => {
     expect(say(failure(409, "cancel_window_closed"))).toBe(
       "It is too late to cancel this booking yourself. Please call the institution.",
     );
+    expect(say(failure(409, "too_early"))).toBe("This can only be marked on or after the day of the meal.");
+    expect(say(failure(409, "regular_day"))).toBe("This is a regular day the institution set up for you. Use \"I can't give that day\" instead.");
   });
 
   it("says a lost connection and a rate limit in their own words", () => {

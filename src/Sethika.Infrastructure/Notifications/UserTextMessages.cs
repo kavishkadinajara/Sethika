@@ -109,12 +109,7 @@ public sealed partial class UserTextMessages(
             LogFellBack(logger, templateCode, language);
         }
 
-        foreach (var (name, value) in values)
-        {
-            body = body.Replace("{" + name + "}", value, StringComparison.Ordinal);
-        }
-
-        return body;
+        return TemplateText.Fill(body, values);
     }
 
     private sealed record Recipient(string PhoneNumber, string Language);

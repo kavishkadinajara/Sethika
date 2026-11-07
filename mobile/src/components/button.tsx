@@ -18,7 +18,8 @@ type Props = {
 /**
  * A full pill (DESIGN.md: never bowl a button). A press settles it to 97 % so a thumb feels it
  * land. `quiet` is a soft tinted pill for second actions inside a card; `danger` the outline
- * for something that ends a session or a booking. A busy button keeps its width.
+ * for something that ends a session or a booking. A busy button keeps its width: the spinner
+ * sits over the label, which stays in place, unseen, and is still what a screen reader says.
  */
 export function Button({ label, onPress, variant = "primary", icon, busy = false, disabled = false }: Props) {
   const palette = usePalette();
@@ -55,21 +56,23 @@ export function Button({ label, onPress, variant = "primary", icon, busy = false
       disabled={inactive}
       style={({ pressed }) => [
         styles.button,
+        variant === "primary" && styles.raised,
         { backgroundColor: pressed ? look.pressed : look.rest, borderColor: look.border },
         pressed && styles.pressed,
-        { opacity: disabled && !busy ? 0.5 : 1 },
+        { opacity: disabled && !busy ? 0.55 : 1 },
       ]}
     >
-      <View style={styles.content}>
-        {busy ? (
-          <ActivityIndicator color={look.text} />
-        ) : (
-          icon && <Icon name={icon} size={18} color={look.text} />
-        )}
+      <View style={[styles.content, busy && styles.hidden]}>
+        {icon && <Icon name={icon} size={18} color={look.text} />}
         <Text variant="label" style={[styles.label, { color: look.text }]}>
           {label}
         </Text>
       </View>
+      {busy && (
+        <View style={styles.spinner}>
+          <ActivityIndicator color={look.text} />
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -83,7 +86,16 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     justifyContent: "center",
   },
+  // The web's filled pill: a thin light top edge and a small shadow under it.
+  raised: {
+    boxShadow: [
+      { inset: true, offsetX: 0, offsetY: 1, blurRadius: 0, color: "rgba(255, 255, 255, 0.14)" },
+      { offsetX: 0, offsetY: 1, blurRadius: 2, color: "rgba(14, 42, 33, 0.3)" },
+    ],
+  },
   pressed: { transform: [{ scale: 0.97 }] },
+  hidden: { opacity: 0 },
+  spinner: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center" },
   content: { flexDirection: "row", gap: spacing.sm, justifyContent: "center", alignItems: "center" },
   label: { textAlign: "center", flexShrink: 1 },
   link: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },

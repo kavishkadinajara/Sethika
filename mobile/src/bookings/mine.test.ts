@@ -1,11 +1,24 @@
 import { booking } from "@/test-utils/fixtures";
 
-import { donorStats, isUpcoming, splitBookings } from "./mine";
+import { canLetGoOwnDay, donorStats, isUpcoming, splitBookings } from "./mine";
 
 /*  My bookings' two lists. The API returns the newest 200 by slot date (plan 03, E27); the app
     sorts them itself, so the order does not depend on how the API happens to send them.     */
 
 const TODAY = "2026-11-10";
+
+describe("canLetGoOwnDay", () => {
+  it("is a regular day still to happen, today included", () => {
+    expect(canLetGoOwnDay(booking({ regular: true, date: TODAY, status: "Approved" }), TODAY)).toBe(true);
+    expect(canLetGoOwnDay(booking({ regular: true, date: "2026-11-12", status: "Requested" }), TODAY)).toBe(true);
+  });
+
+  it("is not an ordinary booking, a day gone by, or one already over", () => {
+    expect(canLetGoOwnDay(booking({ regular: false, date: TODAY, status: "Approved" }), TODAY)).toBe(false);
+    expect(canLetGoOwnDay(booking({ regular: true, date: "2026-11-09", status: "Approved" }), TODAY)).toBe(false);
+    expect(canLetGoOwnDay(booking({ regular: true, date: TODAY, status: "Cancelled" }), TODAY)).toBe(false);
+  });
+});
 
 describe("splitBookings", () => {
   it("puts what may still happen first, soonest first, and the rest after, latest first", () => {

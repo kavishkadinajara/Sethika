@@ -88,6 +88,49 @@
     "ContainsPersonalData": "Not your name, phone number or email",
     "RecentlyUsed": "Not a password you used recently"
   },
+  "ForgotPassword": {
+    "step": "Step {current} of {total}",
+    "phoneTitle": "Forgot your password?",
+    "phoneHelp": "Enter the mobile number on your account. We'll text it a 6-digit code to set a new password.",
+    "phoneLabel": "Mobile number",
+    "phoneRequired": "Enter your mobile number.",
+    "sendCode": "Send code",
+    "remembered": "Remembered it?",
+    "signIn": "Sign in",
+    "codeTitle": "Enter the code",
+    "codeSentTo": "If {phone} belongs to a Sethika account, a code is on its way. It can take a minute to arrive.",
+    "verify": "Verify",
+    "passwordTitle": "Choose a new password",
+    "passwordHelp": "Every device signed in to your account will be signed out. You will sign in again with the new password.",
+    "passwordLabel": "New password",
+    "passwordRequired": "Choose a new password.",
+    "confirmLabel": "Type the new password again",
+    "confirmRequired": "Type the new password again.",
+    "confirmMismatch": "The two passwords don't match.",
+    "submit": "Change password",
+    "startAgain": "Start again",
+    "changedTitle": "Your password was changed",
+    "changedDescription": "Sign in with your new password."
+  },
+  "PasswordChange": {
+    "title": "Change your password",
+    "description": "You'll stay signed in here. Every other device you're signed in on will be signed out.",
+    "signInFirst": "Sign in to change your password.",
+    "signIn": "Sign in",
+    "currentLabel": "Current password",
+    "currentRequired": "Enter your current password.",
+    "currentIncorrect": "That isn't your current password.",
+    "nextLabel": "New password",
+    "nextRequired": "Choose a new password.",
+    "unchanged": "Choose a password that is different from your current one.",
+    "confirmLabel": "Confirm new password",
+    "confirmRequired": "Type your new password again to confirm it.",
+    "confirmMismatch": "This doesn't match the new password.",
+    "submit": "Change password",
+    "changed": "Password changed",
+    "changedDescription": "Your other devices have been signed out.",
+    "home": "Go to the home page"
+  },
   "Signup": {
     "title": "Create your account",
     "step": "Step {current} of {total}",
@@ -173,6 +216,7 @@
       "booking_not_found": "This booking could not be found.",
       "invalid_transition": "This booking has already moved on. The list has been refreshed.",
       "cancel_window_closed": "It is too late to cancel this booking yourself. Please call the institution.",
+      "regular_day": "This is a regular day the institution set up for you. Use \"I can't give that day\" instead.",
       "too_early": "This can only be marked on or after the day of the meal.",
       "reason_required": "Please give a reason.",
       "reason_too_long": "Please keep the reason under 300 characters.",
@@ -191,7 +235,7 @@
       "notAllowed": "Your role in this institution does not include this page.",
       "donorSignIn": "Sign in to see your bookings. New to Sethika? Create an account.",
       "createAccount": "Create an account",
-      "institutionSession": "You are signed in for an institution. Your own bookings are under your personal account: sign out, then sign in again without choosing an institution."
+      "institutionSession": "You are acting for an institution. Your own bookings are under your own account: change it in Profile."
     },
     "dates": {
       "months": [
@@ -295,7 +339,7 @@
       "signInFirst": "Sign in to book this day. It takes a minute, and we will bring you straight back here.",
       "signIn": "Sign in",
       "createAccount": "Create an account",
-      "institutionSession": "You are signed in for an institution. To book as yourself, sign out and sign in again without choosing an institution.",
+      "institutionSession": "You are acting for an institution. To book as yourself, change to your own account in Profile.",
       "notAllowed": "This account cannot make bookings.",
       "headcount": "How many people will be fed?",
       "headcountHint": "Between {min} and {max}.",
@@ -351,25 +395,58 @@
       "keep": "Keep booking",
       "confirm": "Cancel booking",
       "done": "{bookingNo} is cancelled."
-    }
+    },
+    "cantGive": "I can't give that day",
+    "skipSheet": {
+      "title": "Can't give on this day?",
+      "description": "{bookingNo}. Only this day is let go: your other regular days stay yours. The institution sees it, and the day opens for someone else.",
+      "reason": "Reason (optional)",
+      "reasonHint": "The institution will see it.",
+      "keep": "Keep this day",
+      "confirm": "I can't give that day",
+      "done": "{bookingNo} is let go. We will text you to confirm."
+    },
+    "regular": "A regular day the institution set up for you"
   },
   "App": {
     "tabs": {
       "explore": "Explore",
+      "today": "Today",
       "bookings": "My bookings",
       "profile": "Profile"
     },
     "explore": {
       "title": "Find a place to give",
-      "greeting": {
-        "morning": "Good morning",
-        "afternoon": "Good afternoon",
-        "evening": "Good evening"
-      },
-      "voice": "One meal can brighten someone's whole day.",
       "kinds": "Kind of place",
       "allKinds": "All",
       "count": "{count, plural, one {# place} other {# places}}"
+    },
+    "near": {
+      "button": "Near me",
+      "locating": "Finding you…",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "day": "Day",
+      "radius": "Within",
+      "km": "{km} km",
+      "title": "Open on {date}",
+      "intro": "Every place shown has a meal you can sponsor that day.",
+      "denied": "Location is turned off for Sethika. Allow it in your phone's settings, or choose from the list below.",
+      "openSettings": "Open settings",
+      "outside": "You seem to be outside Sri Lanka. Choose from the list below instead.",
+      "unavailable": "Your location could not be found. Try again, or choose from the list below.",
+      "count": "{count, plural, =0 {No places found.} one {# place found.} other {# places found.}}",
+      "moreNearest": "These are the nearest 100.",
+      "none": "No place has a meal you can sponsor on {date} here. Try another day or a wider area.",
+      "distance": "{km} km away",
+      "left": "{count, plural, one {# sponsor place left} other {# sponsor places left}}",
+      "bookLabel": "Book {meal} at {place}",
+      "failed": "The places could not be loaded.",
+      "showAll": "Show every place",
+      "map": "Map",
+      "mapTitle": "Map of the places found",
+      "mapHint": "The list shows the same places.",
+      "mapFailed": "The map did not load fully. The list shows the same places."
     },
     "bookings": {
       "title": "My bookings"
@@ -400,12 +477,21 @@
         "book": "Book a day in a few taps, and see every booking in one place.",
         "remind": "Get texts and reminders in your own language."
       },
+      "push": {
+        "label": "Notifications on this phone",
+        "help": "Your booking updates and reminders. Texts still come either way.",
+        "blocked": "Notifications are off for Sethika in your phone's settings.",
+        "openSettings": "Open settings",
+        "failed": "That did not work. Check your connection and try again.",
+        "channel": "Bookings"
+      },
       "version": "Version {version}"
     },
     "dates": {
       "monthYear": "{month} {year}",
       "full": "{weekday}, {day} {month} {year}",
-      "dayMonth": "{weekday}, {day} {month}"
+      "dayMonth": "{weekday}, {day} {month}",
+      "dayMonthLong": "{day} {month}"
     },
     "calendar": {
       "dayStatus": "{date}: {status}",
@@ -413,6 +499,57 @@
     },
     "institution": {
       "directions": "Directions"
+    },
+    "today": {
+      "noSponsors": "No sponsor yet.",
+      "served": "Mark as served",
+      "confirm": "Has {name} given this meal? This cannot be undone.",
+      "confirmYes": "Yes, served",
+      "call": "Call {name}"
+    }
+  },
+  "Dashboard": {
+    "sentence": {
+      "waitingAndNext": "{count, plural, one {# booking waits} other {# bookings wait}} for your answer, and next on the table is {meal} at {time}.",
+      "waiting": "{count, plural, one {# booking waits} other {# bookings wait}} for your answer.",
+      "noMeals": "No meals are on the table today.",
+      "mealsOver": "Today's meals have all begun; the calendar holds what comes next.",
+      "nextWithOpen": "Next on the table is {meal} at {time}, and {open, plural, one {# place is} other {# places are}} still open today.",
+      "nextAllGiven": "Next on the table is {meal} at {time}, and every meal still to come has its sponsor.",
+      "donorPlain": "Find a place, and give a meal on a day that matters to you.",
+      "nothingBooked": "You have no meal booked yet. Find a place, and choose a day.",
+      "givingToday": "Today you give {meal} at {place}, at {time}.",
+      "givingTomorrow": "Tomorrow you give {meal} at {place}, at {time}.",
+      "givingLater": "Your next meal to give is {meal} at {place}, on {date} at {time}.",
+      "askedToday": "Your meal today, {meal} at {place} at {time}, is still waiting for their answer.",
+      "askedTomorrow": "Your meal tomorrow, {meal} at {place} at {time}, is still waiting for their answer.",
+      "askedLater": "Your next meal, {meal} at {place} on {date}, is still waiting for their answer."
+    },
+    "panels": {
+      "stale": "Some of today's figures could not be read.",
+      "yourTable": "Your table",
+      "allBookings": "All my bookings"
+    },
+    "welcome": "Welcome back, {name}"
+  },
+  "Shell": {
+    "today": {
+      "none": "No meals today.",
+      "places": "{booked} of {max} taken",
+      "full": "Every place taken",
+      "closed": "Closed today",
+      "requested": "{count, plural, one {# to answer} other {# to answer}}"
+    },
+    "context": {
+      "label": "Acting as",
+      "personal": "My own account"
+    }
+  },
+  "Calendar": {
+    "booking": {
+      "back": "Back",
+      "standing": "Regular donor",
+      "served": "{bookingNo} marked as served."
     }
   }
 }

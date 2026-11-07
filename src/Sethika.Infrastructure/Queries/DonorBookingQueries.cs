@@ -243,7 +243,7 @@ public sealed class DonorBookingQueries(IDbConnectionFactory connections) : IDon
             r.BookingNo, r.Status, r.Date, r.StartTime, r.EndTime, r.Institution, r.InstitutionName,
             r.InstitutionNameSi, r.InstitutionNameTa, r.MealSlot, r.SlotName, r.SlotNameSi, r.SlotNameTa,
             r.Headcount, r.FulfilmentMode, r.InMemoryOf, r.Notes, r.CreatedAt, r.RejectReason, r.CancelReason,
-            Booking.DonorMayCancel(r.Status, r.Date, today), r.Yearly, r.Regular))];
+            Booking.DonorMayCancel(r.Status, r.Date, today, r.Regular), r.Yearly, r.Regular))];
     }
 
     public async Task<IReadOnlyList<PublicInstitutionSummary>> ListPlacesAsync(Guid userId, CancellationToken cancellationToken = default)

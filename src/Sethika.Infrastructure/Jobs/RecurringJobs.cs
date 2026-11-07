@@ -51,6 +51,12 @@ internal sealed class RecurringJobs(IRecurringJobManager jobs) : IHostedService
             GeoIndexRebuildJob.Cron,
             new RecurringJobOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById(SriLankaTime.ZoneId) });
 
+        jobs.AddOrUpdate<PushReceiptsJob>(
+            PushReceiptsJob.RecurringJobId,
+            job => job.RunAsync(CancellationToken.None),
+            PushReceiptsJob.Cron,
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
         // And now, so a host whose Redis was flushed or down searches through the index again within
         // moments of starting, not after the night.
         jobs.Trigger(GeoIndexRebuildJob.RecurringJobId);

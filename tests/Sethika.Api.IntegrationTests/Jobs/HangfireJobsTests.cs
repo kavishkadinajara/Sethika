@@ -122,7 +122,7 @@ public sealed class HangfireJobsTests(SethikaTestDatabase database) : IAsyncLife
             using (var storage = host.Services.GetRequiredService<JobStorage>().GetConnection())
             {
                 var jobs = storage.GetRecurringJobs().OrderBy(j => j.Id, StringComparer.Ordinal).ToList();
-                Assert.Equal(7, jobs.Count);
+                Assert.Equal(8, jobs.Count);
 
                 var services = jobs[0];
                 Assert.Equal((AppointmentReminderJob.RecurringJobId, "0 18 * * *", typeof(AppointmentReminderJob)), (services.Id, services.Cron, services.Job?.Type));
@@ -148,13 +148,17 @@ public sealed class HangfireJobsTests(SethikaTestDatabase database) : IAsyncLife
                 var outbox = jobs[4];
                 Assert.Equal((OutboxJob.RecurringJobId, Cron.Minutely(), typeof(OutboxJob)), (outbox.Id, outbox.Cron, outbox.Job?.Type));
 
+                // Every 15 minutes (plan F, F29), the wait Expo advises.
+                var receipts = jobs[5];
+                Assert.Equal((PushReceiptsJob.RecurringJobId, "*/15 * * * *", typeof(PushReceiptsJob)), (receipts.Id, receipts.Cron, receipts.Job?.Type));
+
                 // 00:30 in Colombo (plan 07, H3): just after a new day opens every slot's window a day further.
-                var yearly = jobs[5];
+                var yearly = jobs[6];
                 Assert.Equal((RecurringBookingJob.RecurringJobId, "30 0 * * *", typeof(RecurringBookingJob)), (yearly.Id, yearly.Cron, yearly.Job?.Type));
                 Assert.Equal(TimeSpan.FromHours(5.5), TimeZoneInfo.FindSystemTimeZoneById(yearly.TimeZoneId).BaseUtcOffset);
 
                 // 00:45 in Colombo (plan 08, K3), after the yearly run.
-                var standing = jobs[6];
+                var standing = jobs[7];
                 Assert.Equal((StandingBookingJob.RecurringJobId, "45 0 * * *", typeof(StandingBookingJob)), (standing.Id, standing.Cron, standing.Job?.Type));
                 Assert.Equal(TimeSpan.FromHours(5.5), TimeZoneInfo.FindSystemTimeZoneById(standing.TimeZoneId).BaseUtcOffset);
             }

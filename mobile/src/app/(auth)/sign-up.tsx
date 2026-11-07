@@ -7,11 +7,11 @@ import { leaveSignIn, passNext } from "@/auth/leave-sign-in";
 import { useSessionClient } from "@/auth/session-provider";
 import { Button } from "@/components/button";
 import { CodeStep, PhoneStep } from "@/components/code-steps";
+import { PasswordFailures } from "@/components/password-failures";
 import { BrandHeader, Card, FormError, Screen } from "@/components/screen";
 import { Text } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { useI18n } from "@/i18n/i18n-provider";
-import { hasMessage } from "@/i18n/translate";
 import { spacing } from "@/theme/colors";
 import { usePalette } from "@/theme/use-theme";
 
@@ -234,20 +234,7 @@ function DetailsStep({
         autoComplete="new-password"
         textContentType="newPassword"
       />
-      {passwordFailures.length > 0 && (
-        <View accessibilityLiveRegion="polite">
-          <Text variant="label">{t("Password.title")}</Text>
-          {passwordFailures.map((failure) => {
-            const key = `Password.${failure}`;
-            return hasMessage(key) ? (
-              <Text key={failure} variant="error">
-                {"• "}
-                {t(key)}
-              </Text>
-            ) : null;
-          })}
-        </View>
-      )}
+      <PasswordFailures failures={passwordFailures} />
       <Button label={t("Signup.continue")} onPress={submit} />
       <Button label={t("Signup.differentNumber")} variant="link" onPress={onDifferentNumber} />
     </>

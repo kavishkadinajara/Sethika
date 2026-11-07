@@ -4,6 +4,7 @@ using Sethika.Application.Abstractions;
 using Sethika.Application.Access.Language;
 using Sethika.Application.Access.Roles;
 using Sethika.Application.Bookings.Places;
+using Sethika.Application.Notifications.Devices;
 using Sethika.Domain.Bookings;
 
 namespace Sethika.Api.Endpoints;
@@ -34,6 +35,11 @@ internal static class MeEndpoints
         me.MapGet("/places", ListPlacesAsync);
         me.MapPut("/places/{slug}", KeepPlaceAsync).RateLimitPerUser(BookingRateLimits.PlacePerUser);
         me.MapDelete("/places/{slug}", LetPlaceGoAsync);
+
+        // The phones this person is pushed to (plan F, F31). The token goes in the body, never the
+        // URL: URLs land in logs, and the token is what lets anyone push to that phone.
+        me.MapPut("/devices", RegisterDeviceAsync).RateLimitPerUser(DeviceRateLimits.ChangePerUser);
+        me.MapPost("/devices/remove", RemoveDeviceAsync).RateLimitPerUser(DeviceRateLimits.ChangePerUser);
 
         return app;
     }
@@ -157,6 +163,39 @@ internal static class MeEndpoints
         return IsSlug(slug) && await handler.AddAsync(userId, slug.Trim(), cancellationToken) is null
             ? Results.NoContent()
             : ApiErrors.Error(StatusCodes.Status404NotFound, FavoritePlacesHandler.NotFound);
+    }
+
+    /// <summary>Registers or refreshes the caller's phone: 204, or 400 with what was wrong.</summary>
+    private static async Task<IResult> RegisterDeviceAsync(
+        [FromBody] RegisterDeviceBody body,
+        ICurrentUserContext currentUser,
+        MobileDevicesHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        return await handler.RegisterAsync(userId, body.ExpoPushToken, body.Platform, body.AppVersion, cancellationToken) is { } error
+            ? ApiErrors.Error(StatusCodes.Status400BadRequest, error)
+            : Results.NoContent();
+    }
+
+    /// <summary>Stops pushes to one of the caller's phones: 204 whether or not it was theirs.</summary>
+    private static async Task<IResult> RemoveDeviceAsync(
+        [FromBody] RemoveDeviceBody body,
+        ICurrentUserContext currentUser,
+        MobileDevicesHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        await handler.RemoveAsync(userId, body.ExpoPushToken, cancellationToken);
+        return Results.NoContent();
     }
 
     /// <summary>Lets a place go: 204 whether or not it was kept.</summary>

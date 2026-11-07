@@ -4,7 +4,8 @@ import { usePalette } from "@/theme/use-theme";
 
 /*  The app's few icons, by meaning: an SF Symbol on iOS, a Material Symbol on Android, both from
     expo-symbols, which the app already has (no icon library, as on the web). Icons are always
-    decorative here: the words next to them say the same thing, so screen readers skip them.  */
+    decorative here: the words next to them, or the label of the control around them, say the
+    same thing, so screen readers skip them.                                                  */
 
 const ICONS = {
   search: { ios: "magnifyingglass", android: "search" },
@@ -29,6 +30,10 @@ const ICONS = {
   history: { ios: "clock.arrow.circlepath", android: "history" },
   map: { ios: "map", android: "map" },
   person: { ios: "person", android: "person" },
+  notifications: { ios: "bell", android: "notifications" },
+  password: { ios: "key", android: "key" },
+  show: { ios: "eye", android: "visibility" },
+  hide: { ios: "eye.slash", android: "visibility_off" },
 } as const satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol }>;
 
 export type IconName = keyof typeof ICONS;

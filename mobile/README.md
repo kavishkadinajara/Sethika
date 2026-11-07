@@ -67,5 +67,8 @@ Every Sinhala and Tamil string is a draft until reviewed (`docs/translations-to-
 ## Building an APK for testers
 
 `npx eas-cli build --platform android --profile preview` (needs a free Expo account and an
-`eas.json`, added when the first build is made — slice F.5 needs a development build anyway for
-push notifications).
+`eas.json`, added when the first build is made).
+
+Push needs a development build, the EAS project id in `app.json` (`extra.eas.projectId`) and
+`google-services.json` (`android.googleServicesFile`). Without them the app runs with no push: Expo
+Go skips it entirely, and a build with no project id fails to get a token, quietly.

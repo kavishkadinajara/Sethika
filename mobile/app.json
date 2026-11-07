@@ -31,13 +31,31 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 120,
           "dark": {
-            "backgroundColor": "#0E2A21",
+            "backgroundColor": "#000000",
             "image": "./assets/images/splash-icon-dark.png"
           }
         }
       ],
       "expo-secure-store",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Sethika uses your location only when you tap Near me, to find places close to you.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#16513D",
+          "defaultChannel": "bookings"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

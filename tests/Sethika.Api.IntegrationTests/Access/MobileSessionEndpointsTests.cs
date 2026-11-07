@@ -64,8 +64,11 @@ public sealed class MobileSessionEndpointsTests(SethikaTestDatabase database) : 
                 DECLARE @ids TABLE (Id UNIQUEIDENTIFIER);
                 INSERT @ids SELECT Id FROM auth.Users WHERE PhoneNumber IN @phones;
 
+                DELETE FROM core.OutboxMessages WHERE AggregateType = 'User'
+                    AND AggregateId IN (SELECT CONVERT(VARCHAR(50), Id) FROM @ids);
                 UPDATE auth.RefreshTokens SET ReplacedByTokenId = NULL WHERE UserId IN (SELECT Id FROM @ids);
                 DELETE FROM auth.RefreshTokens WHERE UserId IN (SELECT Id FROM @ids);
+                DELETE FROM auth.PasswordHistory WHERE UserId IN (SELECT Id FROM @ids);
                 DELETE FROM auth.LoginHistory  WHERE UserId IN (SELECT Id FROM @ids) OR LoginName IN @phones;
                 DELETE FROM auth.UserConsents  WHERE UserId IN (SELECT Id FROM @ids);
                 DELETE FROM auth.DonorProfiles WHERE UserId IN (SELECT Id FROM @ids);
@@ -424,6 +427,9 @@ public sealed class MobileSessionEndpointsTests(SethikaTestDatabase database) : 
         using var stolen = await PostSessionAsync("refresh", new { }, cookieHeader);
         Assert.Equal(HttpStatusCode.Unauthorized, stolen.StatusCode);
 
+        using var personal = await PostSessionAsync("switch-personal", new { }, cookieHeader);
+        Assert.Equal(HttpStatusCode.Unauthorized, personal.StatusCode);
+
         using var logout = await PostSessionAsync("logout-all", new { }, cookieHeader);
         Assert.Equal(HttpStatusCode.Unauthorized, logout.StatusCode);
 
@@ -455,6 +461,46 @@ public sealed class MobileSessionEndpointsTests(SethikaTestDatabase database) : 
         using var blank = await PostSessionAsync("switch-institution", new { refreshToken = next.Refresh, institution = " " });
         Assert.Equal(HttpStatusCode.BadRequest, blank.StatusCode);
         Assert.Equal("institution_required", await CodeOf(blank));
+    }
+
+    [Fact]
+    public async Task SwitchingToPersonalLeavesTheInstitutionAndStaysLeft()
+    {
+        // One institution: sign-in puts them straight into it, and this is the only way out (F51).
+        var phone = await CreateUserAsync();
+        await AssignRoleAsync(phone, database.AlphaInstitutionId);
+        var session = await LogInAsync(phone);
+        Assert.Equal("alpha-temple", session.Body.GetProperty("activeInstitution").GetString());
+
+        using var switched = await PostSessionAsync("switch-personal", new { refreshToken = session.Refresh });
+
+        Assert.Equal(HttpStatusCode.OK, switched.StatusCode);
+        AssertNoCookies(switched);
+        var personal = await ParseAsync(switched);
+        Assert.Equal(JsonValueKind.Null, personal.Body.GetProperty("activeInstitution").ValueKind);
+        Assert.Equal("alpha-temple", personal.Body.GetProperty("institutions")[0].GetProperty("slug").GetString());
+
+        // A rotation like any other: the token it replaced is spent.
+        using var spent = await PostSessionAsync("switch-personal", new { refreshToken = session.Refresh });
+        Assert.Equal(HttpStatusCode.Conflict, spent.StatusCode);
+
+        // The next launch's refresh keeps it personal, and the institution is still there to go back to.
+        using var refreshed = await PostSessionAsync("refresh", new { refreshToken = personal.Refresh });
+        var next = await ParseAsync(refreshed);
+        Assert.Equal(JsonValueKind.Null, next.Body.GetProperty("activeInstitution").ValueKind);
+
+        using var back = await PostSessionAsync("switch-institution", new { refreshToken = next.Refresh, institution = "alpha-temple" });
+        Assert.Equal("alpha-temple", (await ParseAsync(back)).Body.GetProperty("activeInstitution").GetString());
+    }
+
+    [Fact]
+    public async Task SwitchingToPersonalNeedsALiveToken()
+    {
+        using var unknown = await PostSessionAsync("switch-personal", new { refreshToken = "not-a-token" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, unknown.StatusCode);
+        Assert.Equal("session_expired", await CodeOf(unknown));
+        AssertNoCookies(unknown);
     }
 
     [Fact]
@@ -491,5 +537,150 @@ public sealed class MobileSessionEndpointsTests(SethikaTestDatabase database) : 
         using var again = await PostSessionAsync("logout-all", new { refreshToken = phoneSession.Refresh });
         Assert.Equal(HttpStatusCode.Unauthorized, again.StatusCode);
         Assert.Equal("session_expired", await CodeOf(again));
+    }
+
+    // ------------------------------------------------------------------ changing the password (F39)
+
+    private const string NewPassword = "Pirith#Night2027";
+
+    private async Task<HttpResponseMessage> ChangeAsync(
+        string? accessToken,
+        string currentPassword,
+        string newPassword,
+        string path = "/api/auth/mobile/password")
+    {
+        using var client = NewClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = JsonContent.Create(new { currentPassword, newPassword }),
+        };
+
+        if (accessToken is not null)
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        }
+
+        return await client.SendAsync(request);
+    }
+
+    private async Task<HttpStatusCode> LogInStatusAsync(string phone, string password)
+    {
+        using var client = NewClient();
+        using var response = await client.PostAsJsonAsync("/api/auth/mobile/login", new { login = phone, password });
+        return response.StatusCode;
+    }
+
+    private Task<string> StampOfAsync(string phone) =>
+        ScalarAsync<string>("SELECT SecurityStamp FROM auth.Users WHERE PhoneNumber = @phone;", new { phone });
+
+    [Fact]
+    public async Task ChangingThePasswordAnswersWithANewSessionInTheBody_AndNoCookie()
+    {
+        var phone = await CreateUserAsync();
+        var session = await LogInAsync(phone);
+        var otherPhone = await LogInAsync(phone);
+
+        using var response = await ChangeAsync(session.AccessToken, Password, NewPassword);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var renewed = await ParseAsync(response);
+        Assert.Equal(
+            ["accessToken", "accessTokenExpiresAt", "refreshToken", "refreshTokenExpiresAt", "institutions", "activeInstitution"],
+            renewed.Body.EnumerateObject().Select(p => p.Name));
+        Assert.NotEqual(session.Refresh, renewed.Refresh);
+
+        // The old tokens are refused first: a late refresh from this phone must not take the new
+        // session down with it, as a replayed token takes down its family.
+        using (var old = await PostSessionAsync("refresh", new { refreshToken = session.Refresh }))
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, old.StatusCode);
+            Assert.Equal("session_expired", await CodeOf(old));
+        }
+
+        using (var other = await PostSessionAsync("refresh", new { refreshToken = otherPhone.Refresh }))
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, other.StatusCode);
+        }
+
+        Assert.Equal(HttpStatusCode.OK, await CallWithAsync(renewed.AccessToken));
+        var next = await RefreshAsync(renewed);
+        Assert.Equal(HttpStatusCode.OK, await CallWithAsync(next.AccessToken));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, await LogInStatusAsync(phone, Password));
+        Assert.Equal(HttpStatusCode.OK, await LogInStatusAsync(phone, NewPassword));
+    }
+
+    [Fact]
+    public async Task AWrongCurrentPasswordChangesNothing()
+    {
+        var phone = await CreateUserAsync();
+        var session = await LogInAsync(phone);
+        var stamp = await StampOfAsync(phone);
+
+        using var response = await ChangeAsync(session.AccessToken, "Not-The-Password-1", NewPassword);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("password_incorrect", await CodeOf(response));
+        AssertNoCookies(response);
+
+        Assert.Equal(stamp, await StampOfAsync(phone));
+        await RefreshAsync(session);
+        Assert.Equal(HttpStatusCode.OK, await LogInStatusAsync(phone, Password));
+    }
+
+    [Fact]
+    public async Task ChangingThePasswordWithoutAnAccessTokenIs401_ThoughTheRoutesAroundItAreAnonymous()
+    {
+        var phone = await CreateUserAsync();
+        var stamp = await StampOfAsync(phone);
+
+        using var response = await ChangeAsync(accessToken: null, Password, NewPassword);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+        // The bearer challenge shows the authorization requirement refused it, not only the
+        // handler's own check behind it.
+        Assert.Contains(response.Headers.WwwAuthenticate, h => h.Scheme == "Bearer");
+        Assert.Equal(stamp, await StampOfAsync(phone));
+    }
+
+    [Fact]
+    public async Task ThePhoneAndTheWebSpendOnePasswordChangeBudget()
+    {
+        var phone = await CreateUserAsync();
+        var session = await LogInAsync(phone);
+
+        // "Unchanged" needs the right current password, so these never reach the lockout. Five on
+        // each route: a budget per route would still have five left when the eleventh comes.
+        for (var i = 0; i < 5; i++)
+        {
+            using var web = await ChangeAsync(session.AccessToken, Password, Password, "/api/me/password");
+            Assert.Equal(HttpStatusCode.BadRequest, web.StatusCode);
+            using var mobile = await ChangeAsync(session.AccessToken, Password, Password);
+            Assert.Equal(HttpStatusCode.BadRequest, mobile.StatusCode);
+        }
+
+        using var mobileLimited = await ChangeAsync(session.AccessToken, Password, Password);
+        Assert.Equal(HttpStatusCode.TooManyRequests, mobileLimited.StatusCode);
+        using var webLimited = await ChangeAsync(session.AccessToken, Password, Password, "/api/me/password");
+        Assert.Equal(HttpStatusCode.TooManyRequests, webLimited.StatusCode);
+    }
+
+    [Fact]
+    public async Task TheNewSessionKeepsActingForTheInstitutionThePhoneHadChosen()
+    {
+        var phone = await CreateUserAsync();
+        await AssignRoleAsync(phone, database.AlphaInstitutionId);
+        await AssignRoleAsync(phone, database.BetaInstitutionId);
+        var session = await LogInAsync(phone);
+
+        using var switched = await PostSessionAsync("switch-institution", new { refreshToken = session.Refresh, institution = "beta-temple" });
+        Assert.Equal(HttpStatusCode.OK, switched.StatusCode);
+        var acting = await ParseAsync(switched);
+
+        using var changed = await ChangeAsync(acting.AccessToken, Password, NewPassword);
+
+        Assert.Equal(HttpStatusCode.OK, changed.StatusCode);
+        Assert.Equal("beta-temple", (await ParseAsync(changed)).Body.GetProperty("activeInstitution").GetString());
     }
 }

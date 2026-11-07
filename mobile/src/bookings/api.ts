@@ -4,13 +4,18 @@ import { getJson } from "@/api/http";
 import { useSessionClient } from "@/auth/session-provider";
 
 import type { BookingFailure } from "./errors";
+import type { NearPoint, RadiusKm } from "./near-me";
 import type {
   Availability,
   BookingCreated,
   BookingRequest,
+  BookingStatus,
   DonorBooking,
   PublicInstitution,
   PublicInstitutionSummary,
+  SearchAnswer,
+  SlotDay,
+  TodaysTable,
 } from "./types";
 
 /*  Typed calls to the donor booking API (plan 03, 5.5), the twin of web/lib/bookings/api.ts.
@@ -43,12 +48,31 @@ export function createBookingApi(signedIn: Fetch, anonymous: Fetch = (path) => g
     getAvailability: (institution: string, month: string): Promise<BookingResult<Availability>> =>
       read(() => anonymous(`/api/institutions/${slug(institution)}/availability?month=${encodeURIComponent(month)}`)),
 
+    /** The places with a meal open on `date` around `point`, nearest first (F33). Anonymous: a search belongs to no one (G8). */
+    searchNear: (date: string, point: NearPoint, radiusKm: RadiusKm): Promise<BookingResult<SearchAnswer>> =>
+      read(() => anonymous(`/api/search?date=${date}&near=${point.latitude},${point.longitude}&radiusKm=${radiusKm}`)),
+
     book: (request: BookingRequest): Promise<BookingResult<BookingCreated>> => read(() => signedIn("/api/bookings", post(request))),
 
     listMine: (): Promise<BookingResult<DonorBooking[]>> => read(() => signedIn("/api/bookings/mine")),
 
     cancel: (bookingNo: string, reason: string | null): Promise<BookingResult<unknown>> =>
       read(() => signedIn(`/api/bookings/${encodeURIComponent(bookingNo)}/cancel`, post({ reason }))),
+
+    /** Lets one of the donor's regular days go (plan 08, K24). */
+    letGo: (bookingNo: string, reason: string | null): Promise<BookingResult<unknown>> =>
+      read(() => signedIn(`/api/bookings/${encodeURIComponent(bookingNo)}/skip`, post({ reason }))),
+
+    /** Today in Colombo and the institution's meals (F23). */
+    getToday: (): Promise<BookingResult<TodaysTable>> => read(() => signedIn("/api/institution/today")),
+
+    /** The booked slot-days between two dates, both included; at most 62 days. */
+    getCalendar: (from: string, to: string, status?: BookingStatus): Promise<BookingResult<SlotDay[]>> =>
+      read(() => signedIn(`/api/institution/bookings?from=${from}&to=${to}${status ? `&status=${status}` : ""}`)),
+
+    /** Marks a confirmed booking served (F24). It cannot be undone. */
+    markServed: (bookingNo: string): Promise<BookingResult<unknown>> =>
+      read(() => signedIn(`/api/institution/bookings/${encodeURIComponent(bookingNo)}/complete`, { method: "POST" })),
   };
 }
 
@@ -67,6 +91,8 @@ async function read<T>(call: () => Promise<Response>): Promise<BookingResult<T>>
   } catch {
     return { ok: false, failure: { status: 0, code: null, fields: [] } };
   }
+
+  if (response.status === 204) return { ok: true, value: undefined as T };
 
   if (response.ok) {
     try {

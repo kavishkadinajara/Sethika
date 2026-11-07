@@ -10,7 +10,7 @@ import { Button } from "@/components/button";
 import { BrandHeader, Screen } from "@/components/screen";
 import { Text } from "@/components/text";
 import { I18nProvider, useI18n } from "@/i18n/i18n-provider";
-import { ThemePreferenceProvider } from "@/theme/appearance";
+import { ThemePreferenceProvider, useThemePreference } from "@/theme/appearance";
 import { colors, spacing } from "@/theme/colors";
 
 SplashScreen.preventAutoHideAsync();
@@ -46,8 +46,9 @@ export default function RootLayout() {
   );
 }
 
-/*  The splash stays up until the fonts are in and the stored session has been tried, so the
-    first screen shows the right state: the donor's own, or the prompts to sign in.
+/*  The splash stays up until the fonts are in, the saved theme is applied and the stored session
+    has been tried, so the first screen shows the right state: the donor's own, or the prompts to
+    sign in, in the right colours.
 
     Anyone may look (plan 03, C10): the tabs and institution pages are open to a visitor who
     never signed in, and each screen that needs an account says so where it is needed (the
@@ -57,6 +58,7 @@ export default function RootLayout() {
     they are, signed out.                                                                     */
 function Routes() {
   const session = useSession();
+  const { loaded: themeLoaded } = useThemePreference();
   const scheme = useColorScheme();
   const palette = scheme === "dark" ? colors.dark : colors.light;
   const [fontsLoaded, fontError] = useFonts({
@@ -67,7 +69,7 @@ function Routes() {
     // face, copied in rather than installed as a package (PHASE-F-MOBILE.md, F16).
     Fraunces_400Regular_Italic: require("@/assets/fonts/Fraunces_400Regular_Italic.ttf"),
   });
-  const ready = (fontsLoaded || fontError !== null) && session.status !== "loading";
+  const ready = (fontsLoaded || fontError !== null) && themeLoaded && session.status !== "loading";
 
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync();
@@ -76,19 +78,19 @@ function Routes() {
   if (!ready) return null;
   if (session.status === "unavailable") return <Unavailable />;
 
+  const backHeader = {
+    headerShown: true,
+    title: "",
+    headerShadowVisible: false,
+    headerStyle: { backgroundColor: palette.canvas },
+    headerTintColor: palette.primary,
+  };
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(app)" />
-      <Stack.Screen
-        name="i/[slug]"
-        options={{
-          headerShown: true,
-          title: "",
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: palette.canvas },
-          headerTintColor: palette.primary,
-        }}
-      />
+      <Stack.Screen name="i/[slug]" options={backHeader} />
+      <Stack.Screen name="change-password" options={backHeader} />
       <Stack.Screen name="(auth)" />
     </Stack>
   );

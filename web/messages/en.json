@@ -934,6 +934,7 @@
       "booking_not_found": "This booking could not be found.",
       "invalid_transition": "This booking has already moved on. The list has been refreshed.",
       "cancel_window_closed": "It is too late to cancel this booking yourself. Please call the institution.",
+      "regular_day": "This is a regular day the institution set up for you. Use \"I can't give that day\" instead.",
       "too_early": "This can only be marked on or after the day of the meal.",
       "reason_required": "Please give a reason.",
       "reason_too_long": "Please keep the reason under 300 characters.",

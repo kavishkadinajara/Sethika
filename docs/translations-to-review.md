@@ -2039,3 +2039,99 @@ Drafts by Claude, not reviewed by a Sinhala or Tamil speaker. "Pledge" is writte
 | `Dashboard.myGiving.pledged` | {count} pledged | {count} ක් පොරොන්දු විය | {count} உறுதியளிக்கப்பட்டது |
 | `Dashboard.myGiving.pledgedBy` | {count} pledged, by {date} | {count} ක් පොරොන්දු විය, {date} වන විට | {count} உறுதியளிக்கப்பட்டது, {date} க்குள் |
 | `Shell.items.reports` | Monthly report | මාසික වාර්තාව | மாதாந்திர அறிக்கை |
+
+## Mobile F.0: a regular day (2026-11-06, `Booking.errors`, plan F, F35)
+
+`MyBookings.cantGive`, `MyBookings.skipSheet.*` and `MyBookings.regular` are copied into the app
+unchanged from the web, so the "Standing sponsors' own days" section above covers them. The one new
+string, in both `web/messages` and the app:
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) |
+|---|---|---|---|
+| `Booking.errors.regular_day` | This is a regular day the institution set up for you. Use "I can't give that day" instead. | මෙය ආයතනය ඔබ සඳහා සැකසූ නිත්‍ය දිනයකි. ඒ වෙනුවට "මට එදින දිය නොහැක" තෝරන්න. | இது நிறுவனம் உங்களுக்காக அமைத்த வழக்கமான நாள். அதற்குப் பதிலாக "அந்த நாளில் என்னால் வழங்க முடியாது" என்பதைத் தேர்ந்தெடுங்கள். |
+
+## Push texts (2026-11-07, `notify.Templates` channel `Push`, plan F, F27)
+
+Each body opens with `{institution}, {date} {time}.` and then repeats the SMS sentence in
+`11_NotifyTemplates.sql`, so only the titles and the "see why" sentence are new. "My bookings" is the
+app's tab name, `App.tabs.bookings`.
+
+| Template | English (source) | Sinhala (draft) | Tamil (draft) |
+|---|---|---|---|
+| `BOOKING_CONFIRMED` title | Booking confirmed | වෙන්කිරීම තහවුරුයි | முன்பதிவு உறுதியானது |
+| `BOOKING_APPROVED` title | Request accepted | ඉල්ලීම පිළිගත්තා | கோரிக்கை ஏற்கப்பட்டது |
+| `BOOKING_REJECTED` title | Request not accepted | ඉල්ලීම පිළිගත්තේ නැත | கோரிக்கை ஏற்கப்படவில்லை |
+| `BOOKING_CANCELLED` title | Booking cancelled | වෙන්කිරීම අවලංගුයි | முன்பதிவு ரத்தானது |
+| `BOOKING_REMINDER` title | Your booking is tomorrow | ඔබගේ වෙන්කිරීම හෙටයි | உங்கள் முன்பதிவு நாளை |
+| `BOOKING_REJECTED`, `BOOKING_CANCELLED` last sentence | See why in My bookings. | හේතුව මගේ වෙන්කිරීම් තුළ බලන්න. | காரணத்தை எனது முன்பதிவுகளில் பாருங்கள். |
+
+## Push on the phone (2026-11-07, `App.profile.push`, plan F, F32, F41)
+
+The app's own strings, in `mobile/src/i18n/messages`. `channel` is the name Android's settings list
+for the app's notifications, so it should read as a plain heading.
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) |
+|---|---|---|---|
+| `App.profile.push.label` | Notifications on this phone | මෙම දුරකථනයේ දැනුම්දීම් | இந்த தொலைபேசியில் அறிவிப்புகள் |
+| `App.profile.push.help` | Your booking updates and reminders. Texts still come either way. | ඔබේ වෙන්කිරීම් පිළිබඳ යාවත්කාලීන සහ සිහිකැඳවීම්. කෙටි පණිවිඩ කෙසේ වෙතත් ලැබේ. | உங்கள் முன்பதிவு தகவல்களும் நினைவூட்டல்களும். குறுஞ்செய்திகள் எப்படியும் வரும். |
+| `App.profile.push.blocked` | Notifications are off for Sethika in your phone's settings. | ඔබේ දුරකථනයේ සැකසුම් තුළ Sethika සඳහා දැනුම්දීම් අක්‍රීයයි. | உங்கள் தொலைபேசி அமைப்புகளில் Sethika அறிவிப்புகள் அணைக்கப்பட்டுள்ளன. |
+| `App.profile.push.openSettings` | Open settings | සැකසුම් විවෘත කරන්න | அமைப்புகளைத் திற |
+| `App.profile.push.failed` | That did not work. Check your connection and try again. | එය සාර්ථක වූයේ නැත. ඔබේ සම්බන්ධතාවය පරීක්ෂා කර නැවත උත්සාහ කරන්න. | அது வேலை செய்யவில்லை. உங்கள் இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும். |
+| `App.profile.push.channel` | Bookings | වෙන්කිරීම් | முன்பதிவுகள் |
+
+## The Today tab (2026-11-07, `App.today`, `App.tabs`, `Booking.gate`, `Discover.sheet`, plan F, F23-F25, F51)
+
+The app's own strings, in `mobile/src/i18n/messages`. The two `institutionSession` texts are the app's
+only and replace advice that was wrong for staff of one institution. `Dashboard.sentence`, `Shell.today`,
+`Shell.context` and `Calendar.booking` are copied from `web/messages`, so they are reviewed there.
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) |
+|---|---|---|---|
+| `App.tabs.today` | Today | අද | இன்று |
+| `App.today.noSponsors` | No sponsor yet. | තවම දායකයෙක් නැත. | இன்னும் நன்கொடையாளர் இல்லை. |
+| `App.today.served` | Mark as served | සපයා අවසන් ලෙස සලකුණු කරන්න | வழங்கப்பட்டதாகக் குறி |
+| `App.today.confirm` | Has {name} given this meal? This cannot be undone. | {name} මෙම ආහාර වේල ලබා දුන්නාද? මෙය ආපසු හැරවිය නොහැක. | {name} இந்த உணவை வழங்கினாரா? இதை மாற்ற முடியாது. |
+| `App.today.confirmYes` | Yes, served | ඔව්, සපයා අවසන් | ஆம், வழங்கப்பட்டது |
+| `App.today.call` | Call {name} | {name} අමතන්න | {name} அவர்களை அழை |
+| `Booking.gate.institutionSession` | You are acting for an institution. Your own bookings are under your own account: change it in Profile. | ඔබ දැන් ක්‍රියා කරන්නේ ආයතනයක් වෙනුවෙන්. ඔබේම වෙන්කිරීම් ඇත්තේ ඔබේම ගිණුම යටතේ: එය පැතිකඩෙන් වෙනස් කරන්න. | நீங்கள் ஒரு நிறுவனத்தின் சார்பில் செயல்படுகிறீர்கள். உங்கள் சொந்த முன்பதிவுகள் உங்கள் சொந்தக் கணக்கில் உள்ளன: அதை சுயவிவரத்தில் மாற்றுங்கள். |
+| `Discover.sheet.institutionSession` | You are acting for an institution. To book as yourself, change to your own account in Profile. | ඔබ දැන් ක්‍රියා කරන්නේ ආයතනයක් වෙනුවෙන්. ඔබ ලෙසම වෙන් කිරීමට, පැතිකඩෙන් ඔබේම ගිණුමට මාරු වන්න. | நீங்கள் ஒரு நிறுவனத்தின் சார்பில் செயல்படுகிறீர்கள். நீங்களாகவே முன்பதிவு செய்ய, சுயவிவரத்தில் உங்கள் சொந்தக் கணக்குக்கு மாறுங்கள். |
+
+## Near me and the map (2026-11-07, `App.near`, plan F, F62, F73)
+
+The app's own strings, in `mobile/src/i18n/messages`. The other `App.near` keys are copied from the
+web's `Find.*`, so the "Find a place to give" section above covers them; a test holds `map` and
+`mapTitle` to the web's words. These differ because the web says "your browser" and "choose a
+district", and offers a time of day, and the phone has none of these.
+
+`App.near.openSettings` has the same words as `App.profile.push.openSettings`.
+
+Question for the reviewers: `App.near.bookLabel` is read aloud by a screen reader. Its Sinhala is the
+web's. Its Tamil ends `செய்`, where the web's `Find.results.bookLabel` ends `செய்யுங்கள்`. Which should
+both use?
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) |
+|---|---|---|---|
+| `App.near.intro` | Every place shown has a meal you can sponsor that day. | මෙහි පෙන්වන සෑම ස්ථානයකම එදිනට ඔබට අනුග්‍රහය දැක්විය හැකි ආහාර වේලක් ඇත. | இங்கு காட்டப்படும் ஒவ்வொரு இடத்திலும் அந்த நாளில் நீங்கள் அனுசரணை வழங்கக்கூடிய உணவு வேளை உள்ளது. |
+| `App.near.today` | Today | අද | இன்று |
+| `App.near.tomorrow` | Tomorrow | හෙට | நாளை |
+| `App.near.day` | Day | දිනය | நாள் |
+| `App.near.denied` | Location is turned off for Sethika. Allow it in your phone's settings, or choose from the list below. | Sethika සඳහා ස්ථාන තොරතුරු අක්‍රීයයි. ඔබගේ දුරකථනයේ සැකසුම් තුළ එයට ඉඩ දෙන්න, නැතහොත් පහත ලැයිස්තුවෙන් තෝරන්න. | Sethika-க்கு இருப்பிட அனுமதி முடக்கப்பட்டுள்ளது. உங்கள் தொலைபேசி அமைப்புகளில் அனுமதியுங்கள், அல்லது கீழே உள்ள பட்டியலிலிருந்து தேர்ந்தெடுங்கள். |
+| `App.near.openSettings` | Open settings | සැකසුම් විවෘත කරන්න | அமைப்புகளைத் திற |
+| `App.near.outside` | You seem to be outside Sri Lanka. Choose from the list below instead. | ඔබ ශ්‍රී ලංකාවෙන් පිටත සිටින බව පෙනේ. ඒ වෙනුවට පහත ලැයිස්තුවෙන් තෝරන්න. | நீங்கள் இலங்கைக்கு வெளியே இருப்பதாகத் தெரிகிறது. அதற்குப் பதிலாக கீழே உள்ள பட்டியலிலிருந்து தேர்ந்தெடுங்கள். |
+| `App.near.unavailable` | Your location could not be found. Try again, or choose from the list below. | ඔබගේ ස්ථානය සොයාගත නොහැකි විය. නැවත උත්සාහ කරන්න, නැතහොත් පහත ලැයිස්තුවෙන් තෝරන්න. | உங்கள் இருப்பிடத்தைக் கண்டறிய முடியவில்லை. மீண்டும் முயலுங்கள், அல்லது கீழே உள்ள பட்டியலிலிருந்து தேர்ந்தெடுங்கள். |
+| `App.near.none` | No place has a meal you can sponsor on {date} here. Try another day or a wider area. | {date} දින මෙහි ඔබට අනුග්‍රහය දැක්විය හැකි ආහාර වේලක් ඇති ස්ථානයක් නැත. වෙනත් දිනයක් හෝ විශාල ප්‍රදේශයක් උත්සාහ කරන්න. | {date} அன்று இங்கு நீங்கள் அனுசரணை வழங்கக்கூடிய உணவு வேளை எந்த இடத்திலும் இல்லை. வேறு நாளையோ பெரிய பகுதியையோ முயலுங்கள். |
+| `App.near.showAll` | Show every place | සියලු ස්ථාන පෙන්වන්න | எல்லா இடங்களையும் காட்டு |
+| `App.near.bookLabel` | Book {meal} at {place} | {place} හි {meal} වෙන් කරන්න | {place} இல் {meal} முன்பதிவு செய் |
+| `App.near.mapHint` | The list shows the same places. | ලැයිස්තුවේ මෙම ස්ථානම ඇත. | பட்டியலில் இதே இடங்கள் உள்ளன. |
+| `App.near.mapFailed` | The map did not load fully. The list shows the same places. | සිතියම සම්පූර්ණයෙන් පූරණය නොවීය. ලැයිස්තුවේ මෙම ස්ථානම ඇත. | வரைபடம் முழுமையாக ஏற்றப்படவில்லை. பட்டியலில் இதே இடங்கள் உள்ளன. |
+
+## Explore's filter and empty list (found 2026-11-07, `Discover`, plan F, F.3)
+
+Written for the app in F.3 and missed then. The web has no such strings, so the "Booking screens"
+section above, which covers the copied `Discover` keys, does not cover these.
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) |
+|---|---|---|---|
+| `Discover.filterHint` | By name, type, town or district, in any language. | නම, වර්ගය, නගරය හෝ දිස්ත්‍රික්කය අනුව, ඕනෑම භාෂාවකින්. | பெயர், வகை, நகரம் அல்லது மாவட்டம் மூலம், எந்த மொழியிலும். |
+| `Discover.noneListed` | No places are listed yet. Soon, they will be. | තවම කිසිදු ස්ථානයක් ලැයිස්තුගත කර නැත. ඉක්මනින් ඒවා එකතු වේ. | இன்னும் எந்த இடமும் பட்டியலிடப்படவில்லை. விரைவில் வரும். |
+| `Discover.noneMatch` | Nothing matches that search. | එම සෙවීමට ගැළපෙන කිසිවක් නැත. | அந்தத் தேடலுக்குப் பொருந்துவது எதுவும் இல்லை. |

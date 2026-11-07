@@ -13,10 +13,9 @@ export function colomboToday(now: Date = new Date()): string {
   return new Date(now.getTime() + COLOMBO_OFFSET_MS).toISOString().slice(0, 10);
 }
 
-/** The part of the day in Colombo, for a greeting: before noon, before six, or later. */
-export function colomboPartOfDay(now: Date = new Date()): "morning" | "afternoon" | "evening" {
-  const hour = new Date(now.getTime() + COLOMBO_OFFSET_MS).getUTCHours();
-  return hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+/** "HH:mm" on Colombo's clock. */
+export function colomboTime(now: Date = new Date()): string {
+  return new Date(now.getTime() + COLOMBO_OFFSET_MS).toISOString().slice(11, 16);
 }
 
 /** A date's parts; months are 1-12. */

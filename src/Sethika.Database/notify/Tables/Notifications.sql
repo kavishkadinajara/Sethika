@@ -32,3 +32,6 @@ GO
 
 CREATE INDEX IX_Notifications_User  ON notify.Notifications(UserId, ScheduledAt DESC);
 GO
+
+CREATE INDEX IX_Notifications_PushReceipts ON notify.Notifications(SentAt) WHERE Channel = 'Push' AND Status = 'Sent';
+GO

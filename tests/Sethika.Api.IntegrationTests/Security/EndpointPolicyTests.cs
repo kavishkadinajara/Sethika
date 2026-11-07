@@ -45,6 +45,7 @@ public sealed class EndpointPolicyTests(SethikaTestDatabase database)
         "POST /api/auth/mobile/session/logout-all",
         "POST /api/auth/mobile/session/refresh",
         "POST /api/auth/mobile/session/switch-institution",
+        "POST /api/auth/mobile/session/switch-personal",
         "POST /api/auth/mobile/signup",
 
         // Public text, read before signing up.
