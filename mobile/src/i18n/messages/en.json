@@ -427,6 +427,29 @@
       "allKinds": "All",
       "count": "{count, plural, one {# place} other {# places}}"
     },
+    "near": {
+      "button": "Near me",
+      "locating": "Finding you…",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "day": "Day",
+      "radius": "Within",
+      "km": "{km} km",
+      "title": "Open on {date}",
+      "intro": "Every place shown has a meal you can sponsor that day.",
+      "denied": "Location is turned off for Sethika. Allow it in your phone's settings, or choose from the list below.",
+      "openSettings": "Open settings",
+      "outside": "You seem to be outside Sri Lanka. Choose from the list below instead.",
+      "unavailable": "Your location could not be found. Try again, or choose from the list below.",
+      "count": "{count, plural, =0 {No places found.} one {# place found.} other {# places found.}}",
+      "moreNearest": "These are the nearest 100.",
+      "none": "No place has a meal you can sponsor on {date} here. Try another day or a wider area.",
+      "distance": "{km} km away",
+      "left": "{count, plural, one {# sponsor place left} other {# sponsor places left}}",
+      "bookLabel": "Book {meal} at {place}",
+      "failed": "The places could not be loaded.",
+      "showAll": "Show every place"
+    },
     "bookings": {
       "title": "My bookings"
     },

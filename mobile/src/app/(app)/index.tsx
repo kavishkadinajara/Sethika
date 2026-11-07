@@ -5,6 +5,7 @@ import { greetingName, useProfile } from "@/auth/profile-provider";
 import { colomboPartOfDay } from "@/bookings/calendar";
 import { Bowl } from "@/components/bookings/bowl";
 import { InstitutionDirectory } from "@/components/bookings/institution-directory";
+import { NearMe } from "@/components/bookings/near-me";
 import { Screen } from "@/components/screen";
 import { Text } from "@/components/text";
 import { useI18n } from "@/i18n/i18n-provider";
@@ -14,6 +15,7 @@ import { bowl, brand, spacing } from "@/theme/colors";
 export default function ExploreScreen() {
   const [pulls, setPulls] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const settled = () => setRefreshing(false);
 
   return (
     <Screen
@@ -25,7 +27,9 @@ export default function ExploreScreen() {
       }}
     >
       <Welcome />
-      <InstitutionDirectory refreshKey={pulls} onSettled={() => setRefreshing(false)} />
+      <NearMe refreshKey={pulls} onSettled={settled}>
+        <InstitutionDirectory refreshKey={pulls} onSettled={settled} />
+      </NearMe>
     </Screen>
   );
 }

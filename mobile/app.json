@@ -39,6 +39,16 @@
       "expo-secure-store",
       "expo-localization",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Sethika uses your location only when you tap Near me, to find places close to you.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
+      [
         "expo-notifications",
         {
           "icon": "./assets/images/android-icon-monochrome.png",

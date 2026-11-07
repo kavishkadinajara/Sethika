@@ -4,6 +4,7 @@ import { getJson } from "@/api/http";
 import { useSessionClient } from "@/auth/session-provider";
 
 import type { BookingFailure } from "./errors";
+import type { NearPoint, RadiusKm } from "./near-me";
 import type {
   Availability,
   BookingCreated,
@@ -12,6 +13,7 @@ import type {
   DonorBooking,
   PublicInstitution,
   PublicInstitutionSummary,
+  SearchAnswer,
   SlotDay,
   TodaysTable,
 } from "./types";
@@ -45,6 +47,10 @@ export function createBookingApi(signedIn: Fetch, anonymous: Fetch = (path) => g
     /** One month of every active slot's days; `month` is "yyyy-MM". */
     getAvailability: (institution: string, month: string): Promise<BookingResult<Availability>> =>
       read(() => anonymous(`/api/institutions/${slug(institution)}/availability?month=${encodeURIComponent(month)}`)),
+
+    /** The places with a meal open on `date` around `point`, nearest first (F33). Anonymous: a search belongs to no one (G8). */
+    searchNear: (date: string, point: NearPoint, radiusKm: RadiusKm): Promise<BookingResult<SearchAnswer>> =>
+      read(() => anonymous(`/api/search?date=${date}&near=${point.latitude},${point.longitude}&radiusKm=${radiusKm}`)),
 
     book: (request: BookingRequest): Promise<BookingResult<BookingCreated>> => read(() => signedIn("/api/bookings", post(request))),
 

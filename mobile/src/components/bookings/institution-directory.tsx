@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { useBookingApi } from "@/bookings/api";
@@ -98,19 +98,12 @@ export function InstitutionDirectory({ refreshKey = 0, onSettled }: Props) {
       />
 
       {kinds.length > 1 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chips}
-          style={styles.chipRow}
-          accessibilityRole="radiogroup"
-          accessibilityLabel={t("App.explore.kinds")}
-        >
+        <ChipRow label={t("App.explore.kinds")}>
           <Chip label={t("App.explore.allKinds")} selected={kind === null} onPress={() => setKind(null)} />
           {kinds.map((option) => (
             <Chip key={option.code} label={option.name} selected={kind === option.code} onPress={() => setKind(option.code)} />
           ))}
-        </ScrollView>
+        </ChipRow>
       )}
 
       {shown.length === 0 ? (
@@ -129,7 +122,8 @@ export function InstitutionDirectory({ refreshKey = 0, onSettled }: Props) {
   );
 }
 
-function InstitutionCard({ institution }: { institution: PublicInstitutionSummary }) {
+/** A place's card. `distance` is the words for how far it is, when the donor searched near a point. */
+export function InstitutionCard({ institution, distance }: { institution: PublicInstitutionSummary; distance?: string }) {
   const { language } = useI18n();
   const palette = usePalette();
   const lift = useLift();
@@ -140,7 +134,7 @@ function InstitutionCard({ institution }: { institution: PublicInstitutionSummar
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={`${name}. ${type}. ${institution.city}, ${district}`}
+      accessibilityLabel={[`${name}. ${type}. ${institution.city}, ${district}`, distance].filter(Boolean).join(". ")}
       onPress={() => router.push({ pathname: "/i/[slug]", params: { slug: institution.slug } })}
       style={({ pressed }) => [
         styles.card,
@@ -164,13 +158,30 @@ function InstitutionCard({ institution }: { institution: PublicInstitutionSummar
             {institution.city} · {district}
           </Text>
         </View>
+        {distance && <Text variant="label">{distance}</Text>}
       </View>
       <Icon name="forward" size={18} color={palette.line} />
     </Pressable>
   );
 }
 
-function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+/** One choice as a row of chips, edge to edge, that scrolls sideways on a narrow phone. */
+export function ChipRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.chips}
+      style={styles.chipRow}
+      accessibilityRole="radiogroup"
+      accessibilityLabel={label}
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
+export function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   const palette = usePalette();
   return (
     <Pressable

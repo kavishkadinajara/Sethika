@@ -49,6 +49,35 @@ export type PublicInstitution = PublicInstitutionSummary & {
   slots: PublicMealSlot[];
 };
 
+/** A meal open on the searched day (SearchEndpoints.cs, plan 06), and what is left of it. */
+export type SearchSlot = Named & {
+  /** The slot's publicId. */
+  mealSlot: string;
+  startTime: string;
+  endTime: string;
+  /** Sponsor places left. */
+  sponsors: number;
+  /** The most people one booking may bring now. */
+  headcount: number;
+};
+
+/** A place with at least one meal open on the searched day. */
+export type SearchPlace = PublicInstitutionSummary & {
+  latitude: number;
+  longitude: number;
+  /** From the searched point; null when no point was given. */
+  distanceKm: number | null;
+  slots: SearchSlot[];
+};
+
+export type SearchAnswer = {
+  date: string;
+  /** Nearest first. */
+  results: SearchPlace[];
+  /** More matched than the 100 shown. */
+  more: boolean;
+};
+
 /** Why a day cannot be booked (BookingErrors in the domain). */
 export type DayRefusal =
   | "slot_inactive"

@@ -5,6 +5,9 @@ import type {
   DonorBooking,
   PublicInstitution,
   PublicMealSlot,
+  SearchAnswer,
+  SearchPlace,
+  SearchSlot,
   SlotDay,
   TableSlot,
 } from "@/bookings/types";
@@ -60,6 +63,26 @@ export function institution(overrides: Partial<PublicInstitution> = {}): PublicI
     slots: [mealSlot()],
     ...overrides,
   };
+}
+
+/** A meal as the search sends it (SearchSlotView). */
+export function searchSlot(overrides: Partial<SearchSlot> = {}): SearchSlot {
+  return { mealSlot: LUNCH, name: "Lunch", nameSi: null, nameTa: null, startTime: "11:30", endTime: "13:00", sponsors: 4, headcount: 60, ...overrides };
+}
+
+/** A place as the search sends it (SearchResultView), measured from a searched point. */
+export function searchPlace(overrides: Partial<SearchPlace> = {}): SearchPlace {
+  const { slug, name, nameSi, nameTa, type, typeName, typeNameSi, typeNameTa, district, districtSi, districtTa, city, latitude, longitude } = institution();
+  return {
+    slug, name, nameSi, nameTa, type, typeName, typeNameSi, typeNameTa, district, districtSi, districtTa, city, latitude, longitude,
+    distanceKm: 2.35,
+    slots: [searchSlot()],
+    ...overrides,
+  };
+}
+
+export function searchAnswer(date: string, results: SearchPlace[]): SearchAnswer {
+  return { date, results, more: false };
 }
 
 export function day(date: string, overrides: Partial<DayAvailability> = {}): DayAvailability {
