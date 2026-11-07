@@ -20,6 +20,9 @@ namespace Sethika.Api.Endpoints;
 ///
 /// Rotation, reuse detection, the A19 grace window and the stamp check are all
 /// <see cref="SessionHandler"/>'s, unchanged; so are the answers and their codes.
+///
+/// One route here needs a bearer token as well: the password change, whose answer is a new session
+/// because the change ends every old one (F39).
 /// </remarks>
 internal static class MobileSessionEndpoints
 {
@@ -56,6 +59,13 @@ internal static class MobileSessionEndpoints
 
         session.MapPost("/logout-all", LogOutEverywhereAsync)
             .RateLimitPerClient(AuthRateLimits.RefreshPerClient);
+
+        // Its own group, because AllowAnonymous on a group outranks RequireAuthorization on a route:
+        // under `mobile` the password change would stop asking for a token (F39).
+        var signedIn = app.MapGroup(BasePath)
+            .WithMetadata(new MobileSessionMarker());
+
+        PasswordEndpoints.MapChange(signedIn, "/password");
 
         return app;
     }

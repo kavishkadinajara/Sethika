@@ -121,6 +121,24 @@ describe("signed in", () => {
   });
 });
 
+describe("changing the password", () => {
+  it("opens from the account's group, signed in", async () => {
+    const screen = await render(page());
+
+    await press(screen.getText("Change your password"));
+
+    expect(router.push).toHaveBeenCalledWith("/change-password");
+  });
+
+  it("is not offered to a visitor", async () => {
+    mockSession = ANONYMOUS;
+
+    const screen = await render(page());
+
+    expect(screen.queryText("Change your password")).toBeNull();
+  });
+});
+
 describe("signed out", () => {
   beforeEach(() => {
     mockSession = ANONYMOUS;

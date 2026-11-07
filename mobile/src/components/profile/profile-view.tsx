@@ -339,6 +339,13 @@ function SignOut() {
       <SectionTitle>{t("App.profile.account")}</SectionTitle>
       <Card>
         <Button
+          label={t("PasswordChange.title")}
+          variant="secondary"
+          icon="password"
+          disabled={busy !== null}
+          onPress={() => router.push("/change-password")}
+        />
+        <Button
           label={t("Session.signOut")}
           variant="secondary"
           icon="signOut"

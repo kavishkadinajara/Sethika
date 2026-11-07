@@ -54,7 +54,11 @@ export type SessionClientOptions = {
   headers?: Record<string, string>;
 };
 
+/** `response` is the API's refusal, null when no answer came. */
+export type ChangePasswordResult = { ok: true } | { ok: false; response: Response | null };
+
 export const MOBILE_SESSION_PATH = "/api/auth/mobile/session";
+export const MOBILE_PASSWORD_PATH = "/api/auth/mobile/password";
 
 /** Refresh ahead of expiry rather than spend a request on a guaranteed 401. */
 const EXPIRY_MARGIN_MS = 10 * 1000;
@@ -278,6 +282,58 @@ export function createSessionClient(options: SessionClientOptions) {
   }
 
   /**
+   * Changes the password (F39). The change revokes every refresh token, this phone's too, and its
+   * answer carries the session to go on with, so it holds the rotation slot like a rotation does:
+   * a refresh sent with the old token could otherwise come back 401 after the new token was stored,
+   * and sign the donor out. Calls that need a token wait for the slot and get the new one.
+   */
+  async function changePassword(currentPassword: string, newPassword: string): Promise<ChangePasswordResult> {
+    while (rotation) await rotation;
+
+    let result: ChangePasswordResult = { ok: false, response: null };
+    const init: RequestInit = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    };
+
+    await claimRotation(async () => {
+      let response: Response;
+      try {
+        response = await send(MOBILE_PASSWORD_PATH, init, token());
+        if (response.status === 401) {
+          // The access token ran out. A refused token never reached the password check.
+          const outcome = await rotate("refresh");
+          if (outcome !== "rotated") {
+            result = { ok: false, response };
+            return outcome;
+          }
+          response = await send(MOBILE_PASSWORD_PATH, init, token());
+        }
+      } catch {
+        return "unavailable";
+      }
+
+      if (!response.ok) {
+        result = { ok: false, response };
+        // Nothing changed: the session is as good as it was, for whoever is waiting on this slot.
+        return "rotated";
+      }
+
+      result = { ok: true };
+      try {
+        await adopt(response);
+        return "rotated";
+      } catch {
+        // The password did change, so the stored token is dead and the new one is lost.
+        return signOutLocally();
+      }
+    });
+
+    return result;
+  }
+
+  /**
    * Takes over a session that login, code sign-in or signup just started: their 200/201 body is
    * the same MobileSessionResponse a refresh returns. Marks the launch as done, so a later
    * start() does not spend a refresh on a session it already holds.
@@ -296,6 +352,7 @@ export function createSessionClient(options: SessionClientOptions) {
     logout,
     logoutAll,
     switchInstitution,
+    changePassword,
     getState,
     subscribe(listener: () => void) {
       listeners.add(listener);

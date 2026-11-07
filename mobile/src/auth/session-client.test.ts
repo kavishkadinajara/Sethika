@@ -1,4 +1,4 @@
-import { createSessionClient, MOBILE_SESSION_PATH, type TokenStore } from "./session-client";
+import { createSessionClient, MOBILE_PASSWORD_PATH, MOBILE_SESSION_PATH, type TokenStore } from "./session-client";
 
 /*  The mobile session client's state machine against a scripted transport and an in-memory
     secure store. The responses are the API's contracts (MobileSessionEndpoints.cs, ApiErrors.cs):
@@ -34,12 +34,13 @@ function sessionBody(accessToken: string, refreshToken: string, now: number, ttl
 function harness(stored: string | null = "refresh-1") {
   const calls: Call[] = [];
   const clock = { now: T0 };
-  const vault = { token: stored, writes: [] as string[] };
+  const vault = { token: stored, writes: [] as string[], refuseWrites: false };
   let handler: Handler = () => json(500, { code: "unscripted" });
 
   const store: TokenStore = {
     read: async () => vault.token,
     write: async (token) => {
+      if (vault.refuseWrites) throw new Error("Keystore unavailable");
       vault.token = token;
       vault.writes.push(token);
     },
@@ -340,5 +341,179 @@ describe("logout and switching institution", () => {
     expect(result).toEqual({ ok: false, reason: "not_available" });
     expect(h.client.getState()).toMatchObject({ status: "authenticated", accessToken: "access-1" });
     expect(h.vault.token).toBe("refresh-2");
+  });
+});
+
+describe("changing the password", () => {
+  const OLD = "Dana!2026Sethika";
+  const NEW = "Pirith#Night2027";
+
+  async function signedIn() {
+    const h = harness();
+    h.serve(() => sessionBody("access-1", "refresh-2", T0));
+    await h.client.start();
+    return h;
+  }
+
+  /** An answer the test releases by hand, so a second call can start while the first is out. */
+  function held() {
+    let release: (response: Response) => void = () => {};
+    const answer = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    return { answer, release };
+  }
+
+  /** Lets everything that is not waiting on a held answer run. */
+  async function flush() {
+    for (let i = 0; i < 20; i++) await Promise.resolve();
+  }
+
+  it("sends both passwords with the access token, and the new refresh token is the stored one", async () => {
+    const h = await signedIn();
+    h.serve(() => sessionBody("access-2", "refresh-3", T0));
+
+    const result = await h.client.changePassword(OLD, NEW);
+
+    expect(result).toEqual({ ok: true });
+    expect(h.to(MOBILE_PASSWORD_PATH)).toEqual([
+      // Spelled out: the web's route would answer with a cookie the phone cannot use (F39).
+      { method: "POST", path: "/api/auth/mobile/password", bearer: "access-1", body: { currentPassword: OLD, newPassword: NEW } },
+    ]);
+    expect(h.vault.token).toBe("refresh-3");
+    expect(h.vault.writes).toEqual(["refresh-2", "refresh-3"]);
+    expect(h.client.getState()).toMatchObject({ status: "authenticated", accessToken: "access-2" });
+  });
+
+  it("the next call goes out on the new session, and the next refresh spends the new token", async () => {
+    const h = await signedIn();
+    h.serve(() => sessionBody("access-2", "refresh-3", T0));
+    await h.client.changePassword(OLD, NEW);
+
+    h.serve((call) => (call.path === "/api/me" ? json(200, {}) : sessionBody("access-3", "refresh-4", T0)));
+    await h.client.fetch("/api/me");
+    await h.client.refresh();
+
+    expect(h.to("/api/me")[0].bearer).toBe("access-2");
+    expect(h.refreshes().at(-1)?.body).toEqual({ refreshToken: "refresh-3" });
+  });
+
+  it("a refusal hands the answer back and changes nothing", async () => {
+    const h = await signedIn();
+    h.serve(() => json(400, { code: "password_incorrect" }));
+
+    const result = await h.client.changePassword(OLD, NEW);
+
+    expect(result).toMatchObject({ ok: false, response: { status: 400 } });
+    expect(h.vault.token).toBe("refresh-2");
+    expect(h.client.getState()).toMatchObject({ status: "authenticated", accessToken: "access-1" });
+    expect(h.refreshes()).toHaveLength(1);
+  });
+
+  it("an access token that ran out is refreshed, and the change sent again", async () => {
+    const h = await signedIn();
+    h.serve((call) => {
+      if (call.path.startsWith(MOBILE_SESSION_PATH)) return sessionBody("access-2", "refresh-3", T0);
+      return call.bearer === "access-1" ? json(401, {}) : sessionBody("access-3", "refresh-4", T0);
+    });
+
+    const result = await h.client.changePassword(OLD, NEW);
+
+    expect(result).toEqual({ ok: true });
+    expect(h.to(MOBILE_PASSWORD_PATH).map((call) => call.bearer)).toEqual(["access-1", "access-2"]);
+    expect(h.vault.token).toBe("refresh-4");
+  });
+
+  it("a session that really ended signs out and hands back the 401", async () => {
+    const h = await signedIn();
+    h.serve(() => json(401, { code: "session_expired" }));
+
+    const result = await h.client.changePassword(OLD, NEW);
+
+    expect(result).toMatchObject({ ok: false, response: { status: 401 } });
+    expect(h.to(MOBILE_PASSWORD_PATH)).toHaveLength(1);
+    expect(h.client.getState()).toEqual({ status: "anonymous" });
+    expect(h.vault.token).toBeNull();
+  });
+
+  it("no answer keeps the session, and frees the slot for the next call", async () => {
+    const h = await signedIn();
+    h.serve(() => {
+      throw new TypeError("Network request failed");
+    });
+
+    const result = await h.client.changePassword(OLD, NEW);
+
+    expect(result).toEqual({ ok: false, response: null });
+    expect(h.vault.token).toBe("refresh-2");
+    expect(h.client.getState()).toMatchObject({ status: "authenticated", accessToken: "access-1" });
+
+    h.serve(() => json(200, {}));
+    expect((await h.client.fetch("/api/me")).status).toBe(200);
+  });
+
+  it("a new token the phone cannot keep ends the session, and still says the password changed", async () => {
+    const h = await signedIn();
+    h.serve(() => sessionBody("access-2", "refresh-3", T0));
+    h.vault.refuseWrites = true;
+
+    const result = await h.client.changePassword(OLD, NEW);
+
+    expect(result).toEqual({ ok: true });
+    expect(h.client.getState()).toEqual({ status: "anonymous" });
+    expect(h.vault.token).toBeNull();
+  });
+
+  it("waits for a refresh already out, and goes with what it brought", async () => {
+    const h = await signedIn();
+    const refresh = held();
+    h.serve((call) => (call.path === MOBILE_PASSWORD_PATH ? sessionBody("access-3", "refresh-4", T0) : refresh.answer));
+
+    const rotating = h.client.refresh();
+    const changing = h.client.changePassword(OLD, NEW);
+    await flush();
+    expect(h.to(MOBILE_PASSWORD_PATH)).toEqual([]);
+
+    refresh.release(sessionBody("access-2", "refresh-3", T0));
+    await Promise.all([rotating, changing]);
+
+    expect(h.to(MOBILE_PASSWORD_PATH)[0].bearer).toBe("access-2");
+    expect(h.vault.token).toBe("refresh-4");
+  });
+
+  it("a refresh asked for during the change waits for it, and never spends the old token", async () => {
+    // Sent with the old token this refresh would answer 401 and sign the donor out, clearing the
+    // token the change has just stored.
+    const h = await signedIn();
+    const change = held();
+    h.serve((call) => (call.path === MOBILE_PASSWORD_PATH ? change.answer : json(401, { code: "session_expired" })));
+
+    const changing = h.client.changePassword(OLD, NEW);
+    await flush();
+    const rotating = h.client.refresh();
+    await flush();
+    change.release(sessionBody("access-2", "refresh-3", T0));
+    await Promise.all([changing, rotating]);
+
+    expect(h.refreshes()).toHaveLength(1);
+    expect(h.vault.token).toBe("refresh-3");
+    expect(h.client.getState()).toMatchObject({ status: "authenticated", accessToken: "access-2" });
+  });
+
+  it("a call made during the change waits, and goes out on the new session", async () => {
+    const h = await signedIn();
+    const change = held();
+    h.serve((call) => (call.path === MOBILE_PASSWORD_PATH ? change.answer : json(200, {})));
+
+    const changing = h.client.changePassword(OLD, NEW);
+    await flush();
+    const calling = h.client.fetch("/api/me");
+    await flush();
+    expect(h.to("/api/me")).toEqual([]);
+
+    change.release(sessionBody("access-2", "refresh-3", T0));
+    await Promise.all([changing, calling]);
+
+    expect(h.to("/api/me")[0].bearer).toBe("access-2");
   });
 });

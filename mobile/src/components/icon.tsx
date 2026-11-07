@@ -30,6 +30,7 @@ const ICONS = {
   map: { ios: "map", android: "map" },
   person: { ios: "person", android: "person" },
   notifications: { ios: "bell", android: "notifications" },
+  password: { ios: "key", android: "key" },
 } as const satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol }>;
 
 export type IconName = keyof typeof ICONS;

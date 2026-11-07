@@ -16,6 +16,7 @@ export function PhoneStep({
   busy,
   onSubmit,
   initial = "",
+  error: refused,
 }: {
   label: string;
   help: string;
@@ -24,12 +25,15 @@ export function PhoneStep({
   busy: boolean;
   onSubmit: (phone: string) => void;
   initial?: string;
+  /** Why the API refused the number. */
+  error?: string | null;
 }) {
   const { t } = useI18n();
   const [phone, setPhone] = useState(initial);
   const [error, setError] = useState<string | null>(null);
 
   function submit() {
+    if (busy) return; // The keyboard's key does not go through the button.
     if (!phone.trim()) {
       setError(requiredMessage);
       return;
@@ -45,7 +49,7 @@ export function PhoneStep({
         help={help}
         value={phone}
         onChangeText={setPhone}
-        error={error}
+        error={error ?? refused}
         placeholder={t("Signup.phonePlaceholder")}
         keyboardType="phone-pad"
         autoComplete="tel"
@@ -64,18 +68,22 @@ export function CodeStep({
   onSubmit,
   onResend,
   onChangeNumber,
+  error: refused,
 }: {
   submitLabel: string;
   busy: boolean;
   onSubmit: (code: string) => void;
   onResend: () => void;
   onChangeNumber: () => void;
+  /** Why the API refused the code. */
+  error?: string | null;
 }) {
   const { t } = useI18n();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   function submit() {
+    if (busy) return; // The keyboard's key does not go through the button.
     if (!/^\d{6}$/.test(code)) {
       setError(t("Signup.codeRequired"));
       return;
@@ -90,7 +98,7 @@ export function CodeStep({
         label={t("Signup.codeLabel")}
         value={code}
         onChangeText={(value) => setCode(value.replace(/\D/g, "").slice(0, 6))}
-        error={error}
+        error={error ?? refused}
         keyboardType="number-pad"
         autoComplete="one-time-code"
         textContentType="oneTimeCode"

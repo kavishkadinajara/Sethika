@@ -23,14 +23,23 @@ internal static class PasswordEndpoints
 {
     public static IEndpointRouteBuilder MapPasswordEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/me/password", ChangeAsync)
+        MapChange(app, "/api/me/password");
+
+        return app;
+    }
+
+    /// <summary>The password change, under the given route.</summary>
+    /// <remarks>
+    /// Mapped twice - here, and under <c>/api/auth/mobile</c> by <see cref="MobileSessionEndpoints"/> - with
+    /// the same handler and the same rule. The rule is keyed by name and subject, not by path, so the
+    /// mobile copy spends the same budget and is not a way to double it.
+    /// </remarks>
+    internal static void MapChange(IEndpointRouteBuilder routes, string pattern) =>
+        routes.MapPost(pattern, ChangeAsync)
             .RequireAuthorization()
             .RateLimitBy<ChangePasswordBody>(
                 AuthRateLimits.PasswordChangePerUser,
                 (_, services) => services.GetRequiredService<ICurrentUserContext>().UserId?.ToString());
-
-        return app;
-    }
 
     private static async Task<IResult> ChangeAsync(
         [FromBody] ChangePasswordBody body,

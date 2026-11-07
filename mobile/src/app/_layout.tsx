@@ -78,19 +78,19 @@ function Routes() {
   if (!ready) return null;
   if (session.status === "unavailable") return <Unavailable />;
 
+  const backHeader = {
+    headerShown: true,
+    title: "",
+    headerShadowVisible: false,
+    headerStyle: { backgroundColor: palette.canvas },
+    headerTintColor: palette.primary,
+  };
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(app)" />
-      <Stack.Screen
-        name="i/[slug]"
-        options={{
-          headerShown: true,
-          title: "",
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: palette.canvas },
-          headerTintColor: palette.primary,
-        }}
-      />
+      <Stack.Screen name="i/[slug]" options={backHeader} />
+      <Stack.Screen name="change-password" options={backHeader} />
       <Stack.Screen name="(auth)" />
     </Stack>
   );
