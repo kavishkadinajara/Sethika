@@ -3,9 +3,10 @@
 Draft for the final report, written when the phase was finished (2026-11-07). Decision numbers (F1-F73)
 refer to `docs/plans/PHASE-F-MOBILE.md`; the scope decisions are S7 and S8 in `docs/DECISIONS.md`.
 
-**Read section 11 first.** The app's code is finished and tested, but the finished app has never been
-walked through on a real phone, and most of it has never talked to the real API. Everything below
-that says "built" or "proved" means proved by tests, unless it says otherwise.
+**Read section 11 first.** The app's code is finished and tested. The user walked through it on their Android phone on
+2026-11-07, against the real API and with real texts, and found no problems; but nothing was booked,
+cancelled or served in that walk, and push has never reached a phone. Everything below that says
+"built" or "proved" means proved by tests, unless it says otherwise.
 
 ## 1. Why this phase exists
 
@@ -27,16 +28,16 @@ Three things are different on a phone, and most of this chapter is about them:
 
 ## 2. What was promised and what was built
 
-The plan's §0 lists five promises and says the report must match them. Each is built in code. None has
-been proved end to end on a phone, and the last column says how far each one has been seen.
+The plan's §0 lists five promises and says the report must match them. Each is built in code. The last column says how far
+each one has been seen; section 11 has the walk-through of 2026-11-07.
 
 | # | Promise (plan §0) | What was built | Seen so far |
 |---|---|---|---|
-| 1 | A donor can sign up and sign in (phone OTP, password), reset a forgotten password and change it, in English, Sinhala or Tamil | `(auth)/sign-up`, `sign-in`, `sign-in-code`, `forgot-password`, `change-password`; Profile's language picker; mobile session routes (section 3) | Tests. The session client also ran against a live API in F.2, from a script, not a phone. Password reset and change: never against the real API. Sinhala and Tamil are drafts no native speaker has checked |
-| 2 | A donor can browse institutions, see a slot's availability for a month, book, see my bookings and cancel one | Explore, `/i/{slug}`, the month of bowls, the booking sheet, My bookings. One addition: on a regular (standing) day Cancel is replaced by "I can't give that day" (section 7) | Tests. The user tried the first version of these screens on a phone on 2026-10-25, in part, before the redesign. The list was not finished |
+| 1 | A donor can sign up and sign in (phone OTP, password), reset a forgotten password and change it, in English, Sinhala or Tamil | `(auth)/sign-up`, `sign-in`, `sign-in-code`, `forgot-password`, `change-password`; Profile's language picker; mobile session routes (section 3) | Tests, and **seen on the user's phone 2026-11-07** against the real API: sign in, sign out, a forgotten password with its code as a real SMS through Text.lk, and a changed password, in three languages |
+| 2 | A donor can browse institutions, see a slot's availability for a month, book, see my bookings and cancel one | Explore, `/i/{slug}`, the month of bowls, the booking sheet, My bookings. One addition: on a regular (standing) day Cancel is replaced by "I can't give that day" (section 7) | Tests, and **seen on the user's phone 2026-11-07** against the real API: Explore, a place, the booking sheet, My bookings. Nothing was booked or cancelled there, so those two writes are proved by tests only |
 | 3 | A donor gets push notifications: booking confirmed, declined, cancelled and the day-before reminder, in their language, never twice | The code is complete on both sides (section 4). Five templates in three languages: `BOOKING_CONFIRMED`, `_APPROVED`, `_REJECTED`, `_CANCELLED`, `_REMINDER`. Android only (F7) | **No push has ever reached a phone.** Tests stop at a stub of Expo's HTTP API. It cannot work until the steps in section 4 are done |
-| 4 | A donor can find institutions near them using the phone's location | Near me on Explore: today or tomorrow, four radii, a list by distance, then a map (section 5) | Tests, and the map page alone in real Chromium. No real position has been read, and no WebView has shown the map |
-| 5 | An institution's staff can open today's sponsors and mark a booking served, if their role allows it | The Today tab, an institution picker in Profile, Served behind a confirm step (section 6) | Tests. Never against the real API |
+| 4 | A donor can find institutions near them using the phone's location | Near me on Explore: today or tomorrow, four radii, a list by distance, then a map (section 5) | Tests, and **seen on the user's phone 2026-11-07**: the phone's question, a real fix, location off, and the map with pins, a pinch and a pin |
+| 5 | An institution's staff can open today's sponsors and mark a booking served, if their role allows it | The Today tab, an institution picker in Profile, Served behind a confirm step (section 6) | Tests, and **the tab seen on the user's phone 2026-11-07** with a staff account. Served was not tapped, so marking served is proved by tests only |
 
 What the words of promise 3 hide:
 
@@ -361,26 +362,35 @@ went to the console.
 This is the part of the phase that is not finished, stated plainly so that the rest is not read as more
 than it is.
 
-**The first part of the walk-through was done on 2026-11-07.** The user ran the finished app in Expo Go on their own Android phone, against
-the real API on a fresh, empty database (`SethikaWalk`), with real texts through Text.lk. Signing in, signing
-out and a forgotten password worked, and the codes arrived as real SMS. The database agrees: two texts
-`Sent`, each with Text.lk's message id and no error, one account, and two refresh tokens, one of them revoked
-by the sign-out. A fresh database was used so that the reminder job could not text the e2e accounts' made-up
-numbers. The rest of the walk-through is still owed: the F.3
-and F.4 list, plus everything new, on the final look, in three languages, light and dark. The plan
-planned it for the evening of 2026-11-07 or the morning of 2026-11-08.
+**The walk-through was done on 2026-11-07, by the user, on their own Android phone in Expo Go**, and
+they found no problems. This section records what they report, and what the database shows.
+
+- **Real texts.** Against the real API on a fresh, empty database (`SethikaWalk`), with texts through
+  Text.lk: signing in, signing out and a forgotten password worked, and the codes arrived as real SMS. The
+  database agrees: two texts `Sent`, each with Text.lk's message id and no error, one account, and two
+  refresh tokens, one of them revoked by the sign-out. A fresh database was used so that the reminder job
+  could not text the e2e accounts' made-up numbers.
+- **The rest of the app.** Explore and its filter, a place's page, the booking sheet, My bookings, near
+  me (the phone's question, a real fix, location switched off), the map (pins, a pinch, a pin, the
+  licence link, Back) and the Today tab for staff, in Sinhala, Tamil and English, light and dark,
+  including the Tamil tab bar; a cold start; and changing a password. Much of this the user had also
+  tried on the phone earlier. The dev database records the app (`Sethika/0.1.0 (Android 37)`) signing in
+  to it at 13:58.
+- **Nothing was saved.** No booking was made or cancelled and Served was not tapped in this walk: the dev
+  database shows no booking created after it. So the app's writes (book, cancel, Served, a regular day)
+  are proved by the tests and the API's integration tests, not on the phone.
 
 | Part | On a real phone | Against the real API or service |
 |---|---|---|
-| Sign in, sign up, sessions (F.1, F.2) | **Seen 2026-11-07** by the user on their Android phone (Expo Go): sign in and sign out work. Languages, themes and a cold start were not recorded | **Yes**: the real API, and the codes as real SMS through Text.lk |
-| Browse, book, My bookings, cancel (F.3, F.4) | Partly, by the user, 2026-10-25, on the old look. Unfinished | Only in that partial try |
-| A regular day, "I can't give that day" (F.0) | Never | The API side by integration tests. The app never |
-| The redesign (U.1, U.2) | Never. Native tab bar, splash, inset edges, real fonts and icons all unseen | Never: the walk used a stub |
-| Push (F.5a, F.5b) | Never. No token has been fetched, and the prompt, channel, banner, cold-start tap and status-bar icon are all unseen | **Expo has never been called.** The stub's answers come from Expo's documentation |
-| Forgotten and changed password (F.2b) | **Forgotten password seen 2026-11-07** by the user, working. Changing a password was not recorded | **Yes** for the forgotten password, with its code as a real SMS. The routes also by integration tests |
-| Today, the picker, Served (F.7) | Never. The tab appearing and going is read from `expo-router`'s code only (F57) | The app never. The routes by integration tests |
-| Near me (F.6a) | Never. No real fix, location off, or the phone's question | The app never |
-| The map (F.6b) | Never. The page and the screen around it have not been seen together, and `userAgent` and `baseUrl` are proved only as props | Real OSM tiles in Chromium only. The app never called the API |
+| Sign in, sign up, sessions (F.1, F.2) | **Seen 2026-11-07**: sign in, sign out, a cold start | **Yes**, with the codes as real SMS through Text.lk |
+| Browse, book, My bookings, cancel (F.3, F.4) | **Seen 2026-11-07**, on the final look. No booking made or cancelled | **Yes** for reading. Booking and cancelling by tests only |
+| A regular day, "I can't give that day" (F.0) | Not reported | The API side by integration tests. The app never |
+| The redesign (U.1, U.2) | **Seen 2026-11-07**: three languages, light and dark, the Tamil tab bar. No problems found | Yes |
+| Push (F.5a, F.5b) | Never: push does not work in Expo Go. No token has been fetched, and the prompt, channel, banner, cold-start tap and status-bar icon are all unseen | **Expo has never been called.** The stub's answers come from Expo's documentation |
+| Forgotten and changed password (F.2b) | **Seen 2026-11-07**, both working | **Yes**, the forgotten password's code as a real SMS. The routes also by integration tests |
+| Today, the picker, Served (F.7) | **The tab seen 2026-11-07** with a staff account. Served not tapped | Yes for reading. Served by tests only |
+| Near me (F.6a) | **Seen 2026-11-07**: the phone's question, a real fix, location off | Yes |
+| The map (F.6b) | **Seen 2026-11-07**: pins, a pinch, a pin, the licence link, Back. Whether `Referer` and the User-Agent really go out was not checked on the phone | Real OSM tiles |
 | iOS | Never built or run on iOS. Only the Android bundle was exported | Never |
 
 `npx expo export --platform android` shows the app bundles. It does not show that it runs.
