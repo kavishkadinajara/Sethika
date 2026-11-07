@@ -22,8 +22,8 @@ import {
   type TodayMeal,
 } from "@/bookings/today";
 import type { CalendarBooking, SlotDay, TodaysTable } from "@/bookings/types";
-import { useDates } from "@/bookings/use-dates";
 import { Bowl } from "@/components/bookings/bowl";
+import { DayHeader } from "@/components/bookings/day-header";
 import { StatusBadge } from "@/components/bookings/my-bookings";
 import { EmptyState, Failed, Loading } from "@/components/bookings/states";
 import { Button } from "@/components/button";
@@ -78,7 +78,6 @@ async function readDay(api: BookingApi, answers: boolean): Promise<BookingResult
 function Ledger({ refreshKey, onSettled }: Required<Pick<Props, "refreshKey">> & Pick<Props, "onSettled">) {
   const { t, language } = useI18n();
   const api = useBookingApi();
-  const dates = useDates();
   const session = useSession();
   const { can } = usePermissions();
   const palette = usePalette();
@@ -151,13 +150,7 @@ function Ledger({ refreshKey, onSettled }: Required<Pick<Props, "refreshKey">> &
 
   return (
     <>
-      <View style={styles.header}>
-        {name && <Text variant="eyebrow">{name}</Text>}
-        <Text variant="date" accessibilityRole="header" style={styles.date}>
-          {dates.full(day.table.date)}
-        </Text>
-        <Text variant="voice">{t(sentence.key, sentence.values)}</Text>
-      </View>
+      <DayHeader lead={name} date={day.table.date} sentence={t(sentence.key, sentence.values)} />
 
       {failure && <Text variant="muted">{t("Dashboard.panels.stale")}</Text>}
 
@@ -300,8 +293,6 @@ function Sponsor({
 
 const styles = StyleSheet.create({
   grow: { flex: 1 },
-  header: { gap: spacing.xs, paddingTop: spacing.sm },
-  date: { fontSize: 30, lineHeight: 40 },
   notice: { flexDirection: "row", alignItems: "center", gap: spacing.sm, borderLeftWidth: 3, borderRadius: radius.sm, padding: spacing.sm + 4 },
   meal: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   sponsor: { gap: spacing.xs, borderTopWidth: 1, paddingTop: spacing.sm + 4 },

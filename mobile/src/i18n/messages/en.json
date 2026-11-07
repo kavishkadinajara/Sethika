@@ -417,12 +417,6 @@
     },
     "explore": {
       "title": "Find a place to give",
-      "greeting": {
-        "morning": "Good morning",
-        "afternoon": "Good afternoon",
-        "evening": "Good evening"
-      },
-      "voice": "One meal can brighten someone's whole day.",
       "kinds": "Kind of place",
       "allKinds": "All",
       "count": "{count, plural, one {# place} other {# places}}"
@@ -492,7 +486,8 @@
     "dates": {
       "monthYear": "{month} {year}",
       "full": "{weekday}, {day} {month} {year}",
-      "dayMonth": "{weekday}, {day} {month}"
+      "dayMonth": "{weekday}, {day} {month}",
+      "dayMonthLong": "{day} {month}"
     },
     "calendar": {
       "dayStatus": "{date}: {status}",
@@ -516,11 +511,22 @@
       "noMeals": "No meals are on the table today.",
       "mealsOver": "Today's meals have all begun; the calendar holds what comes next.",
       "nextWithOpen": "Next on the table is {meal} at {time}, and {open, plural, one {# place is} other {# places are}} still open today.",
-      "nextAllGiven": "Next on the table is {meal} at {time}, and every meal still to come has its sponsor."
+      "nextAllGiven": "Next on the table is {meal} at {time}, and every meal still to come has its sponsor.",
+      "donorPlain": "Find a place, and give a meal on a day that matters to you.",
+      "nothingBooked": "You have no meal booked yet. Find a place, and choose a day.",
+      "givingToday": "Today you give {meal} at {place}, at {time}.",
+      "givingTomorrow": "Tomorrow you give {meal} at {place}, at {time}.",
+      "givingLater": "Your next meal to give is {meal} at {place}, on {date} at {time}.",
+      "askedToday": "Your meal today, {meal} at {place} at {time}, is still waiting for their answer.",
+      "askedTomorrow": "Your meal tomorrow, {meal} at {place} at {time}, is still waiting for their answer.",
+      "askedLater": "Your next meal, {meal} at {place} on {date}, is still waiting for their answer."
     },
     "panels": {
-      "stale": "Some of today's figures could not be read."
-    }
+      "stale": "Some of today's figures could not be read.",
+      "yourTable": "Your table",
+      "allBookings": "All my bookings"
+    },
+    "welcome": "Welcome back, {name}"
   },
   "Shell": {
     "today": {

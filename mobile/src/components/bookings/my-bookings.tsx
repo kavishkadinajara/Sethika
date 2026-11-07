@@ -10,17 +10,17 @@ import { bookingErrorKey } from "@/bookings/errors";
 import { canLetGoOwnDay, splitBookings } from "@/bookings/mine";
 import { inLocale } from "@/bookings/names";
 import type { BookingStatus, DonorBooking } from "@/bookings/types";
-import { useDates } from "@/bookings/use-dates";
 import { Button } from "@/components/button";
 import { Icon } from "@/components/icon";
 import { Card, FormError, SectionTitle } from "@/components/screen";
 import { Text } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { useI18n } from "@/i18n/i18n-provider";
-import { bowl, radius, spacing, type Palette } from "@/theme/colors";
+import { radius, spacing, type Palette } from "@/theme/colors";
 import { usePalette } from "@/theme/use-theme";
 
 import { Bowl } from "./bowl";
+import { LedgerLine } from "./ledger-line";
 import { EmptyState, Failed, Loading } from "./states";
 
 /** booking.Bookings.CancelReason's length (plan 03, E16). */
@@ -124,7 +124,7 @@ function BookingList({ refreshKey, onSettled }: Required<Pick<Props, "refreshKey
         today={today}
         onCancel={setCancelling}
         onLetGo={setLettingGo}
-        featureFirst
+        rim
       />
       {past.length > 0 && <Section title={t("MyBookings.past")} bookings={past} today={today} onCancel={setCancelling} onLetGo={setLettingGo} />}
 
@@ -162,7 +162,7 @@ function Section({
   today,
   onCancel,
   onLetGo,
-  featureFirst = false,
+  rim = false,
 }: {
   title: string;
   empty?: string;
@@ -170,8 +170,8 @@ function Section({
   today: string;
   onCancel: (booking: DonorBooking) => void;
   onLetGo: (booking: DonorBooking) => void;
-  /** The soonest booking leads, with the gold rim: the one card that matters most here. */
-  featureFirst?: boolean;
+  /** The gold rim: what is coming is the one card that matters most here. */
+  rim?: boolean;
 }) {
   const palette = usePalette();
   return (
@@ -192,121 +192,85 @@ function Section({
       {bookings.length === 0 ? (
         <Text variant="muted">{empty}</Text>
       ) : (
-        bookings.map((booking, index) => (
-          <BookingCard
-            key={booking.bookingNo}
-            booking={booking}
-            today={today}
-            featured={featureFirst && index === 0}
-            onCancel={() => onCancel(booking)}
-            onLetGo={() => onLetGo(booking)}
-          />
-        ))
+        <Card rim={rim}>
+          {bookings.map((booking, index) => (
+            <BookingLine
+              key={booking.bookingNo}
+              booking={booking}
+              today={today}
+              ruled={index > 0}
+              onCancel={() => onCancel(booking)}
+              onLetGo={() => onLetGo(booking)}
+            />
+          ))}
+        </Card>
       )}
     </View>
   );
 }
 
-function BookingCard({
+function BookingLine({
   booking,
   today,
-  featured,
+  ruled,
   onCancel,
   onLetGo,
 }: {
   booking: DonorBooking;
   today: string;
-  featured: boolean;
+  ruled: boolean;
   onCancel: () => void;
   onLetGo: () => void;
 }) {
   const { t, language } = useI18n();
-  const dates = useDates();
   const palette = usePalette();
   const away = daysBetween(today, booking.date);
   const live = booking.status === "Requested" || booking.status === "Approved";
   const institution = inLocale(language, booking.institutionName, booking.institutionNameSi, booking.institutionNameTa);
 
   return (
-    <View
-      testID={`booking-${booking.bookingNo}`}
-      style={[
-        styles.card,
-        { backgroundColor: palette.surface, borderColor: featured ? palette.primary : palette.hairline },
-        featured && styles.featured,
-      ]}
-    >
-      {featured && <View style={[styles.rim, { backgroundColor: palette.accent }]} />}
-      {/* The stub: the day, large, as on an institution's own meal calendar. A booking still
-          going ahead is printed in the primary colour; one that is over, quietly. */}
-      <View style={[styles.stub, { backgroundColor: live ? palette.primary : palette.subtle }]}>
-        <Text variant="caption" style={{ color: live ? palette.onPrimary : palette.muted }}>
-          {dates.weekday(booking.date, "short")}
-        </Text>
-        <Text variant="title" style={{ color: live ? palette.onPrimary : palette.muted }}>
-          {Number(booking.date.slice(8))}
-        </Text>
-        <Text variant="caption" style={{ color: live ? palette.onPrimary : palette.muted }}>
-          {dates.monthShort(booking.date)}
-        </Text>
-      </View>
-      {/* The perforation between stub and body: two notches in the canvas colour. */}
-      <View style={[styles.notch, styles.notchTop, { backgroundColor: palette.canvas, borderColor: palette.hairline }]} />
-      <View style={[styles.notch, styles.notchBottom, { backgroundColor: palette.canvas, borderColor: palette.hairline }]} />
-
-      <View style={styles.body}>
-        <View style={styles.titleRow}>
-          <Text variant="label" style={styles.grow}>
-            {inLocale(language, booking.slotName, booking.slotNameSi, booking.slotNameTa)} · {booking.startTime}
-          </Text>
-          <StatusBadge status={booking.status} />
-        </View>
+    <View testID={`booking-${booking.bookingNo}`} style={[styles.line, ruled && { borderTopWidth: 1, borderTopColor: palette.hairline }]}>
+      <LedgerLine date={booking.date} time={booking.startTime} quiet={!live}>
+        <Text variant="label">{inLocale(language, booking.slotName, booking.slotNameSi, booking.slotNameTa)}</Text>
         <Pressable
           accessibilityRole="link"
           onPress={() => router.push({ pathname: "/i/[slug]", params: { slug: booking.institution } })}
           style={styles.link}
         >
-          <View style={styles.place}>
-            <Icon name="place" size={15} color={palette.primary} />
-            <Text variant="label" style={{ color: palette.primary }}>
-              {institution}
-            </Text>
-          </View>
-        </Pressable>
-        <Text variant="muted">
-          {live && away >= 0 && away <= 7 ? `${t("MyBookings.when", { days: away })} · ` : ""}
-          {t("MyBookings.people", { count: booking.headcount })} · {t(`Booking.fulfilment.${booking.fulfilmentMode}`)} · {booking.bookingNo}
-        </Text>
-        {booking.inMemoryOf && <Text variant="voice">{t("MyBookings.inMemoryOf", { name: booking.inMemoryOf })}</Text>}
-        {booking.regular && (
           <Text variant="label" style={{ color: palette.brand }}>
-            {t("MyBookings.regular")}
+            {institution}
           </Text>
-        )}
+        </Pressable>
+        <View style={styles.status}>
+          <StatusBadge status={booking.status} />
+        </View>
+      </LedgerLine>
 
-        {booking.status === "Rejected" && booking.rejectReason && (
-          <View style={[styles.reason, { backgroundColor: palette.dangerSoft }]}>
-            <Text>{t("MyBookings.rejectedBecause", { reason: booking.rejectReason })}</Text>
-          </View>
-        )}
-        {booking.status === "Cancelled" && booking.cancelReason && (
-          <View style={[styles.reason, { backgroundColor: palette.subtle }]}>
-            <Text>{t("MyBookings.cancelledBecause", { reason: booking.cancelReason })}</Text>
-          </View>
-        )}
-        {booking.status === "Requested" && <Text variant="muted">{t("MyBookings.waiting")}</Text>}
+      {/* Across the whole line: the column beside the date is too narrow for these at 320 pt. */}
+      <Text variant="muted">
+        {live && away >= 0 && away <= 7 ? `${t("MyBookings.when", { days: away })} · ` : ""}
+        {t("MyBookings.people", { count: booking.headcount })} · {t(`Booking.fulfilment.${booking.fulfilmentMode}`)} · {booking.bookingNo}
+      </Text>
+      {booking.inMemoryOf && <Text variant="voice">{t("MyBookings.inMemoryOf", { name: booking.inMemoryOf })}</Text>}
+      {booking.regular && (
+        <Text variant="label" style={{ color: palette.brand }}>
+          {t("MyBookings.regular")}
+        </Text>
+      )}
+      {booking.status === "Rejected" && booking.rejectReason && (
+        <View style={[styles.reason, { backgroundColor: palette.dangerSoft }]}>
+          <Text>{t("MyBookings.rejectedBecause", { reason: booking.rejectReason })}</Text>
+        </View>
+      )}
+      {booking.status === "Cancelled" && booking.cancelReason && (
+        <View style={[styles.reason, { backgroundColor: palette.subtle }]}>
+          <Text>{t("MyBookings.cancelledBecause", { reason: booking.cancelReason })}</Text>
+        </View>
+      )}
+      {booking.status === "Requested" && <Text variant="muted">{t("MyBookings.waiting")}</Text>}
 
-        {booking.canCancel && (
-          <View style={styles.cancel}>
-            <Button label={t("MyBookings.cancel")} variant="danger" onPress={onCancel} />
-          </View>
-        )}
-        {canLetGoOwnDay(booking, today) && (
-          <View style={styles.cancel}>
-            <Button label={t("MyBookings.cantGive")} variant="danger" onPress={onLetGo} />
-          </View>
-        )}
-      </View>
+      {booking.canCancel && <Button label={t("MyBookings.cancel")} variant="danger" onPress={onCancel} />}
+      {canLetGoOwnDay(booking, today) && <Button label={t("MyBookings.cantGive")} variant="danger" onPress={onLetGo} />}
     </View>
   );
 }
@@ -409,18 +373,9 @@ const styles = StyleSheet.create({
   notice: { flexDirection: "row", alignItems: "center", gap: spacing.sm, borderLeftWidth: 4, borderRadius: radius.sm, padding: spacing.md },
   section: { gap: spacing.sm + 4 },
   count: { minWidth: 28, height: 24, borderRadius: radius.pill, paddingHorizontal: spacing.sm, alignItems: "center", justifyContent: "center" },
-  card: { ...bowl, flexDirection: "row", borderWidth: 1, overflow: "hidden" },
-  featured: { borderWidth: 2 },
-  rim: { position: "absolute", top: 0, left: 104, right: 28, height: 3, zIndex: 1, borderBottomLeftRadius: 3, borderBottomRightRadius: 3 },
-  stub: { width: 76, alignItems: "center", justifyContent: "center", paddingVertical: spacing.md },
-  notch: { position: "absolute", left: 66, width: 20, height: 20, borderRadius: 10, borderWidth: 1 },
-  notchTop: { top: -11 },
-  notchBottom: { bottom: -11 },
-  body: { flex: 1, padding: spacing.md, paddingLeft: spacing.md + 4, gap: spacing.xs },
-  titleRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
-  badge: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 2 },
+  line: { gap: spacing.sm, paddingVertical: spacing.sm },
+  status: { flexDirection: "row" },
+  badge: { flexShrink: 1, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 2 },
   link: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },
-  place: { flexDirection: "row", alignItems: "center", gap: 4 },
   reason: { borderRadius: radius.sm, padding: spacing.sm },
-  cancel: { marginTop: spacing.xs },
 });

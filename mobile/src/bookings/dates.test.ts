@@ -9,6 +9,7 @@ describe("createDates", () => {
     expect(dates.monthYear("2026-11-01")).toBe("November 2026");
     expect(dates.full("2026-11-01")).toBe("Sunday, 1 November 2026");
     expect(dates.dayMonth("2026-11-20")).toBe("Fri, 20 Nov");
+    expect(dates.dayMonthLong("2026-11-20")).toBe("20 November");
     expect(dates.weekday("2026-11-01", "narrow")).toBe("S");
     expect(dates.weekdayName(6, "short")).toBe("Sat");
     expect(dates.monthShort("2026-01-15")).toBe("Jan");
@@ -33,4 +34,9 @@ describe("createDates", () => {
   it("never groups the year's digits", () => {
     expect(createDates("en").full("2026-12-31")).toBe("Thursday, 31 December 2026");
   });
+});
+
+it("writes the long date as each language does, as the web does", () => {
+  expect(createDates("si").dayMonthLong("2026-11-20")).toBe("නොවැම්බර් 20");
+  expect(createDates("ta").dayMonthLong("2026-11-20")).toBe("20 நவம்பர்");
 });

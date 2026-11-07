@@ -112,7 +112,7 @@ describe("the day", () => {
     const screen = await render(<TodayView />);
 
     screen.getText("Alpha Temple");
-    screen.getText(/10 November 2026/);
+    screen.getLabel("Tuesday, 10 November 2026");
     screen.getText("Next on the table is Lunch at 11:30, and 5 places are still open today.");
   });
 
@@ -213,7 +213,7 @@ describe("the day", () => {
 
     const screen = await render(<TodayView />);
 
-    screen.getText(/11 November 2026/);
+    screen.getLabel("Wednesday, 11 November 2026");
     expect(mockApi.sent.at(-1)?.path).toBe(`/api/institution/bookings?from=${tomorrow}&to=${tomorrow}`);
   });
 });

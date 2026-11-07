@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { act } from "react";
-import { Appearance, AppState, Linking } from "react-native";
+import { Appearance, AppState, Linking, StyleSheet } from "react-native";
 
 import type { SessionState, SwitchInstitutionResult } from "@/auth/session-client";
 import { ProfileProvider } from "@/auth/profile-provider";
@@ -11,6 +11,7 @@ import { booking } from "@/test-utils/fixtures";
 import { CHOICE_KEY, createPushStub, permissions, TOKEN, TOKEN_KEY } from "@/test-utils/push-stub";
 import { json, press, render, settle, type Screen } from "@/test-utils/render";
 import { ThemePreferenceProvider } from "@/theme/appearance";
+import { brand } from "@/theme/colors";
 
 import { ProfileView } from "./profile-view";
 
@@ -20,6 +21,7 @@ import { ProfileView } from "./profile-view";
 const mockApi = createApiStub();
 const mockPhone = createPushStub();
 let mockSession: SessionState = DONOR;
+let mockScheme: "light" | "dark" = "light";
 
 /** The session client, with the two sign-outs leaving their mark among the API calls. */
 const mockClient = {
@@ -31,6 +33,7 @@ const mockClient = {
   switchToPersonal: jest.fn<Promise<SwitchInstitutionResult>, []>(),
 };
 
+jest.mock("react-native/Libraries/Utilities/useColorScheme", () => ({ __esModule: true, default: () => mockScheme }));
 jest.mock("@/api/http", () => ({ getJson: (path: string) => mockApi.getJson(path) }));
 jest.mock("@/auth/session-provider", () => ({ useSession: () => mockSession, useSessionClient: () => mockClient }));
 jest.mock("@/notifications/native-device", () => ({
@@ -262,6 +265,16 @@ describe("changing the password", () => {
 describe("signed out", () => {
   beforeEach(() => {
     mockSession = ANONYMOUS;
+  });
+
+  it("has no green field in the dark (F21)", async () => {
+    mockSession = ANONYMOUS;
+    mockScheme = "dark";
+    const screen = await render(page());
+    const green = screen.where((props) => (StyleSheet.flatten(props.style as never) as { backgroundColor?: string } | undefined)?.backgroundColor === brand.estate);
+    mockScheme = "light";
+    screen.getText("Give a meal, from wherever you are");
+    expect(green).toHaveLength(0);
   });
 
   it("says what an account is for, offers the ways in, and asks the API for nothing", async () => {

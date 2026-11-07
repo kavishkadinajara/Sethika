@@ -66,15 +66,14 @@ export function TextField({ label, help, error, password = false, icon, hideLabe
           style={[styles.input, icon && styles.inputWithIcon, { color: palette.fg }]}
         />
         {password && (
+          // An icon, not the words: Tamil's "show password" took half the box at 320 pt and broke mid-word.
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel={hidden ? t("Common.showPassword") : t("Common.hidePassword")}
             onPress={() => setHidden((value) => !value)}
-            hitSlop={8}
             style={styles.toggle}
           >
-            <Text variant="muted" style={{ color: palette.primary }}>
-              {hidden ? t("Common.showPassword") : t("Common.hidePassword")}
-            </Text>
+            <Icon name={hidden ? "show" : "hide"} size={22} color={palette.primary} />
           </Pressable>
         )}
       </View>
@@ -97,7 +96,7 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   icon: { paddingLeft: spacing.md },
-  input: { flex: 1, fontSize: 16, paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2 },
+  input: { flex: 1, minWidth: 0, fontSize: 16, paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2 },
   inputWithIcon: { paddingLeft: spacing.sm },
-  toggle: { paddingHorizontal: spacing.md },
+  toggle: { width: 48, minHeight: 44, alignItems: "center", justifyContent: "center" },
 });

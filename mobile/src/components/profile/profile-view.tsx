@@ -20,7 +20,7 @@ import { LANGUAGES, type Language } from "@/i18n/translate";
 import type { PushStatus } from "@/notifications/push";
 import { useChannelName, usePush } from "@/notifications/push-provider";
 import { THEMES, useThemePreference, type ThemeChoice } from "@/theme/appearance";
-import { bowl, brand, radius, spacing } from "@/theme/colors";
+import { bowl, radius, spacing } from "@/theme/colors";
 import { usePalette } from "@/theme/use-theme";
 
 /**
@@ -184,9 +184,7 @@ function Giving() {
         <Text variant="voice">{t("App.profile.thanks")}</Text>
         <View style={styles.stats}>
           <Stat value={stats?.upcoming} label={t("App.profile.stats.upcoming")} />
-          <View style={[styles.divider, { backgroundColor: palette.hairline }]} />
           <Stat value={stats?.given} label={t("App.profile.stats.given")} />
-          <View style={[styles.divider, { backgroundColor: palette.hairline }]} />
           <Stat value={stats?.fed} label={t("App.profile.stats.fed")} />
         </View>
       </Card>
@@ -222,14 +220,15 @@ function Giving() {
   );
 }
 
+/** A figure and what it counts, on one line: in thirds, Tamil's labels ran into each other at 320 pt. */
 function Stat({ value, label }: { value: number | undefined; label: string }) {
   const palette = usePalette();
   return (
     <View style={styles.stat} accessible accessibilityLabel={`${value ?? "–"} ${label}`}>
-      <Text variant="display" style={{ color: palette.brand }}>
+      <Text variant="heading" style={[styles.figure, { color: palette.brand }]}>
         {value ?? "–"}
       </Text>
-      <Text variant="caption" style={styles.centred}>
+      <Text variant="muted" style={styles.grow}>
         {label}
       </Text>
     </View>
@@ -239,6 +238,7 @@ function Stat({ value, label }: { value: number | undefined; label: string }) {
 /** A visitor: what an account gives them, and the two ways in. */
 function Welcome() {
   const { t } = useI18n();
+  const palette = usePalette();
   const rows: { icon: IconName; words: string }[] = [
     { icon: "search", words: t("App.profile.benefits.find") },
     { icon: "calendar", words: t("App.profile.benefits.book") },
@@ -247,16 +247,13 @@ function Welcome() {
 
   return (
     <>
-      <View style={[styles.panel, { backgroundColor: brand.estate }]}>
-        <View style={styles.grow}>
-          <Text variant="title" accessibilityRole="header" style={styles.onPanel}>
-            {t("App.profile.joinTitle")}
-          </Text>
-          <Text variant="voice" style={styles.onPanelSoft}>
-            {t("App.profile.signedOut")}
-          </Text>
-        </View>
-        <Bowl fill={0} color={brand.gold} scale={2} />
+      {/* One column: beside the bowl, a long Tamil word broke in the middle at 320 pt. */}
+      <View style={styles.join}>
+        <Bowl fill={0} color={palette.brand} scale={2} />
+        <Text variant="title" accessibilityRole="header">
+          {t("App.profile.joinTitle")}
+        </Text>
+        <Text variant="voice">{t("App.profile.signedOut")}</Text>
       </View>
       <Card>
         {rows.map((row) => (
@@ -523,14 +520,12 @@ const styles = StyleSheet.create({
   avatarRing: { padding: 3, borderRadius: 44, borderWidth: 2 },
   avatar: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center" },
   acting: { flexDirection: "row", alignItems: "center", gap: spacing.sm, borderWidth: 1, borderRadius: radius.md, padding: spacing.md },
-  stats: { flexDirection: "row", alignItems: "stretch", marginTop: spacing.xs },
-  stat: { flex: 1, alignItems: "center", gap: 2, paddingVertical: spacing.xs },
-  divider: { width: 1, marginVertical: spacing.xs },
+  stats: { gap: spacing.xs, marginTop: spacing.xs },
+  stat: { flexDirection: "row", alignItems: "center", gap: spacing.sm + 4 },
+  figure: { minWidth: 44, fontVariant: ["tabular-nums"] },
   next: { ...bowl, flexDirection: "row", alignItems: "center", gap: spacing.md, borderWidth: 1, padding: spacing.md },
   nextDay: { width: 52, height: 56, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
-  panel: { ...bowl, flexDirection: "row", alignItems: "flex-end", gap: spacing.md, padding: spacing.lg, marginTop: spacing.sm },
-  onPanel: { color: brand.ivory },
-  onPanelSoft: { color: brand.ivory, opacity: 0.85 },
+  join: { gap: spacing.xs, paddingTop: spacing.sm },
   benefit: { flexDirection: "row", alignItems: "center", gap: spacing.sm + 4 },
   buttons: { gap: spacing.sm, marginTop: spacing.sm },
   group: { gap: spacing.sm },
@@ -539,8 +534,10 @@ const styles = StyleSheet.create({
   rowHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm + 4 },
   rule: { height: 1, marginVertical: spacing.xs },
   tile: { width: 36, height: 36, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  segmented: { flexDirection: "row", borderWidth: 1, borderRadius: radius.pill, padding: 4, gap: 4 },
-  segment: { flex: 1, minHeight: 44, borderRadius: radius.pill, borderWidth: 1.5, borderColor: "transparent", justifyContent: "center", paddingHorizontal: spacing.xs },
+  // Wraps: three Tamil words are wider than a 320 pt row, and a choice must never break mid-word.
+  // The radius is one row's half height, so a single row is still a pill.
+  segmented: { flexDirection: "row", flexWrap: "wrap", borderWidth: 1, borderRadius: 27, padding: 4, gap: 4 },
+  segment: { flexGrow: 1, minHeight: 44, borderRadius: radius.pill, borderWidth: 1.5, borderColor: "transparent", justifyContent: "center", paddingHorizontal: spacing.sm },
   segmentChosen: { borderWidth: 1.5 },
   about: { alignItems: "center", gap: spacing.xs, paddingTop: spacing.lg },
   mark: { width: 40, height: 40, opacity: 0.9 },

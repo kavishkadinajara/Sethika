@@ -6,6 +6,7 @@ import { brand, colors } from "@/theme/colors";
 import { Button } from "./button";
 import { BrandHeader, Card, Screen } from "./screen";
 import { Text } from "./text";
+import { TextField } from "./text-field";
 
 /*  The base every screen stands on (U.1), in both themes and in Latin and non-Latin scripts. */
 
@@ -52,6 +53,28 @@ describe("Text", () => {
     mockLanguage = "si";
     const screen = await render(<Text style={{ lineHeight: 22 }}>Fixed</Text>);
     expect(flat(screen.getText("Fixed").props.style).lineHeight).toBe(22);
+  });
+
+  it("gives the weekday the date's voice, and the sentence the plain one", async () => {
+    mockScheme = "dark";
+    const screen = await render(
+      <>
+        <Text variant="weekday">Tuesday</Text>
+        <Text variant="sentence">Next is lunch.</Text>
+      </>,
+    );
+    const weekday = flat(screen.getText("Tuesday").props.style);
+    const sentence = flat(screen.getText("Next is lunch.").props.style);
+    expect(weekday).toMatchObject({ fontFamily: "Fraunces_400Regular_Italic", color: colors.dark.brand, fontSize: 24, lineHeight: 32 });
+    expect(sentence).toMatchObject({ fontFamily: "Outfit_400Regular", color: colors.dark.fg, fontSize: 19, lineHeight: 27 });
+  });
+
+  it("does not fake a slanted Sinhala weekday, and leaves it room", async () => {
+    mockLanguage = "si";
+    const screen = await render(<Text variant="weekday">අඟහරුවාදා</Text>);
+    const style = flat(screen.getText("අඟහරුවාදා").props.style);
+    expect(style.fontFamily).toBeUndefined();
+    expect(style.lineHeight).toBe(40);
   });
 
   it("says the date in Fraunces italic and the brand colour", async () => {
@@ -193,5 +216,33 @@ describe("Screen", () => {
     expect(await mark()).not.toContain("dark");
     mockScheme = "dark";
     expect(await mark()).toContain("splash-icon-dark");
+  });
+});
+
+describe("a password field", () => {
+  const box = (screen: Awaited<ReturnType<typeof render>>) => screen.getLabel("Password");
+
+  it("starts hidden, and the eye shows it and hides it again, saying which it will do", async () => {
+    const screen = await render(<TextField label="Password" password />);
+    expect(box(screen).props.secureTextEntry).toBe(true);
+
+    await press(screen.getLabel("Common.showPassword"));
+    expect(box(screen).props.secureTextEntry).toBe(false);
+
+    await press(screen.getLabel("Common.hidePassword"));
+    expect(box(screen).props.secureTextEntry).toBe(true);
+  });
+
+  it("gives the eye a full target, and no words to run out of the box", async () => {
+    const screen = await render(<TextField label="Password" password />);
+    const eye = flat(screen.getLabel("Common.showPassword").props.style);
+    expect(eye.width).toBeGreaterThanOrEqual(44);
+    expect(eye.minHeight).toBeGreaterThanOrEqual(44);
+    expect(screen.queryText("Common.showPassword")).toBeNull();
+  });
+
+  it("has no eye on an ordinary field", async () => {
+    const screen = await render(<TextField label="Name" />);
+    expect(screen.queryLabel("Common.showPassword")).toBeNull();
   });
 });

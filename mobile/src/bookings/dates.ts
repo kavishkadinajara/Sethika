@@ -25,6 +25,8 @@ export type Dates = {
   full(date: string): string;
   /** "Sun, 1 Nov" */
   dayMonth(date: string): string;
+  /** "1 November": the Day Ledger's large date. */
+  dayMonthLong(date: string): string;
 };
 
 export function createDates(language: Language, t: Translate = createTranslator(language)): Dates {
@@ -49,5 +51,6 @@ export function createDates(language: Language, t: Translate = createTranslator(
     monthShort: (date) => monthsShort[parts(date).month - 1],
     full: (date) => t("App.dates.full", values(date, months, weekdays.long)),
     dayMonth: (date) => t("App.dates.dayMonth", values(date, monthsShort, weekdays.short)),
+    dayMonthLong: (date) => t("App.dates.dayMonthLong", values(date, months, weekdays.long)),
   };
 }

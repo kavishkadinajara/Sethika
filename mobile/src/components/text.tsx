@@ -3,7 +3,7 @@ import { StyleSheet, Text as NativeText, type TextProps } from "react-native";
 import { useI18n } from "@/i18n/i18n-provider";
 import { usePalette } from "@/theme/use-theme";
 
-type Variant = "date" | "display" | "title" | "heading" | "body" | "muted" | "label" | "error" | "eyebrow" | "caption" | "voice";
+type Variant = "date" | "weekday" | "sentence" | "display" | "title" | "heading" | "body" | "muted" | "label" | "error" | "eyebrow" | "caption" | "voice";
 
 /*  Outfit carries Latin only. Sinhala and Tamil use the phone's own font (Noto Sans Sinhala /
     Tamil on Android, the system faces on iOS) rather than mixing Outfit's Latin metrics into
@@ -39,11 +39,11 @@ export function Text({ variant = "body", style, ...props }: TextProps & { varian
       ? palette.muted
       : variant === "error"
         ? palette.danger
-        : variant === "date"
+        : variant === "date" || variant === "weekday"
           ? palette.brand
           : palette.fg;
   const font =
-    variant === "voice" || variant === "date"
+    variant === "voice" || variant === "date" || variant === "weekday"
       ? latin
         ? { fontFamily: FRAUNCES }
         : { fontWeight: "400" as const }
@@ -72,6 +72,9 @@ export function Text({ variant = "body", style, ...props }: TextProps & { varian
 const styles = StyleSheet.create({
   // The Day Ledger's date (F22): the human voice at its largest, the web's 1.25 leading.
   date: { fontSize: 44, lineHeight: 55 },
+  weekday: { fontSize: 24, lineHeight: 32 },
+  // The Day Ledger's one sentence: larger than body, not a heading.
+  sentence: { fontSize: 19, lineHeight: 27 },
   display: { fontSize: 32, lineHeight: 40, letterSpacing: -0.4 },
   title: { fontSize: 28, lineHeight: 36, letterSpacing: -0.2 },
   heading: { fontSize: 20, lineHeight: 28 },

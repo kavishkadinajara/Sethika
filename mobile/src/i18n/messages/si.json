@@ -417,12 +417,6 @@
     },
     "explore": {
       "title": "දායක විය හැකි ස්ථානයක් සොයන්න",
-      "greeting": {
-        "morning": "සුබ උදෑසනක්",
-        "afternoon": "සුබ දහවලක්",
-        "evening": "සුබ සන්ධ්‍යාවක්"
-      },
-      "voice": "එක් ආහාර වේලකින් කෙනෙකුගේ මුළු දවසම එළිය කළ හැකිය.",
       "kinds": "ස්ථාන වර්ගය",
       "allKinds": "සියල්ල",
       "count": "{count, plural, one {ස්ථානයක්} other {ස්ථාන #}}"
@@ -492,7 +486,8 @@
     "dates": {
       "monthYear": "{year} {month}",
       "full": "{year} {month} {day}, {weekday}",
-      "dayMonth": "{weekday}, {month} {day}"
+      "dayMonth": "{weekday}, {month} {day}",
+      "dayMonthLong": "{month} {day}"
     },
     "calendar": {
       "dayStatus": "{date}: {status}",
@@ -516,11 +511,22 @@
       "noMeals": "අද ආහාර වේල් නැත.",
       "mealsOver": "අද දවසේ ආහාර වේල් සියල්ල ආරම්භ වී ඇත; ඊළඟට එන දේ දින දර්ශනයේ ඇත.",
       "nextWithOpen": "මීළඟට {time} ට {meal}; අද තවම {open, plural, one {ස්ථාන #ක්} other {ස්ථාන #ක්}} විවෘතයි.",
-      "nextAllGiven": "මීළඟට {time} ට {meal}; ඉදිරියට ඇති සෑම ආහාර වේලකටම දායකයෙක් සිටී."
+      "nextAllGiven": "මීළඟට {time} ට {meal}; ඉදිරියට ඇති සෑම ආහාර වේලකටම දායකයෙක් සිටී.",
+      "donorPlain": "ස්ථානයක් සොයා, ඔබට වැදගත් දිනයක ආහාර වේලක් දෙන්න.",
+      "nothingBooked": "ඔබ තවම ආහාර වේලක් වෙන් කර නැත. ස්ථානයක් සොයා දිනයක් තෝරන්න.",
+      "givingToday": "අද {time} ට ඔබ {place} හි {meal} දෙනවා.",
+      "givingTomorrow": "හෙට {time} ට ඔබ {place} හි {meal} දෙනවා.",
+      "givingLater": "ඔබේ මීළඟ ආහාර වේල: {date} {time} ට {place} හි {meal}.",
+      "askedToday": "අද {time} ට {place} හි ඔබේ {meal} තවම ඔවුන්ගේ පිළිතුර බලාපොරොත්තුවෙන්.",
+      "askedTomorrow": "හෙට {time} ට {place} හි ඔබේ {meal} තවම ඔවුන්ගේ පිළිතුර බලාපොරොත්තුවෙන්.",
+      "askedLater": "{date} {place} හි ඔබේ {meal} තවම ඔවුන්ගේ පිළිතුර බලාපොරොත්තුවෙන්."
     },
     "panels": {
-      "stale": "අද දවසේ සමහර තොරතුරු කියවිය නොහැකි විය."
-    }
+      "stale": "අද දවසේ සමහර තොරතුරු කියවිය නොහැකි විය.",
+      "yourTable": "ඔබේ ආහාර වේල්",
+      "allBookings": "මගේ සියලු වෙන්කිරීම්"
+    },
+    "welcome": "නැවත සාදරයෙන් පිළිගනිමු, {name}"
   },
   "Shell": {
     "today": {

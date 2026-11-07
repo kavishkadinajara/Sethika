@@ -1,9 +1,11 @@
 import { router } from "expo-router";
+import { StyleSheet } from "react-native";
 
 import type { SessionState } from "@/auth/session-client";
 import { ANONYMOUS, createApiStub, DONOR } from "@/test-utils/api-stub";
 import { booking } from "@/test-utils/fixtures";
 import { json, press, render, type } from "@/test-utils/render";
+import { colors } from "@/theme/colors";
 
 import { MyBookings } from "./my-bookings";
 
@@ -148,3 +150,49 @@ it("offers a way to find a place when there are no bookings yet", async () => {
   await press(screen.getText("Find a place to give"));
   expect(router.navigate).toHaveBeenCalledWith("/");
 });
+
+describe("as ledger lines", () => {
+  it("gives each booking its day and time in the narrow column, then the meal and the place", async () => {
+    mockApi.serve({ "GET /api/bookings/mine": () => json(200, [booking({ date: "2026-11-20", status: "Approved" })]) });
+    const screen = await render(<MyBookings />);
+
+    const text = screen.allText();
+    const at = (line: string) => text.indexOf(line);
+    expect(at("Fri, 20 Nov")).toBeGreaterThan(-1);
+    expect(at("Fri, 20 Nov")).toBeLessThan(at("11:30"));
+    expect(at("11:30")).toBeLessThan(at("Lunch"));
+    expect(at("Lunch")).toBeLessThan(at("Test Elders' Home"));
+  });
+
+  it("draws the gold rim once, on what is coming, and a rule between lines only", async () => {
+    const screen = await render(<MyBookings />);
+
+    const flat = (style: unknown) => (StyleSheet.flatten(style as never) ?? {}) as { height?: number; borderTopWidth?: number };
+    expect(screen.where((props) => flat(props.style).height === 3)).toHaveLength(1);
+
+    const ruled = MINE.map((item) => flat(screen.getTestId(`booking-${item.bookingNo}`).props.style).borderTopWidth ?? 0);
+    // Coming up: 000005, 000003, 000001. Earlier: 000004, 000002. Each section's first has no rule.
+    expect(ruled).toEqual([1, 1, 1, 0, 0]);
+  });
+
+  it("prints a line that is over quietly, and one still to come plainly", async () => {
+    const screen = await render(<MyBookings />);
+    const colour = (line: string) => (StyleSheet.flatten(screen.getText(line).props.style) as { color: string }).color;
+
+    expect(colour("Sun, 1 Nov")).toBe(colors.light.muted);
+    expect(colour("Wed, 11 Nov")).toBe(colors.light.fg);
+  });
+
+  it("keeps the reason, the wait and the way out on the line", async () => {
+    const screen = await render(<MyBookings />);
+    within(screen, "booking-BK-2026-000004", "Not accepted: Closed for the festival");
+    within(screen, "booking-BK-2026-000003", "Waiting for their reply. We will text you.");
+    within(screen, "booking-BK-2026-000003", "Cancel booking");
+  });
+});
+
+function within(screen: Awaited<ReturnType<typeof render>>, id: string, words: string) {
+  const texts = screen.getTestId(id).queryAll((node) => node.type === "Text");
+  const line = texts.some((node) => node.children.join("") === words);
+  expect(line).toBe(true);
+}
