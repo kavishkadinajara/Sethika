@@ -18,6 +18,11 @@ const mockApi = createApiStub();
 jest.mock("@/api/http", () => ({ getJson: (path: string) => mockApi.getJson(path) }));
 jest.mock("@/auth/session-provider", () => ({ useSession: () => ({ status: "anonymous" }), useSessionClient: () => mockApi.client }));
 jest.mock("expo-router", () => ({ router: { push: jest.fn(), navigate: jest.fn(), dismissTo: jest.fn() } }));
+jest.mock("react-native-webview", () => {
+  const { createElement } = jest.requireActual("react");
+  const { View } = jest.requireActual("react-native");
+  return { WebView: (props: object) => createElement(View, props) };
+});
 
 const today = colomboToday();
 const tomorrow = addDays(today, 1);
@@ -78,7 +83,7 @@ it("sends the rounded point anonymously, for tomorrow within 10 km, and lists wh
   screen.getText("1.3 km away");
   screen.getText("8 km away");
   screen.getText("2 places found.");
-  screen.getLabel(/^Near Home\. Elders' home\. Peradeniya, Kandy\. 1\.3 km away$/);
+  screen.getLabel(/^1\. Near Home\. Elders' home\. Peradeniya, Kandy\. 1\.3 km away$/);
 });
 
 it("says the list is places open that day, not every place", async () => {
@@ -104,7 +109,7 @@ it("shows the meals open that day and what is left of them", async () => {
 it("opens a place's page from its card", async () => {
   const screen = await located();
 
-  await press(screen.getLabel(/^Test Elders' Home\. /));
+  await press(screen.getLabel(/^1\. Test Elders' Home\. /));
   expect(router.push).toHaveBeenCalledWith({ pathname: "/i/[slug]", params: { slug: "test-elders-home" } });
 });
 
@@ -265,7 +270,7 @@ it("leaves the distance out if the API gives none", async () => {
   const screen = await located();
 
   expect(screen.queryText(/km away/)).toBeNull();
-  screen.getLabel(/^Test Elders' Home\. Elders' home\. Peradeniya, Kandy$/);
+  screen.getLabel(/^1\. Test Elders' Home\. Elders' home\. Peradeniya, Kandy$/);
 });
 
 it("offers a retry when the search fails, and keeps the donor's choices", async () => {
@@ -401,4 +406,60 @@ it("starts the next visit without the last list", async () => {
 
   expect(screen.queryText("Test Elders' Home")).toBeNull();
   screen.getLabel("Loading");
+});
+
+describe("the map (F.6b)", () => {
+  const twoPlaces = (date: string) => json(200, searchAnswer(date, [searchPlace({ slug: "near", name: "Near Home" }), searchPlace({ slug: "far", name: "Far Home" })]));
+
+  it("numbers each card as its pin, for the eye and for a screen reader", async () => {
+    mockApi.serve({ [GET(tomorrow)]: () => twoPlaces(tomorrow) });
+    const screen = await located();
+
+    screen.getText("1");
+    screen.getText("2");
+    screen.getLabel(/^1\. Near Home\./);
+    screen.getLabel(/^2\. Far Home\./);
+  });
+
+  it("is offered with the results and not opened until the donor asks", async () => {
+    const screen = await located();
+
+    screen.getText("Map");
+    expect(screen.queryTestId("near-map")).toBeNull();
+  });
+
+  it("has no map to offer when no place was found", async () => {
+    mockApi.serve({ [GET(tomorrow)]: () => json(200, searchAnswer(tomorrow, [])) });
+    const screen = await located();
+
+    expect(screen.queryText("Map")).toBeNull();
+  });
+
+  it("shows the list's places in the list's order, around the same point and radius", async () => {
+    mockApi.serve({ [GET(tomorrow, 25)]: () => twoPlaces(tomorrow) });
+    const screen = await located();
+    await press(screen.getText("25 km"));
+
+    await press(screen.getText("Map"));
+
+    const html = screen.getTestId("near-map").props.source.html as string;
+    expect(html).toContain('"number":1,"slug":"near"');
+    expect(html).toContain('"number":2,"slug":"far"');
+    expect(html).toContain('"latitude":6.927,"longitude":79.862,"radiusKm":25');
+  });
+
+  it("asks the phone and the API nothing more, and closing finds the list as it was", async () => {
+    mockApi.serve({ [GET(tomorrow)]: () => twoPlaces(tomorrow) });
+    const device = phone();
+    const screen = await located(device);
+    const asked = searches().length;
+
+    await press(screen.getText("Map"));
+    await press(screen.getText("Close"));
+
+    expect(screen.queryTestId("near-map")).toBeNull();
+    screen.getText("2 places found.");
+    expect(searches()).toHaveLength(asked);
+    expect(device.current).toHaveBeenCalledTimes(1);
+  });
 });

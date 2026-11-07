@@ -22,6 +22,7 @@ jest.mock("expo-router", () => ({
   router: { push: jest.fn(), navigate: jest.fn() },
   useFocusEffect: (effect: () => void) => jest.requireActual<typeof import("react")>("react").useEffect(effect, [effect]),
 }));
+jest.mock("react-native-webview", () => ({ WebView: () => null }));
 jest.mock("react-native/Libraries/Utilities/useColorScheme", () => ({ __esModule: true, default: () => "dark" }));
 jest.mock("@/bookings/native-location", () => ({
   nativeLocation: {

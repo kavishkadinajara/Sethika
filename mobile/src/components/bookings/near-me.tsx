@@ -28,6 +28,7 @@ import { cup, spacing } from "@/theme/colors";
 import { usePalette } from "@/theme/use-theme";
 
 import { Chip, ChipRow, InstitutionCard } from "./institution-directory";
+import { NearMap } from "./near-map";
 import { EmptyState, Failed, Loading } from "./states";
 
 type Search = { point: NearPoint; day: NearDay; radiusKm: RadiusKm };
@@ -145,7 +146,7 @@ export function NearMe({ children, refreshKey = 0, onSettled, device = nativeLoc
       ) : answer === null ? (
         <Loading />
       ) : (
-        <Results answer={answer} />
+        <Results answer={answer} point={search.point} radiusKm={search.radiusKm} />
       )}
 
       <Button label={t("App.near.showAll")} variant="quiet" onPress={showEveryPlace} />
@@ -153,9 +154,10 @@ export function NearMe({ children, refreshKey = 0, onSettled, device = nativeLoc
   );
 }
 
-function Results({ answer }: { answer: SearchAnswer }) {
+function Results({ answer, point, radiusKm }: { answer: SearchAnswer; point: NearPoint; radiusKm: RadiusKm }) {
   const { t } = useI18n();
   const dates = useDates();
+  const [mapOpen, setMapOpen] = useState(false);
   const date = dates.full(answer.date);
 
   return (
@@ -175,21 +177,24 @@ function Results({ answer }: { answer: SearchAnswer }) {
             {t("App.near.count", { count: answer.results.length })}
             {answer.more ? ` ${t("App.near.moreNearest")}` : ""}
           </Text>
-          {answer.results.map((place) => (
-            <Place key={place.slug} place={place} date={answer.date} />
+          <Button label={t("App.near.map")} icon="place" variant="secondary" onPress={() => setMapOpen(true)} />
+          {answer.results.map((place, index) => (
+            <Place key={place.slug} place={place} number={index + 1} date={answer.date} />
           ))}
+          {mapOpen && <NearMap places={answer.results} point={point} radiusKm={radiusKm} onClose={() => setMapOpen(false)} />}
         </>
       )}
     </>
   );
 }
 
-function Place({ place, date }: { place: SearchPlace; date: string }) {
+function Place({ place, number, date }: { place: SearchPlace; number: number; date: string }) {
   const { t } = useI18n();
   return (
     <View style={styles.place}>
       <InstitutionCard
         institution={place}
+        number={number}
         distance={place.distanceKm === null ? undefined : t("App.near.distance", { km: formatKm(place.distanceKm) })}
       />
       {place.slots.map((slot) => (

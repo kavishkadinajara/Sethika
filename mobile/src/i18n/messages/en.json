@@ -442,7 +442,11 @@
       "left": "{count, plural, one {# sponsor place left} other {# sponsor places left}}",
       "bookLabel": "Book {meal} at {place}",
       "failed": "The places could not be loaded.",
-      "showAll": "Show every place"
+      "showAll": "Show every place",
+      "map": "Map",
+      "mapTitle": "Map of the places found",
+      "mapHint": "The list shows the same places.",
+      "mapFailed": "The map did not load fully. The list shows the same places."
     },
     "bookings": {
       "title": "My bookings"

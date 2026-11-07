@@ -122,8 +122,11 @@ export function InstitutionDirectory({ refreshKey = 0, onSettled }: Props) {
   );
 }
 
-/** A place's card. `distance` is the words for how far it is, when the donor searched near a point. */
-export function InstitutionCard({ institution, distance }: { institution: PublicInstitutionSummary; distance?: string }) {
+/**
+ * A place's card. `distance` is the words for how far it is, when the donor searched near a point;
+ * `number` is its pin on the map, shown in place of the monogram and in the same colours as the pin.
+ */
+export function InstitutionCard({ institution, distance, number }: { institution: PublicInstitutionSummary; distance?: string; number?: number }) {
   const { language } = useI18n();
   const palette = usePalette();
   const lift = useLift();
@@ -134,7 +137,7 @@ export function InstitutionCard({ institution, distance }: { institution: Public
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={[`${name}. ${type}. ${institution.city}, ${district}`, distance].filter(Boolean).join(". ")}
+      accessibilityLabel={[number, `${name}. ${type}. ${institution.city}, ${district}`, distance].filter(Boolean).join(". ")}
       onPress={() => router.push({ pathname: "/i/[slug]", params: { slug: institution.slug } })}
       style={({ pressed }) => [
         styles.card,
@@ -144,9 +147,9 @@ export function InstitutionCard({ institution, distance }: { institution: Public
       ]}
     >
       {/* A monogram in a cup: each place gets a face without a photo or a faith's symbol. */}
-      <View style={[styles.monogram, { backgroundColor: palette.subtle, borderColor: palette.hairline }]}>
-        <Text variant="heading" style={[styles.monogramText, { color: palette.brand }]}>
-          {Array.from(name)[0] ?? ""}
+      <View style={[styles.monogram, number ? { backgroundColor: palette.primary, borderColor: palette.primary } : { backgroundColor: palette.subtle, borderColor: palette.hairline }]}>
+        <Text variant="heading" style={[styles.monogramText, { color: number ? palette.onPrimary : palette.brand }]}>
+          {number ?? Array.from(name)[0] ?? ""}
         </Text>
       </View>
       <View style={styles.cardText}>
