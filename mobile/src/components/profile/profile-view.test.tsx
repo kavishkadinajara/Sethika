@@ -1,12 +1,15 @@
 import { router } from "expo-router";
-import { Appearance } from "react-native";
+import { act } from "react";
+import { Appearance, AppState, Linking } from "react-native";
 
 import type { SessionState } from "@/auth/session-client";
 import { ProfileProvider } from "@/auth/profile-provider";
 import { I18nProvider } from "@/i18n/i18n-provider";
+import { PushProvider } from "@/notifications/push-provider";
 import { ANONYMOUS, createApiStub, DONOR } from "@/test-utils/api-stub";
 import { booking } from "@/test-utils/fixtures";
-import { json, press, render } from "@/test-utils/render";
+import { CHOICE_KEY, createPushStub, permissions, TOKEN, TOKEN_KEY } from "@/test-utils/push-stub";
+import { json, press, render, settle, type Screen } from "@/test-utils/render";
 import { ThemePreferenceProvider } from "@/theme/appearance";
 
 import { ProfileView } from "./profile-view";
@@ -15,10 +18,31 @@ import { ProfileView } from "./profile-view";
     boundary, inside the real profile, language and theme providers. Today is 2026-11-10.     */
 
 const mockApi = createApiStub();
+const mockPhone = createPushStub();
 let mockSession: SessionState = DONOR;
 
+/** The session client, with the two sign-outs leaving their mark among the API calls. */
+const mockClient = {
+  ...mockApi.client,
+  getState: () => mockSession,
+  logout: jest.fn(async () => void mockApi.sent.push({ method: "END", path: "logout", body: null, signedIn: true })),
+  logoutAll: jest.fn(async () => void mockApi.sent.push({ method: "END", path: "logout-all", body: null, signedIn: true })),
+};
+
 jest.mock("@/api/http", () => ({ getJson: (path: string) => mockApi.getJson(path) }));
-jest.mock("@/auth/session-provider", () => ({ useSession: () => mockSession, useSessionClient: () => mockApi.client }));
+jest.mock("@/auth/session-provider", () => ({ useSession: () => mockSession, useSessionClient: () => mockClient }));
+jest.mock("@/notifications/native-device", () => ({
+  get nativeDevice() {
+    return mockPhone.device;
+  },
+  get nativeMemory() {
+    return mockPhone.memory;
+  },
+}));
+jest.mock("expo-notifications", () => ({
+  useLastNotificationResponse: () => null,
+  clearLastNotificationResponseAsync: async () => {},
+}));
 jest.mock("expo-router", () => ({
   router: { push: jest.fn(), navigate: jest.fn(), dismissTo: jest.fn() },
   useFocusEffect: (effect: () => void) => jest.requireActual<typeof import("react")>("react").useEffect(effect, [effect]),
@@ -36,7 +60,9 @@ const page = () => (
   <ThemePreferenceProvider>
     <I18nProvider>
       <ProfileProvider>
-        <ProfileView />
+        <PushProvider>
+          <ProfileView />
+        </PushProvider>
       </ProfileProvider>
     </I18nProvider>
   </ThemePreferenceProvider>
@@ -51,7 +77,15 @@ beforeEach(() => {
     "GET /api/me": () => json(200, { fullName: "Nimali Perera", displayName: null, preferredLanguage: "en" }),
     "GET /api/bookings/mine": () => json(200, MINE),
     "PUT /api/me/language": () => new Response(null, { status: 204 }),
+    "PUT /api/me/devices": () => new Response(null, { status: 204 }),
+    "POST /api/me/devices/remove": () => new Response(null, { status: 204 }),
   });
+  mockPhone.stored.clear();
+  mockPhone.device.supported = true;
+  mockPhone.phone.permission = permissions.GRANTED;
+  mockPhone.phone.answer = permissions.GRANTED;
+  mockClient.logout.mockClear();
+  mockClient.logoutAll.mockClear();
 });
 
 afterEach(() => {
@@ -108,6 +142,181 @@ describe("signed out", () => {
     const screen = await render(page());
     await press(screen.getText("தமிழ்"));
     expect(mockApi.sent).toEqual([]);
+  });
+});
+
+describe("the push switch", () => {
+  const LABEL = "Notifications on this phone";
+  const HELP = "Your booking updates and reminders. Texts still come either way.";
+  const BLOCKED = "Notifications are off for Sethika in your phone's settings.";
+  const FAILED = "That did not work. Check your connection and try again.";
+  const removals = () => mockApi.sent.filter((request) => request.path === "/api/me/devices/remove");
+
+  const isOn = (screen: Screen) => screen.getLabel(LABEL).props.value as boolean;
+
+  async function flip(screen: Screen, on: boolean) {
+    await act(async () => {
+      screen.getLabel(LABEL).props.onChange({ nativeEvent: { value: on } });
+    });
+    await settle();
+  }
+
+  function registered() {
+    mockPhone.stored.set(CHOICE_KEY, "on");
+    mockPhone.stored.set(TOKEN_KEY, TOKEN);
+  }
+
+  it("shows on for a phone that is registered, and says texts still come", async () => {
+    registered();
+
+    const screen = await render(page());
+
+    expect(isOn(screen)).toBe(true);
+    screen.getText(HELP);
+    expect(screen.queryText(BLOCKED)).toBeNull();
+  });
+
+  it("goes off by removing this phone, with the token in the body", async () => {
+    registered();
+    const screen = await render(page());
+
+    await flip(screen, false);
+
+    expect(isOn(screen)).toBe(false);
+    expect(removals()).toEqual([{ method: "POST", path: "/api/me/devices/remove", body: { expoPushToken: TOKEN }, signedIn: true }]);
+  });
+
+  it("goes on by registering again", async () => {
+    mockPhone.stored.set(CHOICE_KEY, "off");
+    const screen = await render(page());
+    expect(isOn(screen)).toBe(false);
+    expect(mockApi.sent.filter((request) => request.path === "/api/me/devices")).toEqual([]);
+
+    await flip(screen, true);
+
+    expect(isOn(screen)).toBe(true);
+    expect(mockApi.sent.filter((request) => request.path === "/api/me/devices")).toHaveLength(1);
+  });
+
+  it("stays on and says so when it could not go off, and the next try clears the words", async () => {
+    registered();
+    mockApi.also({ "POST /api/me/devices/remove": () => new Response(null, { status: 500 }) });
+    const screen = await render(page());
+
+    await flip(screen, false);
+    expect(isOn(screen)).toBe(true);
+    screen.getText(FAILED);
+
+    mockApi.also({ "POST /api/me/devices/remove": () => new Response(null, { status: 204 }) });
+    await flip(screen, false);
+    expect(isOn(screen)).toBe(false);
+    expect(screen.queryText(FAILED)).toBeNull();
+  });
+
+  it("cannot be flipped again while a change is on its way", async () => {
+    registered();
+    let answer = (_: Response) => {};
+    mockApi.also({ "POST /api/me/devices/remove": () => new Promise<Response>((resolve) => (answer = resolve)) });
+    const screen = await render(page());
+    expect(screen.getLabel(LABEL).props.disabled).toBeFalsy();
+
+    await flip(screen, false);
+    expect(screen.getLabel(LABEL).props.disabled).toBe(true);
+
+    answer(new Response(null, { status: 204 }));
+    await settle();
+    expect(screen.getLabel(LABEL).props.disabled).toBeFalsy();
+  });
+
+  it("points to the phone's settings when the phone will not ask again", async () => {
+    const openSettings = jest.spyOn(Linking, "openSettings").mockResolvedValue();
+    mockPhone.stored.set(CHOICE_KEY, "off");
+    mockPhone.phone.permission = permissions.UNDECIDED;
+    mockPhone.phone.answer = permissions.BLOCKED;
+    const screen = await render(page());
+    expect(screen.queryText("Open settings")).toBeNull();
+
+    await flip(screen, true);
+
+    expect(isOn(screen)).toBe(false);
+    screen.getText(BLOCKED);
+    expect(screen.queryText(HELP)).toBeNull();
+    await press(screen.getText("Open settings"));
+    expect(openSettings).toHaveBeenCalledTimes(1);
+    openSettings.mockRestore();
+  });
+
+  it("reads the phone again on coming back from its settings, and only then", async () => {
+    let changed: (state: string) => void = () => {};
+    const remove = jest.fn();
+    const listen = jest.spyOn(AppState, "addEventListener").mockImplementation((_, handler) => {
+      changed = handler as typeof changed;
+      return { remove };
+    });
+    mockPhone.stored.set(CHOICE_KEY, "on");
+    mockPhone.phone.permission = permissions.BLOCKED;
+    const screen = await render(page());
+    expect(isOn(screen)).toBe(false);
+
+    mockPhone.phone.permission = permissions.GRANTED;
+    await act(async () => changed("background"));
+    await settle();
+    expect(isOn(screen)).toBe(false);
+
+    await act(async () => changed("active"));
+    await settle();
+    expect(isOn(screen)).toBe(true);
+    expect(screen.queryText(BLOCKED)).toBeNull();
+
+    screen.unmount();
+    expect(remove).toHaveBeenCalled();
+    listen.mockRestore();
+  });
+
+  it("is not there in Expo Go", async () => {
+    mockPhone.device.supported = false;
+
+    const screen = await render(page());
+
+    expect(screen.queryLabel(LABEL)).toBeNull();
+  });
+
+  it("is not there for a visitor", async () => {
+    mockSession = ANONYMOUS;
+
+    const screen = await render(page());
+
+    expect(screen.queryLabel(LABEL)).toBeNull();
+  });
+});
+
+describe("signing out", () => {
+  const steps = () => mockApi.sent.map((request) => request.path).filter((path) => path.startsWith("logout") || path.endsWith("/remove"));
+
+  beforeEach(() => {
+    mockPhone.stored.set(CHOICE_KEY, "on");
+    mockPhone.stored.set(TOKEN_KEY, TOKEN);
+  });
+
+  it.each([
+    ["Sign out", "logout"],
+    ["Sign out on all devices", "logout-all"],
+  ])("%s removes this phone first, while the session still works", async (label, end) => {
+    const screen = await render(page());
+
+    await press(screen.getText(label));
+
+    expect(steps()).toEqual(["/api/me/devices/remove", end]);
+    expect(mockPhone.stored.has(TOKEN_KEY)).toBe(false);
+  });
+
+  it("still signs out when the removal fails", async () => {
+    mockApi.also({ "POST /api/me/devices/remove": () => Promise.reject(new Error("Network request failed")) });
+    const screen = await render(page());
+
+    await press(screen.getText("Sign out"));
+
+    expect(mockClient.logout).toHaveBeenCalledTimes(1);
   });
 });
 

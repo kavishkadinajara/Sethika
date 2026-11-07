@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState, type ReactNode } from "react";
-import { Image, Pressable, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { AppState, Image, Linking, Pressable, StyleSheet, Switch, View } from "react-native";
 
 import { greetingName, initials, useProfile } from "@/auth/profile-provider";
 import { useSession, useSessionClient } from "@/auth/session-provider";
@@ -17,6 +17,8 @@ import { Card, SectionTitle } from "@/components/screen";
 import { Text } from "@/components/text";
 import { useI18n } from "@/i18n/i18n-provider";
 import { LANGUAGES, type Language } from "@/i18n/translate";
+import type { PushStatus } from "@/notifications/push";
+import { useChannelName, usePush } from "@/notifications/push-provider";
 import { THEMES, useThemePreference, type ThemeChoice } from "@/theme/appearance";
 import { bowl, brand, radius, spacing } from "@/theme/colors";
 import { usePalette } from "@/theme/use-theme";
@@ -243,18 +245,90 @@ function Preferences({ signedIn }: { signedIn: boolean }) {
             onSelect={setTheme}
           />
         </Row>
+        {signedIn && <PushRow />}
       </Card>
     </View>
+  );
+}
+
+/**
+ * Push on this phone (F32). Hidden where push cannot work (Expo Go). Reads the phone again on coming
+ * back, so a donor returning from Android's settings sees what they just changed.
+ */
+function PushRow() {
+  const { t } = useI18n();
+  const push = usePush();
+  const channelName = useChannelName();
+  const palette = usePalette();
+  const [status, setStatus] = useState<PushStatus>("unsupported");
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const read = useCallback(() => {
+    void push.status().then(setStatus);
+  }, [push]);
+
+  useFocusEffect(read);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") read();
+    });
+    return () => subscription.remove();
+  }, [read]);
+
+  async function change(on: boolean) {
+    setBusy(true);
+    setFailed(false);
+    const outcome = await (on ? push.enable(channelName) : push.disable());
+    if (outcome === "failed") setFailed(true);
+    else setStatus(outcome);
+    setBusy(false);
+  }
+
+  if (status === "unsupported") return null;
+
+  return (
+    <>
+      <View style={[styles.rule, { backgroundColor: palette.hairline }]} />
+      <View style={styles.row}>
+        <View style={styles.rowHead}>
+          <Tile icon="notifications" />
+          <Text variant="label" style={styles.grow}>
+            {t("App.profile.push.label")}
+          </Text>
+          <Switch
+            accessibilityLabel={t("App.profile.push.label")}
+            value={status === "on"}
+            disabled={busy}
+            onValueChange={(on) => void change(on)}
+            trackColor={{ false: palette.hairline, true: palette.primary }}
+          />
+        </View>
+        <Text variant="muted">{t(status === "blocked" ? "App.profile.push.blocked" : "App.profile.push.help")}</Text>
+        {status === "blocked" && (
+          <Button label={t("App.profile.push.openSettings")} variant="secondary" onPress={() => void Linking.openSettings()} />
+        )}
+        {failed && (
+          <Text variant="muted" accessibilityLiveRegion="polite" style={{ color: palette.danger }}>
+            {t("App.profile.push.failed")}
+          </Text>
+        )}
+      </View>
+    </>
   );
 }
 
 function SignOut() {
   const { t } = useI18n();
   const client = useSessionClient();
+  const push = usePush();
   const [busy, setBusy] = useState<"logout" | "logout-all" | null>(null);
 
   async function end(kind: "logout" | "logout-all") {
     setBusy(kind);
+    // First: the removal needs the access token that signing out ends (F31).
+    await push.forget();
     // Signing out flips the session to anonymous; this screen then shows the ways in.
     await (kind === "logout" ? client.logout() : client.logoutAll());
     setBusy(null);

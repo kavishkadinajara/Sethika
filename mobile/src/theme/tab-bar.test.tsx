@@ -11,6 +11,7 @@ import { colors } from "./colors";
 let mockScheme: "light" | "dark" = "light";
 let mockLanguage = "en";
 let mockBar: Record<string, unknown> = {};
+let mockInsidePush: ReactNode = null;
 
 jest.mock("react-native/Libraries/Utilities/useColorScheme", () => ({ __esModule: true, default: () => mockScheme }));
 jest.mock("@/i18n/i18n-provider", () => ({
@@ -19,6 +20,12 @@ jest.mock("@/i18n/i18n-provider", () => ({
 jest.mock("@/auth/profile-provider", () => ({
   ProfileProvider: ({ children }: { children: ReactNode }) => children,
   useProfile: () => null,
+}));
+jest.mock("@/notifications/push-provider", () => ({
+  PushProvider: ({ children }: { children: ReactNode }) => {
+    mockInsidePush = children;
+    return children;
+  },
 }));
 jest.mock("expo-router/native-tabs", () => {
   const NativeTabs = ({ children, ...props }: { children: ReactNode }) => {
@@ -42,6 +49,13 @@ beforeEach(() => {
   mockScheme = "light";
   mockLanguage = "en";
   mockBar = {};
+  mockInsidePush = null;
+});
+
+it("keeps the tabs inside push: Profile's switch and sign-out need it", async () => {
+  await render(<AppLayout />);
+
+  expect(mockInsidePush).not.toBeNull();
 });
 
 describe.each([

@@ -29,6 +29,7 @@ const ICONS = {
   history: { ios: "clock.arrow.circlepath", android: "history" },
   map: { ios: "map", android: "map" },
   person: { ios: "person", android: "person" },
+  notifications: { ios: "bell", android: "notifications" },
 } as const satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol }>;
 
 export type IconName = keyof typeof ICONS;

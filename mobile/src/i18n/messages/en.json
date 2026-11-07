@@ -412,6 +412,14 @@
         "book": "Book a day in a few taps, and see every booking in one place.",
         "remind": "Get texts and reminders in your own language."
       },
+      "push": {
+        "label": "Notifications on this phone",
+        "help": "Your booking updates and reminders. Texts still come either way.",
+        "blocked": "Notifications are off for Sethika in your phone's settings.",
+        "openSettings": "Open settings",
+        "failed": "That did not work. Check your connection and try again.",
+        "channel": "Bookings"
+      },
       "version": "Version {version}"
     },
     "dates": {

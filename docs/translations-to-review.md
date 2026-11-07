@@ -2064,3 +2064,17 @@ app's tab name, `App.tabs.bookings`.
 | `BOOKING_CANCELLED` title | Booking cancelled | වෙන්කිරීම අවලංගුයි | முன்பதிவு ரத்தானது |
 | `BOOKING_REMINDER` title | Your booking is tomorrow | ඔබගේ වෙන්කිරීම හෙටයි | உங்கள் முன்பதிவு நாளை |
 | `BOOKING_REJECTED`, `BOOKING_CANCELLED` last sentence | See why in My bookings. | හේතුව මගේ වෙන්කිරීම් තුළ බලන්න. | காரணத்தை எனது முன்பதிவுகளில் பாருங்கள். |
+
+## Push on the phone (2026-11-07, `App.profile.push`, plan F, F32, F41)
+
+The app's own strings, in `mobile/src/i18n/messages`. `channel` is the name Android's settings list
+for the app's notifications, so it should read as a plain heading.
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) |
+|---|---|---|---|
+| `App.profile.push.label` | Notifications on this phone | මෙම දුරකථනයේ දැනුම්දීම් | இந்த தொலைபேசியில் அறிவிப்புகள் |
+| `App.profile.push.help` | Your booking updates and reminders. Texts still come either way. | ඔබේ වෙන්කිරීම් පිළිබඳ යාවත්කාලීන සහ සිහිකැඳවීම්. කෙටි පණිවිඩ කෙසේ වෙතත් ලැබේ. | உங்கள் முன்பதிவு தகவல்களும் நினைவூட்டல்களும். குறுஞ்செய்திகள் எப்படியும் வரும். |
+| `App.profile.push.blocked` | Notifications are off for Sethika in your phone's settings. | ඔබේ දුරකථනයේ සැකසුම් තුළ Sethika සඳහා දැනුම්දීම් අක්‍රීයයි. | உங்கள் தொலைபேசி அமைப்புகளில் Sethika அறிவிப்புகள் அணைக்கப்பட்டுள்ளன. |
+| `App.profile.push.openSettings` | Open settings | සැකසුම් විවෘත කරන්න | அமைப்புகளைத் திற |
+| `App.profile.push.failed` | That did not work. Check your connection and try again. | එය සාර්ථක වූයේ නැත. ඔබේ සම්බන්ධතාවය පරීක්ෂා කර නැවත උත්සාහ කරන්න. | அது வேலை செய்யவில்லை. உங்கள் இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும். |
+| `App.profile.push.channel` | Bookings | වෙන්කිරීම් | முன்பதிவுகள் |
