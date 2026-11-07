@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Sethika.Api.IntegrationTests.Notifications;
 using Sethika.Api.IntegrationTests.Persistence;
 using Sethika.Application;
 using Sethika.Application.Abstractions;
@@ -54,7 +55,8 @@ public sealed class BookingSmsTests(SethikaTestDatabase database) : IAsyncLifeti
         await database.SeedAsync();
         await ExecuteAsync(
             """
-            DELETE FROM notify.Notifications WHERE Recipient IN @phones;
+            DELETE FROM notify.Notifications WHERE Recipient IN @phones OR UserId IN @users;
+            DELETE FROM notify.MobileDevices WHERE UserId IN @users;
             DELETE FROM auth.UserRoles WHERE UserId IN @users;
             DELETE FROM auth.Users WHERE Id IN @users;
             """,
@@ -80,14 +82,28 @@ public sealed class BookingSmsTests(SethikaTestDatabase database) : IAsyncLifeti
         return new UserTextMessages(connections, sender, NullLogger<UserTextMessages>.Instance);
     }
 
-    private OutboxProcessor Processor() =>
+    private OutboxProcessor Processor(IUserTextMessages? texts = null) =>
         new(
             PlatformConnections(),
-            [new BookingSmsHandler(new BookingNotificationQueries(PlatformConnections()), Texts())],
+            [new BookingSmsHandler(new BookingNotificationQueries(PlatformConnections()), texts ?? Texts())],
             Options.Create(new OutboxOptions()),
             NullLogger<OutboxProcessor>.Instance);
 
-    private BookingReminders Reminders() => new(new BookingNotificationQueries(PlatformConnections()), Texts(), TimeProvider.System);
+    private BookingReminders Reminders(IUserTextMessages? texts = null) =>
+        new(new BookingNotificationQueries(PlatformConnections()), texts ?? Texts(), TimeProvider.System);
+
+    /// <summary>The texts with the push decorator on them, and <paramref name="expo"/> behind its HTTP client.</summary>
+    private PushingUserTextMessages Pushing(FakeExpo expo) =>
+        new(
+            Texts(),
+            PlatformConnections(),
+            new ExpoPushGateway(new HttpClient(expo) { BaseAddress = new Uri(new PushOptions().ExpoBaseUrl) }),
+            NullLogger<PushingUserTextMessages>.Instance);
+
+    private Task DeviceAsync(Guid user) =>
+        ExecuteAsync(
+            "INSERT notify.MobileDevices (UserId, ExpoPushToken, Platform) VALUES (@user, @token, 'Android');",
+            new { user, token = $"ExponentPushToken[{Guid.NewGuid():N}]" });
 
     private async Task<(Guid Id, string Phone)> DonorAsync(string language = "en")
     {
@@ -382,6 +398,44 @@ public sealed class BookingSmsTests(SethikaTestDatabase database) : IAsyncLifeti
     }
 
     [Fact]
+    public async Task ABookingConfirmedInTheOutbox_ReachesThePhoneInItsLanguage_AndARerunSendsNothing()
+    {
+        var (donor, phone) = await DonorAsync("si");
+        await DeviceAsync(donor);
+        var slot = await SlotAsync(requiresApproval: false);
+        var date = Today.AddDays(5);
+        var bookingNo = await BookAsync(donor, slot, date);
+        var expo = new FakeExpo();
+
+        await Processor(Pushing(expo)).RunAsync();
+
+        var push = Assert.Single(expo.Sent);
+        Assert.Equal($"{NameSi}, {date:yyyy-MM-dd} 11:30. ඔබගේ වෙන්කිරීම තහවුරුයි. ස්තූතියි.", push.GetProperty("body").GetString());
+
+        // A crash mid-batch hands the same message over again.
+        await ExecuteAsync("UPDATE core.OutboxMessages SET ProcessedAt = NULL WHERE AggregateId = @bookingNo;", new { bookingNo });
+        await Processor(Pushing(expo)).RunAsync();
+
+        Assert.Single(expo.Sent);
+        Assert.Single(await SentToAsync(phone));
+    }
+
+    [Fact]
+    public async Task TheReminderReachesThePhone_Once()
+    {
+        var (donor, _) = await DonorAsync();
+        await DeviceAsync(donor);
+        var bookingNo = await BookAsync(donor, await SlotAsync(), Today.AddDays(1));
+        await DecideAsync(bookingNo, InstitutionDecision.Approve);
+        var expo = new FakeExpo();
+
+        await Reminders(Pushing(expo)).SendForTomorrowAsync();
+        await Reminders(Pushing(expo)).SendForTomorrowAsync();
+
+        Assert.Equal("Your booking is tomorrow", Assert.Single(expo.Sent).GetProperty("title").GetString());
+    }
+
+    [Fact]
     public async Task TheReminderJobRunsAsThePlatform()
     {
         // Every institution's bookings, whoever the scope's request user would have been: here a
@@ -402,6 +456,7 @@ public sealed class BookingSmsTests(SethikaTestDatabase database) : IAsyncLifeti
         services.AddSethikaJobs(configuration, database.ConnectionString);
         services.Configure<SmsOptions>(_ => { });
         services.AddScoped<ISmsSender, ConsoleSmsSender>();
+        services.AddScoped<IPushGateway, ConsolePushGateway>();
 
         await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         await new BookingReminderJob(provider.GetRequiredService<IServiceScopeFactory>()).RunAsync(CancellationToken.None);

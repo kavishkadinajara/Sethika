@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Access.Platform;
+using Sethika.Domain.Notifications;
 
 namespace Sethika.Application.Access.Session;
 
@@ -281,6 +282,16 @@ public sealed class SessionHandler(ISethikaDbContext db, ITokenService tokens, T
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
         await SecurityStamps.RotateAsync(db, presented.UserId, RevokedReasons.LogoutEverywhere, at, cancellationToken)
+            .ConfigureAwait(false);
+
+        // No phone is signed in any more, so none should go on showing this account's bookings (F31).
+        await db.MobileDevices
+            .Where(d => d.UserId == presented.UserId && d.DisabledAt == null)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(d => d.DisabledAt, at)
+                    .SetProperty(d => d.DisabledReason, MobileDevice.DisabledReasons.LogoutEverywhere),
+                cancellationToken)
             .ConfigureAwait(false);
 
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);

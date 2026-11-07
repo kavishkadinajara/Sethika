@@ -36,6 +36,12 @@
     segment), si 96-119 and ta 97-128 (two). A long institution name can push Sinhala and Tamil to
     three.
 
+    Push texts (plan F, F26, F27): the same placeholders as the booking texts, and the same sentences
+    where a sentence still fits. A push arrives with the app's name on it, so it needs no 'Sethika
+    {bookingNo}:', and Subject is its title. Only these five codes are pushed: a row here is what
+    turns push on for a code, so a code left out sends its SMS alone. Their own MERGE, because
+    the one below keeps Subject NULL. Sinhala and Tamil are in docs/translations-to-review.md.
+
     Receipt texts (plan 09, M5), sent through the outbox when a gift is recorded: to the donor's account,
     or to a donor book row's phone only if staff ticked its consent. A walk-in's typed phone is never
     texted, and a void texts nothing. Money and items are two templates rather than one {gift}
@@ -201,3 +207,29 @@ WHEN MATCHED AND t.Body COLLATE Latin1_General_BIN2 <> s.Body COLLATE Latin1_Gen
 WHEN NOT MATCHED THEN
     INSERT (Code, Channel, Language, Subject, Body, IsActive)
     VALUES (s.Code, s.Channel, s.Language, NULL, s.Body, 1);
+
+MERGE notify.Templates AS t
+USING (VALUES
+ ('BOOKING_CONFIRMED', 'Push', 'en', N'Booking confirmed', N'{institution}, {date} {time}. Your booking is confirmed. Thank you.'),
+ ('BOOKING_CONFIRMED', 'Push', 'si', N'වෙන්කිරීම තහවුරුයි', N'{institution}, {date} {time}. ඔබගේ වෙන්කිරීම තහවුරුයි. ස්තූතියි.'),
+ ('BOOKING_CONFIRMED', 'Push', 'ta', N'முன்பதிவு உறுதியானது', N'{institution}, {date} {time}. உங்கள் முன்பதிவு உறுதியானது. நன்றி.'),
+ ('BOOKING_APPROVED', 'Push', 'en', N'Request accepted', N'{institution}, {date} {time}. Your request was accepted. Thank you.'),
+ ('BOOKING_APPROVED', 'Push', 'si', N'ඉල්ලීම පිළිගත්තා', N'{institution}, {date} {time}. ඔබගේ ඉල්ලීම පිළිගත්තා. ස්තූතියි.'),
+ ('BOOKING_APPROVED', 'Push', 'ta', N'கோரிக்கை ஏற்கப்பட்டது', N'{institution}, {date} {time}. உங்கள் கோரிக்கை ஏற்கப்பட்டது. நன்றி.'),
+ ('BOOKING_REJECTED', 'Push', 'en', N'Request not accepted', N'{institution}, {date} {time}. Your request was not accepted. See why in My bookings.'),
+ ('BOOKING_REJECTED', 'Push', 'si', N'ඉල්ලීම පිළිගත්තේ නැත', N'{institution}, {date} {time}. ඔබගේ ඉල්ලීම පිළිගත්තේ නැත. හේතුව මගේ වෙන්කිරීම් තුළ බලන්න.'),
+ ('BOOKING_REJECTED', 'Push', 'ta', N'கோரிக்கை ஏற்கப்படவில்லை', N'{institution}, {date} {time}. உங்கள் கோரிக்கை ஏற்கப்படவில்லை. காரணத்தை எனது முன்பதிவுகளில் பாருங்கள்.'),
+ ('BOOKING_CANCELLED', 'Push', 'en', N'Booking cancelled', N'{institution}, {date} {time}. The institution cancelled this booking. See why in My bookings.'),
+ ('BOOKING_CANCELLED', 'Push', 'si', N'වෙන්කිරීම අවලංගුයි', N'{institution}, {date} {time}. ආයතනය මෙම වෙන්කිරීම අවලංගු කළා. හේතුව මගේ වෙන්කිරීම් තුළ බලන්න.'),
+ ('BOOKING_CANCELLED', 'Push', 'ta', N'முன்பதிவு ரத்தானது', N'{institution}, {date} {time}. நிறுவனம் இதை ரத்து செய்தது. காரணத்தை எனது முன்பதிவுகளில் பாருங்கள்.'),
+ ('BOOKING_REMINDER', 'Push', 'en', N'Your booking is tomorrow', N'{institution}, {date} {time}.'),
+ ('BOOKING_REMINDER', 'Push', 'si', N'ඔබගේ වෙන්කිරීම හෙටයි', N'{institution}, {date} {time}.'),
+ ('BOOKING_REMINDER', 'Push', 'ta', N'உங்கள் முன்பதிவு நாளை', N'{institution}, {date} {time}.')
+) AS s(Code, Channel, Language, Subject, Body)
+ON t.Code = s.Code AND t.Channel = s.Channel AND t.Language = s.Language
+WHEN MATCHED AND (t.Body COLLATE Latin1_General_BIN2 <> s.Body COLLATE Latin1_General_BIN2
+               OR ISNULL(t.Subject, N'') COLLATE Latin1_General_BIN2 <> s.Subject COLLATE Latin1_General_BIN2)
+    THEN UPDATE SET Subject = s.Subject, Body = s.Body
+WHEN NOT MATCHED THEN
+    INSERT (Code, Channel, Language, Subject, Body, IsActive)
+    VALUES (s.Code, s.Channel, s.Language, s.Subject, s.Body, 1);

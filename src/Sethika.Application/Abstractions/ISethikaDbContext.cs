@@ -6,6 +6,7 @@ using Sethika.Domain.Bookings;
 using Sethika.Domain.Core;
 using Sethika.Domain.Giving;
 using Sethika.Domain.Institutions;
+using Sethika.Domain.Notifications;
 using Sethika.Domain.Onboarding;
 using Sethika.Domain.Services;
 
@@ -35,6 +36,9 @@ public interface ISethikaDbContext
 
     // A donor's preferred places (plan 07, H12): theirs alone, by RLS.
     DbSet<FavoriteInstitution> FavoriteInstitutions { get; }
+
+    // The phones a person can be pushed to (plan F, F4): not tenant-owned, so no RLS.
+    DbSet<MobileDevice> MobileDevices { get; }
 
     DbSet<UserConsent> UserConsents { get; }
     DbSet<LegalDocument> LegalDocuments { get; }

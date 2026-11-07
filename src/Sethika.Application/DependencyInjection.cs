@@ -15,6 +15,7 @@ using Sethika.Application.Bookings.Engine;
 using Sethika.Application.Bookings.Live;
 using Sethika.Application.Bookings.Memorial;
 using Sethika.Application.Bookings.Places;
+using Sethika.Application.Notifications.Devices;
 using Sethika.Application.Bookings.Notifications;
 using Sethika.Application.Bookings.Recurring;
 using Sethika.Application.Bookings.Sharing;
@@ -74,6 +75,7 @@ public static class DependencyInjection
         services.AddScoped<RecurringBookingRun>();
         services.AddScoped<RecurringBookingHandler>();
         services.AddScoped<FavoritePlacesHandler>();
+        services.AddScoped<MobileDevicesHandler>();
         services.AddScoped<MemorialPlanHandler>();
         services.AddScoped<MemorialPlanner>();
         services.AddScoped<MemorialReminders>();

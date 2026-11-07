@@ -7,6 +7,7 @@ using Sethika.Domain.Bookings;
 using Sethika.Domain.Core;
 using Sethika.Domain.Giving;
 using Sethika.Domain.Institutions;
+using Sethika.Domain.Notifications;
 using Sethika.Domain.Onboarding;
 using Sethika.Domain.Services;
 
@@ -34,6 +35,7 @@ public partial class SethikaDbContext(DbContextOptions<SethikaDbContext> options
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<DonorProfile> DonorProfiles => Set<DonorProfile>();
     public DbSet<FavoriteInstitution> FavoriteInstitutions => Set<FavoriteInstitution>();
+    public DbSet<MobileDevice> MobileDevices => Set<MobileDevice>();
     public DbSet<UserConsent> UserConsents => Set<UserConsent>();
     public DbSet<LegalDocument> LegalDocuments => Set<LegalDocument>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();

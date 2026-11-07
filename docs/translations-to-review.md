@@ -2049,3 +2049,18 @@ string, in both `web/messages` and the app:
 | Key | English (source) | Sinhala (draft) | Tamil (draft) |
 |---|---|---|---|
 | `Booking.errors.regular_day` | This is a regular day the institution set up for you. Use "I can't give that day" instead. | මෙය ආයතනය ඔබ සඳහා සැකසූ නිත්‍ය දිනයකි. ඒ වෙනුවට "මට එදින දිය නොහැක" තෝරන්න. | இது நிறுவனம் உங்களுக்காக அமைத்த வழக்கமான நாள். அதற்குப் பதிலாக "அந்த நாளில் என்னால் வழங்க முடியாது" என்பதைத் தேர்ந்தெடுங்கள். |
+
+## Push texts (2026-11-07, `notify.Templates` channel `Push`, plan F, F27)
+
+Each body opens with `{institution}, {date} {time}.` and then repeats the SMS sentence in
+`11_NotifyTemplates.sql`, so only the titles and the "see why" sentence are new. "My bookings" is the
+app's tab name, `App.tabs.bookings`.
+
+| Template | English (source) | Sinhala (draft) | Tamil (draft) |
+|---|---|---|---|
+| `BOOKING_CONFIRMED` title | Booking confirmed | වෙන්කිරීම තහවුරුයි | முன்பதிவு உறுதியானது |
+| `BOOKING_APPROVED` title | Request accepted | ඉල්ලීම පිළිගත්තා | கோரிக்கை ஏற்கப்பட்டது |
+| `BOOKING_REJECTED` title | Request not accepted | ඉල්ලීම පිළිගත්තේ නැත | கோரிக்கை ஏற்கப்படவில்லை |
+| `BOOKING_CANCELLED` title | Booking cancelled | වෙන්කිරීම අවලංගුයි | முன்பதிவு ரத்தானது |
+| `BOOKING_REMINDER` title | Your booking is tomorrow | ඔබගේ වෙන්කිරීම හෙටයි | உங்கள் முன்பதிவு நாளை |
+| `BOOKING_REJECTED`, `BOOKING_CANCELLED` last sentence | See why in My bookings. | හේතුව මගේ වෙන්කිරීම් තුළ බලන්න. | காரணத்தை எனது முன்பதிவுகளில் பாருங்கள். |

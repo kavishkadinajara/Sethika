@@ -71,6 +71,13 @@ up). Switch back before running `npm run e2e`:
 `dotnet user-secrets remove "Sms:Provider" --project src/Sethika.Api`.
 Outside Development the API refuses to start with the console sender.
 
+### Push through Expo (plan F, F30)
+Development defaults to `Push:Provider = Console`: a push goes to the API log and to
+`notify.Notifications`, with its token left out of the log. `dotnet user-secrets set "Push:Provider"
+"Expo" --project src/Sethika.Api` sends real ones; no key is needed unless the Expo project turns on
+enhanced push security. Outside Development the API refuses to start with the console gateway, so
+App Service needs `Push__Provider=Expo`.
+
 ### The key that seals merchant secrets (plan 09, M21)
 The API does not start without one: each institution's PayHere secret is stored with AES-256-GCM under a
 key from configuration. Locally, make a random 32-byte key once:
