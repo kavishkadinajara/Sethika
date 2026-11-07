@@ -114,3 +114,50 @@ export type DonorBooking = {
   /** One of the donor's regular days, set up by the institution: let go, never cancelled (plan 08, K24). */
   regular: boolean;
 };
+
+/** A booking as the institution's calendar sees it (GET /api/institution/bookings). */
+export type CalendarBooking = {
+  bookingNo: string;
+  status: BookingStatus;
+  donorName: string;
+  donorPhone: string;
+  headcount: number;
+  fulfilmentMode: FulfilmentMode;
+  inMemoryOf: string | null;
+  notes: string | null;
+  /** A regular donor's day: its sponsorship's publicId; null for any other booking. */
+  standing: string | null;
+};
+
+/** A slot on a day that has been booked: its places and the bookings that took them. */
+export type SlotDay = {
+  date: string;
+  mealSlot: string;
+  slotName: string;
+  slotNameSi: string | null;
+  slotNameTa: string | null;
+  startTime: string;
+  endTime: string;
+  maxSponsors: number;
+  bookedSponsors: number;
+  status: "Open" | "Full";
+  bookings: CalendarBooking[];
+};
+
+/** How a meal sits on today's table: places left, every place taken, or blocked for the day. */
+export type TableSlotState = "Open" | "Full" | "Closed";
+
+/** One meal of today's table (GET /api/institution/today). */
+export type TableSlot = Named & {
+  mealSlot: string;
+  startTime: string;
+  endTime: string;
+  maxSponsors: number;
+  bookedSponsors: number;
+  /** Bookings for it still waiting for an answer. */
+  requested: number;
+  state: TableSlotState;
+};
+
+/** Today in Colombo (yyyy-MM-dd) and its meals, by start time. */
+export type TodaysTable = { date: string; slots: TableSlot[] };

@@ -327,7 +327,7 @@ function tone(status: BookingStatus, palette: Palette): { background: string; bo
 }
 
 /** A booking's status in words; the colour only repeats what the words say. */
-function StatusBadge({ status }: { status: BookingStatus }) {
+export function StatusBadge({ status }: { status: BookingStatus }) {
   const { t } = useI18n();
   const palette = usePalette();
   const colours = tone(status, palette);

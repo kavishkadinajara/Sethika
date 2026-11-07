@@ -2078,3 +2078,20 @@ for the app's notifications, so it should read as a plain heading.
 | `App.profile.push.openSettings` | Open settings | සැකසුම් විවෘත කරන්න | அமைப்புகளைத் திற |
 | `App.profile.push.failed` | That did not work. Check your connection and try again. | එය සාර්ථක වූයේ නැත. ඔබේ සම්බන්ධතාවය පරීක්ෂා කර නැවත උත්සාහ කරන්න. | அது வேலை செய்யவில்லை. உங்கள் இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும். |
 | `App.profile.push.channel` | Bookings | වෙන්කිරීම් | முன்பதிவுகள் |
+
+## The Today tab (2026-11-07, `App.today`, `App.tabs`, `Booking.gate`, `Discover.sheet`, plan F, F23-F25, F51)
+
+The app's own strings, in `mobile/src/i18n/messages`. The two `institutionSession` texts are the app's
+only and replace advice that was wrong for staff of one institution. `Dashboard.sentence`, `Shell.today`,
+`Shell.context` and `Calendar.booking` are copied from `web/messages`, so they are reviewed there.
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) |
+|---|---|---|---|
+| `App.tabs.today` | Today | අද | இன்று |
+| `App.today.noSponsors` | No sponsor yet. | තවම දායකයෙක් නැත. | இன்னும் நன்கொடையாளர் இல்லை. |
+| `App.today.served` | Mark as served | සපයා අවසන් ලෙස සලකුණු කරන්න | வழங்கப்பட்டதாகக் குறி |
+| `App.today.confirm` | Has {name} given this meal? This cannot be undone. | {name} මෙම ආහාර වේල ලබා දුන්නාද? මෙය ආපසු හැරවිය නොහැක. | {name} இந்த உணவை வழங்கினாரா? இதை மாற்ற முடியாது. |
+| `App.today.confirmYes` | Yes, served | ඔව්, සපයා අවසන් | ஆம், வழங்கப்பட்டது |
+| `App.today.call` | Call {name} | {name} අමතන්න | {name} அவர்களை அழை |
+| `Booking.gate.institutionSession` | You are acting for an institution. Your own bookings are under your own account: change it in Profile. | ඔබ දැන් ක්‍රියා කරන්නේ ආයතනයක් වෙනුවෙන්. ඔබේම වෙන්කිරීම් ඇත්තේ ඔබේම ගිණුම යටතේ: එය පැතිකඩෙන් වෙනස් කරන්න. | நீங்கள் ஒரு நிறுவனத்தின் சார்பில் செயல்படுகிறீர்கள். உங்கள் சொந்த முன்பதிவுகள் உங்கள் சொந்தக் கணக்கில் உள்ளன: அதை சுயவிவரத்தில் மாற்றுங்கள். |
+| `Discover.sheet.institutionSession` | You are acting for an institution. To book as yourself, change to your own account in Profile. | ඔබ දැන් ක්‍රියා කරන්නේ ආයතනයක් වෙනුවෙන්. ඔබ ලෙසම වෙන් කිරීමට, පැතිකඩෙන් ඔබේම ගිණුමට මාරු වන්න. | நீங்கள் ஒரு நிறுவனத்தின் சார்பில் செயல்படுகிறீர்கள். நீங்களாகவே முன்பதிவு செய்ய, சுயவிவரத்தில் உங்கள் சொந்தக் கணக்குக்கு மாறுங்கள். |

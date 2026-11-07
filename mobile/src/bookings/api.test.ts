@@ -24,6 +24,32 @@ function harness(answer: (path: string) => Response | Promise<Response>) {
   return { api, anonymous, signedIn };
 }
 
+describe("the Today tab's calls", () => {
+  it("read with the session", async () => {
+    const { api, anonymous, signedIn } = harness(() => json(200, []));
+
+    await api.getToday();
+    await api.getCalendar("2026-11-10", "2026-11-10");
+    await api.getCalendar("2026-11-10", "2027-01-10", "Requested");
+
+    expect(anonymous).toEqual([]);
+    expect(signedIn.map((call) => call.path)).toEqual([
+      "/api/institution/today",
+      "/api/institution/bookings?from=2026-11-10&to=2026-11-10",
+      "/api/institution/bookings?from=2026-11-10&to=2027-01-10&status=Requested",
+    ]);
+  });
+
+  it("mark served with a POST that has no body", async () => {
+    const { api, signedIn } = harness(() => json(200, { status: "Completed" }));
+
+    const result = await api.markServed("BK-2026-000001");
+
+    expect(result.ok).toBe(true);
+    expect(signedIn).toEqual([{ path: "/api/institution/bookings/BK-2026-000001/complete", init: { method: "POST" } }]);
+  });
+});
+
 describe("the institution reads", () => {
   it("go without a session, with the slug and month in the path", async () => {
     const { api, anonymous, signedIn } = harness(() => json(200, { month: "2026-11", slots: [] }));

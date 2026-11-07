@@ -83,10 +83,27 @@ internal static class SessionEndpoints
         SessionHandler sessions,
         IHostEnvironment environment,
         CancellationToken cancellationToken) =>
+        RotateToPersonalAsync(
+            httpContext,
+            httpContext.Request.Cookies[AuthCookies.RefreshCookieName],
+            sessions,
+            environment,
+            cancellationToken);
+
+    /// <summary>
+    /// Exchanges a refresh token for a new pair on the person's own account. Shared with
+    /// <see cref="MobileSessionEndpoints"/>, which passes the token from the body.
+    /// </summary>
+    internal static Task<IResult> RotateToPersonalAsync(
+        HttpContext httpContext,
+        string? refreshToken,
+        SessionHandler sessions,
+        IHostEnvironment environment,
+        CancellationToken cancellationToken) =>
         RotateAsync(
             httpContext,
             new RefreshCommand(
-                httpContext.Request.Cookies[AuthCookies.RefreshCookieName],
+                refreshToken,
                 SwitchToInstitution: null,
                 ClientAddress.Of(httpContext),
                 UserAgent(httpContext),

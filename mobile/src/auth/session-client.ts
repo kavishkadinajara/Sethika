@@ -281,6 +281,15 @@ export function createSessionClient(options: SessionClientOptions) {
     return { ok: false, reason: "unavailable" };
   }
 
+  /** Rotates the session onto the person's own account (F51), the same slot as every rotation. */
+  async function switchToPersonal(): Promise<SwitchInstitutionResult> {
+    while (rotation) await rotation;
+    const outcome = await claimRotation(() => rotate("switch-personal"));
+    if (outcome === "rotated") return { ok: true };
+    if (outcome === "signed_out") return { ok: false, reason: outcome };
+    return { ok: false, reason: "unavailable" };
+  }
+
   /**
    * Changes the password (F39). The change revokes every refresh token, this phone's too, and its
    * answer carries the session to go on with, so it holds the rotation slot like a rotation does:
@@ -352,6 +361,7 @@ export function createSessionClient(options: SessionClientOptions) {
     logout,
     logoutAll,
     switchInstitution,
+    switchToPersonal,
     changePassword,
     getState,
     subscribe(listener: () => void) {

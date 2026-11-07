@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { AppState, Image, Linking, Pressable, StyleSheet, Switch, View } from "react-native";
+import { ActivityIndicator, AppState, Image, Linking, Pressable, StyleSheet, Switch, View } from "react-native";
 
 import { greetingName, initials, useProfile } from "@/auth/profile-provider";
 import { useSession, useSessionClient } from "@/auth/session-provider";
@@ -13,7 +13,7 @@ import { useDates } from "@/bookings/use-dates";
 import { Bowl } from "@/components/bookings/bowl";
 import { Button } from "@/components/button";
 import { Icon, type IconName } from "@/components/icon";
-import { Card, SectionTitle } from "@/components/screen";
+import { Card, FormError, SectionTitle } from "@/components/screen";
 import { Text } from "@/components/text";
 import { useI18n } from "@/i18n/i18n-provider";
 import { LANGUAGES, type Language } from "@/i18n/translate";
@@ -35,6 +35,7 @@ export function ProfileView() {
   return (
     <>
       {signedIn ? <Account /> : <Welcome />}
+      {signedIn && <ActingAs />}
       <Preferences signedIn={signedIn} />
       {signedIn && <SignOut />}
       <About />
@@ -83,6 +84,75 @@ function Account() {
         <Giving />
       )}
     </>
+  );
+}
+
+/** The person's own account in the picker; an institution is its slug. */
+const OWN_ACCOUNT = "";
+
+/**
+ * Who this session acts for (F25, F51), for anyone who belongs to an institution: each of their
+ * institutions, and their own account, which holds their bookings. Choosing rotates the session;
+ * the tabs follow from its permissions, and the person stays here.
+ */
+function ActingAs() {
+  const { t } = useI18n();
+  const client = useSessionClient();
+  const session = useSession();
+  const palette = usePalette();
+  const [switching, setSwitching] = useState<string | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  if (session.status !== "authenticated" || session.institutions.length === 0) return null;
+
+  const current = session.activeInstitution ?? OWN_ACCOUNT;
+  const options = [
+    { value: OWN_ACCOUNT, label: t("Shell.context.personal") },
+    ...session.institutions.map((institution) => ({ value: institution.slug, label: institution.name })),
+  ];
+
+  async function choose(value: string) {
+    if (value === current) return;
+    setSwitching(value);
+    setFailure(null);
+    const result = await (value === OWN_ACCOUNT ? client.switchToPersonal() : client.switchInstitution(value));
+    setSwitching(null);
+    // Signed out: the session flips to anonymous, and this screen shows the ways in.
+    if (result.ok || result.reason === "signed_out") return;
+    setFailure(t(result.reason === "not_available" ? "Errors.institution_not_available" : "Errors.network"));
+  }
+
+  return (
+    <View style={styles.group}>
+      <SectionTitle>{t("Shell.context.label")}</SectionTitle>
+      <Card>
+        <View accessibilityRole="radiogroup" accessibilityLabel={t("Shell.context.label")}>
+          {options.map((option, index) => {
+            const chosen = option.value === current;
+            return (
+              <Pressable
+                key={option.value}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: chosen, busy: switching === option.value }}
+                disabled={switching !== null}
+                onPress={() => void choose(option.value)}
+                style={[styles.choice, index > 0 && { borderTopWidth: 1, borderTopColor: palette.hairline }]}
+              >
+                <Text variant="label" style={[styles.grow, chosen && { color: palette.primary }]}>
+                  {option.label}
+                </Text>
+                {switching === option.value ? (
+                  <ActivityIndicator color={palette.primary} />
+                ) : (
+                  chosen && <Icon name="check" size={20} color={palette.primary} />
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+        <FormError message={failure} />
+      </Card>
+    </View>
   );
 }
 
@@ -464,6 +534,7 @@ const styles = StyleSheet.create({
   benefit: { flexDirection: "row", alignItems: "center", gap: spacing.sm + 4 },
   buttons: { gap: spacing.sm, marginTop: spacing.sm },
   group: { gap: spacing.sm },
+  choice: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 48, paddingVertical: spacing.xs },
   row: { gap: spacing.sm + 4, paddingVertical: spacing.xs },
   rowHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm + 4 },
   rule: { height: 1, marginVertical: spacing.xs },

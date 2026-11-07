@@ -427,6 +427,9 @@ public sealed class MobileSessionEndpointsTests(SethikaTestDatabase database) : 
         using var stolen = await PostSessionAsync("refresh", new { }, cookieHeader);
         Assert.Equal(HttpStatusCode.Unauthorized, stolen.StatusCode);
 
+        using var personal = await PostSessionAsync("switch-personal", new { }, cookieHeader);
+        Assert.Equal(HttpStatusCode.Unauthorized, personal.StatusCode);
+
         using var logout = await PostSessionAsync("logout-all", new { }, cookieHeader);
         Assert.Equal(HttpStatusCode.Unauthorized, logout.StatusCode);
 
@@ -458,6 +461,46 @@ public sealed class MobileSessionEndpointsTests(SethikaTestDatabase database) : 
         using var blank = await PostSessionAsync("switch-institution", new { refreshToken = next.Refresh, institution = " " });
         Assert.Equal(HttpStatusCode.BadRequest, blank.StatusCode);
         Assert.Equal("institution_required", await CodeOf(blank));
+    }
+
+    [Fact]
+    public async Task SwitchingToPersonalLeavesTheInstitutionAndStaysLeft()
+    {
+        // One institution: sign-in puts them straight into it, and this is the only way out (F51).
+        var phone = await CreateUserAsync();
+        await AssignRoleAsync(phone, database.AlphaInstitutionId);
+        var session = await LogInAsync(phone);
+        Assert.Equal("alpha-temple", session.Body.GetProperty("activeInstitution").GetString());
+
+        using var switched = await PostSessionAsync("switch-personal", new { refreshToken = session.Refresh });
+
+        Assert.Equal(HttpStatusCode.OK, switched.StatusCode);
+        AssertNoCookies(switched);
+        var personal = await ParseAsync(switched);
+        Assert.Equal(JsonValueKind.Null, personal.Body.GetProperty("activeInstitution").ValueKind);
+        Assert.Equal("alpha-temple", personal.Body.GetProperty("institutions")[0].GetProperty("slug").GetString());
+
+        // A rotation like any other: the token it replaced is spent.
+        using var spent = await PostSessionAsync("switch-personal", new { refreshToken = session.Refresh });
+        Assert.Equal(HttpStatusCode.Conflict, spent.StatusCode);
+
+        // The next launch's refresh keeps it personal, and the institution is still there to go back to.
+        using var refreshed = await PostSessionAsync("refresh", new { refreshToken = personal.Refresh });
+        var next = await ParseAsync(refreshed);
+        Assert.Equal(JsonValueKind.Null, next.Body.GetProperty("activeInstitution").ValueKind);
+
+        using var back = await PostSessionAsync("switch-institution", new { refreshToken = next.Refresh, institution = "alpha-temple" });
+        Assert.Equal("alpha-temple", (await ParseAsync(back)).Body.GetProperty("activeInstitution").GetString());
+    }
+
+    [Fact]
+    public async Task SwitchingToPersonalNeedsALiveToken()
+    {
+        using var unknown = await PostSessionAsync("switch-personal", new { refreshToken = "not-a-token" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, unknown.StatusCode);
+        Assert.Equal("session_expired", await CodeOf(unknown));
+        AssertNoCookies(unknown);
     }
 
     [Fact]

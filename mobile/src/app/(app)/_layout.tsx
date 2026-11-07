@@ -1,7 +1,10 @@
 import { NativeTabs } from "expo-router/native-tabs";
 import { useEffect } from "react";
 
+import { PermissionProvider, usePermissions } from "@/auth/permission-provider";
 import { ProfileProvider, useProfile } from "@/auth/profile-provider";
+import { useSession } from "@/auth/session-provider";
+import { mayOpenToday } from "@/bookings/today";
 import { useI18n } from "@/i18n/i18n-provider";
 import { isLanguage } from "@/i18n/translate";
 import { PushProvider } from "@/notifications/push-provider";
@@ -9,29 +12,44 @@ import { tabBarLook } from "@/theme/tab-bar";
 import { usePalette } from "@/theme/use-theme";
 
 export default function AppLayout() {
-  const palette = usePalette();
-  const { t, language } = useI18n();
-
   return (
     <ProfileProvider>
-      <AccountLanguage />
-      <PushProvider>
-        <NativeTabs {...tabBarLook(palette, language)}>
-          <NativeTabs.Trigger name="index">
-            <NativeTabs.Trigger.Label>{t("App.tabs.explore")}</NativeTabs.Trigger.Label>
-            <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
-          </NativeTabs.Trigger>
-          <NativeTabs.Trigger name="bookings">
-            <NativeTabs.Trigger.Label>{t("App.tabs.bookings")}</NativeTabs.Trigger.Label>
-            <NativeTabs.Trigger.Icon sf="calendar" md="event" />
-          </NativeTabs.Trigger>
-          <NativeTabs.Trigger name="profile">
-            <NativeTabs.Trigger.Label>{t("App.tabs.profile")}</NativeTabs.Trigger.Label>
-            <NativeTabs.Trigger.Icon sf="person.crop.circle" md="account_circle" />
-          </NativeTabs.Trigger>
-        </NativeTabs>
-      </PushProvider>
+      <PermissionProvider>
+        <AccountLanguage />
+        <PushProvider>
+          <Tabs />
+        </PushProvider>
+      </PermissionProvider>
     </ProfileProvider>
+  );
+}
+
+/** Today shows only for staff who may read the calendar (F25). Hiding it is UX; the API decides. */
+function Tabs() {
+  const palette = usePalette();
+  const { t, language } = useI18n();
+  const session = useSession();
+  const { can } = usePermissions();
+
+  return (
+    <NativeTabs {...tabBarLook(palette, language)}>
+      <NativeTabs.Trigger name="index">
+        <NativeTabs.Trigger.Label>{t("App.tabs.explore")}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="today" hidden={!mayOpenToday(session, can)}>
+        <NativeTabs.Trigger.Label>{t("App.tabs.today")}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="sun.max" md="today" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="bookings">
+        <NativeTabs.Trigger.Label>{t("App.tabs.bookings")}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="calendar" md="event" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="profile">
+        <NativeTabs.Trigger.Label>{t("App.tabs.profile")}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="person.crop.circle" md="account_circle" />
+      </NativeTabs.Trigger>
+    </NativeTabs>
   );
 }
 

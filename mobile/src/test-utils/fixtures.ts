@@ -1,4 +1,13 @@
-import type { Availability, DayAvailability, DonorBooking, PublicInstitution, PublicMealSlot } from "@/bookings/types";
+import type {
+  Availability,
+  CalendarBooking,
+  DayAvailability,
+  DonorBooking,
+  PublicInstitution,
+  PublicMealSlot,
+  SlotDay,
+  TableSlot,
+} from "@/bookings/types";
 
 /*  The API's answers as DonorBookingEndpoints.cs sends them, for the booking tests. The ids are
     public ones; the names are made up for tests and stand for no real institution.           */
@@ -92,6 +101,54 @@ export function booking(overrides: Partial<DonorBooking> = {}): DonorBooking {
     cancelReason: null,
     canCancel: true,
     regular: false,
+    ...overrides,
+  };
+}
+
+export function tableSlot(overrides: Partial<TableSlot> = {}): TableSlot {
+  return {
+    mealSlot: LUNCH,
+    name: "Lunch",
+    nameSi: null,
+    nameTa: null,
+    startTime: "11:30",
+    endTime: "13:00",
+    maxSponsors: 4,
+    bookedSponsors: 0,
+    requested: 0,
+    state: "Open",
+    ...overrides,
+  };
+}
+
+export function calendarBooking(overrides: Partial<CalendarBooking> = {}): CalendarBooking {
+  return {
+    bookingNo: "BK-2026-000001",
+    status: "Approved",
+    donorName: "Nimali Perera",
+    donorPhone: "+94770000000",
+    headcount: 25,
+    fulfilmentMode: "InstitutionPrepares",
+    inMemoryOf: null,
+    notes: null,
+    standing: null,
+    ...overrides,
+  };
+}
+
+export function slotDay(overrides: Partial<SlotDay> = {}): SlotDay {
+  return {
+    date: "2026-11-10",
+    mealSlot: LUNCH,
+    slotName: "Lunch",
+    slotNameSi: null,
+    slotNameTa: null,
+    startTime: "11:30",
+    endTime: "13:00",
+    maxSponsors: 4,
+    bookedSponsors: 1,
+    status: "Open",
+    bookings: [],
     ...overrides,
   };
 }

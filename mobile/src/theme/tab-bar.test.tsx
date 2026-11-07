@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import AppLayout from "@/app/(app)/_layout";
+import type { SessionState } from "@/auth/session-client";
+import { ANONYMOUS, DONOR, STAFF } from "@/test-utils/api-stub";
 import { render } from "@/test-utils/render";
 
 import { colors } from "./colors";
@@ -12,6 +14,9 @@ let mockScheme: "light" | "dark" = "light";
 let mockLanguage = "en";
 let mockBar: Record<string, unknown> = {};
 let mockInsidePush: ReactNode = null;
+let mockSession: SessionState = ANONYMOUS;
+let mockHeld: string[] = [];
+const mockTriggers: Record<string, { hidden?: boolean }> = {};
 
 jest.mock("react-native/Libraries/Utilities/useColorScheme", () => ({ __esModule: true, default: () => mockScheme }));
 jest.mock("@/i18n/i18n-provider", () => ({
@@ -20,6 +25,11 @@ jest.mock("@/i18n/i18n-provider", () => ({
 jest.mock("@/auth/profile-provider", () => ({
   ProfileProvider: ({ children }: { children: ReactNode }) => children,
   useProfile: () => null,
+}));
+jest.mock("@/auth/session-provider", () => ({ useSession: () => mockSession }));
+jest.mock("@/auth/permission-provider", () => ({
+  PermissionProvider: ({ children }: { children: ReactNode }) => children,
+  usePermissions: () => ({ ready: true, can: (code: string) => mockHeld.includes(code) }),
 }));
 jest.mock("@/notifications/push-provider", () => ({
   PushProvider: ({ children }: { children: ReactNode }) => {
@@ -32,7 +42,8 @@ jest.mock("expo-router/native-tabs", () => {
     mockBar = props;
     return children;
   };
-  function Trigger() {
+  function Trigger({ name, hidden }: { name: string; hidden?: boolean }) {
+    mockTriggers[name] = { hidden };
     return null;
   }
   Trigger.Label = function Label() {
@@ -50,6 +61,8 @@ beforeEach(() => {
   mockLanguage = "en";
   mockBar = {};
   mockInsidePush = null;
+  mockSession = ANONYMOUS;
+  mockHeld = [];
 });
 
 it("keeps the tabs inside push: Profile's switch and sign-out need it", async () => {
@@ -82,6 +95,40 @@ describe.each([
       labelStyle: { default: { color: palette.muted }, selected: { color: selected } },
       iconColor: { default: palette.muted, selected },
     });
+  });
+});
+
+describe("the Today tab", () => {
+  const VIEW = "BOOKINGS.CALENDAR.VIEW";
+
+  it("shows for staff who may read the calendar", async () => {
+    mockSession = STAFF;
+    mockHeld = [VIEW];
+
+    await render(<AppLayout />);
+
+    expect(mockTriggers.today.hidden).toBe(false);
+  });
+
+  it.each<[string, SessionState, string[]]>([
+    ["a visitor", ANONYMOUS, []],
+    ["a donor", DONOR, []],
+    ["a role without the calendar", STAFF, ["BOOKINGS.SLOTS.VIEW"]],
+  ])("is hidden from %s", async (_, session, held) => {
+    mockSession = session;
+    mockHeld = held;
+
+    await render(<AppLayout />);
+
+    expect(mockTriggers.today.hidden).toBe(true);
+  });
+
+  it("leaves the other tabs for everyone", async () => {
+    await render(<AppLayout />);
+
+    expect(mockTriggers.index.hidden).toBeUndefined();
+    expect(mockTriggers.bookings.hidden).toBeUndefined();
+    expect(mockTriggers.profile.hidden).toBeUndefined();
   });
 });
 

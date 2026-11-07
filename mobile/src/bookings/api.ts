@@ -8,9 +8,12 @@ import type {
   Availability,
   BookingCreated,
   BookingRequest,
+  BookingStatus,
   DonorBooking,
   PublicInstitution,
   PublicInstitutionSummary,
+  SlotDay,
+  TodaysTable,
 } from "./types";
 
 /*  Typed calls to the donor booking API (plan 03, 5.5), the twin of web/lib/bookings/api.ts.
@@ -53,6 +56,17 @@ export function createBookingApi(signedIn: Fetch, anonymous: Fetch = (path) => g
     /** Lets one of the donor's regular days go (plan 08, K24). */
     letGo: (bookingNo: string, reason: string | null): Promise<BookingResult<unknown>> =>
       read(() => signedIn(`/api/bookings/${encodeURIComponent(bookingNo)}/skip`, post({ reason }))),
+
+    /** Today in Colombo and the institution's meals (F23). */
+    getToday: (): Promise<BookingResult<TodaysTable>> => read(() => signedIn("/api/institution/today")),
+
+    /** The booked slot-days between two dates, both included; at most 62 days. */
+    getCalendar: (from: string, to: string, status?: BookingStatus): Promise<BookingResult<SlotDay[]>> =>
+      read(() => signedIn(`/api/institution/bookings?from=${from}&to=${to}${status ? `&status=${status}` : ""}`)),
+
+    /** Marks a confirmed booking served (F24). It cannot be undone. */
+    markServed: (bookingNo: string): Promise<BookingResult<unknown>> =>
+      read(() => signedIn(`/api/institution/bookings/${encodeURIComponent(bookingNo)}/complete`, { method: "POST" })),
   };
 }
 

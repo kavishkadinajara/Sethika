@@ -2,11 +2,11 @@ import { router } from "expo-router";
 import { act } from "react";
 import { Appearance, AppState, Linking } from "react-native";
 
-import type { SessionState } from "@/auth/session-client";
+import type { SessionState, SwitchInstitutionResult } from "@/auth/session-client";
 import { ProfileProvider } from "@/auth/profile-provider";
 import { I18nProvider } from "@/i18n/i18n-provider";
 import { PushProvider } from "@/notifications/push-provider";
-import { ANONYMOUS, createApiStub, DONOR } from "@/test-utils/api-stub";
+import { ANONYMOUS, createApiStub, DONOR, STAFF } from "@/test-utils/api-stub";
 import { booking } from "@/test-utils/fixtures";
 import { CHOICE_KEY, createPushStub, permissions, TOKEN, TOKEN_KEY } from "@/test-utils/push-stub";
 import { json, press, render, settle, type Screen } from "@/test-utils/render";
@@ -27,6 +27,8 @@ const mockClient = {
   getState: () => mockSession,
   logout: jest.fn(async () => void mockApi.sent.push({ method: "END", path: "logout", body: null, signedIn: true })),
   logoutAll: jest.fn(async () => void mockApi.sent.push({ method: "END", path: "logout-all", body: null, signedIn: true })),
+  switchInstitution: jest.fn<Promise<SwitchInstitutionResult>, [string]>(),
+  switchToPersonal: jest.fn<Promise<SwitchInstitutionResult>, []>(),
 };
 
 jest.mock("@/api/http", () => ({ getJson: (path: string) => mockApi.getJson(path) }));
@@ -86,6 +88,8 @@ beforeEach(() => {
   mockPhone.phone.answer = permissions.GRANTED;
   mockClient.logout.mockClear();
   mockClient.logoutAll.mockClear();
+  mockClient.switchInstitution.mockReset().mockResolvedValue({ ok: true });
+  mockClient.switchToPersonal.mockReset().mockResolvedValue({ ok: true });
 });
 
 afterEach(() => {
@@ -118,6 +122,122 @@ describe("signed in", () => {
 
     expect(mockApi.sent).toContainEqual({ method: "PUT", path: "/api/me/language", body: { language: "si" }, signedIn: true });
     screen.getText("භාෂාව");
+  });
+});
+
+describe("acting as", () => {
+  const TWO: SessionState = {
+    ...STAFF,
+    institutions: [
+      { slug: "alpha-temple", name: "Alpha Temple" },
+      { slug: "beta-home", name: "Beta Home" },
+    ],
+  } as SessionState;
+
+  const chosen = (screen: Screen) =>
+    screen
+      .where((props) => props.accessibilityRole === "radio" && (props.accessibilityState as { selected?: boolean })?.selected === true)
+      .map((node) => node.queryAll((child) => child.type === "Text")[0].children.join(""))
+      .filter((label) => label === "My own account" || label === "Alpha Temple" || label === "Beta Home");
+
+  it("is not there for a donor who belongs nowhere, or a visitor", async () => {
+    const donor = await render(page());
+    expect(donor.queryText("Acting as")).toBeNull();
+
+    mockSession = ANONYMOUS;
+    const visitor = await render(page());
+    expect(visitor.queryText("Acting as")).toBeNull();
+  });
+
+  it("lists their own account and each institution, the current one chosen", async () => {
+    mockSession = TWO;
+
+    const screen = await render(page());
+
+    screen.getText("Acting as");
+    screen.getText("My own account");
+    screen.getText("Beta Home");
+    expect([...new Set(chosen(screen))]).toEqual(["Alpha Temple"]);
+  });
+
+  it("chooses their own account when the session has no institution", async () => {
+    mockSession = { ...TWO, activeInstitution: null } as SessionState;
+
+    const screen = await render(page());
+
+    expect([...new Set(chosen(screen))]).toEqual(["My own account"]);
+  });
+
+  it("moves to another institution by its slug", async () => {
+    mockSession = TWO;
+    const screen = await render(page());
+
+    await press(screen.getText("Beta Home"));
+
+    expect(mockClient.switchInstitution).toHaveBeenCalledWith("beta-home");
+    expect(mockClient.switchToPersonal).not.toHaveBeenCalled();
+  });
+
+  it("goes back to their own account", async () => {
+    mockSession = TWO;
+    const screen = await render(page());
+
+    await press(screen.getText("My own account"));
+
+    expect(mockClient.switchToPersonal).toHaveBeenCalledTimes(1);
+    expect(mockClient.switchInstitution).not.toHaveBeenCalled();
+  });
+
+  it("does nothing for the one already chosen", async () => {
+    mockSession = TWO;
+    const screen = await render(page());
+
+    await press(screen.allMatching("Alpha Temple").at(-1)!);
+
+    expect(mockClient.switchInstitution).not.toHaveBeenCalled();
+  });
+
+  it("takes one choice at a time", async () => {
+    mockSession = TWO;
+    let finish: (result: SwitchInstitutionResult) => void = () => {};
+    mockClient.switchInstitution.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    const screen = await render(page());
+
+    await press(screen.getText("Beta Home"));
+    await press(screen.getText("My own account"));
+
+    expect(mockClient.switchToPersonal).not.toHaveBeenCalled();
+    await act(async () => finish({ ok: true }));
+    await settle();
+    await press(screen.getText("My own account"));
+    expect(mockClient.switchToPersonal).toHaveBeenCalledTimes(1);
+  });
+
+  it.each<[string, SwitchInstitutionResult, string]>([
+    ["an institution no longer theirs", { ok: false, reason: "not_available" }, "You can no longer act for this institution."],
+    ["a lost connection", { ok: false, reason: "unavailable" }, "Can't reach Sethika right now. Check your connection and try again."],
+  ])("says so after %s, and lets them choose again", async (_, result, words) => {
+    mockSession = TWO;
+    mockClient.switchInstitution.mockResolvedValue(result);
+    const screen = await render(page());
+
+    await press(screen.getText("Beta Home"));
+    screen.getText(words);
+
+    mockClient.switchInstitution.mockResolvedValue({ ok: true });
+    await press(screen.getText("Beta Home"));
+    expect(screen.queryText(words)).toBeNull();
+  });
+
+  it("says nothing when the session was over: the screen shows the ways in", async () => {
+    mockSession = TWO;
+    mockClient.switchInstitution.mockResolvedValue({ ok: false, reason: "signed_out" });
+    const screen = await render(page());
+
+    await press(screen.getText("Beta Home"));
+
+    expect(screen.queryText("You can no longer act for this institution.")).toBeNull();
+    expect(screen.where((props) => props.accessibilityRole === "alert")).toEqual([]);
   });
 });
 

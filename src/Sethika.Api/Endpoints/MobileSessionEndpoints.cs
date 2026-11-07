@@ -54,6 +54,9 @@ internal static class MobileSessionEndpoints
         session.MapPost("/switch-institution", SwitchInstitutionAsync)
             .RateLimitPerClient(AuthRateLimits.RefreshPerClient);
 
+        session.MapPost("/switch-personal", SwitchPersonalAsync)
+            .RateLimitPerClient(AuthRateLimits.RefreshPerClient);
+
         session.MapPost("/logout", LogOutAsync)
             .RateLimitPerClient(AuthRateLimits.RefreshPerClient);
 
@@ -88,6 +91,18 @@ internal static class MobileSessionEndpoints
             ? Task.FromResult(ApiErrors.Error(StatusCodes.Status400BadRequest, "institution_required"))
             : SessionEndpoints.RotateAsync(
                 httpContext, body.RefreshToken, body.Institution.Trim(), sessions, environment, cancellationToken);
+
+    /// <summary>
+    /// Back to the person's own account (F51). Sign-in puts anyone with exactly one institution into
+    /// it, so without this a staff member could never book as a donor on the phone.
+    /// </summary>
+    private static Task<IResult> SwitchPersonalAsync(
+        [FromBody] MobileRefreshBody body,
+        HttpContext httpContext,
+        SessionHandler sessions,
+        IHostEnvironment environment,
+        CancellationToken cancellationToken) =>
+        SessionEndpoints.RotateToPersonalAsync(httpContext, body.RefreshToken, sessions, environment, cancellationToken);
 
     /// <summary>Ends this device's session. 204 whether or not it was still alive, as on the web.</summary>
     private static async Task<IResult> LogOutAsync(

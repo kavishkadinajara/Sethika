@@ -344,6 +344,64 @@ describe("logout and switching institution", () => {
   });
 });
 
+describe("going back to the person's own account", () => {
+  async function inInstitution() {
+    const h = harness();
+    h.serve(() => sessionBody("access-1", "refresh-2", T0));
+    await h.client.start();
+    return h;
+  }
+
+  it("rotates with the stored token and takes the new one", async () => {
+    const h = await inInstitution();
+    h.serve(() => sessionBody("access-2", "refresh-3", T0));
+
+    const result = await h.client.switchToPersonal();
+
+    expect(result).toEqual({ ok: true });
+    expect(h.to(`${MOBILE_SESSION_PATH}/switch-personal`)[0].body).toEqual({ refreshToken: "refresh-2" });
+    expect(h.vault.token).toBe("refresh-3");
+    expect(h.client.getState()).toMatchObject({ status: "authenticated", accessToken: "access-2" });
+  });
+
+  it("says a lost connection, and keeps the session", async () => {
+    const h = await inInstitution();
+    h.serve(() => {
+      throw new Error("offline");
+    });
+
+    expect(await h.client.switchToPersonal()).toEqual({ ok: false, reason: "unavailable" });
+    expect(h.client.getState()).toMatchObject({ status: "authenticated", accessToken: "access-1" });
+    expect(h.vault.token).toBe("refresh-2");
+  });
+
+  it("says when the session was over", async () => {
+    const h = await inInstitution();
+    h.serve(() => json(401, { code: "session_expired" }));
+
+    expect(await h.client.switchToPersonal()).toEqual({ ok: false, reason: "signed_out" });
+    expect(h.client.getState()).toEqual({ status: "anonymous" });
+  });
+
+  it("waits for a rotation in flight instead of racing it with the same token", async () => {
+    const h = await inInstitution();
+    let release: (response: Response) => void = () => {};
+    h.serve(() => new Promise<Response>((resolve) => (release = resolve)));
+    const refreshing = h.client.refresh();
+
+    const switching = h.client.switchToPersonal();
+    await Promise.resolve();
+    expect(h.to(`${MOBILE_SESSION_PATH}/switch-personal`)).toHaveLength(0);
+
+    h.serve(() => sessionBody("access-3", "refresh-4", T0));
+    release(sessionBody("access-2", "refresh-3", T0));
+    await refreshing;
+    await switching;
+
+    expect(h.to(`${MOBILE_SESSION_PATH}/switch-personal`)[0].body).toEqual({ refreshToken: "refresh-3" });
+  });
+});
+
 describe("changing the password", () => {
   const OLD = "Dana!2026Sethika";
   const NEW = "Pirith#Night2027";
