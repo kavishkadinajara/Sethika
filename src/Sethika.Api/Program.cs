@@ -60,6 +60,9 @@ builder.Services
             ValidAudience = SethikaJwt.Audience,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = SethikaJwt.CreateSigningKey(jwtSigningKey),
+            // Only the algorithm the API issues with. Left open, the library takes any HMAC the key is
+            // long enough for (HS384 from 48 bytes, HS512 from 64), which nothing here ever chose.
+            ValidAlgorithms = [SethikaJwt.SigningAlgorithm],
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30),
         };
@@ -111,6 +114,7 @@ if (args is [BootstrapCommand.Name, ..])
 }
 
 app.UseForwardedHeaders();
+app.UseApiSecurityHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 

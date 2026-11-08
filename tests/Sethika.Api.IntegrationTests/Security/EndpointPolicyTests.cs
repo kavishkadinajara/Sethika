@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Sethika.Api.Security;
 using Sethika.Api.IntegrationTests.Persistence;
 
 namespace Sethika.Api.IntegrationTests.Security;
@@ -78,6 +79,44 @@ public sealed class EndpointPolicyTests(SethikaTestDatabase database)
         "GET /api/share/{token}",
     ];
 
+    /// <summary>
+    /// The endpoints that need a signed-in caller but no permission code. Adding one is a decision this
+    /// list records, because a route that should have had <c>[HasPermission]</c> and got only
+    /// <c>RequireAuthorization()</c> would otherwise pass <see cref="EveryApiEndpointSaysWhoMayCallIt"/>.
+    /// </summary>
+    /// <remarks>
+    /// Each one acts only on the caller's own account, keyed by the token's user id, and none reads or
+    /// writes an institution's rows: what a permission would guard here is the account itself.
+    /// </remarks>
+    private static readonly string[] AuthenticatedOnlyEndpoints =
+    [
+        // Who am I, what may I do, and the account's own settings (plan 01, plan 05).
+        "GET /api/me",
+        "GET /api/me/permissions",
+        "GET /api/me/summary",
+        "PUT /api/me/language",
+
+        // Invitations addressed to this account (plan 01): answering one is the invitee's own choice.
+        "GET /api/me/invitations",
+        "POST /api/me/invitations/{id:guid}/accept",
+        "POST /api/me/invitations/{id:guid}/decline",
+
+        // The account's hearted places (plan 07, H12) and its phones for push (Phase F, F.5a).
+        "GET /api/me/places",
+        "PUT /api/me/places/{slug}",
+        "DELETE /api/me/places/{slug}",
+        "PUT /api/me/devices",
+        "POST /api/me/devices/remove",
+
+        // Proving it is still the account holder: needed before an MFA permission can be used at all.
+        "POST /api/auth/stepup/request",
+        "POST /api/auth/stepup/verify",
+
+        // Changing the account's own password, on the web and in the app (A21, F39).
+        "POST /api/me/password",
+        "POST /api/auth/mobile/password",
+    ];
+
     private WebApplicationFactory<Program> Host() =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -119,5 +158,20 @@ public sealed class EndpointPolicyTests(SethikaTestDatabase database)
             .Order(StringComparer.Ordinal);
 
         Assert.Equal(AnonymousEndpoints.Order(StringComparer.Ordinal), anonymous);
+    }
+
+    [Fact]
+    public async Task OnlyTheListedEndpointsNeedASignInButNoPermission()
+    {
+        await using var host = Host();
+
+        var authenticatedOnly = ApiEndpoints(host)
+            .Where(e => e.Metadata.GetMetadata<IAllowAnonymous>() is null
+                && e.Metadata.GetOrderedMetadata<IAuthorizeData>().Any()
+                && !e.Metadata.GetOrderedMetadata<HasPermissionAttribute>().Any())
+            .Select(Describe)
+            .Order(StringComparer.Ordinal);
+
+        Assert.Equal(AuthenticatedOnlyEndpoints.Order(StringComparer.Ordinal), authenticatedOnly);
     }
 }

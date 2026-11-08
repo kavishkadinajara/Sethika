@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { securityHeaderRules } from "./lib/security-headers";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
@@ -18,6 +19,10 @@ const nextConfig: NextConfig = {
   // Development only: the "N" indicator's default corner (bottom left) covers the sidebar's fold
   // button (plan 05, R2).
   devIndicators: { position: "bottom-right" },
+  // W1 (hardening 2026-11-08): framing refused, sniffing off, referrer trimmed; lib/security-headers.ts.
+  async headers() {
+    return securityHeaderRules();
+  },
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${apiBaseUrl}/api/:path*` }];
   },

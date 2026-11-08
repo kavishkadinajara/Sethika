@@ -315,6 +315,24 @@ never been accepted by PayHere itself); the gratitude wall and any public list o
 Sethika; recurring online gifts; tax receipts; a key vault for M21's keys; need images; pledge reminders;
 charts and per-donor analytics; Excel files; Phase D in the mobile app.
 
+## Hardening (2026-11-08)
+
+An OWASP-style read of the API and the web's edge before the final week: IDOR on every business number
+and `PublicId`, RLS reach, mass assignment, endpoint policies, rate limits, cookies and CORS, secrets in
+configuration and logs, error bodies, uploads, CSV export and the PayHere notification. Those held, each
+already with a test; four findings did not, and are fixed or scheduled here.
+
+| # | Decision | Why |
+|---|----------|-----|
+| W1 | **Browser security headers on both sides.** The web sends `frame-ancestors 'none'` + `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, a `Permissions-Policy` that keeps geolocation for this origin, and HSTS (`web/lib/security-headers.ts`, applied by `next.config.ts`). The CSP holds only `frame-ancestors`, `base-uri` and `object-src`. The API sends its own on every response, 401 and 404 included: `default-src 'none'; frame-ancestors 'none'`, `DENY`, `nosniff`, `no-referrer` (`ApiSecurityHeaders`) | No header was set anywhere, so any site could frame an approve, void or grant button (clickjacking). Script and style rules would need Next's inline scripts, Leaflet, SignalR and PayHere's checkout tuned and walked, which a week before the deadline is more risk than it removes. Next's `headers()` did not reach a response the `/api` rewrite carried (seen with `next dev`), and the API is reachable without the web in front, so the API cannot rely on the web's |
+| W3 | **Access tokens are believed only under HS256** (`ValidAlgorithms`) | Left open, the token library accepted the API's own key under HS384, and would under HS512 with a 64-byte key: an algorithm nobody chose, measured as a 200 before the fix |
+| W4 | **Signed-in but no permission code is a listed decision**, like anonymous: `EndpointPolicyTests.AuthenticatedOnlyEndpoints` holds the 16 routes (`/api/me/*`, step-up, the two password changes), each acting only on the caller's own account | `RequireAuthorization()` alone satisfied the old test, so an institution route that lost its `[HasPermission]` would have passed |
+| W2 | **Scheduled for deployment, not code:** behind Vercel's rewrite and Azure's front end the client address may arrive as the proxy's, so every web visitor would share one per-client budget (sign-up 20 an hour). Set `ForwardedHeaders:KnownProxies` / the forward limit from the real deployment and check one request's `RemoteIpAddress` (01-AUTH A18) | Cannot be measured without the hosts. Per-phone and per-name limits and the lockout do not depend on it |
+
+Tests: JWT theory +1 case with its own control (a validator that takes HS384 believes the forgery),
+`EndpointPolicyTests` +1, `ApiSecurityHeadersTests` 4, vitest `security-headers.test.ts` 5, e2e
+`access/headers.spec.ts` 2. Mutants 13/13 killed.
+
 ## Unconfirmed reference data (seeded as drafts)
 CLAUDE.md forbids inventing facts about real institutions. Where the flow cannot run without a row,
 the row is seeded as a visibly marked draft and listed here until someone confirms or replaces it.

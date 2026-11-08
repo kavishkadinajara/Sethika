@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 using Sethika.Api.IntegrationTests.Persistence;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Access;
@@ -339,6 +341,9 @@ public sealed class JwtTokenServiceEndpointTests(SethikaTestDatabase database) :
     [InlineData("tampered", HttpStatusCode.Unauthorized)]
     // No signature at all.
     [InlineData("alg-none", HttpStatusCode.Unauthorized)]
+    // The API's own key under another HMAC: correctly signed, but not the algorithm the API issues.
+    // HS384 because the library takes it from any key of 48 bytes or more (this one has 49).
+    [InlineData("hs384", HttpStatusCode.Unauthorized)]
     public async Task APlatformClaimIsBelievedOnlyUnderTheApisSignature(string token, HttpStatusCode expected)
     {
         var donor = await CreateDonorAsync();
@@ -352,6 +357,7 @@ public sealed class JwtTokenServiceEndpointTests(SethikaTestDatabase database) :
                 Service().Issue(platform with { IsPlatform = false }).Access.Token,
                 Service().Issue(platform).Access.Token),
             "alg-none" => Unsigned(Service().Issue(platform).Access.Token),
+            "hs384" => ResignedWithHs384(Service().Issue(platform).Access.Token),
             _ => throw new ArgumentOutOfRangeException(nameof(token)),
         };
 
@@ -383,6 +389,32 @@ public sealed class JwtTokenServiceEndpointTests(SethikaTestDatabase database) :
         var payload = payloadFrom.Split('.')[1];
         Assert.NotEqual(parts[1], payload);
         return $"{parts[0]}.{payload}.{parts[2]}";
+    }
+
+    /// <summary>The same header and claims, but <c>"alg": "HS384"</c> and signed so with the API's own key.</summary>
+    private static string ResignedWithHs384(string signed)
+    {
+        var original = new JsonWebToken(signed);
+        Assert.Equal(SecurityAlgorithms.HmacSha256, original.Alg);
+
+        var payload = Encoding.UTF8.GetString(Base64Url.DecodeFromChars(signed.Split('.')[1]));
+        var forged = new JsonWebTokenHandler().CreateToken(
+            payload,
+            new SigningCredentials(SethikaJwt.CreateSigningKey(SigningKey), SecurityAlgorithms.HmacSha384));
+        Assert.Equal(SecurityAlgorithms.HmacSha384, new JsonWebToken(forged).Alg);
+
+        // The control for this case: a validator that does take HS384 believes the forgery, so the API's
+        // refusal is about the algorithm and not a malformed token.
+        var check = new JsonWebTokenHandler().ValidateTokenAsync(forged, new TokenValidationParameters
+        {
+            ValidIssuer = SethikaJwt.Issuer,
+            ValidAudience = SethikaJwt.Audience,
+            IssuerSigningKey = SethikaJwt.CreateSigningKey(SigningKey),
+            ValidAlgorithms = [SecurityAlgorithms.HmacSha384],
+        }).GetAwaiter().GetResult();
+        Assert.True(check.IsValid, check.Exception?.Message);
+
+        return forged;
     }
 
     /// <summary>The same claims under <c>"alg": "none"</c>, with the signature removed.</summary>
