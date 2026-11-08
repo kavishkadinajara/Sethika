@@ -417,7 +417,8 @@ Known trade-offs:
   The server rotates the refresh token, the browser never receives the new cookie, and the next load is
   refused `409`, because the grace period assumes another tab won. It was seen when a test opened a page twice
   within a second, so a person reloading at that moment would meet it too. Phase D did not change the session
-  design, and the test no longer opens the page twice.
+  design, and the test no longer opens the page twice. *Fixed on the hardening day (2026-11-08):* every
+  rotation is sent with `keepalive`, so it outlives the page and its cookie lands (A19, amended 2026-11-08).
 - **An order whose notification never comes stays `Pending`**, with no job to expire it. It has no receipt
   and appears in no total, so it costs a row (M35).
 - **The public board does not know about merchants** (M36), so "Give money" shows only on the institution's

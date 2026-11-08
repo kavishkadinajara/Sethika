@@ -98,6 +98,12 @@ export function createSessionClient(options: SessionClientOptions) {
       body: body === undefined ? undefined : JSON.stringify(body),
       credentials: "same-origin",
       cache: "no-store",
+      // A19: a rotation outlives the page. Left mid-refresh, a plain fetch is cancelled after the
+      // server has rotated the cookie, its Set-Cookie never lands, and the next page presents the
+      // spent token: 409 inside the grace, the whole session revoked after it. With keepalive the
+      // request finishes and the browser stores the successor, so the next page meets an ordinary
+      // two-tab race, which the superseded retry below already settles.
+      keepalive: true,
     });
   }
 
