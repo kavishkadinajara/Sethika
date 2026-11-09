@@ -395,8 +395,9 @@ they found no problems. This section records what they report, and what the data
 
 `npx expo export --platform android` shows the app bundles. It does not show that it runs.
 
-Also not seen: the Mobile job of CI going green on GitHub. It has been proved locally only, because this
-branch had not been pushed when this was written.
+The Mobile job of CI went green on GitHub on PR #38 (run 42395351872 at `e94ab2f`, 2026-11-07: lint,
+typecheck and Jest with no cache), alongside Backend and Frontend. When this section was first written the
+branch had not been pushed, and it was proved locally only.
 
 **Real push needs the six steps in section 4.** If they are not done, the report's claim is that push
 was built and proved against a stub of Expo's API, and no more.

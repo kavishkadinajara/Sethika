@@ -1532,6 +1532,7 @@
       "invitation_pending": "An invitation to them is already waiting.",
       "invitation_closed": "This invitation was already answered or cancelled.",
       "invitation_expired": "This invitation has expired.",
+      "institution_not_active": "This place is not taking new staff right now, so the invitation stays open.",
       "invitation_not_found": "This invitation no longer exists.",
       "own_roles": "You can't change your own roles.",
       "rank_not_junior": "Only someone more senior can do this.",

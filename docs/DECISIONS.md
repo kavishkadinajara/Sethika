@@ -333,6 +333,33 @@ Tests: JWT theory +1 case with its own control (a validator that takes HS384 bel
 `EndpointPolicyTests` +1, `ApiSecurityHeadersTests` 4, vitest `security-headers.test.ts` 5, e2e
 `access/headers.spec.ts` 2. Mutants 13/13 killed.
 
+The same day, the dependencies: `dotnet list package --vulnerable` found nothing; `next` 16.3.6 carried a
+critical advisory and went to 16.4.5, with the .NET servicing packages to 10.0.14. The web's runtime audit is
+clean; what is left is lint tooling (dev only, npm's fix is a downgrade) and Expo's CLI in mobile (build
+tooling, not in the app; npm's fix is Expo 52). Dependabot now opens PRs against `develop`.
+
+**The access audit's open items** (PR #14):
+
+| Item | Decision |
+|------|----------|
+| The admin list's stale Owner column | Already fixed on 2026-11-01 (c8933f5): the owner is read from the roles, with a test |
+| Platform-rank UX mismatch | The users list offers Suspend or Reactivate only on an account the caller outranks (`web/lib/admin/ranks.ts`, the API's `RankNotJunior` rule) |
+| Accepting an invitation into an institution that is not live | Refused with `409 institution_not_active` unless it is `Active` or `Onboarding` and not deleted, the statuses `vw_EffectivePermissions` counts; the invitation stays open |
+| A support ticket written before its audit row | The audit row is committed first, then Redis stores the ticket; if Redis cannot, a `SupportTicketFailed` row follows. A ticket with no audit row can no longer exist |
+| Global deny overrides | Not built: no API or screen writes `auth.UserPermissionOverrides`. As the view stands, an override with no institution applies to platform-scope grants only, and an institution's deny names that institution |
+
+Tests: invitation theory 3, support ticket 2 (the real Redis store, watched: was the audit row committed when
+it was asked), vitest `ranks.test.ts` 5, e2e "offered Suspend only on accounts they outrank". Mutants 9/9.
+
+**Not explained: lists stuck on "Loading" under two Playwright workers.** In the F.8 run (2026-11-07) 16
+admin, giving and shell tests waited past 15 s on a list and all passed again with `--workers=1`. A
+reproduction on 2026-11-08 (admin and giving, two workers, the API's request timings logged) did not reach
+the question: 49 of 50 tests failed because `sqlcmd` could not connect to SQL Server at all (login timeout),
+with about 3 GB of 16 GB free, and the same day the web dev server once died of Node running out of memory.
+What it shows is that this machine cannot hold SQL Server, the API, `next dev` and two browsers at once; it
+does not show that this is what held the lists. It is recorded as unexplained, not fixed. The suites run
+with `--workers=1` here, and the config keeps 2 for a machine with the memory.
+
 ## Unconfirmed reference data (seeded as drafts)
 CLAUDE.md forbids inventing facts about real institutions. Where the flow cannot run without a row,
 the row is seeded as a visibly marked draft and listed here until someone confirms or replaces it.

@@ -74,13 +74,20 @@ public sealed class PlatformAdminHandler(
             return PlatformChangeResult.Failed(PlatformChangeFailure.InstitutionNotFound);
         }
 
+        // The audit row is committed before the ticket exists (access audit, 2026-11-08): the other way
+        // round, a failed save left a working ticket into the institution with no trace of who took it.
+        // Now the worst case is the reverse - a row for a ticket Redis never stored - and that one is
+        // followed by a row saying so.
+        Record(actor, "SupportTicketIssued", targetUserId: null, institutionId: id);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
         if (!await tickets.IssueAsync(actor, id, cancellationToken).ConfigureAwait(false))
         {
+            Record(actor, "SupportTicketFailed", targetUserId: null, institutionId: id);
+            await db.SaveChangesAsync(CancellationToken.None).ConfigureAwait(false);
             return PlatformChangeResult.Failed(PlatformChangeFailure.Unavailable);
         }
 
-        Record(actor, "SupportTicketIssued", targetUserId: null, institutionId: id);
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return PlatformChangeResult.Success;
     }
 

@@ -80,6 +80,13 @@ public enum RoleChangeFailure
 
     /// <summary>An edit without the role's version as the editor read it.</summary>
     InvalidVersion = 23,
+
+    /// <summary>
+    /// The institution is not Active or Onboarding (suspended, deactivated or deleted), so it takes no
+    /// new staff: the role would hold nothing (<c>vw_EffectivePermissions</c>) and come alive unasked
+    /// if the institution were reinstated. The invitation stays open (access audit, 2026-11-08).
+    /// </summary>
+    InstitutionNotActive = 24,
 }
 
 /// <summary>An invitation to an existing account, found by phone, to hold one of the institution's roles.</summary>

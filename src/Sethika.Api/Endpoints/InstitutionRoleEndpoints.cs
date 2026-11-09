@@ -254,6 +254,7 @@ internal static class InstitutionRoleEndpoints
         RoleChangeFailure.LastOwner => ApiErrors.Error(StatusCodes.Status409Conflict, "last_owner"),
         RoleChangeFailure.Conflict => ApiErrors.Error(StatusCodes.Status409Conflict, "changed_meanwhile"),
         RoleChangeFailure.InvalidVersion => ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_version"),
+        RoleChangeFailure.InstitutionNotActive => ApiErrors.Error(StatusCodes.Status409Conflict, "institution_not_active"),
         _ => ApiErrors.Error(StatusCodes.Status400BadRequest, "role_change_refused"),
     };
 

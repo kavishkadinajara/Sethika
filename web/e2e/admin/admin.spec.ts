@@ -116,3 +116,27 @@ test("a reviewer sees the lists but cannot open an institution or change an acco
   // exact: the "Suspended" status filter is a button too
   await expect(page.getByRole("button", { name: "Suspend", exact: true })).toHaveCount(0);
 });
+
+test("an administrator is offered Suspend only on accounts they outrank", async ({ page, baseURL }) => {
+  // Access audit, "platform-rank UX mismatch" (2026-11-08): the API refuses to suspend an equal
+  // (RankNotJunior), so the screen must not offer it. A reviewer is junior: the control.
+  const stamp = Date.now();
+  const admin = await createAccount(baseURL!, "E2E Rank Admin");
+  grantPlatformRole(admin, "PLATFORM_ADMIN");
+  const peer = await createAccount(baseURL!, `E2E Rank Peer ${stamp}`);
+  grantPlatformRole(peer, "PLATFORM_ADMIN");
+  const junior = await createAccount(baseURL!, `E2E Rank Junior ${stamp}`);
+  grantPlatformRole(junior, "PLATFORM_REVIEWER");
+  await signIn(page, admin);
+
+  await page.goto("/admin/users");
+  await page.getByLabel(/^Search/).fill(`E2E Rank Junior ${stamp}`);
+  const juniorRow = page.getByRole("listitem").filter({ hasText: `E2E Rank Junior ${stamp}` });
+  await expect(juniorRow.getByRole("button", { name: "Suspend", exact: true })).toBeVisible();
+
+  await page.getByLabel(/^Search/).fill(`E2E Rank Peer ${stamp}`);
+  const peerRow = page.getByRole("listitem").filter({ hasText: `E2E Rank Peer ${stamp}` });
+  // The row first: before it loads there is no Suspend button to miss.
+  await expect(peerRow.getByText("Active", { exact: true })).toBeVisible();
+  await expect(peerRow.getByRole("button", { name: "Suspend", exact: true })).toHaveCount(0);
+});

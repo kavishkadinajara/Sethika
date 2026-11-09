@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
@@ -12,9 +13,11 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.Net.Http.Headers;
 using Sethika.Api.IntegrationTests.Persistence;
+using Sethika.Application.Abstractions;
 using Sethika.Domain.Access;
 using Sethika.Infrastructure.Security;
 using StackExchange.Redis;
@@ -41,6 +44,12 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
 
     private readonly List<string> _phones = [];
     private WebApplicationFactory<Program> _host = null!;
+
+    /// <summary>Per ticket issued: was its audit row already committed when Redis was asked to store it.</summary>
+    private readonly ConcurrentDictionary<(Guid User, int Institution), bool> _auditedBeforeIssue = new();
+
+    /// <summary>Users whose ticket the store refuses, as Redis does when it is unreachable.</summary>
+    private readonly ConcurrentDictionary<Guid, bool> _storeDownFor = new();
     private ConnectionMultiplexer _redis = null!;
 
     public async Task InitializeAsync()
@@ -69,8 +78,48 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
             builder.UseSetting("ConnectionStrings:Redis", database.RedisConnectionString);
             builder.UseSetting("Jwt:SigningKey", SigningKey);
             builder.ConfigureTestServices(services =>
-                services.AddSingleton<IStartupFilter>(new LoopbackConnectionStartupFilter()));
+            {
+                services.AddSingleton<IStartupFilter>(new LoopbackConnectionStartupFilter());
+
+                // The real Redis tickets, watched: each issue records whether its audit row was
+                // already committed, read on a connection of its own (RCSI: committed rows only).
+                services.RemoveAll<ISupportTickets>();
+                services.AddSingleton<ISupportTickets>(provider => new AuditWatchingTickets(
+                    ActivatorUtilities.CreateInstance<RedisSupportTickets>(provider),
+                    database.ConnectionString,
+                    _auditedBeforeIssue,
+                    _storeDownFor));
+            });
         });
+    }
+
+    private sealed class AuditWatchingTickets(
+        ISupportTickets inner,
+        string connectionString,
+        ConcurrentDictionary<(Guid User, int Institution), bool> auditedBeforeIssue,
+        ConcurrentDictionary<Guid, bool> storeDownFor) : ISupportTickets
+    {
+        public async Task<bool> IssueAsync(Guid userId, int institutionId, CancellationToken cancellationToken = default)
+        {
+            auditedBeforeIssue[(userId, institutionId)] = await AuditRowsAsync(connectionString, userId, institutionId, "SupportTicketIssued") > 0;
+            return !storeDownFor.ContainsKey(userId) && await inner.IssueAsync(userId, institutionId, cancellationToken);
+        }
+
+        public Task<bool> SpendAsync(Guid userId, int institutionId, CancellationToken cancellationToken = default) =>
+            inner.SpendAsync(userId, institutionId, cancellationToken);
+    }
+
+    /// <summary>The platform's outbox rows that record <paramref name="change"/> by <paramref name="by"/> at one institution.</summary>
+    private static async Task<int> AuditRowsAsync(string connectionString, Guid by, int institutionId, string change)
+    {
+        await using var connection = new SqlConnection(connectionString);
+        return await connection.ExecuteScalarAsync<int>(
+            """
+            SELECT COUNT(*) FROM core.OutboxMessages
+            WHERE EventType = 'PlatformAdministration' AND AggregateId = @institution
+              AND JSON_VALUE(Payload, '$.change') = @change AND JSON_VALUE(Payload, '$.by') = @by;
+            """,
+            new { institution = institutionId.ToString(CultureInfo.InvariantCulture), change, by = by.ToString("D") });
     }
 
     public async Task DisposeAsync()
@@ -266,6 +315,44 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
         Assert.Contains("ACCESS.MEMBERS.EDIT", held);
         Assert.Contains("INSTITUTION.PROFILE.EDIT", held);
         Assert.DoesNotContain("PLATFORM.USERS.VIEW", held); // the platform's own hold only outside
+    }
+
+    [Fact]
+    public async Task ATicketIsStoredOnlyOnceItsAuditRowIsCommitted()
+    {
+        // Access audit, 2026-11-08: the ticket used to be stored first, so a failed save left a
+        // working way into the institution that no audit row named.
+        var admin = await LogInAsync(await AccountAsync("PLATFORM_ADMIN"));
+        await SteppedUpAsync(admin);
+
+        using (var ticket = await SendAsync(admin, HttpMethod.Post, "/api/admin/institutions/alpha-temple/support"))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, ticket.StatusCode);
+        }
+
+        Assert.True(_auditedBeforeIssue[(admin.UserId, database.AlphaInstitutionId)]);
+        Assert.Equal(1, await AuditRowsAsync(database.ConnectionString, admin.UserId, database.AlphaInstitutionId, "SupportTicketIssued"));
+        Assert.Equal(0, await AuditRowsAsync(database.ConnectionString, admin.UserId, database.AlphaInstitutionId, "SupportTicketFailed"));
+    }
+
+    [Fact]
+    public async Task ATicketTheStoreCouldNotKeep_IsRecordedAsFailed_AndOpensNothing()
+    {
+        var admin = await LogInAsync(await AccountAsync("PLATFORM_ADMIN"));
+        await SteppedUpAsync(admin);
+        _storeDownFor[admin.UserId] = true;
+
+        using (var ticket = await SendAsync(admin, HttpMethod.Post, "/api/admin/institutions/alpha-temple/support"))
+        {
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, ticket.StatusCode);
+            Assert.Equal("unavailable", await CodeOf(ticket));
+        }
+
+        Assert.Equal(1, await AuditRowsAsync(database.ConnectionString, admin.UserId, database.AlphaInstitutionId, "SupportTicketIssued"));
+        Assert.Equal(1, await AuditRowsAsync(database.ConnectionString, admin.UserId, database.AlphaInstitutionId, "SupportTicketFailed"));
+        var (entered, _, code) = await SessionPostAsync("switch-institution", admin, new { institution = "alpha-temple" });
+        Assert.Equal(HttpStatusCode.Forbidden, entered);
+        Assert.Equal("institution_not_available", code);
     }
 
     [Fact]

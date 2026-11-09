@@ -4,7 +4,7 @@ The donor app: React Native + Expo (SDK 58), TypeScript strict, Expo Router. It 
 the same ASP.NET Core API as `web/` and holds **no business logic** — every rule lives in the API.
 Design and scope: [`docs/plans/PHASE-F-MOBILE.md`](../docs/plans/PHASE-F-MOBILE.md).
 
-## What is built (F.1 to F.4)
+## What is built (F.1 to F.8)
 
 - Sign in with a password or a texted code; donor signup (number → code → details → consent).
 - Tabs, open to anyone: Explore (the listed institutions, with a filter), My bookings (asks a
@@ -17,6 +17,17 @@ Design and scope: [`docs/plans/PHASE-F-MOBILE.md`](../docs/plans/PHASE-F-MOBILE.
 - Sessions through `/api/auth/mobile/*`: the refresh token is kept in the iOS Keychain / Android
   Keystore (`expo-secure-store`) and sent in the request body, never as a cookie
   (`src/auth/session-client.ts`, plan F3).
+- Forgot password (a texted code) and change password from Profile (F.2b).
+- Push notifications (F.5): a Profile switch, the Android channel made before the token is asked
+  for, and the device registered with `PUT /api/me/devices`. Real delivery still needs an EAS
+  project id, `google-services.json`, an FCM key and a development build; Expo Go cannot receive it.
+- Near me (F.6a): the phone's location, asked in the foreground only, sorts the places by distance;
+  the map (F.6b) shows them as numbered pins on OpenStreetMap tiles (Leaflet in a WebView).
+- Staff (F.7): a Today tab with the day's sponsors and "mark served", for staff whose permissions
+  allow it; Profile switches between personal and an institution.
+- A regular (standing) day cannot be cancelled from the app; the API says why (F.0, `regular_day`).
+- The look of the web's redesign (U.1, U.2): a day frame on Explore and Today, ledger lines in
+  My bookings.
 
 ## Run it
 

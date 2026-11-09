@@ -11,6 +11,7 @@ import { CloseIcon, InstitutionIcon, PlusIcon, ShieldIcon } from "@/components/u
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
 import { grantPlatformRole, listPlatformRoles, listUsers, revokePlatformRole, setUserSuspended, type AdminResult } from "@/lib/admin/api";
+import { outranksAccount } from "@/lib/admin/ranks";
 import { parseUserQuery, userKinds, userStatuses, type UserQuery } from "@/lib/admin/list-query";
 import type { AdminPage, AdminUser, PlatformRole } from "@/lib/admin/types";
 import { usePermissions } from "@/lib/permissions/usePermissions";
@@ -234,7 +235,8 @@ export function UsersScreen() {
                         </DropdownMenu.Portal>
                       </DropdownMenu.Root>
                     )}
-                    {user.status === "Suspended" ? (
+                    {/* The API suspends only an account the caller outranks (RankNotJunior). */}
+                    {outranksAccount(user, roles) && (user.status === "Suspended" ? (
                       <Button
                         variant="ghost"
                         loading={busy === `${user.id}:status`}
@@ -253,7 +255,7 @@ export function UsersScreen() {
                       >
                         {t("suspend")}
                       </Button>
-                    )}
+                    ))}
                   </div>
                 )}
               </li>

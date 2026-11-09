@@ -2135,3 +2135,11 @@ section above, which covers the copied `Discover` keys, does not cover these.
 | `Discover.filterHint` | By name, type, town or district, in any language. | නම, වර්ගය, නගරය හෝ දිස්ත්‍රික්කය අනුව, ඕනෑම භාෂාවකින්. | பெயர், வகை, நகரம் அல்லது மாவட்டம் மூலம், எந்த மொழியிலும். |
 | `Discover.noneListed` | No places are listed yet. Soon, they will be. | තවම කිසිදු ස්ථානයක් ලැයිස්තුගත කර නැත. ඉක්මනින් ඒවා එකතු වේ. | இன்னும் எந்த இடமும் பட்டியலிடப்படவில்லை. விரைவில் வரும். |
 | `Discover.noneMatch` | Nothing matches that search. | එම සෙවීමට ගැළපෙන කිසිවක් නැත. | அந்தத் தேடலுக்குப் பொருந்துவது எதுவும் இல்லை. |
+
+## Invitation to a place that is not live (2026-11-08, `Access.errors`, hardening)
+
+Shown when someone accepts a staff invitation after the institution was suspended or closed.
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) |
+|---|---|---|---|
+| `Access.errors.institution_not_active` | This place is not taking new staff right now, so the invitation stays open. | මෙම ස්ථානය දැනට නව කාර්ය මණ්ඩලය භාර නොගනී; ආරාධනාව විවෘතව පවතී. | இந்த இடம் தற்போது புதிய பணியாளர்களை ஏற்கவில்லை; அழைப்பு திறந்தே இருக்கும். |

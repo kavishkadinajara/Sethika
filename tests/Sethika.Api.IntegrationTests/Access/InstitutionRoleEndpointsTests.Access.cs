@@ -150,6 +150,45 @@ public sealed partial class InstitutionRoleEndpointsTests
         Assert.Contains(await ListAsync(owner, "/api/institution/members"), m => m.GetProperty("userId").GetGuid() == invitee.UserId);
     }
 
+    [Theory]
+    // Access audit, 2026-11-08: an invitation sent while the institution was live cannot be accepted
+    // once it is not. Each status the permissions view leaves out, and deletion on its own.
+    [InlineData("Suspended", false)]
+    [InlineData("Deactivated", false)]
+    [InlineData("Active", true)]
+    public async Task AnInvitationToAnInstitutionNoLongerLiveCannotBeAccepted_AndStaysOpen(string status, bool deleted)
+    {
+        var owner = await MemberAsync("T_OWNER");
+        var invitee = await MemberAsync(roleCode: null);
+        await SteppedUpAsync(owner);
+
+        using var invited = await SendAsync(owner, HttpMethod.Post, "/api/institution/invitations", new { phone = invitee.Phone, role = "T_STAFF" });
+        Assert.Equal(HttpStatusCode.Created, invited.StatusCode);
+        var id = (await BodyOf(invited)).GetProperty("id").GetGuid();
+
+        const string SetStatus = "EXEC sys.sp_set_session_context @key = N'IsPlatform', @value = 1; " +
+            "UPDATE org.Institutions SET Status = @status, IsDeleted = @deleted WHERE Id = @alpha;";
+        await ExecuteAsync(SetStatus, new { status, deleted, alpha = database.AlphaInstitutionId });
+        try
+        {
+            using var refused = await SendAsync(invitee, HttpMethod.Post, $"/api/me/invitations/{id}/accept");
+
+            await AssertRefusedAsync(refused, HttpStatusCode.Conflict, "institution_not_active");
+            Assert.Equal("Pending", await StatusOfAsync(id));
+            Assert.Equal(0, await ActiveRolesAsync(invitee, "T_STAFF"));
+        }
+        finally
+        {
+            await ExecuteAsync(SetStatus, new { status = "Active", deleted = false, alpha = database.AlphaInstitutionId });
+        }
+
+        // The control: the same invitation, the institution live again, is accepted. So the refusal
+        // above was the institution's state and nothing else about the invitation.
+        using var accepted = await SendAsync(invitee, HttpMethod.Post, $"/api/me/invitations/{id}/accept");
+        Assert.Equal(HttpStatusCode.NoContent, accepted.StatusCode);
+        Assert.Equal(1, await ActiveRolesAsync(invitee, "T_STAFF"));
+    }
+
     [Fact]
     public async Task InvitingNeedsAStepUp()
     {
