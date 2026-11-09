@@ -26,7 +26,7 @@ shaped the design, and each is enforced below the screens:
 | # | Proposal v3 | Where it lives |
 |---|---|---|
 | 1 | "Institutions record both money and in-kind donations and issue receipts" | `/giving/donations`, `DonationHandler`, the printable `/receipts/[publicId]` (section 3) |
-| 2 | "Online donation payments through PayHere" | `/giving/payments`, the give sheet on `/i/[slug]`, `OnlinePaymentHandler` (sections 4 and 5). Built and tested with signed notifications; **no live sandbox payment was made** (section 11) |
+| 2 | "Online donation payments through PayHere" | `/giving/payments`, the give sheet on `/i/[slug]`, `OnlinePaymentHandler` (sections 4 and 5). Built and tested with signed notifications, and one real PayHere sandbox payment was made end to end on 2026-11-09 (section 11) |
 | 3 | "Publish specific needs ... on a public needs board. Donors pledge against a need, and the platform tracks progress until it is fulfilled" | `/giving/needs`, `/needs`, `NeedHandler`, `PledgeHandler`, `NeedCounters` (section 6) |
 | 4 | "Monthly booking, utilisation and donation reports, exportable for committee meetings" | `/reports`, its CSV and print layout, `MonthlyReportHandler` (section 7) |
 | 5 | "Role-based dashboards" | The giving line on the institution's Day Ledger, "My giving" on the donor's home (section 7) |
@@ -190,6 +190,30 @@ secret, so that order cannot be checked and stays pending: no receipt, in no tot
 The public page has no session that could read a merchant, so `/i/[slug]` learns only a yes or a no
 through a one-answer platform read, `SqlOnlineGiving` (M36). Institutions with no enabled merchant show
 no "Give online", and the API answers `online_giving_off`.
+
+### Alternatives considered
+
+Platforms that take payments for many sellers follow one of three models.
+
+| Model | Who holds the gateway account | Money flow | Examples |
+|---|---|---|---|
+| Aggregator (marketplace) | The platform only | Donor → platform's account → payout to the seller, less commission, on a schedule | Daraz, PickMe, Airbnb |
+| Each seller's own merchant | Every seller | Donor → seller's own account; the platform only signs the form and reads the notification | **Sethika**, Shopify and WooCommerce stores |
+| Connected accounts (split payments) | The platform, with sellers onboarded under it | The gateway splits each payment between the seller and the platform | Stripe Connect, PayPal for Marketplaces |
+
+The aggregator model gives the easiest onboarding, since a seller needs only a bank account, but it
+makes the platform the merchant of record: it holds other people's money, so it owns payouts,
+reconciliation, refunds, chargebacks and whatever financial regulation applies to that. A marketplace
+earns a commission and has a reason to hold funds (until delivery, through the return period). Sethika
+takes no commission and has nothing to deliver, and a solo student project cannot carry a finance and
+legal function. Its own-merchant model also gives donors a simple promise: the money goes straight to
+the institution, whose name is on the card statement.
+
+The cost is onboarding: an institution that wants online gifts must open its own PayHere account first.
+That is softened by online giving being optional, since cash and bank transfers are recorded with the
+same receipts (section 3) and bookings never depend on a gateway (S2). Connected accounts would remove
+that cost without making Sethika hold money, but Stripe does not serve businesses in Sri Lanka, and
+whether PayHere offers a split-payment product was not checked. That is future work.
 
 ## 6. Needs and pledges: counted inventory again
 
@@ -391,13 +415,18 @@ row locks behind the counters cannot be faked. No test calls PayHere.
 
 ## 11. Limitations and what was left out
 
-**No real payment has been made.** Without a PayHere account (Q1) the form has never been accepted by
-PayHere itself. The signatures match its documentation and the flow is proved with signed notifications,
-but the first live sandbox payment is still owed. Locally the notification also needs a tunnel, and each
-institution must add Sethika's address under PayHere's Integrations and wait for approval, because
-PayHere's secret is per domain. The settings screen says so.
+**One real sandbox payment, and only the success path.** On 2026-11-09 a PayHere sandbox merchant was
+set up and one payment of Rs. 5,000.00 was made with PayHere's test Visa card. PayHere accepted the form
+(the signature, and the email, address and city of M33), posted its notification through an ngrok
+tunnel, and the order became `Paid` with receipt `RCP-2026-000003`, checked in the database. PayHere
+refuses a subdomain as a merchant domain, so the root `ngrok-free.dev` was registered, not the tunnel's
+own host; the API's public addresses stay the full tunnel address. Only success was walked live: a
+cancelled or declined payment, a retried notification and a second institution's merchant are proved by
+the signed-notification tests alone. Before going live, each institution needs its own live PayHere
+account with Sethika's domain added (PayHere's secret is per domain), and the API needs
+`Payments:PayHere:Sandbox` set to `false`. The settings screen says so.
 
-From the plan's cut order, that live walk is the only thing not done. Left out, by decision:
+Left out, by decision:
 
 - The gratitude wall (plan 08 Q1), donor rankings and any public list of donors.
 - Refunds from Sethika: they happen in the institution's own PayHere portal, and staff then void the gift.

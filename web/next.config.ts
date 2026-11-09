@@ -19,6 +19,9 @@ const nextConfig: NextConfig = {
   // Development only: the "N" indicator's default corner (bottom left) covers the sidebar's fold
   // button (plan 05, R2).
   devIndicators: { position: "bottom-right" },
+  // Development only: `next dev` refuses another host's requests for its own resources, so a tunnel
+  // for a PayHere sandbox payment (docs/LOCAL_SETUP.md §5) names its host in .env.local.
+  allowedDevOrigins: process.env.DEV_TUNNEL_HOST ? [process.env.DEV_TUNNEL_HOST] : [],
   // W1 (hardening 2026-11-08): framing refused, sniffing off, referrer trimmed; lib/security-headers.ts.
   async headers() {
     return securityHeaderRules();

@@ -310,10 +310,15 @@ institutions approved earlier (Q4), a printable receipt (Q5), the trigger (Q6).
 Platform reach from a request grew by `PlatformPledges`, `PlatformPayments` and `SqlOnlineGiving`, each keyed
 by what the caller holds.
 
-**Not built, and the report says so** (plan 09 §6): a live sandbox payment (no PayHere account, so the form has
-never been accepted by PayHere itself); the gratitude wall and any public list of donors; refunds from
+**Not built, and the report says so** (plan 09 §6): the gratitude wall and any public list of donors; refunds from
 Sethika; recurring online gifts; tax receipts; a key vault for M21's keys; need images; pledge reminders;
 charts and per-donor analytics; Excel files; Phase D in the mobile app.
+
+**Sandbox payment, 2026-11-09.** One real PayHere sandbox payment (Rs. 5,000, test Visa) went through end to
+end over an ngrok tunnel: notification accepted, order `Paid`, receipt `RCP-2026-000003`. PayHere refuses
+subdomains as merchant domains, so the root `ngrok-free.dev` is registered. `next dev` refuses a tunnel host's
+requests, so `next.config.ts` reads `allowedDevOrigins` from `DEV_TUNNEL_HOST` (`web/.env.local`, unset in
+production). Only the success path was walked live.
 
 ## Hardening (2026-11-08)
 
@@ -402,5 +407,5 @@ tables above once the code exists and the choice has held.
 | `docs/plans/06-DISCOVERY.md` — public institution pages, cross-institution search, Redis GEO, the month view and the map | `rcsi-on` (with `READ_COMMITTED_SNAPSHOT`, D11) | B.1-B.4 built and committed; decisions summarised above under "Discovery (Phase B)" |
 | `docs/plans/07-ENGAGEMENT.md` — yearly bookings, the Memorial Dana Planner, live slot updates (SignalR), preferred institutions, co-sponsors | `phase-c-engagement` | C.1-C.5 built and committed; decisions summarised above under "Engagement (Phase C)" |
 | `docs/plans/08-STANDING-SPONSORS.md` — the institution's own regular donors on any pattern, day requests, swaps | `standing-sponsors` (after Phase C's PR) | K.1-K.5 built (K1-K37); decisions summarised above under "Standing sponsors (plan 08)" |
-| `docs/plans/09-GIVING.md` — donations and receipts, PayHere with each institution's own merchant, the needs board and pledges, the monthly report | `standing-sponsors` (one pull request with plan 08) | D.1-D.5 done (M1-M41), pull request #37 to `develop`; decisions summarised above under "Giving (Phase D)"; no live PayHere sandbox payment has been made (Q1) |
+| `docs/plans/09-GIVING.md` — donations and receipts, PayHere with each institution's own merchant, the needs board and pledges, the monthly report | `standing-sponsors` (one pull request with plan 08) | D.1-D.5 done (M1-M41), pull request #37 to `develop`; decisions summarised above under "Giving (Phase D)"; one real PayHere sandbox payment made 2026-11-09 (success path only) |
 | `docs/plans/PHASE-F-MOBILE.md` — donor mobile app (Expo), mobile sessions, push notifications, near me and the map, staff's Today tab | `ccr-79f10240-uk4n3v`, `mobile-booking`, `mobile-f5` | F.1-F.4 merged (PR #9, #11). F.0, U.1, F.5a, F.5b, F.2b, F.7, F.6a, U.2, F.6b and F.8 built on `mobile-f5` (F1-F73), pull request to `develop` to follow; report chapter `docs/report/PHASE-F.md`. **Walked through on the user's Android phone 2026-11-07 (Expo Go, real API, real Text.lk texts), no problems found; nothing was booked, cancelled or served there, and push has never reached a phone.** Real push waits on the EAS and Firebase steps (plan 10.6). A failed SMS is now resent on retry (F74, after the full run). Open: the real Privacy Policy must name OpenStreetMap |
