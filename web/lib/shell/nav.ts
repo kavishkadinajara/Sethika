@@ -39,14 +39,14 @@ export type ItemKey =
  */
 export type NavItem = { key: ItemKey; href: string; icon: NavIcon; screen?: string };
 
-/** A module of the catalogue: a group in the flyout's accordion. */
+/** A module of the catalogue. The sidebar lists its screens under the section, without a heading of its own. */
 export type NavGroup = { key: GroupKey; items: NavItem[] };
 
-/** A portal of the catalogue: one icon on the rail. A section with an href is a plain link. */
+/** A portal of the catalogue: a named section of the sidebar. A section with an href is a plain link. */
 export type NavSection = { key: SectionKey; icon: NavIcon; href?: string; groups: NavGroup[] };
 
 /**
- * The menu (plan 04, W2): rail section = portal, group = module, link = screen. Only built
+ * The menu (plan 04, W2): section = portal, group = module, link = screen. Only built
  * screens are listed; add a screen here in the same change that builds it.
  */
 export const navTree: readonly NavSection[] = [
@@ -130,11 +130,14 @@ export function isActive(href: string, pathname: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** The section whose screen the user is on, for the rail's highlight. */
-export function activeSectionKey(sections: readonly NavSection[], pathname: string): SectionKey | null {
-  for (const section of sections) {
-    if (section.href !== undefined && isActive(section.href, pathname)) return section.key;
-    if (section.groups.some((group) => group.items.some((item) => isActive(item.href, pathname)))) return section.key;
-  }
-  return null;
+/**
+ * The href of the menu link for the page the user is on, for the sidebar's glide pill: the
+ * longest one that matches, so a page below a link marks that link. Null off the menu.
+ */
+export function activeHref(sections: readonly NavSection[], pathname: string): string | null {
+  const hrefs = sections.flatMap((section) => [
+    ...(section.href !== undefined ? [section.href] : []),
+    ...section.groups.flatMap((group) => group.items.map((item) => item.href)),
+  ]);
+  return hrefs.filter((href) => isActive(href, pathname)).sort((a, b) => b.length - a.length)[0] ?? null;
 }

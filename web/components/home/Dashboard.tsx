@@ -18,7 +18,7 @@ import {
   UsersIcon,
 } from "@/components/ui/icons";
 import { Link } from "@/i18n/navigation";
-import { COLOMBO, colomboToday } from "@/lib/bookings/calendar";
+import { COLOMBO, colomboToday, parts } from "@/lib/bookings/calendar";
 import { useSession } from "@/lib/auth/useSession";
 import { usePermissions } from "@/lib/permissions/usePermissions";
 import { partOfDay } from "@/lib/shell/greeting";
@@ -123,20 +123,22 @@ function Greeting() {
       : t("asDonor");
   const time = new Intl.DateTimeFormat("en-GB", { timeZone: COLOMBO, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
 
+  const today = colomboToday(now);
+
   return (
-    <section
-      className={cn(
-        "relative overflow-hidden rounded-bowl p-6 text-ivory shadow-lift sm:p-8",
-        // A brand panel (DESIGN.md): Estate Green in both themes, a tonal gradient of its own green.
-        "bg-[linear-gradient(135deg,#1f7356_0%,var(--color-estate)_50%,#0f3d2e_100%)]",
-        "before:absolute before:-top-px before:left-6 before:h-[3px] before:w-14 before:rounded-b-full before:bg-accent sm:before:left-8",
-      )}
-    >
-      <svg aria-hidden viewBox="0 0 28 19" className="pointer-events-none absolute -right-8 -bottom-16 w-80 text-white/6" fill="currentColor">
-        <path d="M2 5h24a12 11 0 0 1-24 0z" />
-      </svg>
-      <div className="relative flex flex-wrap items-end justify-between gap-6">
-        <div className="grid gap-2">
+    <section className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
+      <div
+        className={cn(
+          "relative overflow-hidden rounded-bowl p-6 text-ivory shadow-lift sm:p-8",
+          // A brand panel (DESIGN.md): Estate Green in both themes, a tonal gradient of its own green.
+          "bg-[linear-gradient(135deg,#1f7356_0%,var(--color-estate)_50%,#0f3d2e_100%)]",
+          "before:absolute before:-top-px before:left-6 before:h-[3px] before:w-14 before:rounded-b-full before:bg-accent sm:before:left-8",
+        )}
+      >
+        <svg aria-hidden viewBox="0 0 28 19" className="pointer-events-none absolute -right-8 -bottom-16 w-80 text-white/6" fill="currentColor">
+          <path d="M2 5h24a12 11 0 0 1-24 0z" />
+        </svg>
+        <div className="relative grid gap-2">
           <h1 className="text-3xl leading-tight font-semibold sm:text-4xl">{t(partOfDay(now))}!</h1>
           <p className="text-lg text-ivory/85">{name ? t("welcome", { name }) : t("welcomeNoName")}</p>
           <p className="font-tagline text-lg text-ivory/90 italic">{role}</p>
@@ -146,9 +148,18 @@ function Greeting() {
             </p>
           )}
         </div>
-        <div className="grid justify-items-start gap-1 sm:justify-items-end">
-          <span className="font-tagline text-5xl leading-none tabular-nums sm:text-6xl">{time}</span>
-          <span className="text-base text-ivory/80">{dates.full(colomboToday(now))}</span>
+      </div>
+
+      {/* Today and now, as two tiles beside the greeting (two under it on a phone). */}
+      <div className="grid grid-cols-2 gap-4 md:w-80">
+        <div className="grid content-center justify-items-center gap-1 rounded-bowl border border-hairline bg-surface p-4 text-center shadow-lift">
+          <span className="text-5xl leading-none font-semibold text-brand tabular-nums">{parts(today).day}</span>
+          <span className="text-base font-medium text-fg">{dates.weekday(today, "long")}</span>
+          <span className="text-sm text-muted">{dates.monthYear(today)}</span>
+          <span className="sr-only">{dates.full(today)}</span>
+        </div>
+        <div className="grid content-center justify-items-center gap-1 rounded-bowl border border-hairline bg-surface p-4 text-center shadow-lift">
+          <span className="font-tagline text-5xl leading-none text-brand italic tabular-nums">{time}</span>
         </div>
       </div>
     </section>

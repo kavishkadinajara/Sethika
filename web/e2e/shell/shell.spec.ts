@@ -18,7 +18,7 @@ async function shot(page: Page, project: string, name: string) {
   await page.screenshot({ path: path.join(screens, `${project}-${name}.png`), fullPage: true });
 }
 
-/** The menu's sections and links as the person sees them: the rail's flyouts, or the phone's sheet. */
+/** The menu's links as the person sees them: the sidebar, or the phone's sheet. */
 async function menuLinks(page: Page): Promise<string[]> {
   if (isPhone(page)) {
     await page.getByRole("button", { name: "Open the menu" }).click();
@@ -27,20 +27,10 @@ async function menuLinks(page: Page): Promise<string[]> {
     await sheet.getByRole("button", { name: "Close" }).click();
     return links.map((l) => l.trim());
   }
-  const rail = page.getByRole("navigation", { name: "Main menu" });
-  // Right after a switch the session reloads and the rail is briefly gone: read it once it is back.
-  await expect(rail.getByRole("link").first()).toBeVisible();
-  const found: string[] = [];
-  for (const control of await rail.getByRole("link").all()) found.push((await control.getAttribute("aria-label")) ?? "");
-  for (const control of await rail.getByRole("button").all()) {
-    await control.click();
-    const flyout = page.getByRole("dialog");
-    await expect(flyout).toBeVisible();
-    found.push(...(await flyout.getByRole("link").allTextContents()).map((l) => l.trim()));
-    await page.keyboard.press("Escape");
-    await expect(flyout).toBeHidden();
-  }
-  return found;
+  const sidebar = page.getByRole("navigation", { name: "Main menu" });
+  // Right after a switch the session reloads and the sidebar is briefly gone: read it once it is back.
+  await expect(sidebar.getByRole("link").first()).toBeVisible();
+  return (await sidebar.getByRole("link").allTextContents()).map((l) => l.trim());
 }
 
 for (const locale of ["en", "si", "ta"] as const) {
@@ -78,49 +68,32 @@ test("a donor's menu holds giving, not an institution's or the platform's @phone
   expect(links).not.toContain("Registration requests");
 });
 
-test("the flyout takes a donor to a screen and closes, marking where they are", async ({ applicant }, testInfo) => {
+test("the sidebar takes a donor to a screen, and the pill glides to it", async ({ applicant }, testInfo) => {
   const { page } = applicant;
   await page.goto("/");
-  const rail = page.getByRole("navigation", { name: "Main menu" });
-  await rail.getByRole("button", { name: "Giving" }).click();
-  const flyout = page.getByRole("dialog", { name: "Giving" });
-  await expect(flyout.getByRole("heading", { name: "Meals" })).toBeVisible();
-  await shot(page, testInfo.project.name, "en-flyout-giving");
+  const sidebar = page.getByRole("navigation", { name: "Main menu" });
+  await expect(sidebar.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
+  await expect(sidebar.getByRole("region", { name: "Giving" })).toBeVisible();
 
-  await flyout.getByRole("link", { name: "My bookings" }).click();
+  await sidebar.getByRole("link", { name: "My bookings" }).click();
   await expect(page).toHaveURL(/\/bookings\/mine$/);
-  await expect(flyout).toBeHidden();
   await expect(page.getByRole("heading", { level: 1, name: "My bookings" })).toBeVisible();
+  const here = sidebar.getByRole("link", { name: "My bookings" });
+  await expect(here).toHaveAttribute("aria-current", "page");
+  await expect(sidebar.getByRole("link", { name: "Dashboard" })).not.toHaveAttribute("aria-current", "page");
 
-  await rail.getByRole("button", { name: "Giving" }).click();
-  await expect(page.getByRole("dialog", { name: "Giving" }).getByRole("link", { name: "My bookings" })).toHaveAttribute("aria-current", "page");
-});
-
-test("a rail icon's name shows on hover, above the page's cards", async ({ applicant }) => {
-  const { page } = applicant;
-  await page.goto("/");
-  // The greeting panel beside the rail is what covered the tooltips: wait for it, not the
-  // placeholder shown while the session loads (which has nothing positioned to cover them).
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Good (morning|afternoon|evening)!/);
-  const rail = page.getByRole("navigation", { name: "Main menu" });
-  for (const control of [...(await rail.getByRole("link").all()), ...(await rail.getByRole("button").all())]) {
-    await control.hover();
-    const tooltip = control.locator("span[aria-hidden]");
-    await expect(tooltip).toHaveCSS("opacity", "1");
-    // The topmost element at the tooltip's centre is the tooltip itself, not the greeting or a card.
-    const box = (await tooltip.boundingBox())!;
-    const onTop = await tooltip.evaluate(
-      (el, { x, y }) => {
-        // elementFromPoint skips pointer-events: none, which the tooltip has; lift it just for the probe.
-        (el as HTMLElement).style.pointerEvents = "auto";
-        const hit = document.elementFromPoint(x, y);
-        (el as HTMLElement).style.pointerEvents = "";
-        return hit !== null && (hit === el || el.contains(hit));
-      },
-      { x: box.x + box.width / 2, y: box.y + box.height / 2 },
-    );
-    expect(onTop, `${await control.getAttribute("aria-label")}'s tooltip is covered`).toBe(true);
-  }
+  // Once the glide settles, the pill's band is the link's own box.
+  await expect
+    .poll(async () => {
+      const link = await here.evaluate((el) => ({ top: (el as HTMLElement).offsetTop, bottom: (el as HTMLElement).offsetTop + (el as HTMLElement).offsetHeight }));
+      const pill = await sidebar.locator(".glide").evaluate((el) => {
+        const style = getComputedStyle(el);
+        return { top: parseFloat(style.getPropertyValue("--glide-start")), bottom: parseFloat(style.getPropertyValue("--glide-end")) };
+      });
+      return pill.top === link.top && pill.bottom === link.bottom;
+    })
+    .toBe(true);
+  await shot(page, testInfo.project.name, "en-sidebar-my-bookings");
 });
 
 test("an institution owner's menu holds their institution, and the bar names it @phone", async ({ page, baseURL }, testInfo) => {

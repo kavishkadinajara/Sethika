@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { activeSectionKey, isActive, navTree, visibleNav, type NavSection } from "./nav";
+import { activeHref, isActive, navTree, visibleNav, type NavSection } from "./nav";
 
 const holding =
   (...codes: string[]) =>
@@ -54,13 +54,13 @@ describe("active link", () => {
     expect(isActive("/", "/apply")).toBe(false);
   });
 
-  it("finds the section of the screen the user is on", () => {
+  it("finds the menu link of the page the user is on", () => {
     const all = visibleNav(() => true);
-    expect(activeSectionKey(all, "/bookings/calendar")).toBe("institution");
-    expect(activeSectionKey(all, "/bookings/mine")).toBe("giving");
-    expect(activeSectionKey(all, "/admin/registrations/REQ-2026-000001")).toBe("platform");
-    expect(activeSectionKey(all, "/")).toBe("dashboard");
-    expect(activeSectionKey(all, "/account/password")).toBeNull();
+    expect(activeHref(all, "/bookings/calendar")).toBe("/bookings/calendar");
+    expect(activeHref(all, "/bookings/mine")).toBe("/bookings/mine");
+    expect(activeHref(all, "/admin/registrations/REQ-2026-000001")).toBe("/admin/registrations");
+    expect(activeHref(all, "/")).toBe("/");
+    expect(activeHref(all, "/account/password")).toBeNull();
   });
 });
 
