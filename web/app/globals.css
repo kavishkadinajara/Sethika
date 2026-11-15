@@ -13,8 +13,9 @@
     "dark" (set from the `theme` cookie before first paint, see components/theme) overrides it.
 
     Contrast, measured (light / dark):
-      fg on canvas 13.9 / 13.2 · muted 6.1 / 7.8 · brand 8.4 / 8.4 · danger 6.0 / 7.5
-      on-primary 8.4 / 8.6 · on-accent 6.9 / 7.7 · line (input border) 3.1 / 4.5
+      fg on canvas 13.9 / 16.0 · muted 6.1 / 8.1 · brand 8.4 / 10.1 · danger 6.0 / 9.0
+      on-primary 8.4 / 8.6 · on-accent 6.9 / 7.7 · line (input border) 3.1 / 4.1
+      In dark, on surface: fg 14.7 · muted 7.4 · line 3.8.
     Gold on ivory is only 2.0:1, so accent is never text or a boundary on the light canvas.
     The font variables come from lib/fonts.ts (next/font), set on <html>.                 */
 /*  Tailwind's own `dark:` follows the OS only and would ignore the theme switcher; this one
@@ -177,7 +178,9 @@ body {
   font-family: var(--font-sans);
 }
 
-/*  Dark theme: the canvas is Deep Ink and the greens lighten so they still read on it.
+/*  Dark theme (2026-11-15): a near-black canvas, neutral with a faint green cast, so the mint
+    greens, the gold and the Estate Green brand panels are the only colour on it. The greens
+    lighten so they still read on it.
     The two blocks below are the same list; generated together, change them together. */
 :root {
   color-scheme: light dark;
@@ -186,14 +189,14 @@ body {
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --color-canvas: #0e2a21;
-  --color-backdrop: #081a14;
-  --color-surface: #15382d;
-  --color-subtle: #1c4237;
-  --color-hairline: #2a5345;
-  --color-line: #6e9384;
-  --color-fg: #f2eee3;
-  --color-muted: #a9beb4;
+  --color-canvas: #121514;
+  --color-backdrop: #0a0c0b;
+  --color-surface: #1a1e1c;
+  --color-subtle: #232826;
+  --color-hairline: #2d3330;
+  --color-line: #6f7a75;
+  --color-fg: #edf0ee;
+  --color-muted: #a4aea9;
   --color-brand: #82d0ac;
   --color-primary: #79cba5;
   --color-primary-strong: #99d9bb;
@@ -203,10 +206,10 @@ body {
   --color-on-accent: #0e2a21;
   --color-danger: #ff9a8c;
   --color-danger-strong: #ffb7ad;
-  --color-danger-soft: #3d1f1a;
+  --color-danger-soft: #36201d;
   --color-on-danger: #2a0c08;
   --color-success: #86d6ae;
-  --color-success-soft: #183f32;
+  --color-success-soft: #18302a;
   --color-scrim: rgb(0 0 0 / 0.6);
   --shadow-lift: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 0 0 / 0.3),
   0 14px 30px -18px rgb(0 0 0 / 0.7);
@@ -216,14 +219,14 @@ body {
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-canvas: #0e2a21;
-    --color-backdrop: #081a14;
-    --color-surface: #15382d;
-    --color-subtle: #1c4237;
-    --color-hairline: #2a5345;
-    --color-line: #6e9384;
-    --color-fg: #f2eee3;
-    --color-muted: #a9beb4;
+    --color-canvas: #121514;
+    --color-backdrop: #0a0c0b;
+    --color-surface: #1a1e1c;
+    --color-subtle: #232826;
+    --color-hairline: #2d3330;
+    --color-line: #6f7a75;
+    --color-fg: #edf0ee;
+    --color-muted: #a4aea9;
     --color-brand: #82d0ac;
     --color-primary: #79cba5;
     --color-primary-strong: #99d9bb;
@@ -233,10 +236,10 @@ body {
     --color-on-accent: #0e2a21;
     --color-danger: #ff9a8c;
     --color-danger-strong: #ffb7ad;
-    --color-danger-soft: #3d1f1a;
+    --color-danger-soft: #36201d;
     --color-on-danger: #2a0c08;
     --color-success: #86d6ae;
-    --color-success-soft: #183f32;
+    --color-success-soft: #18302a;
     --color-scrim: rgb(0 0 0 / 0.6);
     --shadow-lift: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 0 0 / 0.3),
     0 14px 30px -18px rgb(0 0 0 / 0.7);
