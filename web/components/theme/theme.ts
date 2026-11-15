@@ -9,7 +9,7 @@ export const THEME_COOKIE = "sethika_theme";
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
 /** Browser-chrome colour (address bar on phones) per theme: the canvas colour. */
-export const themeColors = { light: "#f7f4ec", dark: "#0e2a21" } as const;
+export const themeColors = { light: "#f7f4ec", dark: "#121514" } as const;
 
 /**
  * Runs in <head> before the first paint (see ThemeScript), so a saved choice never flashes
