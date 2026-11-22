@@ -273,6 +273,7 @@ public sealed class BootstrapCommandTests(SethikaTestDatabase database) : IAsync
     [Theory]
     [InlineData(null, "Platform Admin", "PhoneNumber")]
     [InlineData("not a phone", "Platform Admin", "PhoneNumber")]
+    [InlineData("0112345678", "Platform Admin", "PhoneNumber")] // a landline: no step-up code could reach it (QA DEF-002)
     [InlineData("0771234567", null, "FullName")]
     public async Task MissingDetailsCreateNothing(string? phone, string? fullName, string named)
     {

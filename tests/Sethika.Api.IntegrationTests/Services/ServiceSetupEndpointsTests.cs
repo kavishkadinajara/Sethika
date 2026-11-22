@@ -425,6 +425,11 @@ public sealed class ServiceSetupEndpointsTests(SethikaTestDatabase database) : I
             await SendAsync(Alpha(_alphaOwner), HttpMethod.Post, "/api/institution/leaders", new { displayName = "Rev. Silva", linkAccount = true }),
             "phone");
 
+        // A leader is texted their assignments; a landline would never get one (QA DEF-002).
+        await AssertFieldsAsync(
+            await SendAsync(Alpha(_alphaOwner), HttpMethod.Post, "/api/institution/leaders", new { displayName = "Rev. Silva", phone = "0112345678" }),
+            "phone");
+
         Assert.Equal(0, (await ListAsync(Alpha(_alphaOwner), "/api/institution/leaders")).GetArrayLength());
     }
 
@@ -457,6 +462,118 @@ public sealed class ServiceSetupEndpointsTests(SethikaTestDatabase database) : I
             await SendAsync(Alpha(_alphaOwner), HttpMethod.Put, $"/api/institution/leaders/{leader.PublicId}", new { displayName = "Fr. Stale", version = leader.Version }),
             HttpStatusCode.Conflict,
             "stale");
+    }
+
+    /// <summary>Whether <paramref name="account"/> holds Alpha's LEADER role in force, and their permissions version.</summary>
+    private async Task<(bool Holds, int Version)> LeaderRoleOfAsync(Guid account) =>
+        (await ScalarAsync<int>(
+             """
+             SELECT COUNT(*) FROM auth.UserRoles ur JOIN auth.Roles r ON r.Id = ur.RoleId
+             WHERE ur.UserId = @account AND ur.IsActive = 1 AND r.Code = 'LEADER' AND r.InstitutionId = @alpha;
+             """,
+             new { account, alpha = database.AlphaInstitutionId }) == 1,
+         await ScalarAsync<int>("SELECT PermissionsVersion FROM auth.Users WHERE Id = @account;", new { account }));
+
+    private async Task<HttpStatusCode> ScheduleStatusAsync(Guid account)
+    {
+        using var response = await SendAsync(Alpha(account), HttpMethod.Get, "/api/institution/schedule");
+        return response.StatusCode;
+    }
+
+    [Fact]
+    public async Task LinkingALeaderGivesTheirAccountTheirScheduleAndUnlinkingTakesItBack()
+    {
+        // QA DEF-001: no owner or manager holds SERVICES.MYSCHEDULE.*, so none may hand out LEADER;
+        // the link is how a leader who signs in comes to see their schedule.
+        var first = await UserAsync("Donor");
+        var second = await UserAsync("Donor");
+        var firstPhone = await ScalarAsync<string>("SELECT PhoneNumber FROM auth.Users WHERE Id = @first;", new { first });
+        var secondPhone = await ScalarAsync<string>("SELECT PhoneNumber FROM auth.Users WHERE Id = @second;", new { second });
+        var before = await LeaderRoleOfAsync(first);
+        Assert.False(before.Holds);
+        Assert.Equal(HttpStatusCode.Forbidden, await ScheduleStatusAsync(first));
+
+        var leader = await LeaderAsync("Ven. Sumana", new { displayName = "Ven. Sumana", phone = firstPhone, linkAccount = true });
+        var linked = await LeaderRoleOfAsync(first);
+        Assert.True(linked.Holds);
+        Assert.True(linked.Version > before.Version, "the permission cache must reload");
+        Assert.Equal(HttpStatusCode.OK, await ScheduleStatusAsync(first));
+        Assert.Equal(_alphaOwner, await ScalarAsync<Guid>(
+            "SELECT ur.AssignedBy FROM auth.UserRoles ur JOIN auth.Roles r ON r.Id = ur.RoleId WHERE ur.UserId = @first AND ur.IsActive = 1 AND r.Code = 'LEADER';",
+            new { first }));
+
+        // Off the roster they keep it: they may still hold appointments to answer for.
+        string version;
+        using (var off = await SendAsync(Alpha(_alphaOwner), HttpMethod.Post, $"/api/institution/leaders/{leader.PublicId}/deactivate"))
+        {
+            Assert.Equal(HttpStatusCode.OK, off.StatusCode);
+            version = (await BodyOf(off)).GetProperty("version").GetString()!;
+        }
+
+        Assert.True((await LeaderRoleOfAsync(first)).Holds);
+
+        // An edit that keeps the same account touches neither the role nor the permission cache.
+        var kept = await LeaderRoleOfAsync(first);
+        using (var renamed = await SendAsync(Alpha(_alphaOwner), HttpMethod.Put, $"/api/institution/leaders/{leader.PublicId}", new { displayName = "Ven. Sumana Thero", phone = firstPhone, linkAccount = true, version }))
+        {
+            Assert.Equal(HttpStatusCode.OK, renamed.StatusCode);
+            version = (await BodyOf(renamed)).GetProperty("version").GetString()!;
+        }
+
+        Assert.Equal(kept, await LeaderRoleOfAsync(first));
+        Assert.Equal(HttpStatusCode.OK, await ScheduleStatusAsync(first));
+
+        // A stale save changes no role either.
+        await AssertRefusedAsync(
+            await SendAsync(Alpha(_alphaOwner), HttpMethod.Put, $"/api/institution/leaders/{leader.PublicId}", new { displayName = "Ven. Sumana", phone = secondPhone, linkAccount = true, version = leader.Version }),
+            HttpStatusCode.Conflict,
+            "stale");
+        Assert.True((await LeaderRoleOfAsync(first)).Holds);
+        Assert.False((await LeaderRoleOfAsync(second)).Holds);
+
+        // Linked to someone else: the role moves with the record.
+        using (var moved = await SendAsync(Alpha(_alphaOwner), HttpMethod.Put, $"/api/institution/leaders/{leader.PublicId}", new { displayName = "Ven. Sumana", phone = secondPhone, linkAccount = true, version }))
+        {
+            Assert.Equal(HttpStatusCode.OK, moved.StatusCode);
+            version = (await BodyOf(moved)).GetProperty("version").GetString()!;
+        }
+
+        Assert.False((await LeaderRoleOfAsync(first)).Holds);
+        Assert.True((await LeaderRoleOfAsync(second)).Holds);
+        Assert.Equal(HttpStatusCode.Forbidden, await ScheduleStatusAsync(first));
+        Assert.Equal(HttpStatusCode.OK, await ScheduleStatusAsync(second));
+
+        // Unlinked: gone, and the second account is told by its next request.
+        var linkedVersion = (await LeaderRoleOfAsync(second)).Version;
+        using (var unlinked = await SendAsync(Alpha(_alphaOwner), HttpMethod.Put, $"/api/institution/leaders/{leader.PublicId}", new { displayName = "Ven. Sumana", phone = secondPhone, linkAccount = false, version }))
+        {
+            Assert.Equal(HttpStatusCode.OK, unlinked.StatusCode);
+        }
+
+        var after = await LeaderRoleOfAsync(second);
+        Assert.False(after.Holds);
+        Assert.True(after.Version > linkedVersion);
+        Assert.Equal(HttpStatusCode.Forbidden, await ScheduleStatusAsync(second));
+        Assert.Equal(2, await ScalarAsync<int>(
+            "SELECT COUNT(*) FROM core.OutboxMessages WHERE EventType = 'RolePermissionsChanged' AND Payload LIKE '%LeaderUnlinked%' AND (Payload LIKE '%' + CAST(@first AS VARCHAR(36)) + '%' OR Payload LIKE '%' + CAST(@second AS VARCHAR(36)) + '%');",
+            new { first, second }));
+    }
+
+    [Fact]
+    public async Task AnAccountAlreadyLinkedGetsNoSecondRole()
+    {
+        var account = await UserAsync("Donor");
+        var phone = await ScalarAsync<string>("SELECT PhoneNumber FROM auth.Users WHERE Id = @account;", new { account });
+
+        await LeaderAsync("Ven. Once", new { displayName = "Ven. Once", phone, linkAccount = true });
+        await AssertRefusedAsync(
+            await SendAsync(Alpha(_alphaOwner), HttpMethod.Post, "/api/institution/leaders", new { displayName = "Ven. Twice", phone, linkAccount = true }),
+            HttpStatusCode.Conflict,
+            "account_already_linked");
+
+        Assert.Equal(1, await ScalarAsync<int>(
+            "SELECT COUNT(*) FROM auth.UserRoles ur JOIN auth.Roles r ON r.Id = ur.RoleId WHERE ur.UserId = @account AND r.Code = 'LEADER';",
+            new { account }));
     }
 
     [Fact]

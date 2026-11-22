@@ -415,6 +415,37 @@ public sealed class ApplicationEndpointsTests(SethikaTestDatabase database) : IA
         Assert.Equal("registration_no_in_use", await CodeOf(clash));
     }
 
+    [Fact]
+    public async Task ANumberChangedWhileAnsweringAQuestionToALiveOnesIsRefused_AndNothingChanges()
+    {
+        // QA DEF-004: InfoRequested is in the index's filter, so the clash is met on the edit, not the submit.
+        var (_, first) = await DonorAsync();
+        var (_, second) = await DonorAsync();
+        var hash = await DeclarationHashAsync(first);
+        Assert.Equal(HttpStatusCode.NoContent, (await SubmitAsync(first, await CompleteDraftAsync(first), hash)).StatusCode);
+        var theirs = await CompleteDraftAsync(second, "BUD/GAL/1960/12");
+        Assert.Equal(HttpStatusCode.NoContent, (await SubmitAsync(second, theirs, hash)).StatusCode);
+
+        // A reviewer's question, as the review handler leaves it (the reviewer's own flow is RegistrationReviewEndpointsTests').
+        await PlatformScalarAsync<int>(
+            "UPDATE org.RegistrationRequests SET Status = 'InfoRequested' WHERE RequestNo = @requestNo; SELECT @@ROWCOUNT;",
+            new { requestNo = theirs });
+
+        using (var clash = await second.PutAsJsonAsync($"{Base}/{theirs}", Details("BUD/GAL/1952/77")))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, clash.StatusCode);
+            Assert.Equal("registration_no_in_use", await CodeOf(clash));
+        }
+
+        var view = await JsonAsync(await second.GetAsync($"{Base}/{theirs}"));
+        Assert.Equal("BUD/GAL/1960/12", view.GetProperty("officialRegistrationNo").GetString());
+        Assert.Equal("InfoRequested", view.GetProperty("status").GetString());
+
+        // A free number is still taken in the same state.
+        using var free = await second.PutAsJsonAsync($"{Base}/{theirs}", Details("BUD/GAL/1960/13"));
+        Assert.Equal(HttpStatusCode.NoContent, free.StatusCode);
+    }
+
     // ------------------------------------------------------------------ whose application
 
     [Fact]

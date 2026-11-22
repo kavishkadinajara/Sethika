@@ -2194,7 +2194,7 @@
       "description": "If the phone belongs to a Sethika account, they will see their days in the app.",
       "fullName": "Full name",
       "phone": "Phone",
-      "phoneHint": "A mobile number, for example 077 123 4567",
+      "phoneHint": "A mobile, or a landline to call them on, for example 077 123 4567 or 011 234 5678",
       "language": "Language of texts",
       "languageHint": "Used when we text someone who does not use the app",
       "textConsent": "This person agreed to receive texts",
@@ -2206,8 +2206,9 @@
       "create": "Add donor",
       "errors": {
         "fullName": "Enter their name (up to 150 letters).",
-        "phone": "Enter a mobile number we can text.",
+        "phone": "Enter a phone number, for example 077 123 4567 or 011 234 5678.",
         "phoneTaken": "Someone in your donor book already has this number.",
+        "textConsent": "A landline cannot receive texts. Untick this, or enter a mobile number.",
         "notes": "Notes can be up to 500 letters.",
         "language": "Choose a language."
       }

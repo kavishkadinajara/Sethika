@@ -37,7 +37,8 @@ public sealed class BootstrapPlatformAdminHandler(
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        if (!phoneNumbers.TryNormalize(command.PhoneNumber, out var phoneNumber))
+        // The administrator steps up by a texted code before every approval, so the phone must take a text.
+        if (!phoneNumbers.TryNormalizeMobile(command.PhoneNumber, out var phoneNumber))
         {
             return new(BootstrapOutcome.InvalidPhoneNumber);
         }

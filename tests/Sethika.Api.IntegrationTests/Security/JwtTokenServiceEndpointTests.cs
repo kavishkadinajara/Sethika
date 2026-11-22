@@ -154,8 +154,11 @@ public sealed class JwtTokenServiceEndpointTests(SethikaTestDatabase database) :
         var me = body.RootElement;
 
         Assert.Equal(SethikaTestDatabase.AlphaUserId, me.GetProperty("userId").GetGuid());
-        Assert.Equal(database.AlphaInstitutionId, me.GetProperty("institutionId").GetInt32());
         Assert.False(me.GetProperty("isPlatform").GetBoolean());
+
+        // The internal institution Id is not part of the answer (QA DEF-005); that the token's
+        // institution was read is shown by the permissions below, which only Alpha's roles give.
+        Assert.False(me.TryGetProperty("institutionId", out _));
 
         // The permissions come back from the view under RLS, so the institution in the token
         // reached the database session context, not just the response.
@@ -178,7 +181,7 @@ public sealed class JwtTokenServiceEndpointTests(SethikaTestDatabase database) :
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
         Assert.True(body.RootElement.GetProperty("isPlatform").GetBoolean());
-        Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("institutionId").ValueKind);
+        Assert.False(body.RootElement.TryGetProperty("institutionId", out _));
 
         // The flag reached the database session, and RLS let it see both tenants' bookings. This is
         // also the control for the forgery tests below: it shows the recorder does see a platform

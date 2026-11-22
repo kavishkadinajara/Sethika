@@ -196,7 +196,7 @@ export function SponsorsScreen() {
   );
 }
 
-type DonorField = "fullName" | "phone" | "notes" | "language";
+type DonorField = "fullName" | "phone" | "notes" | "language" | "textConsent";
 
 /** A person, new or edited. The server normalises the phone and links an account with it (K14). */
 function DonorSheet({ donor, onClose, onSaved }: { donor: Donor | null; onClose: () => void; onSaved: () => void }) {
@@ -266,12 +266,20 @@ function DonorSheet({ donor, onClose, onSaved }: { donor: Donor | null; onClose:
                 ))}
               </select>
             </Field>
-            <Switch checked={textConsent} onChange={setTextConsent}>
-              <span className="grid gap-0.5">
-                <span className="font-medium">{t("textConsent")}</span>
-                <span className="text-sm text-muted">{t("textConsentHint")}</span>
-              </span>
-            </Switch>
+            <div className="grid gap-1.5">
+              <Switch checked={textConsent} onChange={setTextConsent}>
+                <span className="grid gap-0.5">
+                  <span className="font-medium">{t("textConsent")}</span>
+                  <span className="text-sm text-muted">{t("textConsentHint")}</span>
+                </span>
+              </Switch>
+              {/* A landline is kept, but cannot agree to texts (QA OBS-05). */}
+              {error("textConsent") && (
+                <p role="alert" className="text-sm text-danger">
+                  {error("textConsent")}
+                </p>
+              )}
+            </div>
             <Field label={t("notes")} description={t("notesHint")} error={error("notes")}>
               <textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={MAX_NOTES} rows={3} className={cn(inputClasses, "resize-y")} />
             </Field>

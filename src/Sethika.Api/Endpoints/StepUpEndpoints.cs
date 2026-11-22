@@ -48,10 +48,16 @@ internal static class StepUpEndpoints
             return Refused(result.Failure);
         }
 
+        // The cooldown is read off the outstanding code's own TTL, and a code is deleted once used or
+        // burned, so in the cooldown the code already texted still works. The form opens again after a
+        // cancel and asks at once; told only "too many requests" it showed an error beside a code that
+        // was still good (QA DEF-003). Signed in, the account's own phone: nothing is given away.
         return sent.Outcome switch
         {
             OtpSendOutcome.Sent => Results.Accepted(),
-            OtpSendOutcome.CooldownActive or OtpSendOutcome.RateLimited =>
+            OtpSendOutcome.CooldownActive =>
+                ApiErrors.TooManyRequests(httpContext, sent.RetryAfter ?? TimeSpan.FromMinutes(1), "code_already_sent"),
+            OtpSendOutcome.RateLimited =>
                 ApiErrors.TooManyRequests(httpContext, sent.RetryAfter ?? TimeSpan.FromMinutes(1)),
             _ => ApiErrors.Error(StatusCodes.Status503ServiceUnavailable, "verification_unavailable"),
         };

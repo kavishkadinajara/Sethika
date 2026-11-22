@@ -108,7 +108,8 @@ public sealed class PlatformAdminHandler(
             return PlatformChangeResult.Failed(PlatformChangeFailure.InvalidFullName);
         }
 
-        if (!phoneNumbers.TryNormalize(phone, out var normalized))
+        // Pending until they sign in with a texted code: a landline would never get one.
+        if (!phoneNumbers.TryNormalizeMobile(phone, out var normalized))
         {
             return PlatformChangeResult.Failed(PlatformChangeFailure.InvalidPhoneNumber);
         }

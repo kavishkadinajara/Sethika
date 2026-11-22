@@ -2143,3 +2143,13 @@ Shown when someone accepts a staff invitation after the institution was suspende
 | Key | English (source) | Sinhala (draft) | Tamil (draft) |
 |---|---|---|---|
 | `Access.errors.institution_not_active` | This place is not taking new staff right now, so the invitation stays open. | මෙම ස්ථානය දැනට නව කාර්ය මණ්ඩලය භාර නොගනී; ආරාධනාව විවෘතව පවතී. | இந்த இடம் தற்போது புதிய பணியாளர்களை ஏற்கவில்லை; அழைப்பு திறந்தே இருக்கும். |
+
+## Donor book: landlines without texts (2026-11-22, `Sponsors.form`, QA OBS-05)
+
+A standing sponsor's phone may now be a landline, but a landline cannot be ticked for texts.
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) |
+|---|---|---|---|
+| `Sponsors.form.phoneHint` | A mobile, or a landline to call them on, for example 077 123 4567 or 011 234 5678 | ජංගම අංකයක්, නැතිනම් ඇමතීමට ස්ථාවර දුරකථන අංකයක්, උදා. 077 123 4567 හෝ 011 234 5678 | கைபேசி எண், அல்லது அழைப்பதற்கான நிலையான தொலைபேசி எண், எ.கா. 077 123 4567 அல்லது 011 234 5678 |
+| `Sponsors.form.errors.phone` | Enter a phone number, for example 077 123 4567 or 011 234 5678. | දුරකථන අංකයක් ඇතුළත් කරන්න, උදා. 077 123 4567 හෝ 011 234 5678. | ஒரு தொலைபேசி எண்ணை உள்ளிடவும், எ.கா. 077 123 4567 அல்லது 011 234 5678. |
+| `Sponsors.form.errors.textConsent` | A landline cannot receive texts. Untick this, or enter a mobile number. | ස්ථාවර දුරකථනයකට කෙටි පණිවිඩ ලැබෙන්නේ නැත. මෙම සලකුණ ඉවත් කරන්න, නැතිනම් ජංගම අංකයක් ඇතුළත් කරන්න. | நிலையான தொலைபேசிக்கு குறுஞ்செய்தி வராது. இந்தக் குறியை நீக்கவும், அல்லது கைபேசி எண்ணை உள்ளிடவும். |

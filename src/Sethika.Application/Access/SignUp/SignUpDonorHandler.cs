@@ -50,7 +50,8 @@ public sealed class SignUpDonorHandler(
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        if (!phoneNumbers.TryNormalize(command.PhoneNumber, out var phoneNumber))
+        // An account signs in and steps up by texted codes, so its phone must take a text.
+        if (!phoneNumbers.TryNormalizeMobile(command.PhoneNumber, out var phoneNumber))
         {
             return SignUpDonorResult.Failed(SignUpFailure.InvalidPhoneNumber);
         }

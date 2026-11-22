@@ -3,7 +3,6 @@
  */
 export interface EffectivePermissions {
   userId: string;
-  institutionId: number | null;
   isPlatform: boolean;
   /** Permission codes such as "BOOKINGS.CALENDAR.APPROVE". */
   permissions: string[];

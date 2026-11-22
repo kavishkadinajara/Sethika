@@ -97,10 +97,11 @@ internal static class MeEndpoints
         var effective = await permissions
             .GetEffectivePermissionsAsync(userId, currentUser.InstitutionId, cancellationToken);
 
+        // No institution in the answer: its internal Id is not for clients (CLAUDE.md, QA DEF-005),
+        // and the session already names its institution by slug.
         return Results.Ok(new
         {
             userId,
-            institutionId = currentUser.InstitutionId,
             isPlatform = currentUser.IsPlatform,
             permissions = effective.Codes.OrderBy(c => c, StringComparer.Ordinal),
         });

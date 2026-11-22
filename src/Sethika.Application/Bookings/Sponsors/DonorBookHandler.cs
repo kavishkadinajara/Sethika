@@ -162,11 +162,18 @@ public sealed class DonorBookHandler(ISethikaDbContext db, IPhoneNumberNormalize
             invalid.Add("fullName");
         }
 
-        // A phone that cannot be texted is refused here rather than after paying to send to it.
+        // Any line: staff phone some standing sponsors, often elderly, on a landline. But a landline
+        // never receives a text, so it cannot carry consent to texts - refused here rather than each
+        // reminder being paid for and lost (QA OBS-05).
         string? phone = null;
         if (phoneNumbers.TryNormalize(Tidy(input.Phone), out var normalized) && normalized.Length <= MaxPhone)
         {
             phone = normalized;
+
+            if (input.TextConsent == true && !phoneNumbers.TryNormalizeMobile(normalized, out _))
+            {
+                invalid.Add("textConsent");
+            }
         }
         else
         {

@@ -387,6 +387,30 @@ public sealed class DonorBookEndpointsTests(SethikaTestDatabase database) : IAsy
     // ------------------------------------------------------------------ refusals
 
     [Fact]
+    public async Task ALandlineIsKeptButCannotAgreeToTexts()
+    {
+        // QA OBS-05: staff phone some standing sponsors on a landline, so it is taken; but ticked for
+        // texts, every reminder would be paid for and never arrive.
+        var landline = "+94112" + RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6", CultureInfo.InvariantCulture);
+        var local = "0" + landline[3..];
+
+        await AssertFieldsAsync(
+            await SendAsync(Alpha(_alphaOwner), HttpMethod.Post, Donors, DonorBody(local, consent: true)),
+            "textConsent");
+
+        var (id, version) = await AddAsync(local);
+        var listed = await EntryAsync(id);
+        Assert.Equal(landline, listed.GetProperty("phone").GetString());
+        Assert.Equal(JsonValueKind.Null, listed.GetProperty("textConsentAt").ValueKind);
+
+        // Ticked later, on an edit, it is refused the same way and nothing changes.
+        await AssertFieldsAsync(
+            await SendAsync(Alpha(_alphaOwner), HttpMethod.Put, $"{Donors}/{id}", DonorBody(local, consent: true, version: version)),
+            "textConsent");
+        Assert.Equal(new ConsentRow(null, null), await ConsentAsync(id));
+    }
+
+    [Fact]
     public async Task TheFormIsChecked()
     {
         await AssertFieldsAsync(

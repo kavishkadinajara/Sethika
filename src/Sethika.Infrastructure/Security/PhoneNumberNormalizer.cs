@@ -15,6 +15,9 @@ namespace Sethika.Infrastructure.Security;
 /// country actually assigns, not merely its length. <c>+94001234567</c> is eleven digits and
 /// syntactically fine, but 00 is not an allocated Sri Lankan prefix, so it can never receive a
 /// text message and is rejected here rather than after paying to send to it.
+///
+/// A valid number is not always a textable one: <c>+94112345678</c> is a real Colombo landline.
+/// <see cref="TryNormalizeMobile"/> adds the line-type check for every number a code is sent to.
 /// </remarks>
 public sealed class PhoneNumberNormalizer : IPhoneNumberNormalizer
 {
@@ -24,9 +27,28 @@ public sealed class PhoneNumberNormalizer : IPhoneNumberNormalizer
     // shared rather than reloading that metadata on every signup attempt.
     private static readonly PhoneNumberUtil Util = PhoneNumberUtil.GetInstance();
 
-    public bool TryNormalize(string? phoneNumber, out string normalized)
+    // FIXED_LINE_OR_MOBILE is where the plan does not tell the two apart (the US, Canada): such a
+    // number may well be a mobile, and refusing it would shut out a diaspora donor in Toronto.
+    private static readonly PhoneNumberType[] Textable = [PhoneNumberType.MOBILE, PhoneNumberType.FIXED_LINE_OR_MOBILE];
+
+    public bool TryNormalize(string? phoneNumber, out string normalized) =>
+        TryParse(phoneNumber, out _, out normalized);
+
+    public bool TryNormalizeMobile(string? phoneNumber, out string normalized)
+    {
+        if (TryParse(phoneNumber, out var parsed, out normalized) && Textable.Contains(Util.GetNumberType(parsed)))
+        {
+            return true;
+        }
+
+        normalized = string.Empty;
+        return false;
+    }
+
+    private static bool TryParse(string? phoneNumber, out PhoneNumber parsed, out string normalized)
     {
         normalized = string.Empty;
+        parsed = null!;
 
         if (string.IsNullOrWhiteSpace(phoneNumber))
         {
@@ -35,7 +57,7 @@ public sealed class PhoneNumberNormalizer : IPhoneNumberNormalizer
 
         try
         {
-            var parsed = Util.Parse(phoneNumber, DefaultRegion);
+            parsed = Util.Parse(phoneNumber, DefaultRegion);
 
             if (!Util.IsValidNumber(parsed))
             {

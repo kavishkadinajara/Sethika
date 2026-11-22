@@ -66,17 +66,51 @@ public sealed class PhoneNumberNormalizerTests
         Assert.False(ok);
     }
 
-    [Fact]
-    public void RejectsAFixedLineNumberThatCannotReceiveSms()
+    [Theory]
+    // A Colombo and a Kandy landline: real numbers, so an office phone may be one.
+    [InlineData("0112345678", "+94112345678")]
+    [InlineData("+94 81 223 4567", "+94812234567")]
+    public void ALandlineIsAValidPhoneNumber(string input, string expected)
     {
-        // A Colombo landline is a valid phone number, so IsValidNumber alone accepts it. Sending an
-        // OTP to it silently never arrives, so signup must refuse it up front rather than leave the
-        // user waiting for a code.
-        var ok = _normalizer.TryNormalize("+94112345678", out var normalized);
+        var ok = _normalizer.TryNormalize(input, out var normalized);
 
-        // Documents current behaviour: the normaliser validates reachability as a phone number, not
-        // SMS capability. Callers that require SMS must additionally check the line type.
         Assert.True(ok);
-        Assert.Equal("+94112345678", normalized);
+        Assert.Equal(expected, normalized);
+    }
+
+    [Theory]
+    // QA DEF-002: these were sent paid sign-up codes that could never arrive.
+    [InlineData("0112345678")]
+    [InlineData("0812234567")]
+    [InlineData("+94 11 234 5678")]
+    public void ALandlineCannotReceiveACode(string input)
+    {
+        var ok = _normalizer.TryNormalizeMobile(input, out var normalized);
+
+        Assert.False(ok);
+        Assert.Equal(string.Empty, normalized);
+    }
+
+    [Theory]
+    [InlineData("077 123 4567", "+94771234567")]   // Sri Lankan mobile, typed locally
+    [InlineData("+61412345678", "+61412345678")]   // Australian mobile
+    [InlineData("+447911123456", "+447911123456")] // UK mobile
+    [InlineData("+14165550123", "+14165550123")]   // Toronto: the plan does not say landline or mobile
+    public void AMobileCanReceiveACode(string input, string expected)
+    {
+        var ok = _normalizer.TryNormalizeMobile(input, out var normalized);
+
+        Assert.True(ok);
+        Assert.Equal(expected, normalized);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("077123456")]
+    [InlineData("+94001234567")]
+    public void WhatIsNoNumberAtAllIsNoMobileEither(string? input)
+    {
+        Assert.False(_normalizer.TryNormalizeMobile(input, out var normalized));
+        Assert.Equal(string.Empty, normalized);
     }
 }

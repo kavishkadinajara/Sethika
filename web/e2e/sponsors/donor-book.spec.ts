@@ -36,7 +36,7 @@ test("an owner adds regular donors, is told what is missing or taken, finds one 
     let form = page.getByRole("dialog");
     await form.getByRole("button", { name: "Add donor" }).click();
     await expect(form.getByText("Enter their name (up to 150 letters).")).toBeVisible();
-    await expect(form.getByText("Enter a mobile number we can text.")).toBeVisible();
+    await expect(form.getByText("Enter a phone number, for example 077 123 4567 or 011 234 5678.")).toBeVisible();
 
     // ---- a person who does not use the app, who agreed to texts in Tamil
     await field(form, "Full name").fill("E2E Sunil Perera");
@@ -98,6 +98,20 @@ test("an owner adds regular donors, is told what is missing or taken, finds one 
     await expect(form).toBeHidden();
     const edited = page.locator("article").filter({ hasText: "E2E Sunil Perera Jr" });
     await expect(edited.getByText("No texts: tell them yourself")).toBeVisible();
+
+    // ---- a landline is kept for calling, but cannot agree to texts (QA OBS-05)
+    await page.getByRole("button", { name: "Add a donor" }).click();
+    form = page.getByRole("dialog");
+    await field(form, "Full name").fill("E2E Landline Aunty");
+    await field(form, "Phone").fill(`0112${String(Date.now()).slice(-6)}`);
+    await form.getByRole("switch", { name: /agreed to receive texts/ }).click();
+    await form.getByRole("button", { name: "Add donor" }).click();
+    await expect(form.getByText("A landline cannot receive texts. Untick this, or enter a mobile number.")).toBeVisible();
+    expect(await scrollsSideways(page)).toBe(false);
+    await form.getByRole("switch", { name: /agreed to receive texts/ }).click();
+    await form.getByRole("button", { name: "Add donor" }).click();
+    await expect(form).toBeHidden();
+    await expect(page.locator("article").filter({ hasText: "E2E Landline Aunty" }).getByText("No texts: tell them yourself")).toBeVisible();
   } finally {
     await unlist(baseURL!, institution);
   }

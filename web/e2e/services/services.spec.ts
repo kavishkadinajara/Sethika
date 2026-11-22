@@ -4,7 +4,7 @@ import type { Browser, Locator, Page } from "@playwright/test";
 import { createAccount, newPhone, signIn, type Account } from "../support/accounts";
 import { field } from "../support/fields";
 import { approvedInstitution, colomboDate, unlist } from "../support/institutions";
-import { assign, grantInstitutionRole, leaderOf, requestBy, serviceTypeOf } from "../support/services";
+import { assign, leaderOf, requestBy, serviceTypeOf } from "../support/services";
 import { clipsSideways, expect, scrollsSideways, test } from "../support/test";
 
 /*  Phase E, 8.9: religious services, from the donor's, the institution's and the leader's side.
@@ -126,7 +126,6 @@ test("a leader who signs in accepts from their schedule, then cannot come, and t
   const institution = await approvedInstitution(baseURL!, `E2E Schedule Temple ${Date.now()}`);
   const type = await serviceTypeOf(baseURL!, institution);
   const leaderAccount = await createAccount(baseURL!, "E2E Leader Bodhi");
-  grantInstitutionRole(leaderAccount, institution, "LEADER");
   const leader = await leaderOf(baseURL!, institution, "E2E Bodhi Thero", leaderAccount);
   const donor = await createAccount(baseURL!, "E2E Donor Kamala");
   const no = await requestBy(baseURL!, donor, type, colomboDate(5));
@@ -250,7 +249,6 @@ test("the service screens in Sinhala and Tamil, nothing cut off at 320 px @phone
   const institution = await approvedInstitution(baseURL!, `E2E Languages Devalaya ${Date.now()}`, "si");
   const type = await serviceTypeOf(baseURL!, institution);
   const leaderAccount = await createAccount(baseURL!, "E2E Leader Tamil", "ta");
-  grantInstitutionRole(leaderAccount, institution, "LEADER");
   const leader = await leaderOf(baseURL!, institution, "E2E Kurukkal Siva", leaderAccount);
   const donor = await createAccount(baseURL!, "E2E Donor Tamil", "ta");
   const no = await requestBy(baseURL!, donor, type, colomboDate(9));

@@ -593,6 +593,26 @@ public sealed class AuthEndpointsTests(SethikaTestDatabase database) : IAsyncLif
     }
 
     [Theory]
+    // QA DEF-002: a landline is a valid number but can never receive the code, so no purpose may
+    // pay to text it. Reset and sign-in answer it like any bad number: it can hold no account.
+    [InlineData("0112345678", "signup")]
+    [InlineData("+94 81 223 4567", "signup")]
+    [InlineData("0112345678", "reset")]
+    [InlineData("0112345678", "login")]
+    public async Task ALandlineIsRefusedBeforeACodeIsPaidFor(string landline, string purpose)
+    {
+        var host = Host();
+        using var client = Client(host);
+        var before = _sms.Count;
+
+        using var response = await client.PostAsJsonAsync("/api/auth/otp/request", new { phoneNumber = landline, purpose });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("invalid_phone_number", (await JsonAsync(response)).GetProperty("code").GetString());
+        Assert.Equal(before, _sms.Count);
+    }
+
+    [Theory]
     [InlineData("stepup")]
     public async Task OnlySignupResetAndSignInCodesCanBeRequestedAnonymously(string purpose)
     {

@@ -550,6 +550,11 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
         Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
         Assert.Equal("already_registered", await CodeOf(again));
 
+        // The account first signs in with a texted code, which a landline never gets (QA DEF-002).
+        using var landline = await SendAsync(admin, HttpMethod.Post, "/api/admin/users", new { fullName = "Office Line", phone = "0112345678", language = "en" });
+        Assert.Equal(HttpStatusCode.BadRequest, landline.StatusCode);
+        Assert.Equal("invalid_phone_number", await CodeOf(landline));
+
         using var found = await SendAsync(admin, HttpMethod.Get, "/api/admin/users?search=Made%20By%20Admin");
         Assert.Contains(JsonDocument.Parse(await found.Content.ReadAsStringAsync()).RootElement.GetProperty("items").EnumerateArray(),
             u => u.GetProperty("status").GetString() == "PendingVerification");

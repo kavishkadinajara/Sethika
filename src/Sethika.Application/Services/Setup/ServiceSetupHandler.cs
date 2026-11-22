@@ -1,6 +1,9 @@
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Sethika.Application.Abstractions;
+using Sethika.Domain.Access;
+using Sethika.Domain.Core;
 using Sethika.Domain.Services;
 
 namespace Sethika.Application.Services.Setup;
@@ -18,6 +21,13 @@ namespace Sethika.Application.Services.Setup;
 /// Changing a service type never changes an appointment already asked for: its end was fixed when it
 /// was made. Taking a leader off the roster does not take them off the appointments they hold either;
 /// the result names those, so the screen can warn and the institution reassigns.
+///
+/// The LEADER role follows the link (QA DEF-001). Its permissions, <c>SERVICES.MYSCHEDULE.*</c>,
+/// are held by no other template role, so anti-escalation lets no owner or manager hand it out:
+/// linking a leader to an account is the one way it is given, and unlinking - or linking the
+/// record to someone else - the way it is taken back. It reaches only that person's own
+/// assignments, whose details the leader's texts already carry. Taking a leader off the roster
+/// keeps it: they may still hold appointments to answer for.
 /// </remarks>
 public sealed class ServiceSetupHandler(
     ISethikaDbContext db,
@@ -33,6 +43,8 @@ public sealed class ServiceSetupHandler(
     private const int MaxDescription = 300;
     private const int MaxReason = 200;
     private const int MaxPhone = 20;
+    private const string LeaderRole = "LEADER";
+    private const string RoleChangedEvent = "RolePermissionsChanged";
 
     /// <summary>The longest leave one request may add (2,976 blocks); longer is several, or the leader off the roster.</summary>
     public const int MaxTimeOffDays = 31;
@@ -149,7 +161,7 @@ public sealed class ServiceSetupHandler(
             CreatedBy = userId,
         };
 
-        var refused = await ApplyAsync(input, leader, [], cancellationToken).ConfigureAwait(false);
+        var refused = await ApplyAsync(input, leader, userId, [], cancellationToken).ConfigureAwait(false);
         if (refused is not null)
         {
             return refused;
@@ -181,7 +193,7 @@ public sealed class ServiceSetupHandler(
             invalid.Add("version");
         }
 
-        var refused = await ApplyAsync(input, leader, invalid, cancellationToken).ConfigureAwait(false);
+        var refused = await ApplyAsync(input, leader, userId, invalid, cancellationToken).ConfigureAwait(false);
         if (refused is not null)
         {
             return refused;
@@ -614,8 +626,9 @@ public sealed class ServiceSetupHandler(
     /// Checks the form and copies it onto <paramref name="leader"/>: the refusal, or
     /// <see langword="null"/> when it is copied. Linking looks the account up by its phone number.
     /// </summary>
+    /// <param name="actor">Who is saving the form: named on a LEADER role the link gives.</param>
     /// <param name="invalid">Fields already found wrong by the caller; nothing is copied if any are.</param>
-    private async Task<SetupChangeResult?> ApplyAsync(LeaderInput input, ReligiousLeader leader, List<string> invalid, CancellationToken cancellationToken)
+    private async Task<SetupChangeResult?> ApplyAsync(LeaderInput input, ReligiousLeader leader, Guid actor, List<string> invalid, CancellationToken cancellationToken)
     {
         var name = Tidy(input.DisplayName);
         if (name is null || name.Length > MaxName)
@@ -645,7 +658,7 @@ public sealed class ServiceSetupHandler(
         string? phone = null;
         if (Tidy(input.Phone) is { } typed)
         {
-            if (phoneNumbers.TryNormalize(typed, out var normalized) && normalized.Length <= MaxPhone)
+            if (phoneNumbers.TryNormalizeMobile(typed, out var normalized) && normalized.Length <= MaxPhone)
             {
                 phone = normalized;
             }
@@ -691,8 +704,86 @@ public sealed class ServiceSetupHandler(
         leader.Title = title;
         leader.Phone = phone;
         leader.Language = language;
-        leader.UserId = account;
+
+        if (leader.UserId != account)
+        {
+            await MoveLeaderRoleAsync(leader.InstitutionId, actor, leader.UserId, account, cancellationToken).ConfigureAwait(false);
+            leader.UserId = account;
+        }
+
         return null;
+    }
+
+    /// <summary>
+    /// Takes the institution's LEADER role from the account the record was linked to and gives it
+    /// to the one it is linked to now. Tracked only, so it is saved - or refused, as stale or as an
+    /// account already linked - together with the leader.
+    /// </summary>
+    private async Task MoveLeaderRoleAsync(int institutionId, Guid actor, Guid? from, Guid? to, CancellationToken cancellationToken)
+    {
+        // Every institution gets a LEADER copy at approval; one without (switched off) gives nothing.
+        var roleId = await db.Roles
+            .Where(r => r.InstitutionId == institutionId && r.Code == LeaderRole && r.IsActive)
+            .Select(r => (int?)r.Id)
+            .SingleOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (roleId is not { } role)
+        {
+            return;
+        }
+
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+
+        if (from is { } previous)
+        {
+            // Deactivated rather than deleted, as RevokeAsync does: the temporal history keeps who held it.
+            var held = await HeldLeaderRoleAsync(previous, role, cancellationToken).ConfigureAwait(false);
+            if (held is not null)
+            {
+                held.IsActive = false;
+                await ChangedAsync(institutionId, actor, previous, role, "LeaderUnlinked", now, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        if (to is { } account)
+        {
+            // An active row whose validity window lapsed is reopened: UX_UserRoles allows one per user and role.
+            var held = await HeldLeaderRoleAsync(account, role, cancellationToken).ConfigureAwait(false);
+            if (held is null)
+            {
+                db.UserRoles.Add(new UserRole { UserId = account, RoleId = role, InstitutionId = institutionId, AssignedBy = actor, IsActive = true });
+            }
+            else
+            {
+                held.ValidFrom = null;
+                held.ValidTo = null;
+            }
+
+            await ChangedAsync(institutionId, actor, account, role, "LeaderLinked", now, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private Task<UserRole?> HeldLeaderRoleAsync(Guid userId, int roleId, CancellationToken cancellationToken) =>
+        db.UserRoles.SingleOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleId && ur.IsActive, cancellationToken);
+
+    /// <summary>
+    /// The user's version is in their permission cache key, so their next request reloads; and the
+    /// outbox row every role change writes, ids only.
+    /// </summary>
+    private async Task ChangedAsync(int institutionId, Guid actor, Guid userId, int roleId, string change, DateTime at, CancellationToken cancellationToken)
+    {
+        var user = await db.Users.SingleAsync(u => u.Id == userId, cancellationToken).ConfigureAwait(false);
+        user.PermissionsVersion++;
+
+        db.OutboxMessages.Add(new OutboxMessage
+        {
+            EventType = RoleChangedEvent,
+            AggregateType = "Role",
+            AggregateId = roleId.ToString(CultureInfo.InvariantCulture),
+            Payload = JsonSerializer.Serialize(new { institutionId, roleCode = LeaderRole, change, userId, by = actor }),
+            OccurredAt = at,
+        });
     }
 
     /// <summary><c>HH:mm</c>, as an HTML time input sends it; the column keeps no seconds.</summary>

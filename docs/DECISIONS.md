@@ -365,6 +365,29 @@ What it shows is that this machine cannot hold SQL Server, the API, `next dev` a
 does not show that this is what held the lists. It is recorded as unexplained, not fixed. The suites run
 with `--workers=1` here, and the config keeps 2 for a machine with the memory.
 
+## QA cycle (2026-11-22)
+
+The first QA run (`docs/qa/QA-PLAN.md`, cases F01-F04 in `docs/qa/cases/`, an isolated `Sethika_QA`
+world built through the product by `scripts/qa/qa.ps1`) found three defects (`docs/qa/DEFECTS.md`).
+All three were agreed and fixed the same day, and so was OBS-05 (text consent on a landline in the donor book), seen while fixing DEF-002.
+
+| # | Decision | Why |
+|---|----------|-----|
+| Q1 (DEF-001) | **The LEADER role follows the leader record's account link.** Linking a roster entry to an account gives that account the institution's LEADER role; unlinking, or linking the entry to someone else, takes it back. Taking a leader off the roster keeps it. Inviting someone as LEADER stays refused (`not_held`) | No owner or manager template holds `SERVICES.MYSCHEDULE.*`, so anti-escalation let nobody hand LEADER out, and a leader with an account could never open their schedule. The e2e specs had hidden this by granting LEADER in SQL. The link needs no exception to anti-escalation: the role reaches only the person's own assignments, whose details their texts already carry. An off-roster leader may still hold appointments to answer for (V30) |
+| Q2 (DEF-002) | **A number that signs in, or that a leader's texts go to, must be a mobile** (`IPhoneNumberNormalizer.TryNormalizeMobile`: MOBILE or FIXED_LINE_OR_MOBILE): code requests of every purpose, sign-up, bootstrap, the platform's "create account", a leader's phone. Contact numbers take any line (`TryNormalize`): an application's office and contact phones, a walk-in donor (never texted, M5) and the donor book, which refuses **text consent** on a landline (OBS-05: an elderly sponsor may only have one, and staff call them) | `IsValidNumber` alone took Colombo landlines, and each one was sent a paid code that could never arrive. FIXED_LINE_OR_MOBILE keeps US and Canadian numbers, where the plan does not tell the two apart (diaspora donors) |
+| Q3 (DEF-003) | **A step-up asked for again within the resend minute answers `429 code_already_sent`**, and the form shows it as "code sent" with a countdown, not as an error. The hourly cap stays `429 too_many_requests`. The anonymous code endpoint is unchanged | The form asks for a code as it opens, so cancelling and reopening showed "too many tries" beside a code that still worked. The cooldown is read off the live code's own TTL (a used or burned code is deleted), so the answer is true. Guessing from `Retry-After` was rejected: near the end of the hour the cap's wait is under a minute too. Signed in, and about one's own phone, the more precise answer gives nothing away |
+
+Tests: see each defect's entry. Mutants 14/14 killed (13 C#, 1 vitest; OBS-05's included); the one that first survived - a save that keeps the same account re-moving the role - got its own assertion.
+
+The second run (F05-F08: onboarding, review, platform, access) found two more, both agreed and fixed the same day:
+
+| # | Decision | Why |
+|---|----------|-----|
+| Q4 (DEF-004) | **An applicant's edit that meets another live application's registration number answers `409 registration_no_in_use`**, as a submit does (`ApplicationHandler.UpdateDetailsAsync` catches `UX_RegReq_ActiveRegNo`) | The index covers `InfoRequested`, and the applicant may change details while answering a question, so the clash can be met on an edit; it surfaced as a 500. Nothing was ever saved - the transaction rolled back - but the applicant saw a server error instead of the message the web already had |
+| Q5 (DEF-005) | **`GET /api/me/permissions` no longer carries `institutionId`** - its answer is `{ userId, isPlatform, permissions }` | It was the internal `org.Institutions.Id`, against the rule that internal ids never leave the API. No client read it (the web stored it in `PermissionProvider`, the mobile app ignored it); the session already names its institution by slug |
+
+Tests: `ApplicationEndpointsTests.ANumberChangedWhileAnsweringAQuestionToALiveOnesIsRefused_AndNothingChanges`; `JwtTokenServiceEndpointTests` (both `/api/me/permissions` cases assert the field is gone). Mutants 3/3 killed.
+
 ## Unconfirmed reference data (seeded as drafts)
 CLAUDE.md forbids inventing facts about real institutions. Where the flow cannot run without a row,
 the row is seeded as a visibly marked draft and listed here until someone confirms or replaces it.
