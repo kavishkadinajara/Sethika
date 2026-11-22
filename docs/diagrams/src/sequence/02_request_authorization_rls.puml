@@ -1,0 +1,51 @@
+@startuml
+!include ../style.iuml
+autonumber
+title Sequence 2 — Every API request: JWT, permission policy, step-up, Row-Level Security
+
+actor "Staff member" as U
+participant "Next.js app" as App
+box "Sethika.Api" #F7F4EC
+  participant "JWT bearer\nauthentication" as Jwt
+  participant "PermissionAuthorizationHandler\n[HasPermission(code)]" as Authz
+  participant "Endpoint → handler" as H
+end box
+participant "PermissionService" as P
+database "Redis" as Redis
+participant "SessionContext\nConnectionInterceptor" as I
+database "SQL Server\n(sec.TenantIsolationPolicy)" as Sql
+
+U -> App : approve booking
+App -> Jwt : POST /api/institution/bookings/{no}/approve\nAuthorization: Bearer <JWT>
+Jwt -> Jwt : validate signature, lifetime, issuer, audience
+alt invalid / expired
+  Jwt --> App : 401 → client refreshes the session (sequence 5)
+end
+Jwt -> Authz : claims: UserId, InstitutionId, IsPlatform
+Authz -> P : GetEffectivePermissionsAsync(userId, institutionId)
+P -> Sql : Users.PermissionsVersion, Institutions.PermissionsVersion
+P -> Redis : GET perm:{user}:{inst}:v{u}.{i}
+alt cache miss (or Redis down)
+  P -> Sql : SELECT … FROM auth.vw_EffectivePermissions
+  note right of Sql
+    role grants ∩ role-level ceiling
+    + grant overrides + platform support
+    ∩ enabled modules, active users only
+    − deny overrides (deny wins)
+  end note
+  P -> Redis : SET (12 h)
+end
+P --> Authz : permission set
+alt code not held
+  Authz --> App : 403
+else code needs MFA and no step-up grant for this token
+  Authz --> App : 403 stepup_required → SMS code → retry
+end
+Authz -> H : run
+H -> I : open connection
+I -> Sql : sp_set_session_context UserId, InstitutionId,\nIsPlatform (@read_only = 1)
+H -> Sql : SELECT booking … WHERE BookingNo = @no (EF Core)
+Sql -> Sql : filter + block predicate sec.fn_Tenant(InstitutionId):\nrow visible only if IsPlatform = 1\nor row.InstitutionId = session InstitutionId
+Sql --> H : 1 row (another tenant's booking: 0 rows → 404)
+H --> App : 200
+@enduml

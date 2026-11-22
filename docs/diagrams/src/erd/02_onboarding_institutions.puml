@@ -1,0 +1,419 @@
+@startuml
+!pragma layout smetana
+!include ../style.iuml
+skinparam linetype ortho
+hide circle
+hide methods
+hide stereotypes
+title ERD 2 — Onboarding and institutions (org)
+package "org" {
+entity "org.DocumentTypes" as org_DocumentTypes #FBF1DF {
+  * <b>Id</b> : SMALLINT <<PK>>
+  --
+  * Code : VARCHAR(50)
+  * Name : NVARCHAR(150)
+    Description : NVARCHAR(400)
+  * AllowedExtensions : VARCHAR(100)
+  * MaxSizeMb : TINYINT
+  * RequiresReferenceNo : BIT
+  * RequiresIssueDate : BIT
+  * RequiresExpiryDate : BIT
+  * IsActive : BIT
+}
+entity "org.InstitutionDocuments" as org_InstitutionDocuments #FBF1DF {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+  * DocumentTypeId : SMALLINT <<FK>>
+  * FileId : BIGINT <<FK>>
+    SourceRequestDocumentId : INT <<FK>>
+    ReferenceNo : VARCHAR(80)
+    IssuedDate : DATE
+    ExpiryDate : DATE
+  * Status : VARCHAR(20)
+  * CreatedAt : DATETIME2(3)
+}
+entity "org.InstitutionDonors" as org_InstitutionDonors #FBF1DF {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+    UserId : UNIQUEIDENTIFIER <<FK>>
+  * FullName : NVARCHAR(150)
+  * Phone : VARCHAR(20)
+    Email : NVARCHAR(256)
+    Address : NVARCHAR(300)
+    Notes : NVARCHAR(500)
+    FirstGivenAt : DATE
+    LastGivenAt : DATE
+  * IsActive : BIT
+  * CreatedAt : DATETIME2(3)
+  * PublicId : UNIQUEIDENTIFIER
+  * Language : CHAR(2)
+    TextConsentAt : DATETIME2(3)
+    TextConsentBy : UNIQUEIDENTIFIER <<FK>>
+  * CreatedBy : UNIQUEIDENTIFIER <<FK>>
+    UpdatedAt : DATETIME2(3)
+    UpdatedBy : UNIQUEIDENTIFIER <<FK>>
+    RowVersion : ROWVERSION
+}
+entity "org.InstitutionMembers" as org_InstitutionMembers #FBF1DF {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+  * UserId : UNIQUEIDENTIFIER <<FK>>
+    Designation : NVARCHAR(100)
+  * IsOwner : BIT
+  * Status : VARCHAR(20)
+  * JoinedAt : DATETIME2(3)
+  * AddedBy : UNIQUEIDENTIFIER <<FK>>
+    RemovedAt : DATETIME2(3)
+    RemovedBy : UNIQUEIDENTIFIER <<FK>>
+}
+entity "org.InstitutionModules" as org_InstitutionModules #FBF1DF {
+  * <b>InstitutionId</b> : INT <<PK>>
+  * <b>ModuleId</b> : SMALLINT <<PK>>
+  --
+  * IsEnabled : BIT
+  * Source : VARCHAR(10)
+  * ChangedBy : UNIQUEIDENTIFIER <<FK>>
+    ChangeReason : NVARCHAR(300)
+  * SysStartTime : DATETIME2(3)
+  * SysEndTime : DATETIME2(3)
+}
+entity "org.InstitutionReports" as org_InstitutionReports #FBF1DF {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+    ReporterUserId : UNIQUEIDENTIFIER <<FK>>
+  * ReasonLookupId : INT <<FK>>
+  * Details : NVARCHAR(2000)
+    EvidenceFileId : BIGINT <<FK>>
+  * Status : VARCHAR(15)
+    HandledBy : UNIQUEIDENTIFIER <<FK>>
+    HandledAt : DATETIME2(3)
+    Resolution : NVARCHAR(1000)
+  * CreatedAt : DATETIME2(3)
+}
+entity "org.InstitutionSettings" as org_InstitutionSettings #FBF1DF {
+  * <b>InstitutionId</b> : INT <<PK>>
+  * <b>SettingKey</b> : VARCHAR(100) <<PK>>
+  --
+  * SettingValue : NVARCHAR(500)
+  * UpdatedBy : UNIQUEIDENTIFIER <<FK>>
+  * UpdatedAt : DATETIME2(3)
+}
+entity "org.InstitutionStatusHistory" as org_InstitutionStatusHistory #FBF1DF {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+    FromStatus : VARCHAR(20)
+  * ToStatus : VARCHAR(20)
+    Reason : NVARCHAR(1000)
+  * ChangedBy : UNIQUEIDENTIFIER <<FK>>
+  * ChangedAt : DATETIME2(3)
+}
+entity "org.InstitutionSubscriptions" as org_InstitutionSubscriptions #FBF1DF {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+  * PlanId : SMALLINT <<FK>>
+  * StartsAt : DATE
+    EndsAt : DATE
+  * Status : VARCHAR(15)
+    SponsoredBy : NVARCHAR(150)
+  * CreatedBy : UNIQUEIDENTIFIER <<FK>>
+  * CreatedAt : DATETIME2(3)
+}
+entity "org.InstitutionTypeDefaultModules" as org_InstitutionTypeDefaultModules #FBF1DF {
+  * <b>InstitutionTypeId</b> : SMALLINT <<PK>>
+  * <b>ModuleId</b> : SMALLINT <<PK>>
+  --
+}
+entity "org.InstitutionTypeRequiredDocuments" as org_InstitutionTypeRequiredDocuments #FBF1DF {
+  * <b>InstitutionTypeId</b> : SMALLINT <<PK>>
+  * <b>DocumentTypeId</b> : SMALLINT <<PK>>
+  --
+  * IsMandatory : BIT
+  * SortOrder : SMALLINT
+    Instructions : NVARCHAR(400)
+}
+entity "org.InstitutionTypes" as org_InstitutionTypes #FBF1DF {
+  * <b>Id</b> : SMALLINT <<PK>>
+  --
+  * Code : VARCHAR(30)
+  * Name : NVARCHAR(100)
+    NameSi : NVARCHAR(100)
+    NameTa : NVARCHAR(100)
+  * Category : VARCHAR(20)
+    ReligionLookupId : INT <<FK>>
+  * MealSlotLabel : NVARCHAR(50)
+  * IsActive : BIT
+}
+entity "org.Institutions" as org_Institutions #FBF1DF {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * InstitutionCode : VARCHAR(20)
+  * Slug : VARCHAR(150)
+  * RegistrationRequestId : INT <<FK>>
+  * InstitutionTypeId : SMALLINT <<FK>>
+  * Name : NVARCHAR(200)
+    NameSi : NVARCHAR(200)
+    NameTa : NVARCHAR(200)
+  * OfficialRegistrationNo : VARCHAR(50)
+    Description : NVARCHAR(2000)
+  * AddressLine1 : NVARCHAR(200)
+    AddressLine2 : NVARCHAR(200)
+  * City : NVARCHAR(100)
+  * DistrictId : SMALLINT <<FK>>
+    DsDivisionId : SMALLINT <<FK>>
+  * Latitude : DECIMAL(9,6)
+  * Longitude : DECIMAL(9,6)
+    Location : computed
+  * Phone : VARCHAR(20)
+    Email : NVARCHAR(256)
+    ResidentCapacity : SMALLINT
+    DietaryNotes : NVARCHAR(500)
+    LogoFileId : BIGINT <<FK>>
+    CoverFileId : BIGINT <<FK>>
+  * Status : VARCHAR(20)
+  * IsPubliclyListed : BIT
+  * VerifiedBadgeLevel : TINYINT
+    NextReviewDue : DATE
+  * PermissionsVersion : INT
+  * ApprovedBy : UNIQUEIDENTIFIER <<FK>>
+  * ApprovedAt : DATETIME2(3)
+  * CreatedAt : DATETIME2(3)
+    UpdatedAt : DATETIME2(3)
+    UpdatedBy : UNIQUEIDENTIFIER <<FK>>
+  * IsDeleted : BIT
+    RowVersion : ROWVERSION
+}
+entity "org.PlanModules" as org_PlanModules #FBF1DF {
+  * <b>PlanId</b> : SMALLINT <<PK>>
+  * <b>ModuleId</b> : SMALLINT <<PK>>
+  --
+}
+entity "org.Plans" as org_Plans #FBF1DF {
+  * <b>Id</b> : SMALLINT <<PK>>
+  --
+  * Code : VARCHAR(20)
+  * Name : NVARCHAR(50)
+  * MonthlyPriceLkr : DECIMAL(10,2)
+  * MonthlySmsQuota : INT
+  * MaxStaffUsers : SMALLINT
+  * MaxMealSlots : SMALLINT
+  * IsPublic : BIT
+  * IsActive : BIT
+}
+entity "org.RegistrationRequestChecklist" as org_RegistrationRequestChecklist #FBF1DF {
+  * <b>RequestId</b> : INT <<PK>>
+  * <b>ChecklistItemId</b> : SMALLINT <<PK>>
+  --
+  * IsPassed : BIT
+  * CheckedBy : UNIQUEIDENTIFIER <<FK>>
+  * CheckedAt : DATETIME2(3)
+    EvidenceFileId : BIGINT <<FK>>
+    Remarks : NVARCHAR(500)
+}
+entity "org.RegistrationRequestClarifications" as org_RegistrationRequestClarifications #FBF1DF {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * RequestId : INT <<FK>>
+  * AskedBy : UNIQUEIDENTIFIER <<FK>>
+  * Question : NVARCHAR(1000)
+  * AskedAt : DATETIME2(3)
+    Response : NVARCHAR(2000)
+    ResponseFileId : BIGINT <<FK>>
+    RespondedBy : UNIQUEIDENTIFIER <<FK>>
+    RespondedAt : DATETIME2(3)
+}
+entity "org.RegistrationRequestDocuments" as org_RegistrationRequestDocuments #FBF1DF {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * RequestId : INT <<FK>>
+  * DocumentTypeId : SMALLINT <<FK>>
+  * FileId : BIGINT <<FK>>
+    ReferenceNo : VARCHAR(80)
+    IssuedBy : NVARCHAR(200)
+    IssuedDate : DATE
+    ExpiryDate : DATE
+  * VerificationStatus : VARCHAR(20)
+    VerifiedBy : UNIQUEIDENTIFIER <<FK>>
+    VerifiedAt : DATETIME2(3)
+    ReviewerRemarks : NVARCHAR(500)
+  * UploadedAt : DATETIME2(3)
+}
+entity "org.RegistrationRequestOfficeBearers" as org_RegistrationRequestOfficeBearers #FBF1DF {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * RequestId : INT <<FK>>
+  * FullName : NVARCHAR(150)
+  * NicNumber : VARCHAR(12)
+  * Designation : NVARCHAR(100)
+  * Phone : VARCHAR(20)
+    Email : NVARCHAR(256)
+  * IsSignatory : BIT
+}
+entity "org.RegistrationRequestStatusHistory" as org_RegistrationRequestStatusHistory #FBF1DF {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * RequestId : INT <<FK>>
+    FromStatus : VARCHAR(20)
+  * ToStatus : VARCHAR(20)
+  * ChangedBy : UNIQUEIDENTIFIER <<FK>>
+  * ChangedAt : DATETIME2(3)
+    Comment : NVARCHAR(1000)
+}
+entity "org.RegistrationRequests" as org_RegistrationRequests #FBF1DF {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * RequestNo : VARCHAR(20)
+  * ApplicantUserId : UNIQUEIDENTIFIER <<FK>>
+  * InstitutionTypeId : SMALLINT <<FK>>
+  * ProposedName : NVARCHAR(200)
+    NameSi : NVARCHAR(200)
+    NameTa : NVARCHAR(200)
+  * OfficialRegistrationNo : VARCHAR(50)
+  * RegisteringAuthority : NVARCHAR(200)
+  * RegistrationDate : DATE
+    EstablishedYear : SMALLINT
+    ResidentCapacity : SMALLINT
+    Description : NVARCHAR(2000)
+  * AddressLine1 : NVARCHAR(200)
+    AddressLine2 : NVARCHAR(200)
+  * City : NVARCHAR(100)
+  * DistrictId : SMALLINT <<FK>>
+    DsDivisionId : SMALLINT <<FK>>
+    GnDivision : NVARCHAR(100)
+    PostalCode : VARCHAR(10)
+  * Latitude : DECIMAL(9,6)
+  * Longitude : DECIMAL(9,6)
+  * OfficePhone : VARCHAR(20)
+    OfficeEmail : NVARCHAR(256)
+    Website : NVARCHAR(200)
+  * ApplicantFullName : NVARCHAR(150)
+  * ApplicantNic : VARCHAR(12)
+  * ApplicantDesignation : NVARCHAR(100)
+  * ApplicantPhone : VARCHAR(20)
+    ApplicantEmail : NVARCHAR(256)
+    DeclarationDocumentId : SMALLINT <<FK>>
+    DeclarationAcceptedAt : DATETIME2(3)
+    DeclarationIp : VARCHAR(45)
+    RequestedPlanId : SMALLINT <<FK>>
+    RiskScore : TINYINT
+    RiskFlags : NVARCHAR(500)
+  * Status : VARCHAR(20)
+    SubmittedAt : DATETIME2(3)
+    SlaDueAt : DATETIME2(3)
+    AssignedReviewerId : UNIQUEIDENTIFIER <<FK>>
+    DecidedBy : UNIQUEIDENTIFIER <<FK>>
+    DecidedAt : DATETIME2(3)
+    RejectReasonLookupId : INT <<FK>>
+    DecisionNote : NVARCHAR(1000)
+    CreatedInstitutionId : INT <<FK>>
+  * CreatedAt : DATETIME2(3)
+    UpdatedAt : DATETIME2(3)
+    RowVersion : ROWVERSION
+}
+entity "org.StaffInvitations" as org_StaffInvitations #FBF1DF {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+  * InviteeName : NVARCHAR(150)
+    InviteePhone : VARCHAR(20)
+    InviteeEmail : NVARCHAR(256)
+  * RoleId : INT <<FK>>
+  * TokenHash : CHAR(64)
+  * Status : VARCHAR(20)
+  * InvitedBy : UNIQUEIDENTIFIER <<FK>>
+  * InvitedAt : DATETIME2(3)
+  * ExpiresAt : DATETIME2(3)
+    AcceptedUserId : UNIQUEIDENTIFIER <<FK>>
+    AcceptedAt : DATETIME2(3)
+    ClosedBy : UNIQUEIDENTIFIER <<FK>>
+    ClosedAt : DATETIME2(3)
+  * PublicId : UNIQUEIDENTIFIER
+  * InviteeUserId : UNIQUEIDENTIFIER <<FK>>
+}
+entity "org.VerificationChecklistItems" as org_VerificationChecklistItems #FBF1DF {
+  * <b>Id</b> : SMALLINT <<PK>>
+  --
+    InstitutionTypeId : SMALLINT <<FK>>
+  * Code : VARCHAR(50)
+  * Question : NVARCHAR(300)
+  * IsMandatory : BIT
+  * SortOrder : SMALLINT
+  * IsActive : BIT
+}
+}
+package "other modules" #FFFFFF {
+entity "auth.Modules" as auth_Modules #FFFFFF ##[dashed]
+entity "auth.Roles" as auth_Roles #FFFFFF ##[dashed]
+entity "auth.Users" as auth_Users #FFFFFF ##[dashed]
+entity "core.Districts" as core_Districts #FFFFFF ##[dashed]
+entity "core.DsDivisions" as core_DsDivisions #FFFFFF ##[dashed]
+entity "core.Files" as core_Files #FFFFFF ##[dashed]
+entity "core.LegalDocuments" as core_LegalDocuments #FFFFFF ##[dashed]
+entity "core.LookupValues" as core_LookupValues #FFFFFF ##[dashed]
+}
+org_InstitutionDocuments }o--|| core_Files
+org_InstitutionDocuments }o--|| org_DocumentTypes
+org_InstitutionDocuments }o--|| org_Institutions
+org_InstitutionDocuments }o..o| org_RegistrationRequestDocuments
+org_InstitutionDonors }o..o| auth_Users
+org_InstitutionDonors }o--|| org_Institutions
+org_InstitutionMembers }o--|| auth_Users
+org_InstitutionMembers }o--|| org_Institutions
+org_InstitutionModules }o--|| auth_Modules
+org_InstitutionModules }o--|| org_Institutions
+org_InstitutionReports }o..o| auth_Users
+org_InstitutionReports }o..o| core_Files
+org_InstitutionReports }o--|| core_LookupValues
+org_InstitutionReports }o--|| org_Institutions
+org_InstitutionSettings }o--|| org_Institutions
+org_InstitutionStatusHistory }o--|| org_Institutions
+org_InstitutionSubscriptions }o--|| org_Institutions
+org_InstitutionSubscriptions }o--|| org_Plans
+org_InstitutionTypeDefaultModules }o--|| auth_Modules
+org_InstitutionTypeDefaultModules }o--|| org_InstitutionTypes
+org_InstitutionTypeRequiredDocuments }o--|| org_DocumentTypes
+org_InstitutionTypeRequiredDocuments }o--|| org_InstitutionTypes
+org_InstitutionTypes }o..o| core_LookupValues
+org_Institutions }o--|| core_Districts
+org_Institutions }o..o| core_DsDivisions
+org_Institutions }o..o| core_Files
+org_Institutions }o--|| org_InstitutionTypes
+org_Institutions }o--|| org_RegistrationRequests
+org_PlanModules }o--|| auth_Modules
+org_PlanModules }o--|| org_Plans
+org_RegistrationRequestChecklist }o..o| core_Files
+org_RegistrationRequestChecklist }o--|| org_RegistrationRequests
+org_RegistrationRequestChecklist }o--|| org_VerificationChecklistItems
+org_RegistrationRequestClarifications }o..o| core_Files
+org_RegistrationRequestClarifications }o--|| org_RegistrationRequests
+org_RegistrationRequestDocuments }o--|| core_Files
+org_RegistrationRequestDocuments }o--|| org_DocumentTypes
+org_RegistrationRequestDocuments }o--|| org_RegistrationRequests
+org_RegistrationRequestOfficeBearers }o--|| org_RegistrationRequests
+org_RegistrationRequestStatusHistory }o--|| org_RegistrationRequests
+org_RegistrationRequests }o--|| auth_Users
+org_RegistrationRequests }o--|| core_Districts
+org_RegistrationRequests }o..o| core_DsDivisions
+org_RegistrationRequests }o..o| core_LegalDocuments
+org_RegistrationRequests }o..o| core_LookupValues
+org_RegistrationRequests }o--|| org_InstitutionTypes
+org_RegistrationRequests }o..o| org_Institutions
+org_RegistrationRequests }o..o| org_Plans
+org_StaffInvitations }o--|| auth_Roles
+org_StaffInvitations }o--|| auth_Users
+org_StaffInvitations }o--|| org_Institutions
+org_VerificationChecklistItems }o..o| org_InstitutionTypes
+legend bottom right
+  * = NOT NULL    <<PK>> primary key    <<FK>> foreign key
+  solid line = mandatory FK, dotted = optional FK
+  CreatedBy / DecidedBy / ...By columns reference auth.Users (no line drawn)
+  InstitutionId (tenant key, Row-Level Security) references org.Institutions:
+  drawn only from org tables
+  Generated from src/Sethika.Database by docs/diagrams/tools/erd_from_sql.py
+endlegend
+@enduml

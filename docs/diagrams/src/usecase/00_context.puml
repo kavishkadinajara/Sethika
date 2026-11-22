@@ -1,0 +1,66 @@
+@startuml
+!pragma layout smetana
+!include ../style.iuml
+left to right direction
+skinparam packageStyle rectangle
+title Use case diagram 0 — Sethika system context
+
+actor "Visitor" as Visitor
+actor "Registered user" as User
+actor "Donor" as Donor
+actor "Applicant" as Applicant
+actor "Institution staff" as Staff
+actor "Platform admin" as Admin
+
+User -|> Visitor
+Donor -|> User
+Applicant -|> User
+Staff -|> User
+Admin -|> User
+
+actor "Scheduler\n(Hangfire)" as Clock <<system>>
+actor "SMS gateway" as Sms <<external>>
+actor "Expo Push Service" as Push <<external>>
+actor "PayHere" as PayHere <<external>>
+
+rectangle "Sethika platform" {
+  usecase "Search institutions\n(text, map, near me)" as UC_Search
+  usecase "View public page,\ncalendar, needs, gratitude wall" as UC_Public
+  usecase "Sign up / sign in\nwith phone OTP" as UC_Auth
+  usecase "Book a meal slot" as UC_Book
+  usecase "Plan memorial danas" as UC_Memorial
+  usecase "Request a religious service" as UC_Service
+  usecase "Give online / pledge to a need" as UC_Give
+  usecase "Apply to register\nan institution" as UC_Apply
+  usecase "Run the institution\n(slots, calendar, sponsors,\nservices, giving, staff)" as UC_Run
+  usecase "Review and decide\nregistrations" as UC_Review
+  usecase "Administer the platform\n(users, institutions, support)" as UC_Platform
+  usecase "Send reminders and\nnotifications" as UC_Notify
+  usecase "Generate recurring and\nstanding bookings" as UC_Recur
+}
+
+Visitor --> UC_Search
+Visitor --> UC_Public
+Visitor --> UC_Auth
+Donor --> UC_Book
+Donor --> UC_Memorial
+Donor --> UC_Service
+Donor --> UC_Give
+Applicant --> UC_Apply
+Staff --> UC_Run
+Admin --> UC_Review
+Admin --> UC_Platform
+Clock --> UC_Notify
+Clock --> UC_Recur
+
+UC_Auth --> Sms
+UC_Notify --> Sms
+UC_Notify --> Push
+UC_Give --> PayHere
+
+legend bottom right
+  Every signed-in person is a Registered user; Donor, Applicant, Institution staff and
+  Platform admin are what they can do, given by roles and permissions (RBAC), not separate accounts.
+  Detail: use case diagrams 1 (donor), 2 (institution staff), 3 (onboarding and platform).
+endlegend
+@enduml

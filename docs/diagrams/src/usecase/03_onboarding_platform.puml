@@ -1,0 +1,83 @@
+@startuml
+!pragma layout smetana
+!include ../style.iuml
+left to right direction
+skinparam packageStyle rectangle
+title Use case diagram 3 — Institution onboarding and platform administration
+
+actor "Applicant" as Applicant
+actor "Platform admin" as Admin
+actor "Scheduler\n(Hangfire)" as Clock <<system>>
+actor "SMS gateway" as Sms <<external>>
+actor "Expo Push Service" as Push <<external>>
+
+rectangle "Sethika" {
+  usecase "Verify with SMS code\n(step-up MFA)" as StepUp
+
+  package "Onboarding (Self)" {
+    usecase "Start an application" as Start
+    usecase "Fill in legal details,\noffice bearers, documents" as Fill
+    usecase "Accept declaration\nand submit" as Submit
+    usecase "Answer clarifications" as Answer
+    usecase "Withdraw application" as Withdraw
+  }
+  package "Review (Platform)" {
+    usecase "Review registration\nrequest" as Review
+    usecase "Verify documents,\ntick checklist" as Verify
+    usecase "Ask for clarification" as Ask
+    usecase "Approve registration" as Approve
+    usecase "Create institution\n(one transaction)" as Create
+    usecase "Reject registration" as Reject
+  }
+  package "Platform" {
+    usecase "View every institution" as Institutions
+    usecase "Work inside an institution\nas platform support" as Support
+    usecase "Bring an institution up to date\n(new template roles, modules)" as Sync
+    usecase "Make accounts for people\nwho cannot sign up" as MakeUser
+    usecase "Suspend accounts,\ngive platform roles" as Users
+  }
+  package "Automation" {
+    usecase "Process outbox\n(SMS, push, live updates)" as Outbox
+    usecase "Send booking, memorial\nand appointment reminders" as Remind
+    usecase "Generate yearly and\nstanding bookings" as Generate
+  }
+}
+
+Applicant --> Start
+Applicant --> Fill
+Applicant --> Submit
+Applicant --> Answer
+Applicant --> Withdraw
+
+Admin --> Review
+Admin --> Approve
+Admin --> Reject
+Admin --> Institutions
+Admin --> Support
+Admin --> Sync
+Sync ..> StepUp : <<include>>
+Admin --> MakeUser
+Admin --> Users
+
+Review ..> Verify : <<include>>
+Review <.. Ask : <<extend>>
+Approve ..> Create : <<include>>
+Approve ..> StepUp : <<include>>
+Reject ..> StepUp : <<include>>
+Support ..> StepUp : <<include>>
+MakeUser ..> StepUp : <<include>>
+Users ..> StepUp : <<include>>
+StepUp --> Sms
+
+Clock --> Outbox
+Clock --> Remind
+Clock --> Generate
+Outbox --> Sms
+Outbox --> Push
+
+legend bottom right
+  Approve and reject need the reviewer not to be the applicant (own_application).
+  Create institution = institution, documents, modules, cloned roles, owner, histories,
+  audit row and outbox message, all or nothing.
+endlegend
+@enduml

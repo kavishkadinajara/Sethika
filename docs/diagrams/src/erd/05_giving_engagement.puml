@@ -1,0 +1,240 @@
+@startuml
+!pragma layout smetana
+!include ../style.iuml
+skinparam linetype ortho
+hide circle
+hide methods
+hide stereotypes
+title ERD 5 — Giving, needs, payments, gratitude and notifications
+package "booking" {
+entity "booking.GratitudePostPhotos" as booking_GratitudePostPhotos #EAF2FA {
+  * <b>GratitudePostId</b> : BIGINT <<PK>>
+  * <b>FileId</b> : BIGINT <<PK>>
+  --
+  * SortOrder : TINYINT
+}
+entity "booking.GratitudePosts" as booking_GratitudePosts #EAF2FA {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * PublicId : UNIQUEIDENTIFIER
+  * InstitutionId : INT <<FK>>
+    BookingId : BIGINT <<FK>>
+    DonationId : BIGINT <<FK>>
+  * Message : NVARCHAR(1000)
+  * Visibility : VARCHAR(10)
+    DonorConsentAt : DATETIME2(3)
+  * CreatedBy : UNIQUEIDENTIFIER <<FK>>
+  * CreatedAt : DATETIME2(3)
+}
+}
+package "giving" {
+entity "giving.Donations" as giving_Donations #F6E9F2 {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * ReceiptNo : VARCHAR(30)
+  * InstitutionId : INT <<FK>>
+    DonorUserId : UNIQUEIDENTIFIER <<FK>>
+    InstitutionDonorId : INT <<FK>>
+  * DonorName : NVARCHAR(150)
+    DonorPhone : VARCHAR(20)
+  * IsAnonymous : BIT
+  * Kind : VARCHAR(10)
+    Amount : DECIMAL(12,2)
+  * CurrencyCode : CHAR(3)
+    PaymentMethodLookupId : INT <<FK>>
+    ItemDescription : NVARCHAR(500)
+    EstimatedValue : DECIMAL(12,2)
+    NeedId : INT <<FK>>
+    PledgeId : INT <<FK>>
+    BookingId : BIGINT <<FK>>
+    ReceiptFileId : BIGINT <<FK>>
+  * DonatedAt : DATETIME2(3)
+  * RecordedBy : UNIQUEIDENTIFIER <<FK>>
+  * RecordedAt : DATETIME2(3)
+  * IsVoided : BIT
+    VoidedBy : UNIQUEIDENTIFIER <<FK>>
+    VoidReason : NVARCHAR(300)
+  * PublicId : UNIQUEIDENTIFIER
+    Quantity : DECIMAL(10,2)
+    VoidedAt : DATETIME2(3)
+    Note : NVARCHAR(300)
+    RowVersion : ROWVERSION
+}
+entity "giving.Needs" as giving_Needs #F6E9F2 {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * PublicId : UNIQUEIDENTIFIER
+  * InstitutionId : INT <<FK>>
+  * Title : NVARCHAR(150)
+    Description : NVARCHAR(1000)
+  * CategoryLookupId : INT <<FK>>
+  * UnitLookupId : INT <<FK>>
+  * QuantityNeeded : DECIMAL(10,2)
+  * QuantityPledged : DECIMAL(10,2)
+  * QuantityReceived : DECIMAL(10,2)
+  * Priority : VARCHAR(10)
+    Deadline : DATE
+    ImageFileId : BIGINT <<FK>>
+  * Status : VARCHAR(20)
+  * CreatedBy : UNIQUEIDENTIFIER <<FK>>
+  * CreatedAt : DATETIME2(3)
+    UpdatedAt : DATETIME2(3)
+    UpdatedBy : UNIQUEIDENTIFIER <<FK>>
+    RowVersion : ROWVERSION
+    OpenedAt : DATETIME2(3)
+    EndedAt : DATETIME2(3)
+}
+entity "giving.OnlinePayments" as giving_OnlinePayments #F6E9F2 {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * OrderId : UNIQUEIDENTIFIER
+  * InstitutionId : INT <<FK>>
+  * DonorUserId : UNIQUEIDENTIFIER <<FK>>
+  * MerchantId : VARCHAR(30)
+  * Amount : DECIMAL(12,2)
+  * CurrencyCode : CHAR(3)
+    NeedId : INT <<FK>>
+  * Status : VARCHAR(20)
+    PayHerePaymentId : VARCHAR(30)
+    PayHereStatusCode : SMALLINT
+    DonationId : BIGINT <<FK>>
+  * CreatedAt : DATETIME2(3)
+    NotifiedAt : DATETIME2(3)
+    RowVersion : ROWVERSION
+}
+entity "giving.PaymentMerchants" as giving_PaymentMerchants #F6E9F2 {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+  * Provider : VARCHAR(20)
+  * MerchantId : VARCHAR(30)
+  * SecretKeyId : VARCHAR(20)
+  * SecretNonce : BINARY(12)
+  * SecretCipher : VARBINARY(256)
+  * IsEnabled : BIT
+  * UpdatedBy : UNIQUEIDENTIFIER <<FK>>
+  * UpdatedAt : DATETIME2(3)
+    RowVersion : ROWVERSION
+}
+entity "giving.Pledges" as giving_Pledges #F6E9F2 {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+  * NeedId : INT <<FK>>
+  * DonorUserId : UNIQUEIDENTIFIER <<FK>>
+  * Quantity : DECIMAL(10,2)
+    ExpectedDeliveryDate : DATE
+  * Status : VARCHAR(20)
+    ReceivedBy : UNIQUEIDENTIFIER <<FK>>
+    ReceivedAt : DATETIME2(3)
+  * CreatedAt : DATETIME2(3)
+    CancelledAt : DATETIME2(3)
+    CancelledBy : UNIQUEIDENTIFIER <<FK>>
+    CancelReason : NVARCHAR(300)
+    ReceivedQuantity : DECIMAL(10,2)
+    RowVersion : ROWVERSION
+  * PublicId : UNIQUEIDENTIFIER
+}
+}
+package "notify" {
+entity "notify.MobileDevices" as notify_MobileDevices #EEF0E3 {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * UserId : UNIQUEIDENTIFIER <<FK>>
+  * ExpoPushToken : VARCHAR(200)
+  * Platform : VARCHAR(10)
+    AppVersion : VARCHAR(20)
+  * CreatedAt : DATETIME2(3)
+  * LastSeenAt : DATETIME2(3)
+    DisabledAt : DATETIME2(3)
+    DisabledReason : NVARCHAR(100)
+}
+entity "notify.Notifications" as notify_Notifications #EEF0E3 {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+    UserId : UNIQUEIDENTIFIER <<FK>>
+    InstitutionId : INT <<FK>>
+    TemplateId : SMALLINT <<FK>>
+  * Channel : VARCHAR(10)
+  * Recipient : NVARCHAR(256)
+    Subject : NVARCHAR(200)
+  * Body : NVARCHAR(MAX)
+    RelatedEntity : VARCHAR(50)
+    RelatedEntityId : VARCHAR(50)
+    DedupKey : VARCHAR(120)
+  * Status : VARCHAR(15)
+  * ScheduledAt : DATETIME2(3)
+    SentAt : DATETIME2(3)
+    ReadAt : DATETIME2(3)
+  * Attempts : TINYINT
+    SmsSegments : TINYINT
+    CostLkr : DECIMAL(8,2)
+    ProviderMessageId : VARCHAR(100)
+    ErrorMessage : NVARCHAR(500)
+}
+entity "notify.PushSubscriptions" as notify_PushSubscriptions #EEF0E3 {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * UserId : UNIQUEIDENTIFIER <<FK>>
+  * Endpoint : NVARCHAR(500)
+  * P256dh : VARCHAR(200)
+  * AuthKey : VARCHAR(100)
+  * CreatedAt : DATETIME2(3)
+}
+entity "notify.Templates" as notify_Templates #EEF0E3 {
+  * <b>Id</b> : SMALLINT <<PK>>
+  --
+  * Code : VARCHAR(60)
+  * Channel : VARCHAR(10)
+  * Language : CHAR(2)
+    Subject : NVARCHAR(200)
+  * Body : NVARCHAR(MAX)
+  * IsActive : BIT
+}
+entity "notify.UserPreferences" as notify_UserPreferences #EEF0E3 {
+  * <b>UserId</b> : UNIQUEIDENTIFIER <<PK>>
+  * <b>EventCode</b> : VARCHAR(60) <<PK>>
+  * <b>Channel</b> : VARCHAR(10) <<PK>>
+  --
+  * IsEnabled : BIT
+}
+}
+package "other modules" #FFFFFF {
+entity "auth.Users" as auth_Users #FFFFFF ##[dashed]
+entity "booking.Bookings" as booking_Bookings #FFFFFF ##[dashed]
+entity "core.Files" as core_Files #FFFFFF ##[dashed]
+entity "core.LookupValues" as core_LookupValues #FFFFFF ##[dashed]
+entity "org.InstitutionDonors" as org_InstitutionDonors #FFFFFF ##[dashed]
+}
+booking_GratitudePostPhotos }o--|| booking_GratitudePosts
+booking_GratitudePostPhotos }o--|| core_Files
+booking_GratitudePosts }o..o| booking_Bookings
+booking_GratitudePosts }o..o| giving_Donations
+giving_Donations }o..o| auth_Users
+giving_Donations }o..o| booking_Bookings
+giving_Donations }o..o| core_Files
+giving_Donations }o..o| core_LookupValues
+giving_Donations }o..o| giving_Needs
+giving_Donations }o..o| giving_Pledges
+giving_Donations }o..o| org_InstitutionDonors
+giving_Needs }o..o| core_Files
+giving_Needs }o--|| core_LookupValues
+giving_OnlinePayments }o--|| auth_Users
+giving_OnlinePayments }o..o| giving_Donations
+giving_OnlinePayments }o..o| giving_Needs
+giving_Pledges }o--|| auth_Users
+giving_Pledges }o--|| giving_Needs
+notify_MobileDevices }o--|| auth_Users
+notify_Notifications }o..o| auth_Users
+notify_Notifications }o..o| notify_Templates
+notify_PushSubscriptions }o--|| auth_Users
+notify_UserPreferences }o--|| auth_Users
+legend bottom right
+  * = NOT NULL    <<PK>> primary key    <<FK>> foreign key
+  solid line = mandatory FK, dotted = optional FK
+  CreatedBy / DecidedBy / ...By columns reference auth.Users (no line drawn)
+  InstitutionId (tenant key, Row-Level Security) references org.Institutions:
+  drawn only from org tables
+  Generated from src/Sethika.Database by docs/diagrams/tools/erd_from_sql.py
+endlegend
+@enduml

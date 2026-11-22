@@ -1,0 +1,57 @@
+' Shared look for every Sethika diagram: brand colours, Outfit-like sans, white canvas.
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 6
+skinparam ArrowColor #16513D
+skinparam ArrowFontSize 11
+skinparam TitleFontSize 18
+skinparam TitleFontColor #0E2A21
+skinparam TitleFontStyle bold
+skinparam LegendBackgroundColor #F7F4EC
+skinparam LegendBorderColor #16513D
+skinparam LegendFontSize 11
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #16513D
+  HeaderBackgroundColor #E6F0EC
+  FontColor #0E2A21
+  AttributeFontSize 11
+}
+skinparam package {
+  BorderColor #16513D
+  FontColor #16513D
+  FontStyle bold
+  BackgroundColor #FFFFFF
+}
+skinparam actor {
+  BorderColor #0E2A21
+  BackgroundColor #F7F4EC
+}
+skinparam usecase {
+  BackgroundColor #F7F4EC
+  BorderColor #16513D
+  ArrowColor #16513D
+}
+skinparam rectangle {
+  BorderColor #16513D
+  FontStyle bold
+}
+skinparam sequence {
+  ParticipantBackgroundColor #F7F4EC
+  ParticipantBorderColor #16513D
+  ActorBackgroundColor #F7F4EC
+  ActorBorderColor #16513D
+  LifeLineBorderColor #16513D
+  LifeLineBackgroundColor #E6F0EC
+  GroupBorderColor #E0A33E
+  GroupBackgroundColor #FFF8EA
+  BoxBorderColor #16513D
+  DividerBackgroundColor #F7F4EC
+}
+skinparam note {
+  BackgroundColor #FFF8EA
+  BorderColor #E0A33E
+}

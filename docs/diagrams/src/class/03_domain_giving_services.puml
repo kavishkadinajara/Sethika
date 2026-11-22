@@ -1,0 +1,320 @@
+@startuml
+!pragma layout smetana
+!include ../style.iuml
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam nodesep 40
+skinparam ranksep 60
+skinparam class {
+  BackgroundColor<<static>> #FFF8EA
+  BackgroundColor<<constants>> #F7F4EC
+  BackgroundColor<<record>> #F2F7F4
+}
+title Class diagram 3 — Giving and religious services domain
+package "Giving" {
+class Need {
+  {static} +MaxTitle : const
+  {static} +MaxDescription : const
+  +Id : int
+  +PublicId : Guid
+  +InstitutionId : int
+  +Title : string
+  +Description : string?
+  +CategoryLookupId : int
+  +UnitLookupId : int
+  +QuantityNeeded : decimal
+  +QuantityPledged : decimal {readOnly}
+  +QuantityReceived : decimal {readOnly}
+  +Priority : string
+  +Deadline : DateOnly?
+  +Status : string {readOnly}
+  +CreatedBy : Guid
+  +CreatedAt : DateTime
+  +UpdatedAt : DateTime?
+  +UpdatedBy : Guid?
+  +OpenedAt : DateTime? {readOnly}
+  +EndedAt : DateTime? {readOnly}
+  +OpenPledged : decimal
+  +IsEditable : bool
+  --
+  +ChangeQuantity(quantity, now) : string?
+  +Publish(now) : string?
+  +Close(now) : string?
+  +Cancel(now) : string?
+}
+class Donation {
+  {static} +Money : const
+  {static} +InKind : const
+  {static} +MaxReason : const
+  +Id : long
+  +PublicId : Guid
+  +ReceiptNo : string
+  +InstitutionId : int
+  +DonorUserId : Guid?
+  +InstitutionDonorId : int?
+  +DonorName : string
+  +DonorPhone : string?
+  +Kind : string
+  +Amount : decimal?
+  +CurrencyCode : string
+  +PaymentMethodLookupId : int?
+  +ItemDescription : string?
+  +Quantity : decimal?
+  +EstimatedValue : decimal?
+  +NeedId : int?
+  +PledgeId : int?
+  +Note : string?
+  +DonatedAt : DateTime
+  +RecordedBy : Guid
+  +RecordedAt : DateTime
+  +IsVoided : bool
+  +VoidedBy : Guid?
+  +VoidReason : string?
+  +VoidedAt : DateTime?
+  --
+  +Void(by, reason, utcNow) : string?
+}
+class Pledge {
+  {static} +MaxOpenPerDonor : const
+  {static} +MaxReason : const
+  +Id : int
+  +PublicId : Guid
+  +InstitutionId : int
+  +NeedId : int
+  +DonorUserId : Guid
+  +Quantity : decimal
+  +ExpectedDeliveryDate : DateOnly?
+  +Status : string {readOnly}
+  +ReceivedBy : Guid? {readOnly}
+  +ReceivedAt : DateTime? {readOnly}
+  +ReceivedQuantity : decimal? {readOnly}
+  +CreatedAt : DateTime
+  +CancelledAt : DateTime? {readOnly}
+  +CancelledBy : Guid? {readOnly}
+  +CancelReason : string? {readOnly}
+  --
+  +Receive(by, quantity, utcNow) : string?
+  +Cancel(by, reason, reasonRequired, utcNow) : string?
+}
+class OnlinePayment {
+  {static} +MinAmount : const
+  {static} +MaxAmount : const
+  {static} +Currency : const
+  {static} +MaxPaymentId : const
+  +Id : long
+  +OrderId : Guid
+  +InstitutionId : int
+  +DonorUserId : Guid
+  +MerchantId : string
+  +Amount : decimal
+  +CurrencyCode : string
+  +NeedId : int?
+  +Status : string
+  +PayHerePaymentId : string?
+  +PayHereStatusCode : short?
+  +DonationId : long?
+  +CreatedAt : DateTime
+  +NotifiedAt : DateTime?
+}
+class PaymentMerchant {
+  {static} +PayHere : const
+  {static} +MaxMerchantId : const
+  {static} +MaxSecret : const
+  +Id : int
+  +InstitutionId : int
+  +Provider : string
+  +MerchantId : string
+  +SecretKeyId : string
+  +SecretNonce : byte[]
+  +SecretCipher : byte[]
+  +IsEnabled : bool
+  +UpdatedBy : Guid
+  +UpdatedAt : DateTime
+}
+class PayHereSignature <<static>> {
+  --
+  {static} +Amount(amount) : string
+  {static} +Checkout(merchantId, orderId, amount, currency, secret) : string
+  {static} +Notification(merchantId, orderId, amount, currency, statusCode, secret) : string
+  {static} +Matches(expected, received) : bool
+}
+enum NeedStatus <<constants>> {
+  Draft
+  Open
+  Fulfilled
+  Closed
+  Cancelled
+}
+enum PledgeStatus <<constants>> {
+  Pledged
+  Delivered
+  Cancelled
+}
+enum OnlinePaymentStatus <<constants>> {
+  Pending
+  Paid
+  Failed
+  Cancelled
+}
+}
+package "Religious services (Phase E)" {
+class ServiceType {
+  +Id : int
+  +PublicId : Guid
+  +InstitutionId : int
+  +Name : string
+  +NameSi : string?
+  +NameTa : string?
+  +Description : string?
+  +DurationMinutes : short
+  +BufferMinutes : short
+  +LeadersRequired : byte
+  +LocationMode : string
+  +MinAdvanceDays : short
+  +MaxAdvanceDays : short
+  +IsActive : bool
+  +CreatedAt : DateTime
+  +CreatedBy : Guid
+  +UpdatedAt : DateTime?
+  +UpdatedBy : Guid?
+  --
+  +Offers(location) : bool
+  +BufferFor(location) : int
+}
+class ServiceAppointment {
+  {static} +MaxReason : const
+  +Id : long
+  +AppointmentNo : string
+  +InstitutionId : int
+  +ServiceTypeId : int
+  +DonorUserId : Guid
+  +DonorName : string
+  +DonorPhone : string
+  +StartsAt : DateTime
+  +EndsAt : DateTime
+  +LocationMode : string
+  +Address : string?
+  +Occasion : string?
+  +DonorNote : string?
+  +Status : string {readOnly}
+  +CreatedAt : DateTime
+  +CreatedBy : Guid
+  +DecidedBy : Guid? {readOnly}
+  +DecidedAt : DateTime? {readOnly}
+  +RejectReason : string? {readOnly}
+  +CancelledBy : Guid? {readOnly}
+  +CancelledAt : DateTime? {readOnly}
+  +CancelReason : string? {readOnly}
+  +CompletedAt : DateTime? {readOnly}
+  --
+  +NeedsLeaders(leadersRequired) : bool
+  {static} +NeedsLeaders(status, liveLeaders, leadersRequired) : bool
+  {static} +Request(appointmentNo, type, startsAt, location, address, occasion, donorNote, donorUserId, donorName, donorPhone, now) : ServiceAppointment
+  +Assign(leaderIds, leadersRequired, userId, now) : ServiceResult
+  +Remove(leaderId, userId, now) : ServiceResult
+  +Respond(leaderId, accept, reason, userId, onBehalf, now) : ServiceResult
+  +Reject(reason, userId, now) : ServiceResult
+  +CancelAsDonor(reason, userId, now) : ServiceResult
+  {static} +DonorMayCancel(status, startsAt, utcNow) : bool
+  +CancelAsInstitution(reason, userId, now) : ServiceResult
+  +Complete(userId, now) : ServiceResult
+}
+class AppointmentLeader {
+  +AppointmentId : long
+  +LeaderId : int
+  +InstitutionId : int
+  +Response : string
+  +AssignedBy : Guid
+  +AssignedAt : DateTime
+  +RespondedBy : Guid?
+  +RespondedAt : DateTime?
+  +RespondedOnBehalf : bool
+  +DeclineReason : string?
+  +IsLive : bool
+}
+class AppointmentStatusChange {
+  +Id : long
+  +AppointmentId : long
+  +FromStatus : string?
+  +ToStatus : string
+  +ChangedBy : Guid
+  +ChangedAt : DateTime
+  +Comment : string?
+}
+class ReligiousLeader {
+  +Id : int
+  +PublicId : Guid
+  +InstitutionId : int
+  +UserId : Guid?
+  +DisplayName : string
+  +NameSi : string?
+  +NameTa : string?
+  +Title : string?
+  +Phone : string?
+  +Language : string
+  +IsActive : bool
+  +CreatedAt : DateTime
+  +CreatedBy : Guid
+  +UpdatedAt : DateTime?
+  +UpdatedBy : Guid?
+}
+class LeaderWeeklyHours {
+  +Id : int
+  +LeaderId : int
+  +InstitutionId : int
+  +DayOfWeek : byte
+  +StartTime : TimeOnly
+  +EndTime : TimeOnly
+  --
+  +Covers(colomboStart, colomboEnd) : bool
+}
+class LeaderTimeOff {
+  +Id : int
+  +LeaderId : int
+  +InstitutionId : int
+  +StartsAt : DateTime
+  +EndsAt : DateTime
+  +Reason : string?
+  +CreatedAt : DateTime
+  +CreatedBy : Guid
+}
+class LeaderTimeBlock {
+  +LeaderId : int
+  +BlockStart : DateTime
+  +InstitutionId : int
+  +Kind : string
+  +AppointmentId : long?
+  +TimeOffId : int?
+}
+class ServiceRules <<static>> {
+  --
+  {static} +CanRequest(type, institutionStatus, startsAt, location, address, utcNow) : string?
+}
+enum AppointmentStatus <<constants>> {
+  Requested
+  Approved
+  Rejected
+  Cancelled
+  Completed
+}
+}
+Donation "*" -- "0..1" Need
+Donation "*" -- "0..1" Pledge
+Pledge "*" -- "1" Need
+OnlinePayment "*" -- "1" PaymentMerchant
+OnlinePayment "*" -- "0..1" Need
+OnlinePayment "*" -- "0..1" Donation
+ServiceAppointment "*" -- "1" ServiceType
+ServiceAppointment "1" -- "*" AppointmentLeader
+ServiceAppointment "1" -- "*" AppointmentStatusChange
+AppointmentLeader "*" -- "1" ReligiousLeader
+LeaderWeeklyHours "*" -- "1" ReligiousLeader
+LeaderTimeOff "*" -- "1" ReligiousLeader
+LeaderTimeBlock "*" -- "1" ReligiousLeader
+LeaderTimeBlock "*" -- "0..1" ServiceAppointment
+legend bottom right
+  +Name : Type {readOnly} = changed only through the class's own methods
+  <<static>> = rules with no state    <<constants>> = readable status values (VARCHAR + CHECK)
+  Generated from the C# code by docs/diagrams/tools/class_from_cs.py
+endlegend
+@enduml

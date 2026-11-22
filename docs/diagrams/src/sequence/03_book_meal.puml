@@ -1,0 +1,55 @@
+@startuml
+!include ../style.iuml
+autonumber
+title Sequence 3 — Booking a meal slot (the booking engine)
+
+actor Donor
+participant "POST /api/bookings\n[MYBOOKINGS.BOOKINGS.CREATE]" as Api
+participant "BookMealHandler" as H
+participant "RedisSlotLocks" as Lock
+database "Redis" as Redis
+participant "SqlSlotInventory" as Inv
+participant "SqlNumberSeries" as Num
+database "SQL Server" as Sql
+
+Donor -> Api : mealSlot (PublicId), date, headcount, fulfilment
+Api -> H : BookAsync(donorId, command)
+H -> H : validate fields
+H -> Sql : donor has a confirmed phone?
+H -> Sql : MealSlots.PublicId → internal Id
+H -> Lock : AcquireAsync(mealSlotId, date)
+Lock -> Redis : SET lock:slot:{mealSlotId}:{date} <token> NX PX 10000\n(retry every 20 ms, up to 5 s)
+alt lock busy
+  H --> Donor : 409 slot_busy
+end
+note over Lock, Redis : Redis down → booking goes on without the lock;\nthe conditional UPDATE and the CHECK constraints\nalone still prevent overbooking
+
+H -> Sql : BEGIN TRANSACTION
+H -> Sql : read slot, seasons, blocked dates, institution status
+H -> H : MealSlotRules.CanBook(...)
+alt closed day / outside advance window / headcount or fulfilment not offered
+  H --> Donor : 400 or 409 with the reason
+end
+H -> Inv : GetOrCreateAsync(slot, date)
+Inv -> Sql : INSERT SlotInstance if missing\n(UQ_SlotInst_SlotDate decides a race)
+H -> Inv : TryTakeAsync(slotInstanceId, headcount)
+Inv -> Sql : UPDATE booking.SlotInstances\nSET BookedSponsors += 1, BookedHeadcount += n\nWHERE Id = @id AND BookedSponsors < MaxSponsors\nAND BookedHeadcount + n <= MaxHeadcount
+alt 0 rows, or CHECK constraint refuses (547)
+  H --> Donor : 409 slot_full (rollback)
+end
+H -> Num : NextAsync(Booking, year)
+Num -> Sql : UPDATE core.NumberSeries WITH (UPDLOCK) → BookingNo
+H -> Sql : INSERT Booking (Requested, or Approved if the slot needs no approval)\n+ OutboxMessage BookingRequested / BookingConfirmed\n+ OutboxMessage AvailabilityChanged
+opt "book every year"
+  H -> Sql : INSERT / link RecurringBooking
+end
+alt UX_Bookings_DonorPerSlot (donor already holds this slot-day)
+  H --> Donor : 409 already_booked (rollback gives the place back)
+end
+H -> Sql : COMMIT
+H -> Lock : dispose
+Lock -> Redis : Lua: DEL key only if value = our token
+H --> Api : BookingNo, status
+Api --> Donor : 201 { bookingNo, status }
+Api ->> Api : wake the outbox (sequence 4)
+@enduml

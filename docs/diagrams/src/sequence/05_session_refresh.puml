@@ -1,0 +1,49 @@
+@startuml
+!include ../style.iuml
+autonumber
+title Sequence 5 — Session refresh: rotation with reuse detection
+
+participant "Client\n(web: httpOnly cookie,\nmobile: secure store)" as C
+participant "POST /api/auth/session/refresh" as Api
+participant "SessionHandler" as H
+participant "JwtTokenService" as T
+database "SQL Server\n(auth.RefreshTokens)" as Sql
+
+C -> Api : refresh token
+Api -> H : RefreshAsync
+H -> T : HashRefreshToken (SHA-256)
+H -> Sql : find token by hash
+alt unknown or expired
+  H --> C : 401 session_expired
+else rotated more than 10 s ago (a copy is being replayed)
+  H -> Sql : revoke the whole family (ReuseDetected)
+  H --> C : 401 session_expired — thief and user must both sign in
+else rotated within 10 s (two tabs refreshed at once)
+  H --> C : 409 session_superseded — the family survives
+end
+H -> Sql : user Active? SecurityStamp unchanged?
+alt suspended, deleted, password changed, "log out everywhere"
+  H -> Sql : revoke the family
+  H --> C : 401 session_expired
+end
+H -> Sql : the user's institutions (memberships re-checked,\na revoked role drops out of the new token)
+H -> T : Issue(UserId, active InstitutionId, IsPlatform)
+H -> Sql : BEGIN TRANSACTION
+H -> Sql : UPDATE RefreshTokens SET RevokedAt = now, RevokedReason = 'Rotated'\nWHERE Id = @id AND RevokedAt IS NULL
+alt 0 rows (another request rotated it first)
+  H --> C : 409 session_superseded
+end
+H -> Sql : INSERT successor (same FamilyId, SecurityStamp)
+H -> Sql : old.ReplacedByTokenId = successor.Id
+H -> Sql : COMMIT
+opt request also showed its access token (same user)
+  H -> H : carry the step-up grant to the new access token
+end
+H --> Api : tokens + institutions
+Api --> C : 200, new access JWT,\nnew refresh token (cookie scoped to /api/auth/session)
+
+note over C, Sql
+  Every dead session gets the same 401 answer,
+  so a replayed copy learns nothing about why it failed.
+end note
+@enduml

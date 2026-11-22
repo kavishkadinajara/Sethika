@@ -1,0 +1,46 @@
+@startuml
+!include ../style.iuml
+autonumber
+title Sequence 4 — Outbox processing, notifications, live calendar and evening reminders
+
+participant "Hangfire\n(OutboxJob: woken + every minute)" as Job
+participant "OutboxProcessor" as P
+database "SQL Server" as Sql
+participant "IOutboxHandler\n(per event type)" as Handler
+participant "SMS sender" as Sms
+participant "Expo push gateway" as Push
+participant "AvailabilityHub\n(SignalR, Redis backplane)" as Hub
+actor "Browsers on the\ninstitution's calendar" as Viewers
+participant "BookingReminderJob\n(18:00 Colombo)" as Remind
+
+Job -> P : RunAsync (as platform: IsPlatform = 1)
+loop until the queue is empty
+  P -> Sql : BEGIN TRANSACTION\nSELECT TOP (@batchSize) … FROM core.OutboxMessages\nWITH (UPDLOCK, READPAST, ROWLOCK)\nWHERE ProcessedAt IS NULL AND Attempts < @maxAttempts
+  note right of Sql : READPAST: a second worker skips\nthese rows instead of waiting
+  loop each message
+    P -> Handler : HandleAsync(message)
+    alt BookingRequested / BookingConfirmed (BookingSmsHandler)
+      Handler -> Sms : text the donor in their language\n(the institution gets no texts)
+      Sms -> Sql : INSERT notify.Notifications (DedupKey = template + booking)\nbefore the gateway call
+      note right of Sms : unique DedupKey: a message\nhanded over twice is sent once
+      Handler -> Push : same message as a push to the\ndonor's signed-in devices
+    else AvailabilityChanged
+      Handler -> Hub : Clients.Group(institution slug)\n.availabilityChanged(from, to)
+      Hub -> Viewers : refresh those days
+    end
+    alt handler threw
+      P -> Sql : Attempts += 1, LastError; the run stops here\n(so MaxAttempts counts runs, not moments)
+    else handled (or no handler)
+      P -> Sql : ProcessedAt = now
+    end
+  end
+  P -> Sql : COMMIT
+end
+
+== every evening ==
+Remind -> Sql : tomorrow's approved bookings (Colombo date)
+loop each booking and co-sponsor
+  Remind -> Sms : reminder with DedupKey booking-reminder:{BookingNo}
+  note right : already sent → skipped,\nso a retried run sends nothing twice
+end
+@enduml
