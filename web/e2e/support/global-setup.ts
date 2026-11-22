@@ -14,7 +14,7 @@ const routes = [
 ];
 const locales = ["", "/si", "/ta"];
 
-async function warmUp(baseURL: string) {
+export async function warmUp(baseURL: string) {
   for (const locale of locales) {
     for (const route of routes) {
       const response = await fetch(`${baseURL}${locale}${route === "/" && locale ? "" : route}`);

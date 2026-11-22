@@ -45,3 +45,7 @@ next-env.d.ts
 /e2e/.results/
 /e2e/.report/
 /e2e/.screens/
+# QA cycle state: the personas the setup made on Sethika_QA (phones, slugs), rebuilt on every reset
+/e2e/qa/.personas.json
+/e2e/qa/.results/
+/e2e/qa/.report/
