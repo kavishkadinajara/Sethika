@@ -343,6 +343,15 @@ critical advisory and went to 16.4.5, with the .NET servicing packages to 10.0.1
 clean; what is left is lint tooling (dev only, npm's fix is a downgrade) and Expo's CLI in mobile (build
 tooling, not in the app; npm's fix is Expo 52). Dependabot now opens PRs against `develop`.
 
+2026-11-22: GHSA-wr8v-9x5q-ggcm (CVE-2026-114147, high, ASP.NET Core denial of service) named
+`Microsoft.AspNetCore.SignalR.StackExchangeRedis` ≤ 10.0.14, and NuGet audit with warnings as errors stopped
+every restore. The .NET servicing packages went to 10.0.15 together (SignalR Redis, JwtBearer, EF Core and its
+SQL Server provider, Identity.Core, Extensions.Http, Cryptography.Pkcs, Mvc.Testing, SignalR.Client);
+`dotnet list package --vulnerable --include-transitive` is clean, and the full suite passed (1,636). The
+advisory covers the ASP.NET Core runtime ≤ 10.0.14 as well: a machine that runs the API needs runtime 10.0.15
+(App Service updates its own). The same run found `PaymentEndpointsTests` reading a developer's user-secrets for
+PayHere's public URLs (set to the tunnel for the sandbox walk); the test now pins them, as it pins the rest.
+
 **The access audit's open items** (PR #14):
 
 | Item | Decision |

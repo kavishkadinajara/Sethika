@@ -103,6 +103,11 @@ public sealed class PaymentEndpointsTests(SethikaTestDatabase database) : IAsync
             builder.UseSetting("ConnectionStrings:Sql", database.ConnectionString);
             builder.UseSetting("ConnectionStrings:Redis", database.RedisConnectionString);
             builder.UseSetting("Jwt:SigningKey", SigningKey);
+
+            // The addresses PayHere is sent to, pinned as the rest are: a developer's user-secrets
+            // point them at a tunnel for a sandbox walk, and must not change what these tests see.
+            builder.UseSetting("Payments:PayHere:WebPublicUrl", "http://localhost:3000");
+            builder.UseSetting("Payments:PayHere:ApiPublicUrl", "http://localhost:3000");
         });
     }
 
