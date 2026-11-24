@@ -60,6 +60,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "36bed466-a320-4d91-955c-e7871b71c9fb"
+      }
+    },
+    "owner": "kavi09d"
   }
 }

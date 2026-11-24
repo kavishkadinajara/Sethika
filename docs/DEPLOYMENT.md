@@ -97,6 +97,27 @@ only. No Azure password is stored in GitHub. The `production` environment's secr
 `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` and `SQL_ADMIN_CONNECTION_STRING`
 (used by the schema publish only).
 
+## Mobile app and push notifications
+
+The Android app is built by **EAS Build** (Expo project `@kavi09d/sethika`) as an APK for direct
+install: `cd mobile && npx eas-cli@latest build -p android --profile production`. The `production`
+profile points the app straight at the Azure API (no proxy, so SignalR gets WebSockets) and uses the
+EAS `production` environment. EAS keeps the Android signing key, so every build installs over the
+previous one. EAS archives the whole repository; the root `.easignore` keeps everything but
+`mobile/` out of the upload.
+
+Push goes **API outbox → Expo Push Service → Firebase Cloud Messaging → phone**:
+
+| Piece | Where it lives |
+|---|---|
+| Firebase project `sethika-10955`, Android app `com.sethika.app` | Firebase console |
+| `google-services.json` (which Firebase project the app belongs to) | EAS secret file variable `GOOGLE_SERVICES_JSON` (environment `production`); `mobile/app.config.ts` reads it at build time. Never in the repository |
+| FCM V1 service-account key (lets Expo send through Firebase) | EAS project credentials, Android, FCM V1 |
+| A phone's Expo push token | `notify.MobileDevices`, registered by the app through `PUT /api/me/devices` |
+
+The API needs no push key of its own (`Push:Provider = Expo`). The `push-receipts` job reads Expo's
+delivery receipts and disables tokens of phones that no longer exist.
+
 ## By hand
 
 The first deployment, and the steps no pipeline repeats:
