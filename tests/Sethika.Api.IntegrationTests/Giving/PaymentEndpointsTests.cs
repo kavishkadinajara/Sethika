@@ -224,14 +224,14 @@ public sealed class PaymentEndpointsTests(SethikaTestDatabase database) : IAsync
     private static async Task<JsonElement> BodyOf(HttpResponseMessage response)
     {
         var text = await response.Content.ReadAsStringAsync();
-        return JsonDocument.Parse(text).RootElement.Clone();
+        return JsonElement.Parse(text).Clone();
     }
 
     private static async Task AssertRefusedAsync(HttpResponseMessage response, HttpStatusCode status, string code)
     {
         var body = await response.Content.ReadAsStringAsync();
         Assert.True(response.StatusCode == status, $"{response.StatusCode}: {body}");
-        Assert.Equal(code, JsonDocument.Parse(body).RootElement.GetProperty("code").GetString());
+        Assert.Equal(code, JsonElement.Parse(body).GetProperty("code").GetString());
     }
 
     private static async Task AssertFieldsAsync(HttpResponseMessage response, params string[] fields)
@@ -409,7 +409,7 @@ public sealed class PaymentEndpointsTests(SethikaTestDatabase database) : IAsync
         Assert.DoesNotContain("nonce", text, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("secret", text, StringComparison.OrdinalIgnoreCase);
 
-        var merchant = JsonDocument.Parse(text).RootElement.GetProperty("merchant");
+        var merchant = JsonElement.Parse(text).GetProperty("merchant");
         Assert.Equal(AlphaMerchant, merchant.GetProperty("merchantId").GetString());
         Assert.True(merchant.GetProperty("isEnabled").GetBoolean());
         Assert.Equal("Payment Test", merchant.GetProperty("updatedByName").GetString());
@@ -519,15 +519,15 @@ public sealed class PaymentEndpointsTests(SethikaTestDatabase database) : IAsync
 
         // Another institution's merchant says nothing about this one.
         await SetBetaMerchantAsync();
-        Assert.False(JsonDocument.Parse(await Page()).RootElement.GetProperty("givesOnline").GetBoolean());
+        Assert.False(JsonElement.Parse(await Page()).GetProperty("givesOnline").GetBoolean());
 
         var version = await SetAlphaMerchantAsync();
         var on = await Page();
-        Assert.True(JsonDocument.Parse(on).RootElement.GetProperty("givesOnline").GetBoolean());
+        Assert.True(JsonElement.Parse(on).GetProperty("givesOnline").GetBoolean());
         Assert.DoesNotContain(AlphaMerchant, on, StringComparison.Ordinal);
 
         await AssertOkAsync(await SendAsync(await SteppedUpAlphaAsync(), HttpMethod.Put, Merchant, MerchantBody(secret: null, enabled: false, version: version)));
-        Assert.False(JsonDocument.Parse(await Page()).RootElement.GetProperty("givesOnline").GetBoolean());
+        Assert.False(JsonElement.Parse(await Page()).GetProperty("givesOnline").GetBoolean());
     }
 
     // ------------------------------------------------------------------ the order (M8)

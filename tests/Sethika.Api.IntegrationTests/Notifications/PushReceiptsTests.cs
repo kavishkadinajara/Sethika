@@ -107,7 +107,7 @@ public sealed class PushReceiptsTests(SethikaTestDatabase database) : IAsyncLife
     private static string Answer(params (string Ticket, string Receipt)[] receipts) =>
         JsonSerializer.Serialize(new
         {
-            data = receipts.ToDictionary(r => r.Ticket, r => JsonDocument.Parse(r.Receipt).RootElement, StringComparer.Ordinal),
+            data = receipts.ToDictionary(r => r.Ticket, r => JsonElement.Parse(r.Receipt), StringComparer.Ordinal),
         });
 
     private const string Ok = """{"status":"ok"}""";

@@ -281,7 +281,7 @@ public sealed class MemorialPlanTests(SethikaTestDatabase database) : IAsyncLife
     }
 
     private static async Task<JsonElement> BodyOf(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        JsonElement.Parse(await response.Content.ReadAsStringAsync());
 
     private static JsonElement Observance(JsonElement plan, string rule) =>
         plan.GetProperty("observances").EnumerateArray().Single(o => o.GetProperty("rule").GetString() == rule);

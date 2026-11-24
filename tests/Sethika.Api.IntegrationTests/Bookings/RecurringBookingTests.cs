@@ -348,7 +348,7 @@ public sealed class RecurringBookingTests(SethikaTestDatabase database) : IAsync
     }
 
     private static async Task<JsonElement> BodyOf(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        JsonElement.Parse(await response.Content.ReadAsStringAsync());
 
     // ------------------------------------------------------------------ the yearly job
 

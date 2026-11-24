@@ -208,7 +208,7 @@ public sealed class AuthEndpointsTests(SethikaTestDatabase database) : IAsyncLif
         client.PostAsJsonAsync("/api/auth/login", new { login, password });
 
     private static async Task<JsonElement> JsonAsync(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        JsonElement.Parse(await response.Content.ReadAsStringAsync());
 
     private static IList<SetCookieHeaderValue> SetCookies(HttpResponseMessage response) =>
         response.Headers.TryGetValues("Set-Cookie", out var values)

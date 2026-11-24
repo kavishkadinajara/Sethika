@@ -285,10 +285,10 @@ public sealed class SearchEndpointsTests(SethikaTestDatabase database) : IAsyncL
     }
 
     private async Task<JsonElement> SearchAsync(string query, WebApplicationFactory<Program>? host = null) =>
-        JsonDocument.Parse(await SearchTextAsync(query, host)).RootElement;
+        JsonElement.Parse(await SearchTextAsync(query, host));
 
     private async Task<JsonElement> MonthAsync(string query, WebApplicationFactory<Program>? host = null) =>
-        JsonDocument.Parse(await SearchTextAsync(query, host, MonthPath)).RootElement;
+        JsonElement.Parse(await SearchTextAsync(query, host, MonthPath));
 
     /// <summary>The month view's counts, by date.</summary>
     private static Dictionary<DateOnly, int> Counts(JsonElement month) =>
@@ -301,7 +301,7 @@ public sealed class SearchEndpointsTests(SethikaTestDatabase database) : IAsyncL
         using var response = await GetAsync(query, path: path);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        var body = JsonElement.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal("invalid_search", body.GetProperty("code").GetString());
         return [.. body.GetProperty("fields").EnumerateArray().Select(f => f.GetString()!)];
     }
@@ -494,7 +494,7 @@ public sealed class SearchEndpointsTests(SethikaTestDatabase database) : IAsyncL
         Assert.Equal(7, await RebuildAsync());
         var withIndex = await SearchTextAsync(five);
 
-        var search = JsonDocument.Parse(withIndex).RootElement;
+        var search = JsonElement.Parse(withIndex);
         Place[] withinFive = [places.North1, places.TwinA, places.TwinB, places.Inside, places.Edge];
         Assert.Equal(withinFive.Select(p => p.Slug), Slugs(search));
 
@@ -574,7 +574,7 @@ public sealed class SearchEndpointsTests(SethikaTestDatabase database) : IAsyncL
         foreach (var query in queries)
         {
             var up = await SearchTextAsync(query);
-            Assert.NotEqual("[]", JsonDocument.Parse(up).RootElement.GetProperty("results").GetRawText());
+            Assert.NotEqual("[]", JsonElement.Parse(up).GetProperty("results").GetRawText());
             Assert.Equal(up, await SearchTextAsync(query, down));
         }
     }
@@ -663,7 +663,7 @@ public sealed class SearchEndpointsTests(SethikaTestDatabase database) : IAsyncL
             var message = await connection.QuerySingleAsync<(string EventType, string AggregateType, string AggregateId, string Payload)>(
                 "SELECT EventType, AggregateType, AggregateId, Payload FROM core.OutboxMessages WHERE AggregateType = 'Institution' AND ProcessedAt IS NULL;");
             Assert.Equal((SlotManagementHandler.ListingChangedEvent, "Institution", temple.Code), (message.EventType, message.AggregateType, message.AggregateId));
-            Assert.Equal(temple.Id, JsonDocument.Parse(message.Payload).RootElement.GetProperty("institutionId").GetInt32());
+            Assert.Equal(temple.Id, JsonElement.Parse(message.Payload).GetProperty("institutionId").GetInt32());
         }
 
         // Until the outbox runs the index still holds it; the search does not show it either way.
@@ -851,7 +851,7 @@ public sealed class SearchEndpointsTests(SethikaTestDatabase database) : IAsyncL
         {
             using var limited = await GetAsync(query, path: path, address: address);
             Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
-            Assert.Equal("too_many_requests", JsonDocument.Parse(await limited.Content.ReadAsStringAsync()).RootElement.GetProperty("code").GetString());
+            Assert.Equal("too_many_requests", JsonElement.Parse(await limited.Content.ReadAsStringAsync()).GetProperty("code").GetString());
 
             using var elsewhere = await GetAsync(query, path: path);
             Assert.Equal(HttpStatusCode.OK, elsewhere.StatusCode);
@@ -865,7 +865,7 @@ public sealed class SearchEndpointsTests(SethikaTestDatabase database) : IAsyncL
         var types = (await connection.QueryAsync<string>("SELECT Code FROM org.InstitutionTypes WHERE IsActive = 1 ORDER BY Name;")).ToArray();
         var districts = (await connection.QueryAsync<string>("SELECT Code FROM core.Districts ORDER BY Name;")).ToArray();
 
-        var lookups = JsonDocument.Parse(await SearchTextAsync("", path: LookupsPath)).RootElement;
+        var lookups = JsonElement.Parse(await SearchTextAsync("", path: LookupsPath));
         string[] Codes(string list) => [.. lookups.GetProperty(list).EnumerateArray().Select(e => e.GetProperty("code").GetString()!)];
 
         Assert.Equal(types, Codes("types"));
@@ -892,7 +892,7 @@ public sealed class SearchEndpointsTests(SethikaTestDatabase database) : IAsyncL
             new { retired, named });
         try
         {
-            var after = JsonDocument.Parse(await SearchTextAsync("", path: LookupsPath)).RootElement;
+            var after = JsonElement.Parse(await SearchTextAsync("", path: LookupsPath));
             Assert.Equal(types[..^1], after.GetProperty("types").EnumerateArray().Select(e => e.GetProperty("code").GetString()!));
 
             static (string?, string?) Local(JsonElement e) => (e.GetProperty("nameSi").GetString(), e.GetProperty("nameTa").GetString());

@@ -170,7 +170,7 @@ public sealed class InstitutionAppointmentEndpointsTests(SethikaTestDatabase dat
     }
 
     private static async Task<JsonElement> BodyOf(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        JsonElement.Parse(await response.Content.ReadAsStringAsync());
 
     private static async Task AssertOkAsync(HttpResponseMessage response, string status)
     {
@@ -590,7 +590,7 @@ public sealed class InstitutionAppointmentEndpointsTests(SethikaTestDatabase dat
         Assert.Equal(0, await BlocksAsync(id));
         Assert.Equal(8, await BlocksAsync(otherId));
 
-        var payload = JsonDocument.Parse(await ScalarAsync<string>("SELECT Payload FROM core.OutboxMessages WHERE AggregateId = @no AND EventType = 'AppointmentCancelled';", new { no })).RootElement;
+        var payload = JsonElement.Parse(await ScalarAsync<string>("SELECT Payload FROM core.OutboxMessages WHERE AggregateId = @no AND EventType = 'AppointmentCancelled';", new { no }));
         Assert.False(payload.GetProperty("byDonor").GetBoolean());
     }
 

@@ -226,7 +226,7 @@ public sealed class DonationEndpointsTests(SethikaTestDatabase database) : IAsyn
     private static async Task<JsonElement> BodyOf(HttpResponseMessage response)
     {
         var text = await response.Content.ReadAsStringAsync();
-        return JsonDocument.Parse(text).RootElement.Clone();
+        return JsonElement.Parse(text).Clone();
     }
 
     private static async Task AssertRefusedAsync(HttpResponseMessage response, HttpStatusCode status, string code)

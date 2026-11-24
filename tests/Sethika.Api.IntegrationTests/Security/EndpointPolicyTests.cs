@@ -140,7 +140,7 @@ public sealed class EndpointPolicyTests(SethikaTestDatabase database)
         await using var host = Host();
 
         var undeclared = ApiEndpoints(host)
-            .Where(e => e.Metadata.GetMetadata<IAllowAnonymous>() is null && !e.Metadata.GetOrderedMetadata<IAuthorizeData>().Any())
+            .Where(e => e.Metadata.GetMetadata<IAllowAnonymous>() is null && e.Metadata.GetOrderedMetadata<IAuthorizeData>().Count == 0)
             .Select(Describe)
             .ToList();
 
@@ -167,8 +167,8 @@ public sealed class EndpointPolicyTests(SethikaTestDatabase database)
 
         var authenticatedOnly = ApiEndpoints(host)
             .Where(e => e.Metadata.GetMetadata<IAllowAnonymous>() is null
-                && e.Metadata.GetOrderedMetadata<IAuthorizeData>().Any()
-                && !e.Metadata.GetOrderedMetadata<HasPermissionAttribute>().Any())
+                && e.Metadata.GetOrderedMetadata<IAuthorizeData>().Count > 0
+                && e.Metadata.GetOrderedMetadata<HasPermissionAttribute>().Count == 0)
             .Select(Describe)
             .Order(StringComparer.Ordinal);
 

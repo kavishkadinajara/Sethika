@@ -220,14 +220,14 @@ public sealed class NeedEndpointsTests(SethikaTestDatabase database) : IAsyncLif
     private static async Task<JsonElement> BodyOf(HttpResponseMessage response)
     {
         var text = await response.Content.ReadAsStringAsync();
-        return JsonDocument.Parse(text).RootElement.Clone();
+        return JsonElement.Parse(text).Clone();
     }
 
     private static async Task AssertRefusedAsync(HttpResponseMessage response, HttpStatusCode status, string code)
     {
         var body = await response.Content.ReadAsStringAsync();
         Assert.True(response.StatusCode == status, $"{response.StatusCode}: {body}");
-        Assert.Equal(code, JsonDocument.Parse(body).RootElement.GetProperty("code").GetString());
+        Assert.Equal(code, JsonElement.Parse(body).GetProperty("code").GetString());
     }
 
     private static async Task AssertFieldsAsync(HttpResponseMessage response, params string[] fields)

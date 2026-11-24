@@ -175,7 +175,7 @@ public sealed class MobileSessionEndpointsTests(SethikaTestDatabase database) : 
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 
     private static async Task<JsonElement> JsonAsync(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        JsonElement.Parse(await response.Content.ReadAsStringAsync());
 
     private static async Task<string?> CodeOf(HttpResponseMessage response) =>
         (await JsonAsync(response)).GetProperty("code").GetString();

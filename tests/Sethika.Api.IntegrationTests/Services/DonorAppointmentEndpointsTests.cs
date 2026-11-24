@@ -180,7 +180,7 @@ public sealed class DonorAppointmentEndpointsTests(SethikaTestDatabase database)
     }
 
     private static async Task<JsonElement> BodyOf(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        JsonElement.Parse(await response.Content.ReadAsStringAsync());
 
     private static async Task AssertRefusedAsync(HttpResponseMessage response, HttpStatusCode status, string code)
     {
@@ -442,7 +442,7 @@ public sealed class DonorAppointmentEndpointsTests(SethikaTestDatabase database)
 
         var message = await OutboxOfAsync(no, RequestServiceHandler.RequestedEvent);
         Assert.Equal(nameof(ServiceAppointment), message.AggregateType);
-        Assert.Equal(no, JsonDocument.Parse(message.Payload).RootElement.GetProperty("appointmentNo").GetString());
+        Assert.Equal(no, JsonElement.Parse(message.Payload).GetProperty("appointmentNo").GetString());
 
         // A request holds no leader: nothing is assigned and no time is blocked (section 4, flow 1).
         Assert.Equal(0, await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM booking.AppointmentLeaders WHERE AppointmentId = @id;", new { id }));
@@ -676,7 +676,7 @@ public sealed class DonorAppointmentEndpointsTests(SethikaTestDatabase database)
         Assert.Equal(blocks, await BlocksOfAsync(id));
 
         var message = await OutboxOfAsync(no, AppointmentDecisionHandler.CancelledEvent);
-        Assert.True(JsonDocument.Parse(message.Payload).RootElement.GetProperty("byDonor").GetBoolean());
+        Assert.True(JsonElement.Parse(message.Payload).GetProperty("byDonor").GetBoolean());
 
         await HandleAsPlatformAsync(message);
         Assert.Equal(0, await BlocksOfAsync(id));

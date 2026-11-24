@@ -234,7 +234,7 @@ public sealed partial class PasswordResetEndpointsTests(SethikaTestDatabase data
     }
 
     private static async Task<JsonElement> JsonAsync(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        JsonElement.Parse(await response.Content.ReadAsStringAsync());
 
     private static async Task<string?> CodeOf(HttpResponseMessage response) =>
         (await JsonAsync(response)).GetProperty("code").GetString();
@@ -285,7 +285,7 @@ public sealed partial class PasswordResetEndpointsTests(SethikaTestDatabase data
         var payload = await QuerySingleAsync<string>(
             "SELECT Payload FROM core.OutboxMessages WHERE EventType = 'PasswordReset' AND AggregateId = @id;",
             new { id = userId.ToString() });
-        Assert.Equal(["userId"], JsonDocument.Parse(payload).RootElement.EnumerateObject().Select(p => p.Name));
+        Assert.Equal(["userId"], JsonElement.Parse(payload).EnumerateObject().Select(p => p.Name));
     }
 
     [Fact]
@@ -343,7 +343,7 @@ public sealed partial class PasswordResetEndpointsTests(SethikaTestDatabase data
         }
 
         Assert.Single(guesses.Distinct());
-        Assert.Equal("otp_incorrect", JsonDocument.Parse(guesses[0]).RootElement.GetProperty("code").GetString());
+        Assert.Equal("otp_incorrect", JsonElement.Parse(guesses[0]).GetProperty("code").GetString());
     }
 
     private sealed class FailingSmsSender : ISmsSender

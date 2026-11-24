@@ -238,7 +238,7 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
         using var client = NewClient();
         using var response = await client.PostAsJsonAsync("/api/auth/login", new { login = phone, password = Password });
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        var body = JsonElement.Parse(await response.Content.ReadAsStringAsync());
         var userId = Guid.Parse(new JsonWebToken(body.GetProperty("accessToken").GetString()!).GetClaim(SethikaClaimTypes.UserId).Value);
         return Parse(userId, phone, response, body);
     }
@@ -252,7 +252,7 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
         request.Headers.Add("X-CSRF-Token", session.Csrf);
         using var response = await client.SendAsync(request);
         var text = await response.Content.ReadAsStringAsync();
-        var json = text.Length > 0 ? JsonDocument.Parse(text).RootElement : default;
+        var json = text.Length > 0 ? JsonElement.Parse(text) : default;
         return response.IsSuccessStatusCode
             ? (response.StatusCode, Parse(session.UserId, session.Phone, response, json), null)
             : (response.StatusCode, null, json.ValueKind == JsonValueKind.Object && json.TryGetProperty("code", out var code) ? code.GetString() : null);
@@ -272,14 +272,14 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
     private static async Task<string?> CodeOf(HttpResponseMessage response)
     {
         var text = await response.Content.ReadAsStringAsync();
-        return text.Length > 0 && JsonDocument.Parse(text).RootElement.TryGetProperty("code", out var code) ? code.GetString() : null;
+        return text.Length > 0 && JsonElement.Parse(text).TryGetProperty("code", out var code) ? code.GetString() : null;
     }
 
     private async Task<string[]> PermissionsAsync(Session session)
     {
         using var response = await SendAsync(session, HttpMethod.Get, "/api/me/permissions");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        return [.. JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("permissions").EnumerateArray().Select(p => p.GetString()!)];
+        return [.. JsonElement.Parse(await response.Content.ReadAsStringAsync()).GetProperty("permissions").EnumerateArray().Select(p => p.GetString()!)];
     }
 
     /// <summary>An administrator, stepped up, who has just entered Alpha as support.</summary>
@@ -437,13 +437,13 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
         await SteppedUpAsync(inside);
 
         using var roles = await SendAsync(inside, HttpMethod.Get, "/api/institution/roles");
-        var owner = JsonDocument.Parse(await roles.Content.ReadAsStringAsync()).RootElement.EnumerateArray()
+        var owner = JsonElement.Parse(await roles.Content.ReadAsStringAsync()).EnumerateArray()
             .Single(r => r.GetProperty("code").GetString() == "A_OWNER");
         Assert.True(owner.GetProperty("canManage").GetBoolean());
 
         using var levels = await SendAsync(inside, HttpMethod.Get, "/api/institution/role-levels");
         Assert.Contains(
-            JsonDocument.Parse(await levels.Content.ReadAsStringAsync()).RootElement.EnumerateArray(),
+            JsonElement.Parse(await levels.Content.ReadAsStringAsync()).EnumerateArray(),
             l => l.GetProperty("level").GetString() == "OWNER");
 
         using var edited = await SendAsync(inside, HttpMethod.Put, "/api/institution/roles/A_OWNER/permissions",
@@ -556,7 +556,7 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
         Assert.Equal("invalid_phone_number", await CodeOf(landline));
 
         using var found = await SendAsync(admin, HttpMethod.Get, "/api/admin/users?search=Made%20By%20Admin");
-        Assert.Contains(JsonDocument.Parse(await found.Content.ReadAsStringAsync()).RootElement.GetProperty("items").EnumerateArray(),
+        Assert.Contains(JsonElement.Parse(await found.Content.ReadAsStringAsync()).GetProperty("items").EnumerateArray(),
             u => u.GetProperty("status").GetString() == "PendingVerification");
     }
 
@@ -645,14 +645,14 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
         var admin = await LogInAsync(await AccountAsync("PLATFORM_ADMIN"));
 
         using var all = await SendAsync(admin, HttpMethod.Get, "/api/admin/institutions?search=alpha");
-        var rows = JsonDocument.Parse(await all.Content.ReadAsStringAsync()).RootElement.GetProperty("items").EnumerateArray().ToList();
+        var rows = JsonElement.Parse(await all.Content.ReadAsStringAsync()).GetProperty("items").EnumerateArray().ToList();
 
         var alpha = Assert.Single(rows, r => r.GetProperty("slug").GetString() == "alpha-temple");
         Assert.Equal("Active", alpha.GetProperty("status").GetString());
         Assert.DoesNotContain(rows, r => r.GetProperty("slug").GetString() == "beta-temple");
 
         using var wildcard = await SendAsync(admin, HttpMethod.Get, "/api/admin/institutions?search=%25");
-        Assert.Empty(JsonDocument.Parse(await wildcard.Content.ReadAsStringAsync()).RootElement.GetProperty("items").EnumerateArray());
+        Assert.Empty(JsonElement.Parse(await wildcard.Content.ReadAsStringAsync()).GetProperty("items").EnumerateArray());
     }
 
     // ------------------------------------------------------------------ the lists' pages, filters and order (plan 05, X4)
@@ -662,7 +662,7 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
     {
         using var response = await SendAsync(session, HttpMethod.Get, path);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var page = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        var page = JsonElement.Parse(await response.Content.ReadAsStringAsync());
         var rows = page.GetProperty("items").EnumerateArray().Select(r => r.GetProperty(name).GetString());
         return $"{string.Join("|", rows)} of {page.GetProperty("total").GetInt32()}";
     }
@@ -863,7 +863,7 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
                 new { alpha = database.AlphaInstitutionId });
 
             using var response = await SendAsync(admin, HttpMethod.Get, "/api/admin/institutions");
-            var rows = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("items").EnumerateArray()
+            var rows = JsonElement.Parse(await response.Content.ReadAsStringAsync()).GetProperty("items").EnumerateArray()
                 .ToDictionary(r => r.GetProperty("slug").GetString()!, r => r.GetProperty("owner").GetString());
 
             Assert.NotNull(expected);
@@ -879,7 +879,7 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
                 """,
                 new { owner });
             using var lapsed = await SendAsync(admin, HttpMethod.Get, "/api/admin/institutions?search=alpha");
-            var alpha = JsonDocument.Parse(await lapsed.Content.ReadAsStringAsync()).RootElement.GetProperty("items")[0];
+            var alpha = JsonElement.Parse(await lapsed.Content.ReadAsStringAsync()).GetProperty("items")[0];
             Assert.NotEqual("Owner By Role", alpha.GetProperty("owner").GetString());
             Assert.NotEqual("Stale Flag", alpha.GetProperty("owner").GetString());
         }
@@ -912,7 +912,7 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
 
             using var response = await SendAsync(admin, HttpMethod.Get, "/api/admin/institutions/statuses");
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            var rows = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.EnumerateArray()
+            var rows = JsonElement.Parse(await response.Content.ReadAsStringAsync()).EnumerateArray()
                 .Select(r => $"{r.GetProperty("status").GetString()} {r.GetProperty("count").GetInt32()}");
 
             Assert.Equal(InstitutionStatuses.Select(s => $"{s} {counted.GetValueOrDefault(s)}"), rows);

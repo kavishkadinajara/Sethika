@@ -148,7 +148,7 @@ public sealed class SessionEndpointsTests(SethikaTestDatabase database) : IAsync
         using var response = await client.PostAsJsonAsync("/api/auth/login", new { login = phone, password = Password });
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        return Parse(response, JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement);
+        return Parse(response, JsonElement.Parse(await response.Content.ReadAsStringAsync()));
     }
 
     /// <summary>Posts to a session endpoint with the cookies a browser would attach.</summary>
@@ -177,7 +177,7 @@ public sealed class SessionEndpointsTests(SethikaTestDatabase database) : IAsync
     {
         using var response = await PostAsync("refresh", session);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        return Parse(response, JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement);
+        return Parse(response, JsonElement.Parse(await response.Content.ReadAsStringAsync()));
     }
 
     private sealed class TokenRow
@@ -250,7 +250,7 @@ public sealed class SessionEndpointsTests(SethikaTestDatabase database) : IAsync
     }
 
     private static async Task<string?> CodeOf(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("code").GetString();
+        JsonElement.Parse(await response.Content.ReadAsStringAsync()).GetProperty("code").GetString();
 
     /// <summary>
     /// The answer for a session that is over: 401 <c>session_expired</c>, both cookies cleared,
@@ -608,7 +608,7 @@ public sealed class SessionEndpointsTests(SethikaTestDatabase database) : IAsync
         using var response = await PostAsync("switch-institution", session, new { institution = "beta-temple" });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var switched = Parse(response, JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement);
+        var switched = Parse(response, JsonElement.Parse(await response.Content.ReadAsStringAsync()));
         Assert.Equal("beta-temple", switched.Body.GetProperty("activeInstitution").GetString());
         Assert.Equal(
             database.BetaInstitutionId,
@@ -666,7 +666,7 @@ public sealed class SessionEndpointsTests(SethikaTestDatabase database) : IAsync
         using var response = await PostAsync("switch-personal", session);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var personal = Parse(response, JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement);
+        var personal = Parse(response, JsonElement.Parse(await response.Content.ReadAsStringAsync()));
         Assert.Equal(JsonValueKind.Null, personal.Body.GetProperty("activeInstitution").ValueKind);
         Assert.DoesNotContain(new JsonWebToken(personal.AccessToken).Claims, c => c.Type == SethikaClaimTypes.InstitutionId);
         Assert.Null((await RowAsync(personal.Refresh)).ActiveInstitutionId);
@@ -687,12 +687,12 @@ public sealed class SessionEndpointsTests(SethikaTestDatabase database) : IAsync
         await AssignRoleAsync(phone, database.AlphaInstitutionId);
         var session = await LogInAsync(phone);
         using var toPersonal = await PostAsync("switch-personal", session);
-        var personal = Parse(toPersonal, JsonDocument.Parse(await toPersonal.Content.ReadAsStringAsync()).RootElement);
+        var personal = Parse(toPersonal, JsonElement.Parse(await toPersonal.Content.ReadAsStringAsync()));
 
         using var back = await PostAsync("switch-institution", personal, new { institution = "alpha-temple" });
 
         Assert.Equal(HttpStatusCode.OK, back.StatusCode);
-        var again = Parse(back, JsonDocument.Parse(await back.Content.ReadAsStringAsync()).RootElement);
+        var again = Parse(back, JsonElement.Parse(await back.Content.ReadAsStringAsync()));
         Assert.Equal(
             database.AlphaInstitutionId,
             new JsonWebToken(again.AccessToken).GetPayloadValue<int>(SethikaClaimTypes.InstitutionId));

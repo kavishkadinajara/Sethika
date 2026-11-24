@@ -224,7 +224,7 @@ public sealed class ReportEndpointsTests(SethikaTestDatabase database) : IAsyncL
     {
         var text = await response.Content.ReadAsStringAsync();
         Assert.True(response.IsSuccessStatusCode, $"{response.StatusCode}: {text}");
-        return JsonDocument.Parse(text).RootElement.Clone();
+        return JsonElement.Parse(text).Clone();
     }
 
     private static string Iso(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);

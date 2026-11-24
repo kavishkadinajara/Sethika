@@ -160,7 +160,7 @@ public sealed class TemplateSyncEndpointsTests(SethikaTestDatabase database) : I
 
         using var response = await SyncAsync();
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        var body = JsonElement.Parse(await response.Content.ReadAsStringAsync());
 
         var ownerGiving = await TemplateGrantsAsync("OWNER", "GIVING.%");
         var managerGiving = await TemplateGrantsAsync("MANAGER", "GIVING.%");
@@ -191,7 +191,7 @@ public sealed class TemplateSyncEndpointsTests(SethikaTestDatabase database) : I
 
         // Again: nothing more to add.
         using var again = await SyncAsync();
-        var second = JsonDocument.Parse(await again.Content.ReadAsStringAsync()).RootElement;
+        var second = JsonElement.Parse(await again.Content.ReadAsStringAsync());
         Assert.Equal(0, second.GetProperty("modules").GetInt32() + second.GetProperty("roles").GetInt32() + second.GetProperty("grants").GetInt32());
     }
 

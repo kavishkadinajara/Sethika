@@ -130,7 +130,7 @@ public sealed class StepUpCarryTests(SethikaTestDatabase database) : IAsyncLifet
             userId,
             cookies.Single(c => c.Name == "sethika-refresh").Value.ToString(),
             cookies.Single(c => c.Name == "sethika-csrf").Value.ToString(),
-            JsonDocument.Parse(body).RootElement.GetProperty("accessToken").GetString()!);
+            JsonElement.Parse(body).GetProperty("accessToken").GetString()!);
     }
 
     /// <summary>A rotation with the cookies a browser attaches and, if given, a bearer token beside them.</summary>

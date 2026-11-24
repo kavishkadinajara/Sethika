@@ -203,7 +203,7 @@ public sealed partial class StepUpEndpointsTests(SethikaTestDatabase database) :
 
     private static Session ToSession(HttpResponseMessage response, string body)
     {
-        var accessToken = JsonDocument.Parse(body).RootElement.GetProperty("accessToken").GetString()!;
+        var accessToken = JsonElement.Parse(body).GetProperty("accessToken").GetString()!;
         var jwt = new JsonWebToken(accessToken);
         var cookies = SetCookieHeaderValue.ParseStrictList([.. response.Headers.GetValues("Set-Cookie")]);
 
@@ -262,7 +262,7 @@ public sealed partial class StepUpEndpointsTests(SethikaTestDatabase database) :
 
         using var response = await PostAsync(session, Approve);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("Approved", JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("status").GetString());
+        Assert.Equal("Approved", JsonElement.Parse(await response.Content.ReadAsStringAsync()).GetProperty("status").GetString());
     }
 
     private async Task ExecuteAsync(string sql, object parameters)
@@ -272,7 +272,7 @@ public sealed partial class StepUpEndpointsTests(SethikaTestDatabase database) :
     }
 
     private static async Task<string?> CodeOf(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("code").GetString();
+        JsonElement.Parse(await response.Content.ReadAsStringAsync()).GetProperty("code").GetString();
 
     // ------------------------------------------------------------------ the grant
 

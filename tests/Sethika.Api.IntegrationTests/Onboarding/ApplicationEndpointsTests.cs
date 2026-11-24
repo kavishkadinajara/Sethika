@@ -192,7 +192,7 @@ public sealed class ApplicationEndpointsTests(SethikaTestDatabase database) : IA
         var body = await response.Content.ReadAsStringAsync();
         try
         {
-            return JsonDocument.Parse(body).RootElement;
+            return JsonElement.Parse(body);
         }
         catch (JsonException)
         {

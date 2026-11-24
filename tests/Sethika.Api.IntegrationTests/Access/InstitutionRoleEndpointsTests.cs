@@ -194,7 +194,7 @@ public sealed partial class InstitutionRoleEndpointsTests(SethikaTestDatabase da
         using var response = await client.PostAsJsonAsync("/api/auth/login", new { login = phone, password = Password });
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var token = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("accessToken").GetString()!;
+        var token = JsonElement.Parse(await response.Content.ReadAsStringAsync()).GetProperty("accessToken").GetString()!;
         var jwt = new JsonWebToken(token);
         return new Member(Guid.Parse(jwt.GetClaim(SethikaClaimTypes.UserId).Value), token, jwt.Id, phone);
     }
@@ -221,7 +221,7 @@ public sealed partial class InstitutionRoleEndpointsTests(SethikaTestDatabase da
         SendAsync(actor, HttpMethod.Post, "/api/institution/roles", new { code, name = "Test role", level, permissions });
 
     private static async Task<JsonElement> BodyOf(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        JsonElement.Parse(await response.Content.ReadAsStringAsync());
 
     private static async Task AssertRefusedAsync(HttpResponseMessage response, HttpStatusCode status, string code, params string[] permissions)
     {

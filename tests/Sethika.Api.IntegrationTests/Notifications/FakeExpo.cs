@@ -25,7 +25,7 @@ internal sealed class FakeExpo : HttpMessageHandler
 
     /// <summary>Every message handed to Expo, in order.</summary>
     public IReadOnlyList<JsonElement> Sent =>
-        [.. _requests.Where(r => r.Path == SendPath).Select(r => JsonDocument.Parse(r.Body).RootElement[0])];
+        [.. _requests.Where(r => r.Path == SendPath).Select(r => JsonElement.Parse(r.Body)[0])];
 
     /// <summary>The ids of each receipts call, in order.</summary>
     public IReadOnlyList<IReadOnlyList<string>> ReceiptCalls =>
@@ -45,7 +45,7 @@ internal sealed class FakeExpo : HttpMessageHandler
 
         var (status, json) = path switch
         {
-            SendPath => OnSend(JsonDocument.Parse(body).RootElement[0].GetProperty("to").GetString()!),
+            SendPath => OnSend(JsonElement.Parse(body)[0].GetProperty("to").GetString()!),
             ReceiptsPath => OnReceipts(Ids(body)),
             _ => throw new InvalidOperationException($"Expo has no {path}."),
         };
@@ -54,5 +54,5 @@ internal sealed class FakeExpo : HttpMessageHandler
     }
 
     private static List<string> Ids(string body) =>
-        [.. JsonDocument.Parse(body).RootElement.GetProperty("ids").EnumerateArray().Select(id => id.GetString()!)];
+        [.. JsonElement.Parse(body).GetProperty("ids").EnumerateArray().Select(id => id.GetString()!)];
 }

@@ -166,7 +166,7 @@ public sealed class BootstrapCommandTests(SethikaTestDatabase database) : IAsync
         using var login = await client.PostAsJsonAsync("/api/auth/login", new { login = phone, password = Password });
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
 
-        var token = JsonDocument.Parse(await login.Content.ReadAsStringAsync()).RootElement.GetProperty("accessToken").GetString()!;
+        var token = JsonElement.Parse(await login.Content.ReadAsStringAsync()).GetProperty("accessToken").GetString()!;
         Assert.Equal("true", new JsonWebToken(token).GetClaim(SethikaClaimTypes.IsPlatform).Value, ignoreCase: true);
     }
 

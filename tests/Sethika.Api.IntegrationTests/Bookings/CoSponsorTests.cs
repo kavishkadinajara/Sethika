@@ -265,7 +265,7 @@ public sealed class CoSponsorTests(SethikaTestDatabase database) : IAsyncLifetim
             using var response = await client.SendAsync(request);
             var text = await response.Content.ReadAsStringAsync();
             Assert.True(response.StatusCode == expected, $"{method} {path}: {(int)response.StatusCode} {text}");
-            return text.Length == 0 ? default : JsonDocument.Parse(text).RootElement.Clone();
+            return text.Length == 0 ? default : JsonElement.Parse(text).Clone();
         }
     }
 

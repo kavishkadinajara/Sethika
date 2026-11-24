@@ -118,7 +118,7 @@ public sealed class MobileDeviceEndpointsTests(SethikaTestDatabase database) : I
         using var response = await client.PostAsJsonAsync("/api/auth/mobile/login", new { login = phone, password = Password });
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        var body = JsonElement.Parse(await response.Content.ReadAsStringAsync());
         return new Session(userId, body.GetProperty("accessToken").GetString()!, body.GetProperty("refreshToken").GetString()!);
     }
 
@@ -157,7 +157,7 @@ public sealed class MobileDeviceEndpointsTests(SethikaTestDatabase database) : I
     }
 
     private static async Task<string?> CodeOf(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("code").GetString();
+        JsonElement.Parse(await response.Content.ReadAsStringAsync()).GetProperty("code").GetString();
 
     /// <summary>A text through the host's own <see cref="IUserTextMessages"/>, as a job sends one.</summary>
     private async Task TextAsync(Guid userId, string key)

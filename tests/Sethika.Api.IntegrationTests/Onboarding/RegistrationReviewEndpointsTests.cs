@@ -137,7 +137,7 @@ public sealed class RegistrationReviewEndpointsTests(SethikaTestDatabase databas
     {
         var body = await response.Content.ReadAsStringAsync();
         Assert.True(response.Content.Headers.ContentType?.MediaType?.EndsWith("json", StringComparison.Ordinal) == true, $"{(int)response.StatusCode}: {body}");
-        return JsonDocument.Parse(body).RootElement.Clone();
+        return JsonElement.Parse(body).Clone();
     }
 
     private static async Task<string?> CodeOf(HttpResponseMessage response) =>
@@ -447,7 +447,7 @@ public sealed class RegistrationReviewEndpointsTests(SethikaTestDatabase databas
         Assert.Equal("InfoRequested", await StatusOfAsync("REQ-TEST-R22"));
         var payload = await ScalarAsync<string>(
             "SELECT Payload FROM core.OutboxMessages WHERE AggregateId = 'REQ-TEST-R22' AND EventType = 'RegistrationInfoRequested';");
-        Assert.Equal(OnboardingScenario.Applicant, JsonDocument.Parse(payload).RootElement.GetProperty("applicantUserId").GetGuid());
+        Assert.Equal(OnboardingScenario.Applicant, JsonElement.Parse(payload).GetProperty("applicantUserId").GetGuid());
 
         var question = Assert.Single((await JsonAsync(await reviewer.GetAsync($"{Base}/REQ-TEST-R22"))).GetProperty("application").GetProperty("questions").EnumerateArray());
         Assert.Equal(OneQuestion[0], question.GetProperty("question").GetString());
