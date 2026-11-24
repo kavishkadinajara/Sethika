@@ -12,6 +12,15 @@
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://smock-eccentric-relatable.ngrok-free.dev"
       }
+    },
+    "production": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://sethika-api-nhnfg.azurewebsites.net"
+      }
     }
   }
 }

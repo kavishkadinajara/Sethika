@@ -1,0 +1,16 @@
+# EAS Build archives the whole repository; the app needs only mobile/ (and EAS installs
+# its dependencies from mobile/package-lock.json). Everything else stays out of the upload.
+/*
+!/mobile
+/mobile/node_modules/
+/mobile/.expo/
+/mobile/dist/
+/mobile/web-build/
+/mobile/android/
+/mobile/ios/
+/mobile/.env*.local
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
