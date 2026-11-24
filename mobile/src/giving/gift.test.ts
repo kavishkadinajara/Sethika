@@ -48,7 +48,8 @@ describe("checkoutHtml", () => {
   it("escapes every value, so an answer cannot add markup or script", () => {
     const html = checkoutHtml(form({ fields: { items: `Gift"><script>alert(1)</script>&'` } }))!;
     expect(html).toContain('value="Gift&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;&amp;&#39;"');
-    expect(html.match(/<script>/g)).toHaveLength(1);
+    // Counted in any letter case and with any attributes: only the page's own submit script.
+    expect(html.toLowerCase().split("<script").length - 1).toBe(1);
   });
 
   it("posts only to PayHere's own checkouts", () => {
