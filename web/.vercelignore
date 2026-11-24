@@ -1,0 +1,13 @@
+# What `vercel deploy` must never upload: local builds, dependencies, secrets and test output.
+# Vercel installs and builds from package.json itself.
+/node_modules
+/.next
+/out
+/coverage
+.env*
+!.env.example
+*.tsbuildinfo
+*.pem
+/e2e
+/playwright.config.ts
+/playwright.qa.config.ts
