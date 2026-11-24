@@ -107,7 +107,7 @@ jobs:
       - name: Build the dacpac
         run: dotnet build src/Sethika.Database -c Release -v minimal
 
-      - uses: azure/login@v2
+      - uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -165,7 +165,7 @@ jobs:
       - name: Publish
         run: dotnet publish src/Sethika.Api -c Release -o publish -v minimal
 
-      - uses: azure/login@v2
+      - uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
