@@ -55,7 +55,7 @@ jobs:
       database: ${{ steps.pick.outputs.database }}
       api: ${{ steps.pick.outputs.api }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 2
@@ -91,7 +91,7 @@ jobs:
     environment: production
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.changes.outputs.sha }}
 
@@ -154,7 +154,7 @@ jobs:
       url: ${{ env.API_URL }}/health
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.changes.outputs.sha }}
 
