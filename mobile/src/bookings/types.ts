@@ -46,6 +46,8 @@ export type PublicInstitution = PublicInstitutionSummary & {
   dietaryNotes: string | null;
   latitude: number;
   longitude: number;
+  /** The institution takes gifts online through its own PayHere account (plan 09, M10). */
+  givesOnline: boolean;
   slots: PublicMealSlot[];
 };
 

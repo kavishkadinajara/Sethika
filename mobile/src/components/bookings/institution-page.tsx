@@ -8,12 +8,13 @@ import { canChoose, dayState, dayWords, slotDays } from "@/bookings/availability
 import { addMonths, colomboToday, maskDays, monthOf, monthWindow } from "@/bookings/calendar";
 import { bookingErrorKey, type BookingFailure } from "@/bookings/errors";
 import { formatLkr, inLocale, localName } from "@/bookings/names";
-import { bookingReturnPath } from "@/bookings/return-path";
+import { bookingReturnPath, giveReturnPath } from "@/bookings/return-path";
 import type { Availability, DayAvailability, PublicInstitution, PublicMealSlot } from "@/bookings/types";
 import { useDates } from "@/bookings/use-dates";
 import { Button } from "@/components/button";
 import { Icon, type IconName } from "@/components/icon";
-import { FormError, SectionTitle } from "@/components/screen";
+import { GiveSheet } from "@/components/giving/give-sheet";
+import { Card, FormError, SectionTitle } from "@/components/screen";
 import { Text } from "@/components/text";
 import { useI18n } from "@/i18n/i18n-provider";
 import { bowl, cup, radius, spacing } from "@/theme/colors";
@@ -28,6 +29,8 @@ type Props = {
   slug: string;
   /** A meal and day named in the route: a shared link, or the donor back from signing in (E33). */
   chosen: { slot: string; date: string } | null;
+  /** The route asks for the give sheet: the donor back from signing in to give (M8). */
+  give?: boolean;
 };
 
 /**
@@ -35,7 +38,7 @@ type Props = {
  * and a month of the chosen meal's days as bowls. Choosing an open day opens the booking sheet;
  * booking asks for a sign-in there, and the donor comes back to this meal and day.
  */
-export function InstitutionPage({ slug, chosen }: Props) {
+export function InstitutionPage({ slug, chosen, give = false }: Props) {
   const { t, language } = useI18n();
   const api = useBookingApi();
   const session = useSession();
@@ -63,6 +66,10 @@ export function InstitutionPage({ slug, chosen }: Props) {
   const [wanted, setWanted] = useState<{ slot: string; date: string } | null>(null);
   // Opening on a month with no open day for the meal moves on to the next one, once.
   const [movedOn, setMovedOn] = useState(chosen !== null);
+  // The give sheet: open, asked for by the route (once), or waiting for the donor to sign in.
+  const [giving, setGiving] = useState(false);
+  const [giveHandled, setGiveHandled] = useState(false);
+  const [awaitingGive, setAwaitingGive] = useState(false);
 
   const load = useCallback(async () => {
     setFailure(null);
@@ -126,6 +133,15 @@ export function InstitutionPage({ slug, chosen }: Props) {
     setAwaitingSignIn(null);
   }
 
+  if (give && !giveHandled && institution) {
+    setGiveHandled(true);
+    if (institution.givesOnline) setGiving(true);
+  }
+  if (session.status === "authenticated" && awaitingGive) {
+    setAwaitingGive(false);
+    setGiving(true);
+  }
+
   if (!movedOn && slot && days) {
     setMovedOn(true);
     if (![...days.values()].some((day) => day.bookable)) setMonth(addMonths(month, 1));
@@ -164,6 +180,20 @@ export function InstitutionPage({ slug, chosen }: Props) {
   return (
     <>
       <Profile institution={institution} />
+
+      {institution.givesOnline && <GiveCard institution={institution} onOpen={() => setGiving(true)} />}
+
+      {giving && (
+        <GiveSheet
+          institution={institution}
+          onClose={() => setGiving(false)}
+          onSignIn={(screen) => {
+            setGiving(false);
+            setAwaitingGive(true);
+            router.push({ pathname: screen, params: { next: giveReturnPath(slug) } });
+          }}
+        />
+      )}
 
       {institution.slots.length === 0 ? (
         <EmptyState message={t("Discover.noSlots")} />
@@ -293,6 +323,28 @@ function Profile({ institution }: { institution: PublicInstitution }) {
   );
 }
 
+/** "Give money" for an institution that takes gifts online through its own PayHere account (M10). */
+function GiveCard({ institution, onOpen }: { institution: PublicInstitution; onOpen: () => void }) {
+  const { t, language } = useI18n();
+  const palette = usePalette();
+  return (
+    <Card rim>
+      <View style={styles.give}>
+        <View style={styles.giveTitle}>
+          <Icon name="heart" size={20} color={palette.primary} />
+          <Text variant="heading" style={styles.grow}>
+            {t("Giving.give.heading")}
+          </Text>
+        </View>
+        <Text variant="muted">{t("Giving.give.intro", { name: localName(language, institution) })}</Text>
+        <View style={styles.giveButton}>
+          <Button label={t("Giving.give.open")} icon="heart" onPress={onOpen} />
+        </View>
+      </View>
+    </Card>
+  );
+}
+
 /** The meals on offer as a choice of cards; each says what sponsoring it means. */
 function SlotChooser({ slots, selected, onSelect }: { slots: PublicMealSlot[]; selected: string | null; onSelect: (id: string) => void }) {
   const { t, language } = useI18n();
@@ -406,6 +458,9 @@ const styles = StyleSheet.create({
   note: { ...bowl, flexDirection: "row", alignItems: "flex-start", gap: spacing.sm, borderWidth: 1, padding: spacing.md, marginTop: spacing.sm },
   directions: { alignSelf: "flex-start", marginTop: spacing.sm },
   section: { gap: spacing.sm },
+  give: { gap: spacing.sm },
+  giveTitle: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  giveButton: { alignSelf: "flex-start" },
   // The calendar runs edge to edge (seven 45 pt days on a 320 pt phone) on a surface band.
   band: { marginHorizontal: -spacing.md, borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: spacing.md, gap: spacing.sm },
   bandBody: { paddingHorizontal: spacing.md, gap: spacing.sm },

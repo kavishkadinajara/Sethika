@@ -551,5 +551,52 @@
       "standing": "Regular donor",
       "served": "{bookingNo} marked as served."
     }
+  },
+  "Giving": {
+    "give": {
+      "heading": "Give money",
+      "intro": "Your gift goes straight to {name} through PayHere. Sethika never holds it.",
+      "open": "Give online",
+      "title": "Give to {name}",
+      "description": "You pay on PayHere's secure page, and the money goes to {name}. Your receipt comes once PayHere confirms it.",
+      "signInFirst": "Sign in to give, so your receipt comes to you. You will come back here.",
+      "institutionSession": "You are working in an institution. Gifts are made from your own account.",
+      "notAllowed": "This account cannot give online.",
+      "amount": "Amount (LKR)",
+      "amountHint": "From LKR 100 to LKR 1,000,000.",
+      "amountInvalid": "Enter an amount from 100 to 1,000,000, with at most two decimals.",
+      "detailsHint": "PayHere asks for these. Sethika passes them on and does not keep them.",
+      "email": "Email",
+      "emailInvalid": "Enter a valid email address.",
+      "address": "Address",
+      "addressInvalid": "Enter your address.",
+      "city": "City",
+      "cityInvalid": "Enter your city.",
+      "cancel": "Not now",
+      "save": "Go to PayHere",
+      "checkoutTitle": "Pay on PayHere",
+      "checkoutFailed": "PayHere's page did not open. Check your connection and try again."
+    },
+    "return": {
+      "paidTitle": "Thank you",
+      "paidBody": "{name} received your gift of {money}.",
+      "waitingTitle": "Waiting for PayHere",
+      "waitingBody": "PayHere has not confirmed this payment yet. Your receipt will come here and to My giving as soon as it does.",
+      "checkAgain": "Check again",
+      "failedTitle": "The payment did not go through",
+      "failedBody": "No gift was recorded. You can try again from the page of {name}.",
+      "leftTitle": "The payment was not finished",
+      "leftBody": "No gift was recorded. You can give again from the page of {name} whenever you wish.",
+      "backToPlace": "Back to {name}",
+      "receiptNo": "Receipt number"
+    },
+    "errors": {
+      "invalid_details": "Some details need fixing. Check the fields marked below.",
+      "need_not_found": "There is no such need here. It may have been taken down.",
+      "need_closed": "This need is no longer taking anything.",
+      "online_giving_off": "This place is not taking online gifts right now.",
+      "payment_not_found": "There is no such payment on this account.",
+      "phone_required": "Your account needs a confirmed phone number before you can give."
+    }
   }
 }

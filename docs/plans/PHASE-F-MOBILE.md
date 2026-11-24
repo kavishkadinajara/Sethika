@@ -78,9 +78,12 @@ Staff with the right permission see a **Today** tab: today's bookings for the ac
 ## 6. Out of scope
 
 Slot and calendar management, onboarding and review, roles and permissions screens, reports,
-donations and PayHere (Phase D), recurring bookings and the Memorial Dana Planner (Phase C), offline
+recording and voiding donations, the needs board and pledges (Phase D), recurring bookings and the Memorial Dana Planner (Phase C), offline
 booking, an iOS store release, tablet layouts. Phase E's leader schedule (accept / decline on the
 phone) is a natural follow-up but not promised.
+
+**Changed 2026-11-24 (slice F.9, F75):** giving money online moved into scope. A donor gives from an
+institution's page through PayHere, as on the web; everything else in Phase D stays on the web.
 
 ## 7. Work breakdown and when each slice can start
 
@@ -252,6 +255,8 @@ plan days; plans 08 and 09 ran at 1.5 to 3 times faster than estimated.
 
 About 3.15 plan days remain after U.1 (F.2b added 0.3), against 2026-11-07 alone. It fits only at about three times the
 estimated pace, so if the day runs out F.6b is the one left unfinished, and the user decides then. Each slice is mutation-tested; the full `dotnet test` and e2e run once, right before the PR.
+
+- [x] **F.9 Give online (2026-11-24, F75).** From an institution's page that takes gifts online, a donor gives through PayHere without leaving the app. No API or schema change: the app calls `POST /api/institutions/{slug}/give` and `GET /api/me/payments/{orderId}` as the web does. New: `giving/` (`gift.ts` framework-free: the web's amount rule and return states, the checkout page, reading PayHere's way back; `api.ts`; `types.ts`), `components/giving/give-sheet.tsx`, the *Give money* card on the institution page, `?give=1` to come back from signing in. PayHere's checkout runs in a WebView: a page the app writes posts the API's signed form (every value escaped, only PayHere's two checkout addresses accepted), and the WebView stops at Sethika's return or cancel address and shows the result itself, asking the API every 3 s, 10 times, as the web's return page does. Closing the checkout counts as leaving, never as paying. 33 strings per language copied from the web, three new ones (`checkoutTitle`, `checkoutFailed`, `return.receiptNo`). Lint and typecheck clean, Jest 653 in 43 suites. Mutants: 6/6 killed, each by the test for that behaviour. **Not yet paid from a phone**: the sandbox payment from the APK is the walk-through still to do
 
 ### 10.5 Cut, in this order if a day slips
 
