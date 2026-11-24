@@ -243,7 +243,7 @@ function DayPanel({ date, days, focus, onDecided }: { date: string; days: SlotDa
         days.map((day) => (
           <div key={day.mealSlot} className="grid gap-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h3 className="text-lg font-semibold text-fg">
+              <h3 className="min-w-0 wrap-anywhere text-lg font-semibold text-fg">
                 {inLocale(locale, day.slotName, day.slotNameSi, day.slotNameTa)} <span className="font-normal text-muted">{day.startTime}</span>
               </h3>
               <p className="text-sm tabular-nums text-muted">
@@ -350,12 +350,12 @@ export function BookingItem({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="grid min-w-0 gap-0.5">
           {showWhen && (
-            <p className="text-sm font-medium text-brand">
+            <p className="wrap-anywhere text-sm font-medium text-brand">
               {dates.dayMonth(day.date)} ·{" "}
               {inLocale(locale, day.slotName, day.slotNameSi, day.slotNameTa)} {day.startTime}
             </p>
           )}
-          <p className="font-semibold text-fg">
+          <p className="wrap-anywhere font-semibold text-fg">
             {booking.donorName}
             {booking.standing && <span className="ml-2 rounded-full border border-brand/50 px-2 py-0.5 align-middle text-xs font-medium text-brand">{t("standing")}</span>}
           </p>
@@ -369,10 +369,10 @@ export function BookingItem({
       <p className="text-sm text-muted">
         {t("people", { count: booking.headcount })} · {fulfilment(booking.fulfilmentMode)} · {booking.bookingNo}
       </p>
-      {booking.inMemoryOf && <p className="font-tagline italic text-fg">{t("inMemoryOf", { name: booking.inMemoryOf })}</p>}
-      {booking.notes && <p className="rounded-cup bg-subtle px-3 py-2 text-sm text-fg">{booking.notes}</p>}
-      {booking.rejectReason && <p className="text-sm text-muted">{t("rejectedBecause", { reason: booking.rejectReason })}</p>}
-      {booking.cancelReason && <p className="text-sm text-muted">{t("cancelledBecause", { reason: booking.cancelReason })}</p>}
+      {booking.inMemoryOf && <p className="wrap-anywhere font-tagline italic text-fg">{t("inMemoryOf", { name: booking.inMemoryOf })}</p>}
+      {booking.notes && <p className="wrap-anywhere rounded-cup bg-subtle px-3 py-2 text-sm text-fg">{booking.notes}</p>}
+      {booking.rejectReason && <p className="wrap-anywhere text-sm text-muted">{t("rejectedBecause", { reason: booking.rejectReason })}</p>}
+      {booking.cancelReason && <p className="wrap-anywhere text-sm text-muted">{t("cancelledBecause", { reason: booking.cancelReason })}</p>}
       <SharedWithNames bookingNo={booking.bookingNo} />
 
       {asking ? (

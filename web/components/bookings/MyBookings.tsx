@@ -219,14 +219,14 @@ function BookingCard({
 
       <div className="grid min-w-0 flex-1 gap-1.5 p-4">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <h3 className="min-w-0 text-lg font-semibold leading-snug text-fg">
+          <h3 className="min-w-0 wrap-anywhere text-lg font-semibold leading-snug text-fg">
             {inLocale(locale, booking.slotName, booking.slotNameSi, booking.slotNameTa)}
             <span className="font-normal text-muted"> · {booking.startTime}</span>
           </h3>
           <BookingStatusBadge status={booking.status} />
         </div>
 
-        <Link href={`/i/${booking.institution}`} className={cn(textLink, focusRing, "min-h-0 justify-self-start py-1")}>
+        <Link href={`/i/${booking.institution}`} className={cn(textLink, focusRing, "min-h-0 justify-self-start py-1 wrap-anywhere")}>
           {inLocale(locale, booking.institutionName, booking.institutionNameSi, booking.institutionNameTa)}
         </Link>
 
@@ -237,13 +237,13 @@ function BookingCard({
         {booking.yearly && live && <p className="text-sm font-medium text-brand">{t("partOfYearly")}</p>}
         {booking.regular && <p className="text-sm font-medium text-brand">{t("regular")}</p>}
 
-        {booking.inMemoryOf && <p className="font-tagline text-base italic text-fg">{t("inMemoryOf", { name: booking.inMemoryOf })}</p>}
+        {booking.inMemoryOf && <p className="wrap-anywhere font-tagline text-base italic text-fg">{t("inMemoryOf", { name: booking.inMemoryOf })}</p>}
 
         {booking.status === "Rejected" && booking.rejectReason && (
-          <p className="rounded-cup bg-danger-soft px-3 py-2 text-sm text-fg">{t("rejectedBecause", { reason: booking.rejectReason })}</p>
+          <p className="wrap-anywhere rounded-cup bg-danger-soft px-3 py-2 text-sm text-fg">{t("rejectedBecause", { reason: booking.rejectReason })}</p>
         )}
         {booking.status === "Cancelled" && booking.cancelReason && (
-          <p className="rounded-cup bg-subtle px-3 py-2 text-sm text-fg">{t("cancelledBecause", { reason: booking.cancelReason })}</p>
+          <p className="wrap-anywhere rounded-cup bg-subtle px-3 py-2 text-sm text-fg">{t("cancelledBecause", { reason: booking.cancelReason })}</p>
         )}
         {booking.status === "Requested" && <p className="text-sm text-muted">{t("waiting")}</p>}
 

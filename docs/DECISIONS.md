@@ -397,6 +397,17 @@ The second run (F05-F08: onboarding, review, platform, access) found two more, b
 
 Tests: `ApplicationEndpointsTests.ANumberChangedWhileAnsweringAQuestionToALiveOnesIsRefused_AndNothingChanges`; `JwtTokenServiceEndpointTests` (both `/api/me/permissions` cases assert the field is gone). Mutants 3/3 killed.
 
+The third run (F09-F12: public page, meals, booking, calendar, 2026-11-24) found four, all S3, agreed and fixed the same day:
+
+| # | Decision | Why |
+|---|----------|-----|
+| Q6 (DEF-006) | **A meal save refused as `stale` reloads the meal into the form** (its values and new version, `formAfterStale`); a meal gone meanwhile closes the sheet and reloads the list | The message already said "it has been refreshed; check and try again", but nothing was: every later save was stale again until the sheet was closed. The person's typing is replaced by what the other person saved, which is what "check and try again" asks them to look at |
+| Q7 (DEF-007) | **The name field shows "You already have a meal with this name" for `slot_name_taken`** before its own "enter a name" rule (`nameError`); typing a new name clears it | The field was marked invalid for the clash, and the generic rule's message always won, so the right one could never show |
+| Q8 (DEF-008) | **Every booking decision writes the `AvailabilityChanged` hint for its day** (approve, served and not happened too, not only those that give a place back) | The institution's other open calendars (plan 07, H11) kept an accepted request in their tray with its Accept button. The hint names only the institution and the day; a donor's page that hears it refetches the same numbers, which is one cheap read |
+| Q9 (DEF-009) | **Free text in booking cards wraps anywhere** (`wrap-anywhere`, `min-w-0`): meal names on the slots screen, the institution page, the booking sheet and the calendar; donor name, in-memory line, notes and reasons on the calendar and My bookings | A word longer than a card (a pasted link, a name typed without spaces) ran over the next card, and on My bookings made the whole page scroll sideways at phone width. `break-words` would not do: it does not shrink a grid item's minimum width |
+
+Tests: vitest `slot-form.test.ts` (3 new: the name message, the reload, a meal gone); `LiveAvailabilityTests.ACalendarHearsEachChangeToItsInstitutionsDays_AndOneWatchingAnotherHearsNothing` (the approval is now heard); QA cases QA-F10-01/02/03, QA-F11-04, QA-F12-06 as the screen-level regression (the longest words on the slots screen, the public page, My bookings and the calendar at 390 px). Mutants: 3 vitest, 2 on the screens (stale reload off, the in-memory wrap off), 1 C# (the hint only when a place comes back) - see DEFECTS.md.
+
 ## Unconfirmed reference data (seeded as drafts)
 CLAUDE.md forbids inventing facts about real institutions. Where the flow cannot run without a row,
 the row is seeded as a visibly marked draft and listed here until someone confirms or replaces it.

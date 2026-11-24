@@ -67,6 +67,25 @@ export function slotFormFrom(slot: InstitutionMealSlot): SlotForm {
   };
 }
 
+/**
+ * Which message the name field shows: the API's "you already have a meal with this name" before
+ * the form's own "enter a name" rule, which a taken name passes (QA DEF-007).
+ */
+export function nameError(invalid: ReadonlySet<string>, failureCode: string | null | undefined): "taken" | "invalid" | null {
+  if (failureCode === "slot_name_taken") return "taken";
+  return invalid.has("name") ? "invalid" : null;
+}
+
+/**
+ * The form after a save refused as stale (plan 03, E17; QA DEF-006): the meal as it is now, with
+ * its new version, so "it has been refreshed; check and try again" is true and the next save can
+ * go through. Null when the meal is no longer there to edit: the sheet closes and the list reloads.
+ */
+export function formAfterStale(current: readonly InstitutionMealSlot[], publicId: string): SlotForm | null {
+  const fresh = current.find((s) => s.publicId === publicId);
+  return fresh ? slotFormFrom(fresh) : null;
+}
+
 /** The API's body. Blank is null (the API's default applies); text that is not a number is NaN-free null too, and the API names the field. */
 export function slotInputFrom(form: SlotForm): MealSlotInput {
   return {

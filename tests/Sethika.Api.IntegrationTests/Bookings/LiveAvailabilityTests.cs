@@ -294,8 +294,12 @@ public sealed class LiveAvailabilityTests(SethikaTestDatabase database) : IAsync
         await RunOutboxAsync(host);
         Assert.Equal(new AvailabilityChangedMessage(AlphaSlug, Iso(day), Iso(day)), await NextAsync(alpha));
 
-        // Approving it changes no place: nothing to hear. Rejecting another gives its place back.
+        // Approving it changes no place, but a colleague's calendar still shows it waiting: it hears the day (QA DEF-008).
         await SendAsync(await OwnerOfAsync(host), HttpMethod.Post, $"/api/institution/bookings/{bookingNo}/approve", HttpStatusCode.OK);
+        await RunOutboxAsync(host);
+        Assert.Equal(new AvailabilityChangedMessage(AlphaSlug, Iso(day), Iso(day)), await NextAsync(alpha));
+
+        // Rejecting another gives its place back.
         var other = await DonorAsync();
         var rejected = (await SendAsync(ClientFor(host, other), HttpMethod.Post, "/api/bookings", HttpStatusCode.Created, Booking(slot, day.AddDays(1))))
             .GetProperty("bookingNo").GetString();
@@ -326,7 +330,7 @@ public sealed class LiveAvailabilityTests(SethikaTestDatabase database) : IAsync
         await RunOutboxAsync(host);
         Assert.Equal(new AvailabilityChangedMessage(AlphaSlug, null, null), await NextAsync(alpha));
 
-        // Six changes, six hints, and none for the approval; Beta's calendar heard none of them.
+        // Seven changes, seven hints, the approval's included; Beta's calendar heard none of them.
         await Task.Delay(TimeSpan.FromSeconds(1));
         Assert.False(alpha.Reader.TryRead(out var extra), $"An extra hint: {extra}");
         Assert.False(beta.Reader.TryRead(out var stray), $"Beta heard Alpha's change: {stray}");

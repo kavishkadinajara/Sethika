@@ -148,11 +148,10 @@ public sealed class BookingDecisionHandler(ISethikaDbContext db, ISlotInventory 
             });
         }
 
-        // A place given back opens the day again for everyone watching it (plan 07, H10).
-        if (heldPlace && !BookingStatus.HoldsPlace(booking.Status))
-        {
-            db.OutboxMessages.Add(AvailabilityChange.Message(booking.InstitutionId, slotDate, slotDate, now));
-        }
+        // Every move reaches the open calendars (plan 07, H10, H11): a place given back opens the day
+        // again for donors, and any decision - an approval, served, not happened - changes what the
+        // institution's other calendars show (their requests tray, the day's statuses). QA DEF-008.
+        db.OutboxMessages.Add(AvailabilityChange.Message(booking.InstitutionId, slotDate, slotDate, now));
 
         try
         {

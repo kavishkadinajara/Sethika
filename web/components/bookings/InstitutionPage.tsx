@@ -171,7 +171,7 @@ export function InstitutionPage({ slug, initial = null }: { slug: string; initia
           {slot && (
             <Card accent className="p-4 sm:p-6">
               <h2 className="mb-1 text-xl font-semibold text-brand">{t("chooseDay")}</h2>
-              <p className="mb-4 text-sm text-muted">{t("chooseDayHint", { meal: localName(locale, slot) })}</p>
+              <p className="mb-4 wrap-anywhere text-sm text-muted">{t("chooseDayHint", { meal: localName(locale, slot) })}</p>
 
               <BowlCalendar
                 month={month}
@@ -278,7 +278,7 @@ function Profile({ institution }: { institution: PublicInstitution }) {
         {inLocale(locale, institution.typeName, institution.typeNameSi, institution.typeNameTa)}
       </p>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <h1 className="min-w-0 text-3xl font-semibold leading-tight text-brand">{localName(locale, institution)}</h1>
+        <h1 className="min-w-0 wrap-anywhere text-3xl font-semibold leading-tight text-brand">{localName(locale, institution)}</h1>
         <PlaceHeart slug={institution.slug} name={localName(locale, institution)} />
       </div>
       <p className="text-fg">
@@ -331,7 +331,7 @@ function SlotChooser({ slots, selected, onSelect }: { slots: PublicMealSlot[]; s
               )}
             >
               <span className="flex items-start justify-between gap-3">
-                <span className="text-lg font-semibold leading-snug text-brand">{localName(locale, slot)}</span>
+                <span className="min-w-0 wrap-anywhere text-lg font-semibold leading-snug text-brand">{localName(locale, slot)}</span>
                 <span
                   aria-hidden
                   className={cn(

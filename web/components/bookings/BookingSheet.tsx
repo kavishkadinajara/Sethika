@@ -57,7 +57,7 @@ export function BookingSheet({ institution, slot, day, onClose, onBooked, onTake
     <Sheet open onOpenChange={(open) => !open && onClose()}>
       <SheetContent side={wide ? "right" : "bottom"}>
         <SheetHeader>
-          <SheetTitle>{t("title", { meal: localName(locale, slot) })}</SheetTitle>
+          <SheetTitle className="wrap-anywhere">{t("title", { meal: localName(locale, slot) })}</SheetTitle>
           <SheetDescription>
             {when} · {slot.startTime}–{slot.endTime} · {localName(locale, institution)}
           </SheetDescription>
