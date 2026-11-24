@@ -238,7 +238,7 @@ public sealed class DonorBookingEndpointsTests(SethikaTestDatabase database) : I
     }
 
     private static async Task<JsonElement> BodyOf(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        JsonElement.Parse(await response.Content.ReadAsStringAsync());
 
     private static async Task AssertRefusedAsync(HttpResponseMessage response, HttpStatusCode status, string code)
     {
@@ -330,7 +330,7 @@ public sealed class DonorBookingEndpointsTests(SethikaTestDatabase database) : I
         Assert.Equal(6.928100m, beta.GetProperty("latitude").GetDecimal());
         Assert.Equal(
             ["addressLine1", "addressLine2", "city", "description", "dietaryNotes", "district", "districtSi", "districtTa",
-             "latitude", "longitude", "name", "nameSi", "nameTa", "slots", "slug", "type", "typeName", "typeNameSi", "typeNameTa"],
+             "givesOnline", "latitude", "longitude", "name", "nameSi", "nameTa", "services", "slots", "slug", "type", "typeName", "typeNameSi", "typeNameTa"],
             Names(beta));
 
         var slots = beta.GetProperty("slots").EnumerateArray().ToList();

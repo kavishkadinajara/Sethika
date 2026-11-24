@@ -1,0 +1,44 @@
+@startuml
+!include ../style.iuml
+autonumber
+title Sequence 6 — Approving an institution registration (one transaction)
+
+actor "Platform admin" as A
+participant "POST /api/admin/registrations/{requestNo}/approve\n[ONBOARDING.REQUESTS.APPROVE, RequiresMfa]" as Api
+participant "ApproveRegistrationHandler" as H
+participant "SqlRegistrationLocks" as L
+participant "SqlNumberSeries" as N
+participant "SqlInstitutionModules" as M
+database "SQL Server" as Sql
+
+A -> Api : approve (after SMS step-up)
+Api -> H : HandleAsync(requestNo, deciderId, clientIp)
+H -> Sql : BEGIN TRANSACTION
+H -> L : ClaimForDecisionAsync(requestNo)
+L -> Sql : sp_getapplock (decision lock) + request row WITH (UPDLOCK)\nso two approvals never race
+alt not found / not visible
+  H --> A : 404 registration_not_found
+end
+H -> Sql : load request, mandatory documents, mandatory checklist items
+H -> H : request.CheckReadyForApproval(...)
+alt decider is the applicant
+  H --> A : 403 own_application (nothing written)
+else documents not verified / checklist incomplete / not UnderReview
+  H --> A : 409 with the reason (nothing written)
+end
+H -> N : NextAsync(Institution, year) → InstitutionCode
+H -> Sql : first free slug (name-city, -2, -3 …)
+H -> Sql : INSERT org.Institutions (Active, not yet listed publicly)
+H -> Sql : INSERT InstitutionDocuments (verified uploads, same files)
+H -> M : EnableForNewInstitutionAsync (type defaults + plan)
+H -> Sql : clone template roles + their RolePermissions
+H -> Sql : INSERT InstitutionMembers (IsOwner) + UserRoles (OWNER)
+H -> Sql : Users.PermissionsVersion += 1 (cached permissions expire)
+H -> H : request.Approve(...) → Approved
+H -> Sql : RegistrationRequestStatusHistory, InstitutionStatusHistory
+H -> Sql : AuditLogs (ids and codes only, no personal data)
+H -> Sql : OutboxMessage InstitutionApproved
+H -> Sql : COMMIT
+note right of Sql : any failure rolls back everything,\nthe institution number included,\nso the number series stays gap-free
+H --> A : 200 { institutionCode, slug }
+@enduml

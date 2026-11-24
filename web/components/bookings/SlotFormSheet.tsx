@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { createSlot, updateSlot, type BookingFailure } from "@/lib/bookings/api";
+import { createSlot, listSlots, updateSlot, type BookingFailure } from "@/lib/bookings/api";
 import { toggleDay, weekdayDate } from "@/lib/bookings/calendar";
-import { emptySlotForm, malformedSlotFields, slotFormFrom, slotInputFrom, type SlotForm } from "@/lib/bookings/slot-form";
+import { emptySlotForm, formAfterStale, malformedSlotFields, nameError, slotFormFrom, slotInputFrom, type SlotForm } from "@/lib/bookings/slot-form";
 import type { BookingMode, FulfilmentMode, InstitutionMealSlot } from "@/lib/bookings/types";
 import { cn, focusRing } from "@/lib/utils";
 import { Switch } from "./Switch";
@@ -50,6 +50,8 @@ export function SlotFormSheet({
 
   function set<K extends keyof SlotForm>(key: K, value: SlotForm[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+    // A new name may be free: the "already have a meal with this name" goes with the old one.
+    if (key === "name" && failure?.code === "slot_name_taken") setFailure(null);
     setInvalid((current) => {
       if (!current.has(key)) return current;
       const next = new Set(current);
@@ -59,6 +61,8 @@ export function SlotFormSheet({
   }
 
   const error = (field: FieldName) => (invalid.has(field) ? t(`errors.${field}`) : null);
+  const nameState = nameError(invalid, failure?.code);
+  const nameMessage = nameState === "taken" && failure ? errorMessage(failure) : nameState === "invalid" ? t("errors.name") : null;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -86,6 +90,20 @@ export function SlotFormSheet({
     if (result.failure.code === "slot_name_taken") {
       setInvalid(new Set(["name"]));
     }
+    // Someone saved the meal meanwhile: show it as it is now, with its new version, as the message
+    // says, so the next save is checked against what this person has seen (QA DEF-006).
+    if (result.failure.code === "stale" && slot) {
+      const current = await listSlots();
+      if (current.ok) {
+        const fresh = formAfterStale(current.value, slot.publicId);
+        if (!fresh) {
+          onSaved();
+          return;
+        }
+        setForm(fresh);
+        setInvalid(new Set());
+      }
+    }
     setFailure(result.failure);
   }
 
@@ -99,7 +117,7 @@ export function SlotFormSheet({
           </SheetHeader>
 
           <SheetBody className="grid gap-5">
-            <Field label={t("name")} description={t("nameHint")} error={error("name") ?? (failure?.code === "slot_name_taken" ? errorMessage(failure) : null)} required>
+            <Field label={t("name")} description={t("nameHint")} error={nameMessage} required>
               <Input value={form.name} onChange={(e) => set("name", e.target.value)} maxLength={100} autoComplete="off" />
             </Field>
             <div className="grid gap-5 sm:grid-cols-2">

@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { useBookingApi } from "@/bookings/api";
@@ -9,8 +9,8 @@ import { Icon } from "@/components/icon";
 import { Text } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { useI18n } from "@/i18n/i18n-provider";
-import { bowl, cup, lift, radius, spacing } from "@/theme/colors";
-import { usePalette } from "@/theme/use-theme";
+import { bowl, cup, radius, spacing } from "@/theme/colors";
+import { useLift, usePalette } from "@/theme/use-theme";
 
 import { EmptyState, Failed, Loading } from "./states";
 
@@ -98,19 +98,12 @@ export function InstitutionDirectory({ refreshKey = 0, onSettled }: Props) {
       />
 
       {kinds.length > 1 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chips}
-          style={styles.chipRow}
-          accessibilityRole="radiogroup"
-          accessibilityLabel={t("App.explore.kinds")}
-        >
+        <ChipRow label={t("App.explore.kinds")}>
           <Chip label={t("App.explore.allKinds")} selected={kind === null} onPress={() => setKind(null)} />
           {kinds.map((option) => (
             <Chip key={option.code} label={option.name} selected={kind === option.code} onPress={() => setKind(option.code)} />
           ))}
-        </ScrollView>
+        </ChipRow>
       )}
 
       {shown.length === 0 ? (
@@ -129,9 +122,14 @@ export function InstitutionDirectory({ refreshKey = 0, onSettled }: Props) {
   );
 }
 
-function InstitutionCard({ institution }: { institution: PublicInstitutionSummary }) {
+/**
+ * A place's card. `distance` is the words for how far it is, when the donor searched near a point;
+ * `number` is its pin on the map, shown in place of the monogram and in the same colours as the pin.
+ */
+export function InstitutionCard({ institution, distance, number }: { institution: PublicInstitutionSummary; distance?: string; number?: number }) {
   const { language } = useI18n();
   const palette = usePalette();
+  const lift = useLift();
   const name = localName(language, institution);
   const type = inLocale(language, institution.typeName, institution.typeNameSi, institution.typeNameTa);
   const district = inLocale(language, institution.district, institution.districtSi, institution.districtTa);
@@ -139,7 +137,7 @@ function InstitutionCard({ institution }: { institution: PublicInstitutionSummar
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={`${name}. ${type}. ${institution.city}, ${district}`}
+      accessibilityLabel={[number, `${name}. ${type}. ${institution.city}, ${district}`, distance].filter(Boolean).join(". ")}
       onPress={() => router.push({ pathname: "/i/[slug]", params: { slug: institution.slug } })}
       style={({ pressed }) => [
         styles.card,
@@ -149,9 +147,9 @@ function InstitutionCard({ institution }: { institution: PublicInstitutionSummar
       ]}
     >
       {/* A monogram in a cup: each place gets a face without a photo or a faith's symbol. */}
-      <View style={[styles.monogram, { backgroundColor: palette.subtle, borderColor: palette.hairline }]}>
-        <Text variant="heading" style={[styles.monogramText, { color: palette.brand }]}>
-          {Array.from(name)[0] ?? ""}
+      <View style={[styles.monogram, number ? { backgroundColor: palette.primary, borderColor: palette.primary } : { backgroundColor: palette.subtle, borderColor: palette.hairline }]}>
+        <Text variant="heading" style={[styles.monogramText, { color: number ? palette.onPrimary : palette.brand }]}>
+          {number ?? Array.from(name)[0] ?? ""}
         </Text>
       </View>
       <View style={styles.cardText}>
@@ -163,13 +161,30 @@ function InstitutionCard({ institution }: { institution: PublicInstitutionSummar
             {institution.city} · {district}
           </Text>
         </View>
+        {distance && <Text variant="label">{distance}</Text>}
       </View>
       <Icon name="forward" size={18} color={palette.line} />
     </Pressable>
   );
 }
 
-function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+/** One choice as a row of chips, edge to edge, that scrolls sideways on a narrow phone. */
+export function ChipRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.chips}
+      style={styles.chipRow}
+      accessibilityRole="radiogroup"
+      accessibilityLabel={label}
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
+export function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   const palette = usePalette();
   return (
     <Pressable

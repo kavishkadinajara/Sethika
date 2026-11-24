@@ -50,8 +50,7 @@ public static class MealSlotRules
             return BookingErrors.NotOnThisDay;
         }
 
-        var ownSeasons = seasons.Where(s => s.MealSlotId == slot.Id).ToList();
-        if (ownSeasons.Count > 0 && !ownSeasons.Any(s => s.Covers(date)))
+        if (!InSeason(slot, seasons, date))
         {
             return BookingErrors.OutOfSeason;
         }
@@ -77,6 +76,36 @@ public static class MealSlotRules
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="slot"/> is laid on <paramref name="date"/> at all: active, on that
+    /// weekday, and inside one of its seasons if it has any. The day as the institution plans it,
+    /// before blocks, the advance window or the places left; today's table asks it (plan 05, R2).
+    /// </summary>
+    public static bool Serves(MealSlot slot, IEnumerable<MealSlotSeason> seasons, DateOnly date)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+        ArgumentNullException.ThrowIfNull(seasons);
+
+        return slot.IsActive && slot.RunsOn(date) && InSeason(slot, seasons, date);
+    }
+
+    /// <summary>
+    /// Whether a day <see cref="Openings"/> judged is a day the slot served: laid on and not blocked,
+    /// however full it is and however far from today. The monthly report asks it of the calendar's own
+    /// answer (plan 09, M16), so the two cannot disagree about which days there were.
+    /// </summary>
+    /// <param name="refused">What <see cref="Openings"/> said of the day.</param>
+    public static bool IsServedDay(string? refused) =>
+        refused is not (BookingErrors.SlotInactive or BookingErrors.InstitutionNotActive or BookingErrors.NotOnThisDay
+            or BookingErrors.OutOfSeason or BookingErrors.DateBlocked);
+
+    /// <summary>A slot's own seasons cover <paramref name="date"/>; a slot with none runs all year.</summary>
+    private static bool InSeason(MealSlot slot, IEnumerable<MealSlotSeason> seasons, DateOnly date)
+    {
+        var own = seasons.Where(s => s.MealSlotId == slot.Id).ToList();
+        return own.Count == 0 || own.Any(s => s.Covers(date));
     }
 
     /// <summary>
@@ -143,6 +172,25 @@ public static class MealSlotRules
         }
 
         return new SlotDayOpenings(refused, sponsors, headcount);
+    }
+
+    /// <summary>
+    /// Whether a day <see cref="Openings"/> found full is full only through standing days (plan 08, K6):
+    /// letting one of them go would open it, so a donor may ask for it. A day closed or blocked is not
+    /// held, whoever is on it.
+    /// </summary>
+    /// <param name="openings">What <see cref="Openings"/> said of the day.</param>
+    /// <param name="instance">The slot-day.</param>
+    /// <param name="standing">Its active standing bookings.</param>
+    /// <param name="standingHeadcount">The most people one of them brings.</param>
+    public static bool IsHeld(MealSlot slot, SlotDayOpenings openings, SlotInstance? instance, int standing, int standingHeadcount)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+
+        return openings.Refused == BookingErrors.SlotFull
+               && standing > 0
+               && instance is { Status: SlotInstanceStatus.Open or SlotInstanceStatus.Full }
+               && instance.RemainingHeadcount + standingHeadcount >= slot.MinHeadcount;
     }
 }
 

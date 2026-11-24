@@ -137,7 +137,7 @@ public sealed class RegistrationReviewEndpointsTests(SethikaTestDatabase databas
     {
         var body = await response.Content.ReadAsStringAsync();
         Assert.True(response.Content.Headers.ContentType?.MediaType?.EndsWith("json", StringComparison.Ordinal) == true, $"{(int)response.StatusCode}: {body}");
-        return JsonDocument.Parse(body).RootElement.Clone();
+        return JsonElement.Parse(body).Clone();
     }
 
     private static async Task<string?> CodeOf(HttpResponseMessage response) =>
@@ -222,6 +222,71 @@ public sealed class RegistrationReviewEndpointsTests(SethikaTestDatabase databas
 
         var approved = await JsonAsync(await reviewer.GetAsync(Base + "?status=Approved"));
         Assert.DoesNotContain(approved.GetProperty("items").EnumerateArray(), i => i.GetProperty("requestNo").GetString()!.StartsWith("REQ-TEST-R0", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task TheDashboardListsTheLatestTenDecisions_NewestFirst_WithTheInstitutionAnApprovalMade()
+    {
+        // Plan 05, R4. Eleven decided (approved and rejected in turn, each a minute after the last)
+        // and one still open: the oldest decision is one too many, and the open one is no decision.
+        for (var n = 1; n <= 12; n++)
+        {
+            await _scenario.SubmittedAsync($"REQ-TEST-D{n:D2}", $"BUD/D/{n:D2}");
+        }
+
+        // Submitted is not decided: before any decision, none of them is listed.
+        using (var undecided = await Reviewer().GetAsync($"{Base}/decided"))
+        {
+            Assert.DoesNotContain(
+                (await JsonAsync(undecided)).EnumerateArray(),
+                d => d.GetProperty("requestNo").GetString()!.StartsWith("REQ-TEST-D", StringComparison.Ordinal));
+        }
+
+        await ExecuteAsync(
+            """
+            EXEC sys.sp_set_session_context @key = N'IsPlatform', @value = 1;
+            DECLARE @reason INT = (SELECT TOP (1) v.Id FROM core.LookupValues v
+                                   JOIN core.LookupTypes t ON t.Id = v.LookupTypeId AND t.Code = 'REJECT_REASON' ORDER BY v.Id);
+            UPDATE org.RegistrationRequests
+            SET DecidedBy = @admin,
+                DecidedAt = DATEADD(MINUTE, CAST(RIGHT(RequestNo, 2) AS INT) - 12, SYSUTCDATETIME()),
+                Status = CASE WHEN CAST(RIGHT(RequestNo, 2) AS INT) % 2 = 0 THEN 'Approved' ELSE 'Rejected' END,
+                CreatedInstitutionId = CASE WHEN CAST(RIGHT(RequestNo, 2) AS INT) % 2 = 0 THEN @alpha END,
+                RejectReasonLookupId = CASE WHEN CAST(RIGHT(RequestNo, 2) AS INT) % 2 = 1 THEN @reason END
+            WHERE RequestNo LIKE 'REQ-TEST-D%' AND RequestNo <> 'REQ-TEST-D12';
+            """,
+            new { admin = Admin, alpha = database.AlphaInstitutionId });
+
+        using var response = await Reviewer().GetAsync($"{Base}/decided");
+        var lines = (await JsonAsync(response)).EnumerateArray()
+            .Select(d => $"{d.GetProperty("requestNo").GetString()} {d.GetProperty("status").GetString()} {d.GetProperty("institution").GetString() ?? "-"}");
+
+        Assert.Equal(
+            Enumerable.Range(2, 10).Reverse().Select(n => $"REQ-TEST-D{n:D2} " + (n % 2 == 0 ? "Approved alpha-temple" : "Rejected -")),
+            lines);
+
+        // The applicant holds no reviewer's permission.
+        var (applicant, _) = PlatformClient(OnboardingScenario.Applicant);
+        using var refused = await applicant.GetAsync($"{Base}/decided");
+        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+    }
+
+    [Fact]
+    public async Task TheSidebarCountsTheRequestsWaitingForTheReviewers_NotDrafts()
+    {
+        // Plan 05, R3: the badge beside "Registration requests" is the queue's open work.
+        await _scenario.SubmittedAsync("REQ-TEST-S01", "BUD/S/01");
+        await _scenario.SubmittedAsync("REQ-TEST-S02", "BUD/S/02");
+        await _scenario.SubmittedAsync("REQ-TEST-S03", "BUD/S/03", submit: false);
+
+        var open = await ScalarAsync<int>(
+            "SELECT COUNT(*) FROM org.RegistrationRequests WHERE Status IN ('Submitted', 'UnderReview', 'InfoRequested');");
+        Assert.True(open >= 2);
+
+        var summary = await JsonAsync(await Reviewer().GetAsync("/api/me/summary"));
+
+        Assert.Equal(open, summary.GetProperty("registrationsWaiting").GetInt32());
+        Assert.Equal(JsonValueKind.Null, summary.GetProperty("bookingsToAnswer").ValueKind);
     }
 
     // ------------------------------------------------------------------ the whole review
@@ -382,7 +447,7 @@ public sealed class RegistrationReviewEndpointsTests(SethikaTestDatabase databas
         Assert.Equal("InfoRequested", await StatusOfAsync("REQ-TEST-R22"));
         var payload = await ScalarAsync<string>(
             "SELECT Payload FROM core.OutboxMessages WHERE AggregateId = 'REQ-TEST-R22' AND EventType = 'RegistrationInfoRequested';");
-        Assert.Equal(OnboardingScenario.Applicant, JsonDocument.Parse(payload).RootElement.GetProperty("applicantUserId").GetGuid());
+        Assert.Equal(OnboardingScenario.Applicant, JsonElement.Parse(payload).GetProperty("applicantUserId").GetGuid());
 
         var question = Assert.Single((await JsonAsync(await reviewer.GetAsync($"{Base}/REQ-TEST-R22"))).GetProperty("application").GetProperty("questions").EnumerateArray());
         Assert.Equal(OneQuestion[0], question.GetProperty("question").GetString());
@@ -480,14 +545,14 @@ public sealed class RegistrationReviewEndpointsTests(SethikaTestDatabase databas
         var codes = await MandatoryCodesAsync();
         var reviewer = Reviewer();
 
-        // Hold the application's row so both reads queue behind it and then see the same version.
-        // That needs locking reads (READ_COMMITTED_SNAPSHOT off, as locally). Azure SQL turns it on:
-        // there the reads would not queue, and the RowVersion would still let no update be lost.
+        // Hold an update lock on the application's row: both reads pass it and see the same version
+        // (READ_COMMITTED_SNAPSHOT is on, as in Azure SQL), and both saves queue behind it. The lock
+        // changes nothing, so when it opens the first save wins and the RowVersion refuses the second.
         await using var holder = new SqlConnection(database.ConnectionString);
         await holder.OpenAsync();
         await holder.ExecuteAsync("EXEC sys.sp_set_session_context @key = N'IsPlatform', @value = 1;");
         await using var hold = (SqlTransaction)await holder.BeginTransactionAsync();
-        await holder.ExecuteAsync("UPDATE org.RegistrationRequests SET UpdatedAt = UpdatedAt WHERE RequestNo = 'REQ-TEST-R50';", transaction: hold);
+        await holder.ExecuteAsync("SELECT Id FROM org.RegistrationRequests WITH (UPDLOCK, ROWLOCK) WHERE RequestNo = 'REQ-TEST-R50';", transaction: hold);
 
         var both = codes.Take(2)
             .Select(code => Task.Run(() => reviewer.PutAsJsonAsync($"{Base}/REQ-TEST-R50/documents/{code}/verification", new { verified = true })))

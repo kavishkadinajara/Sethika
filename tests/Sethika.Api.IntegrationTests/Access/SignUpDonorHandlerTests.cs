@@ -223,6 +223,20 @@ public sealed class SignUpDonorHandlerTests(SethikaTestDatabase database) : IAsy
     }
 
     [Fact]
+    public async Task RefusesALandline_EvenWithATicketForIt()
+    {
+        // The endpoint never texts a landline (QA DEF-002); the service is asked directly here, so
+        // this is the handler's own check: an account must be able to receive its sign-in codes.
+        var landline = "+94112" + RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6", CultureInfo.InvariantCulture);
+        var ticket = await VerifiedTicketAsync(landline);
+
+        var result = await SignUpAsync(Command(landline, ticket));
+
+        Assert.Equal(SignUpFailure.InvalidPhoneNumber, result.Failure);
+        Assert.Equal(0, await CountUsersAsync(landline));
+    }
+
+    [Fact]
     public async Task ATicketCreatesOneAccountOnly()
     {
         var phone = NewPhone();

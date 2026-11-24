@@ -12,9 +12,12 @@
 :r .\Seed\10_RbacCatalogue.sql
 :r .\Seed\11_NotifyTemplates.sql
 :r .\Seed\12_OnboardingDrafts.sql
+:r .\Seed\13_MemorialDrafts.sql
+:r .\Seed\14_GivingLookups.sql
 /* TODO (confirm with real institutions before seeding):
    - org.DocumentTypes + org.InstitutionTypeRequiredDocuments + org.VerificationChecklistItems:
      seeded as marked DRAFTs in 12_OnboardingDrafts.sql until the real lists are confirmed
-   - core.MemorialRules (per religion)
+   - core.MemorialRules (per religion): seeded as marked DRAFTs in 13_MemorialDrafts.sql until
+     confirmed, with the religions they belong to
    - core.SpecialDays (Poya / holidays per year)
    The RBAC catalogue grows in 10_RbacCatalogue.sql with each screen that is built. */

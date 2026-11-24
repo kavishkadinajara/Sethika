@@ -18,6 +18,7 @@ using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.Net.Http.Headers;
 using Sethika.Api.IntegrationTests.Persistence;
 using Sethika.Application.Abstractions;
+using Sethika.Application.Access;
 using Sethika.Domain.Access;
 using Sethika.Infrastructure.Security;
 using StackExchange.Redis;
@@ -117,6 +118,8 @@ public sealed partial class StepUpEndpointsTests(SethikaTestDatabase database) :
 
         public Task<bool> IsGrantedAsync(Guid userId, string tokenId, CancellationToken cancellationToken = default) =>
             real.IsGrantedAsync(userId, tokenId, cancellationToken);
+        public Task<bool> CarryAsync(Guid userId, string fromTokenId, string toTokenId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
     }
 
     private sealed class LoopbackConnectionStartupFilter : IStartupFilter
@@ -200,7 +203,7 @@ public sealed partial class StepUpEndpointsTests(SethikaTestDatabase database) :
 
     private static Session ToSession(HttpResponseMessage response, string body)
     {
-        var accessToken = JsonDocument.Parse(body).RootElement.GetProperty("accessToken").GetString()!;
+        var accessToken = JsonElement.Parse(body).GetProperty("accessToken").GetString()!;
         var jwt = new JsonWebToken(accessToken);
         var cookies = SetCookieHeaderValue.ParseStrictList([.. response.Headers.GetValues("Set-Cookie")]);
 
@@ -259,7 +262,7 @@ public sealed partial class StepUpEndpointsTests(SethikaTestDatabase database) :
 
         using var response = await PostAsync(session, Approve);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("Approved", JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("status").GetString());
+        Assert.Equal("Approved", JsonElement.Parse(await response.Content.ReadAsStringAsync()).GetProperty("status").GetString());
     }
 
     private async Task ExecuteAsync(string sql, object parameters)
@@ -269,7 +272,7 @@ public sealed partial class StepUpEndpointsTests(SethikaTestDatabase database) :
     }
 
     private static async Task<string?> CodeOf(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("code").GetString();
+        JsonElement.Parse(await response.Content.ReadAsStringAsync()).GetProperty("code").GetString();
 
     // ------------------------------------------------------------------ the grant
 
@@ -341,6 +344,52 @@ public sealed partial class StepUpEndpointsTests(SethikaTestDatabase database) :
     }
 
     // ------------------------------------------------------------------ the code
+
+    [Fact]
+    public async Task AskedAgainInTheCooldownItSaysTheCodeIsAlreadySent_AndThatCodeStillWorks()
+    {
+        // QA DEF-003: the form asks as it opens, so cancelling and opening it again within the
+        // minute asked again, was told only "too many requests", and showed that as an error.
+        var phone = await CreateStewardAsync();
+        var session = await LogInAsync(phone);
+        var code = await RequestCodeAsync(session, phone);
+
+        using (var again = await PostAsync(session, "/api/auth/stepup/request"))
+        {
+            Assert.Equal((HttpStatusCode)429, again.StatusCode);
+            Assert.Equal("code_already_sent", await CodeOf(again));
+            Assert.InRange(int.Parse(Assert.Single(again.Headers.GetValues("Retry-After")), CultureInfo.InvariantCulture), 1, 60);
+        }
+
+        Assert.Single(_sms, m => m.Phone == phone);
+
+        using var verified = await PostAsync(session, "/api/auth/stepup/verify", new { code });
+        Assert.Equal(HttpStatusCode.NoContent, verified.StatusCode);
+        await AssertApprovedAsync(session);
+    }
+
+    [Fact]
+    public async Task PastTheHourlyCapItIsTooManyRequests_NotACodeAlreadySent()
+    {
+        var phone = await CreateStewardAsync();
+        var session = await LogInAsync(phone);
+        var redis = _redis.GetDatabase();
+        var sends = OtpCacheKey.ForSendCount(phone, OtpPurpose.StepUp);
+        await redis.StringSetAsync(sends, 1_000, TimeSpan.FromMinutes(30));
+
+        try
+        {
+            using var refused = await PostAsync(session, "/api/auth/stepup/request");
+
+            Assert.Equal((HttpStatusCode)429, refused.StatusCode);
+            Assert.Equal("too_many_requests", await CodeOf(refused));
+            Assert.DoesNotContain(_sms, m => m.Phone == phone);
+        }
+        finally
+        {
+            await redis.KeyDeleteAsync(sends);
+        }
+    }
 
     [Fact]
     public async Task AWrongCodeGrantsNothing()

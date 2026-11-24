@@ -68,6 +68,12 @@ export function useDates() {
         const { month, day } = parts(date);
         return `${own.weekdaysShort[weekdayOf(date)]}, ${own.monthsShort[month - 1]} ${day}`;
       },
+      /** "25 October": the Day Ledger's large date (plan 05, R4). */
+      dayMonthLong(date: string): string {
+        if (!own) return intl(date, { day: "numeric", month: "long" });
+        const { month, day } = parts(date);
+        return `${own.months[month - 1]} ${day}`;
+      },
       /** "25–27 Oct 2026", or one date when they are the same day. */
       range(from: string, to: string): string {
         if (from === to) return dates.medium(from);

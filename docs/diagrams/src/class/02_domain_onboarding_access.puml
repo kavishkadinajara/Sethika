@@ -1,0 +1,362 @@
+@startuml
+!pragma layout smetana
+!include ../style.iuml
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam nodesep 40
+skinparam ranksep 60
+skinparam class {
+  BackgroundColor<<static>> #FFF8EA
+  BackgroundColor<<constants>> #F7F4EC
+  BackgroundColor<<record>> #F2F7F4
+}
+title Class diagram 2 — Onboarding, institutions and access domain
+package "Onboarding" {
+class RegistrationRequest {
+  +Id : int
+  +RequestNo : string
+  +ApplicantUserId : Guid
+  +InstitutionTypeId : short
+  +ProposedName : string
+  +NameSi : string?
+  +NameTa : string?
+  +OfficialRegistrationNo : string
+  +RegisteringAuthority : string
+  +RegistrationDate : DateOnly
+  +EstablishedYear : short?
+  +ResidentCapacity : short?
+  +Description : string?
+  +AddressLine1 : string
+  +AddressLine2 : string?
+  +City : string
+  +DistrictId : short
+  +DsDivisionId : short?
+  +GnDivision : string?
+  +PostalCode : string?
+  +Latitude : decimal
+  +Longitude : decimal
+  +OfficePhone : string
+  +OfficeEmail : string?
+  +Website : string?
+  +ApplicantFullName : string
+  +ApplicantNic : string
+  +ApplicantDesignation : string
+  +ApplicantPhone : string
+  +ApplicantEmail : string?
+  +DeclarationDocumentId : short? {readOnly}
+  +DeclarationAcceptedAt : DateTime? {readOnly}
+  +DeclarationIp : string? {readOnly}
+  +RequestedPlanId : short?
+  +RiskScore : byte?
+  +RiskFlags : string?
+  +Status : string {readOnly}
+  +SubmittedAt : DateTime? {readOnly}
+  +SlaDueAt : DateTime?
+  +AssignedReviewerId : Guid?
+  +DecidedBy : Guid? {readOnly}
+  +DecidedAt : DateTime? {readOnly}
+  +RejectReasonLookupId : int? {readOnly}
+  +DecisionNote : string? {readOnly}
+  +CreatedInstitutionId : int? {readOnly}
+  +CreatedAt : DateTime
+  +UpdatedAt : DateTime? {readOnly}
+  +IsEditableByApplicant : bool
+  --
+  {static} +StartDraft(requestNo, applicantUserId, now) : RegistrationRequest
+  +BeginApplicantEdit(userId, now) : RegistrationResult
+  +ReplaceOfficeBearers(bearers, userId, now) : RegistrationResult
+  +AttachDocument(document, userId, now) : RegistrationResult
+  +Submit(mandatoryDocumentTypeIds, declarationDocumentId, clientIp, userId, now) : RegistrationResult
+  +Answer(responses, userId, now) : RegistrationResult
+  +Withdraw(userId, now, comment) : RegistrationResult
+  +StartReview(reviewerId, now) : RegistrationResult
+  +VerifyDocument(documentTypeId, verified, remarks, reviewerId, now) : RegistrationResult
+  +RecordChecklist(checklistItemId, passed, remarks, reviewerId, now) : RegistrationResult
+  +RequestInformation(questions, reviewerId, now) : RegistrationResult
+  +CheckReadyForApproval(mandatoryDocumentTypeIds, mandatoryChecklistItemIds, deciderId) : RegistrationResult
+  .. 2 more ..
+}
+class RegistrationRequestDocument {
+  +Id : int
+  +RequestId : int
+  +DocumentTypeId : short
+  +FileId : long
+  +ReferenceNo : string?
+  +IssuedBy : string?
+  +IssuedDate : DateOnly?
+  +ExpiryDate : DateOnly?
+  +VerificationStatus : string
+  +VerifiedBy : Guid?
+  +VerifiedAt : DateTime?
+  +ReviewerRemarks : string?
+  +UploadedAt : DateTime
+  +IsLive : bool
+}
+class RegistrationOfficeBearer {
+  +Id : int
+  +RequestId : int
+  +FullName : string
+  +NicNumber : string
+  +Designation : string
+  +Phone : string
+  +Email : string?
+  +IsSignatory : bool
+}
+class RegistrationClarification {
+  +Id : int
+  +RequestId : int
+  +AskedBy : Guid
+  +Question : string
+  +AskedAt : DateTime
+  +Response : string?
+  +ResponseFileId : long?
+  +RespondedBy : Guid?
+  +RespondedAt : DateTime?
+  +IsOpen : bool
+}
+class RegistrationChecklistEntry {
+  +RequestId : int
+  +ChecklistItemId : short
+  +IsPassed : bool
+  +CheckedBy : Guid
+  +CheckedAt : DateTime
+  +EvidenceFileId : long?
+  +Remarks : string?
+}
+class RegistrationStatusChange {
+  +Id : long
+  +RequestId : int
+  +FromStatus : string?
+  +ToStatus : string
+  +ChangedBy : Guid
+  +ChangedAt : DateTime
+  +Comment : string?
+}
+enum RegistrationStatus <<constants>> {
+  Draft
+  Submitted
+  UnderReview
+  InfoRequested
+  Approved
+  Rejected
+  Withdrawn
+}
+}
+package "Institutions" {
+class Institution {
+  +Id : int
+  +InstitutionCode : string
+  +Slug : string
+  +RegistrationRequestId : int
+  +InstitutionTypeId : short
+  +Name : string
+  +NameSi : string?
+  +NameTa : string?
+  +OfficialRegistrationNo : string
+  +Description : string?
+  +AddressLine1 : string
+  +AddressLine2 : string?
+  +City : string
+  +DistrictId : short
+  +DsDivisionId : short?
+  +Latitude : decimal
+  +Longitude : decimal
+  +Phone : string
+  +Email : string?
+  +ResidentCapacity : short?
+  +DietaryNotes : string?
+  +LogoFileId : long?
+  +CoverFileId : long?
+  +Status : string
+  +IsPubliclyListed : bool
+  +VerifiedBadgeLevel : byte
+  +NextReviewDue : DateOnly?
+  +PermissionsVersion : int
+  +ApprovedBy : Guid
+  +ApprovedAt : DateTime
+  +CreatedAt : DateTime
+  +UpdatedAt : DateTime?
+  +UpdatedBy : Guid?
+  +IsDeleted : bool
+}
+class InstitutionMember {
+  +Id : int
+  +InstitutionId : int
+  +UserId : Guid
+  +Designation : string?
+  +IsOwner : bool
+  +Status : string
+  +JoinedAt : DateTime
+  +AddedBy : Guid
+  +RemovedAt : DateTime?
+  +RemovedBy : Guid?
+}
+class InstitutionDocument {
+  +Id : int
+  +InstitutionId : int
+  +DocumentTypeId : short
+  +FileId : long
+  +SourceRequestDocumentId : int?
+  +ReferenceNo : string?
+  +IssuedDate : DateOnly?
+  +ExpiryDate : DateOnly?
+  +Status : string
+  +CreatedAt : DateTime
+}
+class InstitutionStatusChange {
+  +Id : long
+  +InstitutionId : int
+  +FromStatus : string?
+  +ToStatus : string
+  +Reason : string?
+  +ChangedBy : Guid
+  +ChangedAt : DateTime
+}
+class StaffInvitation {
+  +Id : int {readOnly}
+  +PublicId : Guid {readOnly}
+  +InstitutionId : int {readOnly}
+  +InviteeUserId : Guid {readOnly}
+  +InviteeName : string {readOnly}
+  +InviteePhone : string? {readOnly}
+  +InviteeEmail : string? {readOnly}
+  +RoleId : int {readOnly}
+  +TokenHash : string {readOnly}
+  +Status : string {readOnly}
+  +InvitedBy : Guid {readOnly}
+  +InvitedAt : DateTime {readOnly}
+  +ExpiresAt : DateTime {readOnly}
+  +AcceptedUserId : Guid? {readOnly}
+  +AcceptedAt : DateTime? {readOnly}
+  +ClosedBy : Guid? {readOnly}
+  +ClosedAt : DateTime? {readOnly}
+  --
+  {static} +Invite(institutionId, roleId, inviteeUserId, inviteeName, inviteePhone, tokenHash, invitedBy, now) : StaffInvitation
+  +IsOpen(now) : bool
+  +Accept(userId, now) : InvitationResult
+  +Decline(userId, now) : InvitationResult
+  +Revoke(userId, now) : InvitationResult
+  +Expire(now) : bool
+}
+}
+package "Access (RBAC)" {
+class User {
+  +Id : Guid
+  +UserType : string
+  +FullName : string
+  +DisplayName : string?
+  +Email : string?
+  +NormalizedEmail : string?
+  +EmailConfirmed : bool
+  +PhoneNumber : string?
+  +PhoneConfirmed : bool
+  +NicNumber : string?
+  +PasswordHash : string?
+  +PasswordChangedAt : DateTime?
+  +SecurityStamp : string
+  +PermissionsVersion : int
+  +TwoFactorEnabled : bool
+  +MfaRequired : bool
+  +LockoutEnd : DateTimeOffset?
+  +AccessFailedCount : int
+  +PreferredLanguage : string
+  +ProfilePhotoFileId : long?
+  +Status : string
+  +LastLoginAt : DateTime?
+  +CreatedAt : DateTime
+  +CreatedBy : Guid?
+  +UpdatedAt : DateTime?
+  +UpdatedBy : Guid?
+  +IsDeleted : bool
+  +DeletedAt : DateTime?
+}
+class UserRole {
+  +Id : int
+  +UserId : Guid
+  +RoleId : int
+  +InstitutionId : int?
+  +AssignedBy : Guid?
+  +ValidFrom : DateTime?
+  +ValidTo : DateTime?
+  +IsActive : bool
+}
+class Role {
+  +Id : int
+  +InstitutionId : int?
+  +Scope : string
+  +RoleLevelId : byte
+  +Code : string
+  +Name : string
+  +Description : string?
+  +IsTemplate : bool
+  +TemplateRoleId : int?
+  +InstitutionTypeId : short?
+  +IsSystem : bool
+  +IsActive : bool
+  +CreatedBy : Guid?
+  +UpdatedBy : Guid?
+}
+class RolePermission {
+  +RoleId : int
+  +PermissionId : int
+  +GrantedBy : Guid?
+}
+class RoleLevel {
+  +Id : byte
+  +Scope : string
+  +Rank : byte
+  +Code : string
+  +Name : string
+  +IsActive : bool
+}
+class Permission {
+  +Id : int
+  +Code : string
+  +Scope : string
+  +RequiresMfa : bool
+  +IsActive : bool
+}
+class RefreshToken {
+  +Id : long
+  +UserId : Guid
+  +TokenHash : string
+  +FamilyId : Guid
+  +JwtId : string
+  +ActiveInstitutionId : int?
+  +DeviceInfo : string?
+  +CreatedByIp : string?
+  +CreatedAt : DateTime
+  +ExpiresAt : DateTime
+  +RevokedAt : DateTime?
+  +RevokedReason : string?
+  +ReplacedByTokenId : long?
+  +SecurityStamp : string
+}
+}
+RegistrationRequest "*" -- "1" User
+RegistrationRequest "1" -- "*" RegistrationRequestDocument
+RegistrationRequest "1" -- "*" RegistrationOfficeBearer
+RegistrationRequest "1" -- "*" RegistrationChecklistEntry
+RegistrationRequest "1" -- "*" RegistrationClarification
+RegistrationRequest "1" -- "*" RegistrationStatusChange
+Institution "0..1" -- "1" RegistrationRequest
+InstitutionMember "*" -- "1" Institution
+InstitutionMember "*" -- "1" User
+InstitutionDocument "*" -- "1" Institution
+InstitutionStatusChange "*" -- "1" Institution
+StaffInvitation "*" -- "1" Institution
+StaffInvitation "*" -- "1" Role
+User "1" -- "*" UserRole
+UserRole "*" -- "1" Role
+UserRole "*" -- "0..1" Institution
+Role "*" -- "0..1" Institution
+Role "*" -- "1" RoleLevel
+RolePermission "*" -- "1" Role
+RolePermission "*" -- "1" Permission
+RefreshToken "*" -- "1" User
+legend bottom right
+  +Name : Type {readOnly} = changed only through the class's own methods
+  <<static>> = rules with no state    <<constants>> = readable status values (VARCHAR + CHECK)
+  Generated from the C# code by docs/diagrams/tools/class_from_cs.py
+endlegend
+@enduml

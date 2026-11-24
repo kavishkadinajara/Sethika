@@ -15,6 +15,21 @@ namespace Sethika.Api.Endpoints;
 /// </remarks>
 internal static class AdminEndpoints
 {
+    /// <summary>A page the 3-column grid fills (plan 05, X4), and the most one request may ask for.</summary>
+    public const int DefaultPageSize = 24;
+    public const int MaxPageSize = 100;
+
+    /// <summary>What the list filters accept: the CHECK constraints' own values.</summary>
+    private static readonly HashSet<string> InstitutionStatuses = new(StringComparer.Ordinal) { "Onboarding", "Active", "Suspended", "Deactivated" };
+    private static readonly HashSet<string> UserKinds = new(StringComparer.Ordinal) { "Donor", "InstitutionStaff", "PlatformStaff" };
+    private static readonly HashSet<string> UserStatuses = new(StringComparer.Ordinal) { "Active", "PendingVerification", "Suspended", "Deactivated" };
+
+    /// <summary>A type or district code: the lookups' own shape, so nothing else reaches the query.</summary>
+    private const int MaxCodeLength = 30;
+
+    /// <summary>An institution's slug: <c>org.Institutions.Slug</c> is <c>VARCHAR(150)</c>.</summary>
+    private const int MaxSlugLength = 150;
+
     public static IEndpointRouteBuilder MapAdminEndpoints(this IEndpointRouteBuilder app)
     {
         var admin = app.MapGroup("/api/admin");
@@ -22,9 +37,23 @@ internal static class AdminEndpoints
         admin.MapGet("/institutions", GetInstitutionsAsync)
             .WithMetadata(new HasPermissionAttribute("PLATFORM.INSTITUTIONS.VIEW"));
 
+        // The names behind the type and district codes the filters take, under the list's own
+        // permission, as the reviewer's lookups are under theirs.
+        admin.MapGet("/institutions/lookups", OnboardingApplicationEndpoints.GetLookupsAsync)
+            .WithMetadata(new HasPermissionAttribute("PLATFORM.INSTITUTIONS.VIEW"));
+
+        // The platform dashboard's "institutions by status" (plan 05, R4).
+        admin.MapGet("/institutions/statuses", async (IAdminQueries queries, CancellationToken ct) => Results.Ok(await queries.GetInstitutionStatusesAsync(ct)))
+            .WithMetadata(new HasPermissionAttribute("PLATFORM.INSTITUTIONS.VIEW"));
+
         // Y1a: RequiresMfa, so the step-up middleware asks before a ticket is issued.
         admin.MapPost("/institutions/{slug}/support", IssueSupportTicketAsync)
             .WithMetadata(new HasPermissionAttribute(PlatformSupport.Permission));
+
+        // Plan 09, Q4: what the institution's roles and modules gained since it was approved, added.
+        // RequiresMfa, so the step-up middleware asks first.
+        admin.MapPost("/institutions/{slug}/sync-templates", SyncTemplatesAsync)
+            .WithMetadata(new HasPermissionAttribute("PLATFORM.INSTITUTIONS.EDIT"));
 
         admin.MapGet("/users", GetUsersAsync)
             .WithMetadata(new HasPermissionAttribute("PLATFORM.USERS.VIEW"));
@@ -52,11 +81,84 @@ internal static class AdminEndpoints
         return app;
     }
 
-    private static async Task<IResult> GetInstitutionsAsync(string? search, IAdminQueries queries, CancellationToken cancellationToken) =>
-        Results.Ok(await queries.GetInstitutionsAsync(search, cancellationToken));
+    private static async Task<IResult> SyncTemplatesAsync(string slug, ICurrentUserContext user, TemplateSyncHandler handler, CancellationToken cancellationToken)
+    {
+        if (user.UserId is not { } actorId)
+        {
+            return Results.Unauthorized();
+        }
 
-    private static async Task<IResult> GetUsersAsync(string? search, IAdminQueries queries, CancellationToken cancellationToken) =>
-        Results.Ok(await queries.GetUsersAsync(search, cancellationToken));
+        if (slug.Length > MaxSlugLength)
+        {
+            return ApiErrors.Error(StatusCodes.Status404NotFound, "institution_not_found");
+        }
+
+        var result = await handler.SyncAsync(slug, actorId, cancellationToken);
+        return result.Found
+            ? Results.Ok(new { modules = result.Modules, roles = result.Roles, grants = result.Grants })
+            : ApiErrors.Error(StatusCodes.Status404NotFound, "institution_not_found");
+    }
+
+    private static async Task<IResult> GetInstitutionsAsync(
+        string? search,
+        string? status,
+        string? type,
+        string? district,
+        string? sort,
+        int? page,
+        int? pageSize,
+        IAdminQueries queries,
+        CancellationToken cancellationToken)
+    {
+        if (Blank(status) is { } s && !InstitutionStatuses.Contains(s)
+            || Blank(type) is { Length: > MaxCodeLength }
+            || Blank(district) is { Length: > MaxCodeLength }
+            || Blank(sort) is { } o && o is not ("name" or "newest"))
+        {
+            return ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_filter");
+        }
+
+        if (page is < 1 || pageSize is < 1 or > MaxPageSize)
+        {
+            return ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_page");
+        }
+
+        return Results.Ok(await queries.GetInstitutionsAsync(
+            new AdminInstitutionFilter(search, Blank(status), Blank(type), Blank(district), Blank(sort) == "newest", page ?? 1, pageSize ?? DefaultPageSize),
+            cancellationToken));
+    }
+
+    private static async Task<IResult> GetUsersAsync(
+        string? search,
+        string? kind,
+        string? status,
+        string? institution,
+        string? sort,
+        int? page,
+        int? pageSize,
+        IAdminQueries queries,
+        CancellationToken cancellationToken)
+    {
+        if (Blank(kind) is { } k && !UserKinds.Contains(k)
+            || Blank(status) is { } s && !UserStatuses.Contains(s)
+            || Blank(institution) is { Length: > MaxSlugLength }
+            || Blank(sort) is { } o && o is not ("newest" or "name"))
+        {
+            return ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_filter");
+        }
+
+        if (page is < 1 || pageSize is < 1 or > MaxPageSize)
+        {
+            return ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_page");
+        }
+
+        return Results.Ok(await queries.GetUsersAsync(
+            new AdminUserFilter(search, Blank(kind), Blank(status), Blank(institution), Blank(sort) == "name", page ?? 1, pageSize ?? DefaultPageSize),
+            cancellationToken));
+    }
+
+    /// <summary>A query value, trimmed; null when it is missing or empty, so an empty filter does not narrow.</summary>
+    private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static async Task<IResult> GetPlatformRolesAsync(ICurrentUserContext currentUser, IAdminQueries queries, CancellationToken cancellationToken) =>
         currentUser.UserId is { } userId ? Results.Ok(await queries.GetPlatformRolesAsync(userId, cancellationToken)) : Results.Unauthorized();

@@ -106,7 +106,9 @@ internal static class AuthEndpoints
             return ApiErrors.Error(StatusCodes.Status400BadRequest, "unsupported_purpose");
         }
 
-        if (!phoneNumbers.TryNormalize(body.PhoneNumber, out var phoneNumber))
+        // Every purpose here texts the number, so one that cannot take a text is refused before the
+        // SMS is paid for (QA DEF-002: a landline was sent a code that could never arrive).
+        if (!phoneNumbers.TryNormalizeMobile(body.PhoneNumber, out var phoneNumber))
         {
             return ApiErrors.Error(StatusCodes.Status400BadRequest, "invalid_phone_number");
         }

@@ -104,9 +104,9 @@ public sealed class ApproveRegistrationHandlerTests(SethikaTestDatabase database
             WHERE d.InstitutionId = @id AND d.Status = 'Valid';
             """, new { id = institution.Id }));
 
-        // Modules: the institution portal's three core modules, and religious services, which a
-        // temple has by default (Phase E, V12).
-        Assert.Equal(["ACCESS", "BOOKINGS", "INSTITUTION", "SERVICES"], await connection.QueryAsync<string>(
+        // Modules: the institution portal's four core modules (GIVING since plan 09, M19), and
+        // religious services, which a temple has by default (Phase E, V12).
+        Assert.Equal(["ACCESS", "BOOKINGS", "GIVING", "INSTITUTION", "SERVICES"], await connection.QueryAsync<string>(
             """
             SELECT m.Code FROM org.InstitutionModules im JOIN auth.Modules m ON m.Id = im.ModuleId
             WHERE im.InstitutionId = @id AND im.IsEnabled = 1 AND im.Source = 'Default' ORDER BY m.Code;

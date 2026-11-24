@@ -51,15 +51,29 @@ function screenOf(root: TestInstance) {
       return found;
     },
     queryTestId: (id: string): TestInstance | null => root.queryAll((node) => node.props.testID === id)[0] ?? null,
+    /** The host elements a test picks by their props, for what a donor sees but no text names. */
+    where: (matchesProps: (props: Record<string, unknown>) => boolean): TestInstance[] =>
+      root.queryAll((node) => matchesProps(node.props as Record<string, unknown>)),
   };
   return screen;
 }
+
+/*  Every screen still mounted is unmounted after each test, as RNTL's auto-cleanup does. A screen
+    left mounted keeps its timers: `useNow`'s 30-second interval then fired after Jest had torn the
+    environment down, and the run failed with every test passed (CI, 2026-11-07).  */
+const mounted = new Set<ReturnType<typeof createRoot>>();
+
+afterEach(() => {
+  for (const root of mounted) act(() => root.unmount());
+  mounted.clear();
+});
 
 /** Renders `element` and lets its effects and first fetches settle. */
 export async function render(
   element: ReactElement,
 ): Promise<Screen & { rerender: (next: ReactElement) => Promise<void>; unmount: () => void }> {
   const root = createRoot();
+  mounted.add(root);
   await act(async () => {
     root.render(element);
   });
@@ -73,7 +87,10 @@ export async function render(
       });
       await settle();
     },
-    unmount: () => act(() => root.unmount()),
+    unmount: () => {
+      mounted.delete(root);
+      act(() => root.unmount());
+    },
   };
 }
 

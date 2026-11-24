@@ -1,20 +1,22 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { FormError } from "@/components/auth/FormError";
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
 import { InstitutionIcon, ShieldIcon } from "@/components/ui/icons";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
-import { useRouter } from "@/i18n/navigation";
-import { listInstitutions, requestSupport } from "@/lib/admin/api";
-import type { AdminInstitution } from "@/lib/admin/types";
+import { Link, useRouter } from "@/i18n/navigation";
+import { getInstitutionLookups, listInstitutions, requestSupport, syncTemplates } from "@/lib/admin/api";
+import { institutionStatuses, parseInstitutionQuery, type InstitutionQuery } from "@/lib/admin/list-query";
+import type { AdminInstitution, AdminPage } from "@/lib/admin/types";
+import { localName } from "@/lib/bookings/names";
+import type { Lookups } from "@/lib/onboarding/types";
 import { session } from "@/lib/auth";
 import { usePermissions } from "@/lib/permissions/usePermissions";
-import { cn } from "@/lib/utils";
+import { cn, focusRing } from "@/lib/utils";
+import { FilterChips, ListCount, ListSearch, ListSelect, Pager, useListQuery } from "./ListControls";
 import { useAdminError } from "./useAdminError";
 
 const statusTone: Record<AdminInstitution["status"], string> = {
@@ -25,7 +27,8 @@ const statusTone: Record<AdminInstitution["status"], string> = {
 };
 
 /**
- * Every institution on Sethika (plan 04, Y5), and the way into one as platform support (Y1). Opening
+ * Every institution on Sethika (plan 04, Y5), a page at a time, narrowed by status, type and
+ * district and ordered by name or newest, all kept in the address (plan 05, X4); and the way into one as platform support (Y1). Opening
  * one asks for a support ticket behind a step-up, then spends it switching the session; the
  * dashboard that follows is the institution's, with every permission, under a banner (Y4).
  */
@@ -36,31 +39,40 @@ export function InstitutionsScreen() {
   const toast = useToast();
   const router = useRouter();
   const { can } = usePermissions();
+  const locale = useLocale();
 
-  const [search, setSearch] = useState("");
-  const [rows, setRows] = useState<AdminInstitution[] | null>(null);
+  const [query, setQuery] = useListQuery<InstitutionQuery>(parseInstitutionQuery, "name");
+  const [page, setPage] = useState<AdminPage<AdminInstitution> | null>(null);
+  const [lookups, setLookups] = useState<Lookups | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState<string | null>(null);
 
   useEffect(() => {
+    // A later query's answer must not be overwritten by an earlier one arriving late.
     let cancelled = false;
-    // Typing settles for a moment before the list is read again.
-    const timer = setTimeout(() => {
-      void listInstitutions(search.trim()).then((result) => {
-        if (cancelled) return;
-        if (result.ok) {
-          setRows(result.value);
-          setFailure(null);
-        } else {
-          setFailure(errorMessage(result.failure));
-        }
-      });
-    }, 250);
+    void listInstitutions(query).then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        setPage(result.value);
+        setFailure(null);
+      } else {
+        setFailure(errorMessage(result.failure));
+      }
+    });
     return () => {
       cancelled = true;
-      clearTimeout(timer);
     };
-  }, [search, errorMessage]);
+  }, [query, errorMessage]);
+
+  // The type and district names, in the page's language, for the two filters that take codes.
+  useEffect(() => {
+    let cancelled = false;
+    void getInstitutionLookups(locale).then((result) => !cancelled && result.ok && setLookups(result.value));
+    return () => {
+      cancelled = true;
+    };
+  }, [locale]);
 
   async function open(institution: AdminInstitution) {
     setOpening(institution.slug);
@@ -79,25 +91,69 @@ export function InstitutionsScreen() {
     toast({ variant: "error", title: switched.reason === "not_available" ? tErrors("institution_not_available") : tErrors("network") });
   }
 
+  // Plan 09, Q4: an institution approved before a screen was built holds none of its permissions.
+  async function sync(institution: AdminInstitution) {
+    setSyncing(institution.slug);
+    const result = await syncTemplates(institution.slug);
+    setSyncing(null);
+    if (!result.ok) {
+      toast({ variant: "error", title: errorMessage(result.failure) });
+      return;
+    }
+    const added = result.value.modules + result.value.roles + result.value.grants;
+    toast({
+      variant: "success",
+      title: added === 0 ? t("syncedNothing", { name: institution.name }) : t("synced", { name: institution.name, ...result.value }),
+    });
+  }
+
   return (
     <div className="grid gap-6">
-      <div className="max-w-xl">
-        <Field label={t("search")} description={t("searchHint")}>
-          <Input type="search" value={search} onChange={(event) => setSearch(event.target.value)} autoComplete="off" />
-        </Field>
+      <ListSearch label={t("search")} hint={t("searchHint")} value={query.search} onSearch={(search) => setQuery({ search })} />
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_minmax(0,14rem)_minmax(0,14rem)] lg:items-end">
+        <FilterChips
+          label={t("statusLabel")}
+          options={institutionStatuses.map((status) => ({ value: status, label: t(`status.${status}`) }))}
+          value={query.status}
+          onChange={(status) => setQuery({ status })}
+        />
+        <ListSelect
+          label={t("type")}
+          options={[{ value: "", label: t("allTypes") }, ...(lookups?.institutionTypes ?? []).map((type) => ({ value: type.code, label: localName(locale, type) }))]}
+          value={query.type ?? ""}
+          onChange={(type) => setQuery({ type: type || null })}
+        />
+        <ListSelect
+          label={t("district")}
+          options={[{ value: "", label: t("allDistricts") }, ...(lookups?.districts ?? []).map((district) => ({ value: district.code, label: localName(locale, district) }))]}
+          value={query.district ?? ""}
+          onChange={(district) => setQuery({ district: district || null })}
+        />
+        <ListSelect
+          label={t("sort")}
+          options={[
+            { value: "name", label: t("sortName") },
+            { value: "newest", label: t("sortNewest") },
+          ]}
+          value={query.sort}
+          onChange={(sort) => setQuery({ sort: sort === "newest" ? "newest" : "name" })}
+        />
       </div>
 
       <FormError>{failure}</FormError>
 
-      {rows === null ? (
+      {page !== null && <ListCount page={page.page} shown={page.items.length} total={page.total} />}
+
+      {page === null ? (
         <div className="flex justify-center py-16 text-brand">
           <Spinner />
         </div>
-      ) : rows.length === 0 ? (
+      ) : page.items.length === 0 ? (
         <p className="text-muted">{t("empty")}</p>
       ) : (
-        <ul className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-          {rows.map((institution) => (
+        <ul aria-label={t("list")} className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+          {page.items.map((institution) => (
             <li key={institution.slug} className="grid content-start gap-3 rounded-bowl border border-hairline bg-surface p-5 shadow-lift">
               <div className="flex items-start gap-3">
                 <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-brand">
@@ -114,26 +170,50 @@ export function InstitutionsScreen() {
                     {[institution.type, institution.district].filter(Boolean).join(" · ")}
                   </p>
                   <p className="text-sm text-muted">
-                    {institution.owner ? t("owner", { name: institution.owner }) : t("noOwner")} · {t("staff", { count: institution.staff })}
+                    {institution.owner ? t("owner", { name: institution.owner }) : t("noOwner")} ·{" "}
+                    {can("PLATFORM.USERS.VIEW") ? (
+                      <Link
+                        href={`/admin/users?institution=${encodeURIComponent(institution.slug)}`}
+                        className={cn("font-medium text-brand underline underline-offset-4", focusRing)}
+                      >
+                        {t("staff", { count: institution.staff })}
+                      </Link>
+                    ) : (
+                      t("staff", { count: institution.staff })
+                    )}
                   </p>
                 </div>
               </div>
-              {can("PLATFORM.INSTITUTIONS.EXECUTE") && (institution.status === "Active" || institution.status === "Onboarding") && (
-                <Button
-                  variant="outline"
-                  className="justify-self-start"
-                  loading={opening === institution.slug}
-                  disabled={opening !== null}
-                  onClick={() => void open(institution)}
-                >
-                  <ShieldIcon className="size-5" />
-                  {t("open")}
-                </Button>
-              )}
+              <div className="flex flex-wrap gap-2">
+                {can("PLATFORM.INSTITUTIONS.EXECUTE") && (institution.status === "Active" || institution.status === "Onboarding") && (
+                  <Button
+                    variant="outline"
+                    loading={opening === institution.slug}
+                    disabled={opening !== null}
+                    onClick={() => void open(institution)}
+                  >
+                    <ShieldIcon className="size-5" />
+                    {t("open")}
+                  </Button>
+                )}
+                {can("PLATFORM.INSTITUTIONS.EDIT") && (
+                  <Button
+                    variant="ghost"
+                    loading={syncing === institution.slug}
+                    disabled={syncing !== null}
+                    onClick={() => void sync(institution)}
+                    aria-label={t("syncNamed", { name: institution.name })}
+                  >
+                    {t("sync")}
+                  </Button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
       )}
+
+      {page !== null && <Pager page={page.page} total={page.total} onPage={(next) => setQuery({ page: next })} />}
     </div>
   );
 }

@@ -1,0 +1,131 @@
+@startuml
+!pragma layout smetana
+!include ../style.iuml
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam nodesep 40
+skinparam ranksep 60
+skinparam class {
+  BackgroundColor<<static>> #FFF8EA
+  BackgroundColor<<constants>> #F7F4EC
+  BackgroundColor<<record>> #F2F7F4
+}
+title Class diagram 4 — Use-case handlers, ports (Application) and adapters (Infrastructure)
+left to right direction
+package "Application layer: use-case handlers" {
+class BookMealHandler {
+  --
+  +BookAsync(donorId, command) : Task<BookMealResult>
+  +BookYearAsync(recurringId, year) : Task<RecurringYearResult>
+}
+class SessionHandler {
+  --
+  +RefreshAsync(command) : Task<SessionResult>
+  +LogOutAsync(refreshToken) : Task
+  +LogOutEverywhereAsync(refreshToken) : Task<bool>
+}
+class ApproveRegistrationHandler {
+  --
+  +HandleAsync(command) : Task<ApproveRegistrationResult>
+}
+}
+package "Application layer: ports (interfaces)" {
+interface ISethikaDbContext {
+  --
+  +Entry(entity) : EntityEntry<TEntity>
+  +SaveChangesAsync() : Task<int>
+}
+interface ISlotLocks {
+  --
+  +AcquireAsync(mealSlotId, slotDate) : Task<ILockLease>
+}
+interface ISlotInventory {
+  --
+  +GetOrCreateAsync(slot, slotDate) : Task<SlotInstance>
+  +TryTakeAsync(slotInstanceId, headcount) : Task<bool>
+  +ReleaseAsync(slotInstanceId, headcount) : Task
+}
+interface INumberSeries {
+  --
+  +NextAsync(series, scopeKey, year) : Task<string>
+}
+interface IRegistrationLocks {
+  --
+  +ClaimForDecisionAsync(requestNo) : Task<bool>
+  +LockApplicantAsync(userId) : Task
+}
+interface IInstitutionModules {
+  --
+  +IsOnAsync(institutionId, moduleCode) : Task<bool>
+  +EnableForNewInstitutionAsync(institutionId, institutionTypeId, planId, enabledBy, reason) : Task<int>
+  +EnableMissingDefaultsAsync(institutionId, institutionTypeId, enabledBy, reason) : Task<int>
+}
+interface ITokenService {
+  --
+  +Issue(subject) : IssuedTokens
+  +HashRefreshToken(refreshToken) : string
+}
+}
+package "Infrastructure layer: adapters" {
+class RedisSlotLocks {
+  --
+  +AcquireAsync(mealSlotId, slotDate) : Task<ILockLease>
+}
+class SqlSlotInventory {
+  --
+  +GetOrCreateAsync(slot, slotDate) : Task<SlotInstance>
+  +TryTakeAsync(slotInstanceId, headcount) : Task<bool>
+  +ReleaseAsync(slotInstanceId, headcount) : Task
+}
+class SqlNumberSeries {
+  --
+  +NextAsync(series, scopeKey, year) : Task<string>
+}
+class SqlRegistrationLocks {
+  --
+  +ClaimForDecisionAsync(requestNo) : Task<bool>
+  +LockApplicantAsync(userId) : Task
+}
+class SqlInstitutionModules {
+  --
+  +IsOnAsync(institutionId, moduleCode) : Task<bool>
+  +EnableForNewInstitutionAsync(institutionId, institutionTypeId, planId, enabledBy, reason) : Task<int>
+  +EnableMissingDefaultsAsync(institutionId, institutionTypeId, enabledBy, reason) : Task<int>
+}
+class JwtTokenService {
+  --
+  +Issue(subject) : IssuedTokens
+  +HashRefreshToken(refreshToken) : string
+}
+class SethikaDbContext {
+  --
+  +SaveChangesAsync(acceptAllChangesOnSuccess) : Task<int>
+}
+}
+ApproveRegistrationHandler ..> IInstitutionModules : uses
+ApproveRegistrationHandler ..> INumberSeries : uses
+ApproveRegistrationHandler ..> IRegistrationLocks : uses
+ApproveRegistrationHandler ..> ISethikaDbContext : uses
+BookMealHandler ..> INumberSeries : uses
+BookMealHandler ..> ISethikaDbContext : uses
+BookMealHandler ..> ISlotInventory : uses
+BookMealHandler ..> ISlotLocks : uses
+IInstitutionModules <|.. SqlInstitutionModules
+INumberSeries <|.. SqlNumberSeries
+IRegistrationLocks <|.. SqlRegistrationLocks
+ISethikaDbContext <|.. SethikaDbContext
+ISlotInventory <|.. SqlSlotInventory
+ISlotLocks <|.. RedisSlotLocks
+ITokenService <|.. JwtTokenService
+SessionHandler ..> ISethikaDbContext : uses
+SessionHandler ..> ITokenService : uses
+SqlInstitutionModules ..> SethikaDbContext : uses
+SqlNumberSeries ..> SethikaDbContext : uses
+SqlRegistrationLocks ..> SethikaDbContext : uses
+SqlSlotInventory ..> SethikaDbContext : uses
+legend bottom right
+  Handlers depend only on interfaces (ports) declared in Sethika.Application;
+  Sethika.Infrastructure implements them (dependency inversion).
+  Generated from the C# code by docs/diagrams/tools/class_from_cs.py
+endlegend
+@enduml

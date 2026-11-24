@@ -14,6 +14,9 @@ public sealed record AppointmentResult(string? Error, string? Status, IReadOnlyL
     /// <summary>The request named no leader, or too long a reason.</summary>
     public const string InvalidDetails = "invalid_details";
 
+    /// <summary>The signed-in account is not an active leader on this institution's roster (V21).</summary>
+    public const string NotALeader = "not_a_leader";
+
     public bool Succeeded => Error is null;
 
     internal static AppointmentResult Ok(string status) => new(null, status, []);

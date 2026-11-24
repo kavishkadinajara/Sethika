@@ -19,14 +19,18 @@ internal static class ApiErrors
 
     /// <summary>429 with <c>Retry-After</c> in whole seconds, rounded up and never zero.</summary>
     /// <remarks><c>Retry-After: 0</c> would invite an immediate retry, which is the thing being refused.</remarks>
-    public static IResult TooManyRequests(HttpContext httpContext, TimeSpan retryAfter)
+    /// <param name="code">
+    /// <c>too_many_requests</c>, or a more precise reason a client can act on, such as
+    /// <c>code_already_sent</c> for a resend cooldown.
+    /// </param>
+    public static IResult TooManyRequests(HttpContext httpContext, TimeSpan retryAfter, string code = "too_many_requests")
     {
         ArgumentNullException.ThrowIfNull(httpContext);
 
         var seconds = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds));
         httpContext.Response.Headers.RetryAfter = seconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
-        return Error(StatusCodes.Status429TooManyRequests, "too_many_requests");
+        return Error(StatusCodes.Status429TooManyRequests, code);
     }
 
     /// <summary>

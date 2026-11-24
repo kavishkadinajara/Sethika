@@ -5,6 +5,7 @@ using Sethika.Api.Security;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Bookings.Engine;
 using Sethika.Application.Bookings.Slots;
+using Sethika.Application.Bookings.Today;
 using Sethika.Domain.Bookings;
 
 namespace Sethika.Api.Endpoints;
@@ -32,6 +33,9 @@ internal static class InstitutionBookingEndpoints
     /// <summary>The widest calendar one request reads: a month view with the days either side.</summary>
     public const int MaxCalendarDays = 62;
 
+    /// <summary>How many changes the dashboard's ledger shows.</summary>
+    public const int LedgerLength = 10;
+
     private static readonly string[] Statuses =
     [
         BookingStatus.Requested, BookingStatus.Approved, BookingStatus.Rejected,
@@ -44,29 +48,35 @@ internal static class InstitutionBookingEndpoints
     {
         var institution = app.MapGroup("/api/institution");
 
+        // A change below writes outbox messages - texts, the search index, the live calendars - and
+        // wakes the outbox when it succeeds (plan 07, H10).
         institution.MapGet("/meal-slots", ListSlotsAsync).WithMetadata(new HasPermissionAttribute(SlotsView));
-        institution.MapPost("/meal-slots", CreateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsCreate));
-        institution.MapPut("/meal-slots/{publicId:guid}", UpdateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
-        institution.MapPost("/meal-slots/{publicId:guid}/deactivate", DeactivateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
-        institution.MapPost("/meal-slots/{publicId:guid}/activate", ActivateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
+        institution.MapPost("/meal-slots", CreateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsCreate)).WakesOutbox();
+        institution.MapPut("/meal-slots/{publicId:guid}", UpdateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
+        institution.MapPost("/meal-slots/{publicId:guid}/deactivate", DeactivateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
+        institution.MapPost("/meal-slots/{publicId:guid}/activate", ActivateSlotAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
 
         institution.MapGet("/blocked-dates", ListBlockedDatesAsync).WithMetadata(new HasPermissionAttribute(SlotsView));
-        institution.MapPost("/blocked-dates", AddBlockedDateAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
-        institution.MapDelete("/blocked-dates/{id:int}", RemoveBlockedDateAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
+        institution.MapPost("/blocked-dates", AddBlockedDateAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
+        institution.MapDelete("/blocked-dates/{id:int}", RemoveBlockedDateAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
 
         institution.MapGet("/listing", GetListingAsync).WithMetadata(new HasPermissionAttribute(SlotsView));
-        institution.MapPut("/listing", SetListingAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit));
+        institution.MapPut("/listing", SetListingAsync).WithMetadata(new HasPermissionAttribute(SlotsEdit)).WakesOutbox();
 
         institution.MapGet("/bookings", GetCalendarAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
+        institution.MapGet("/today", GetTodayAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
+        institution.MapGet("/ledger", GetLedgerAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
+        institution.MapGet("/bookings/{bookingNo}", FindBookingAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
+        institution.MapGet("/bookings/{bookingNo}/shared-with", ListSharedWithAsync).WithMetadata(new HasPermissionAttribute(CalendarView));
 
         institution.MapPost("/bookings/{bookingNo}/approve", (string bookingNo, ICurrentUserContext user, BookingDecisionHandler handler, CancellationToken ct) =>
-            DecideAsync(bookingNo, InstitutionDecision.Approve, null, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarApprove));
+            DecideAsync(bookingNo, InstitutionDecision.Approve, null, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarApprove)).WakesOutbox();
 
         institution.MapPost("/bookings/{bookingNo}/reject", ([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReasonBody? body, string bookingNo, ICurrentUserContext user, BookingDecisionHandler handler, CancellationToken ct) =>
-            DecideAsync(bookingNo, InstitutionDecision.Reject, body?.Reason, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarReject));
+            DecideAsync(bookingNo, InstitutionDecision.Reject, body?.Reason, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarReject)).WakesOutbox();
 
         institution.MapPost("/bookings/{bookingNo}/cancel", ([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReasonBody? body, string bookingNo, ICurrentUserContext user, BookingDecisionHandler handler, CancellationToken ct) =>
-            DecideAsync(bookingNo, InstitutionDecision.Cancel, body?.Reason, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarEdit));
+            DecideAsync(bookingNo, InstitutionDecision.Cancel, body?.Reason, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarEdit)).WakesOutbox();
 
         institution.MapPost("/bookings/{bookingNo}/complete", (string bookingNo, ICurrentUserContext user, BookingDecisionHandler handler, CancellationToken ct) =>
             DecideAsync(bookingNo, InstitutionDecision.Complete, null, user, handler, ct)).WithMetadata(new HasPermissionAttribute(CalendarEdit));
@@ -143,7 +153,7 @@ internal static class InstitutionBookingEndpoints
 
         var result = await handler.AddBlockedDateAsync(actor.InstitutionId, actor.UserId, body, cancellationToken);
         return result.Succeeded
-            ? Results.Json(new { id = result.BlockedDateId, bookings = result.AffectedBookings }, statusCode: StatusCodes.Status201Created)
+            ? Results.Json(new { id = result.BlockedDateId, bookings = result.AffectedBookings, standingDays = result.StandingDays }, statusCode: StatusCodes.Status201Created)
             : Refused(result);
     }
 
@@ -206,6 +216,73 @@ internal static class InstitutionBookingEndpoints
         }
 
         return Results.Ok(await queries.GetCalendarAsync(actor.InstitutionId, start, end, wanted, cancellationToken));
+    }
+
+    /// <summary>Today's meals in Colombo, booked or not (plan 05, R2): the sidebar's table and the dashboard's timeline.</summary>
+    private static async Task<IResult> GetTodayAsync(
+        HttpContext httpContext,
+        ICurrentUserContext currentUser,
+        TodaysTable table,
+        CancellationToken cancellationToken)
+    {
+        if (Actor(currentUser) is not { } actor)
+        {
+            return NoInstitution();
+        }
+
+        httpContext.Response.Headers.CacheControl = "no-store";
+        return Results.Ok(await table.GetAsync(actor.InstitutionId, cancellationToken));
+    }
+
+    /// <summary>The dashboard's ledger (plan 05, R4): the latest changes of the institution's bookings.</summary>
+    private static async Task<IResult> GetLedgerAsync(
+        HttpContext httpContext,
+        ICurrentUserContext currentUser,
+        IInstitutionBookingQueries queries,
+        CancellationToken cancellationToken)
+    {
+        if (Actor(currentUser) is not { } actor)
+        {
+            return NoInstitution();
+        }
+
+        httpContext.Response.Headers.CacheControl = "no-store";
+        return Results.Ok(await queries.GetLedgerAsync(actor.InstitutionId, LedgerLength, cancellationToken));
+    }
+
+    /// <summary>A booking typed whole into the jump-to palette (plan 05, R2): the day to open the calendar on.</summary>
+    private static async Task<IResult> FindBookingAsync(
+        string bookingNo,
+        ICurrentUserContext currentUser,
+        IInstitutionBookingQueries queries,
+        CancellationToken cancellationToken)
+    {
+        if (Actor(currentUser) is not { } actor)
+        {
+            return NoInstitution();
+        }
+
+        // The database's collation is case-insensitive, so "bk-2026-000123" finds BK-2026-000123 as typed.
+        return await queries.FindBookingAsync(actor.InstitutionId, bookingNo.Trim(), cancellationToken) is { } place
+            ? Results.Ok(place)
+            : ApiErrors.Error(StatusCodes.Status404NotFound, BookingDecisionResult.NotFound);
+    }
+
+    /// <summary>Who joined the booking as a co-sponsor (plan 07, H19): names only.</summary>
+    private static async Task<IResult> ListSharedWithAsync(
+        string bookingNo,
+        ICurrentUserContext currentUser,
+        ISharingQueries queries,
+        CancellationToken cancellationToken)
+    {
+        if (Actor(currentUser) is not { } actor)
+        {
+            return NoInstitution();
+        }
+
+        return await queries.ListSharedWithAsync(actor.InstitutionId, bookingNo.Trim(), cancellationToken) is { } names
+            ? Results.Ok(names)
+            : ApiErrors.Error(StatusCodes.Status404NotFound, BookingDecisionResult.NotFound);
     }
 
     private static async Task<IResult> DecideAsync(

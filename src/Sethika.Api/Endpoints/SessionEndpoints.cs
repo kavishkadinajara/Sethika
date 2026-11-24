@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Sethika.Api.RateLimiting;
 using Sethika.Api.Security;
+using Sethika.Application.Abstractions;
 using Sethika.Application.Access.Session;
 
 namespace Sethika.Api.Endpoints;
@@ -82,14 +83,32 @@ internal static class SessionEndpoints
         SessionHandler sessions,
         IHostEnvironment environment,
         CancellationToken cancellationToken) =>
+        RotateToPersonalAsync(
+            httpContext,
+            httpContext.Request.Cookies[AuthCookies.RefreshCookieName],
+            sessions,
+            environment,
+            cancellationToken);
+
+    /// <summary>
+    /// Exchanges a refresh token for a new pair on the person's own account. Shared with
+    /// <see cref="MobileSessionEndpoints"/>, which passes the token from the body.
+    /// </summary>
+    internal static Task<IResult> RotateToPersonalAsync(
+        HttpContext httpContext,
+        string? refreshToken,
+        SessionHandler sessions,
+        IHostEnvironment environment,
+        CancellationToken cancellationToken) =>
         RotateAsync(
             httpContext,
             new RefreshCommand(
-                httpContext.Request.Cookies[AuthCookies.RefreshCookieName],
+                refreshToken,
                 SwitchToInstitution: null,
                 ClientAddress.Of(httpContext),
                 UserAgent(httpContext),
-                SwitchToPersonal: true),
+                SwitchToPersonal: true,
+                PresentedAccessOf(httpContext)),
             sessions,
             environment,
             cancellationToken);
@@ -108,10 +127,21 @@ internal static class SessionEndpoints
         CancellationToken cancellationToken) =>
         RotateAsync(
             httpContext,
-            new RefreshCommand(refreshToken, switchTo, ClientAddress.Of(httpContext), UserAgent(httpContext)),
+            new RefreshCommand(refreshToken, switchTo, ClientAddress.Of(httpContext), UserAgent(httpContext), PresentedAccess: PresentedAccessOf(httpContext)),
             sessions,
             environment,
             cancellationToken);
+
+    /// <summary>
+    /// The access token sent with the refresh, if the JWT handler accepted it (signed by us, not
+    /// expired): its step-up moves to the new token (plan 09, M28). These endpoints are anonymous, so
+    /// none, or an expired one, is simply no carry.
+    /// </summary>
+    private static PresentedAccessToken? PresentedAccessOf(HttpContext httpContext)
+    {
+        var user = httpContext.RequestServices.GetRequiredService<ICurrentUserContext>();
+        return user is { UserId: { } userId, TokenId: { } tokenId } ? new PresentedAccessToken(userId, tokenId) : null;
+    }
 
     private static async Task<IResult> RotateAsync(
         HttpContext httpContext,

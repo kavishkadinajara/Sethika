@@ -3,6 +3,9 @@ version: 2
 updates:
   - package-ecosystem: nuget
     directory: "/"
+    # PRs go to develop, the branch every change reaches main through (they went to main
+    # until 2026-11-08 and could not be merged as they were).
+    target-branch: develop
     schedule:
       interval: weekly
       day: monday
@@ -21,6 +24,9 @@ updates:
 
   - package-ecosystem: npm
     directory: "/web"
+    # PRs go to develop, the branch every change reaches main through (they went to main
+    # until 2026-11-08 and could not be merged as they were).
+    target-branch: develop
     schedule:
       interval: weekly
       day: monday
@@ -32,9 +38,16 @@ updates:
         patterns: ["next", "react", "react-dom", "eslint-config-next"]
       tooling:
         patterns: ["eslint*", "@typescript-eslint/*", "typescript", "prettier"]
+    ignore:
+      # The types follow the Node the app runs on (22, as in CI), not the newest Node.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: "/"
+    # PRs go to develop, the branch every change reaches main through (they went to main
+    # until 2026-11-08 and could not be merged as they were).
+    target-branch: develop
     schedule:
       interval: monthly
     commit-message:

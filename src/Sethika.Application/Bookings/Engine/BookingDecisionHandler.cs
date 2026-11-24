@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Sethika.Application.Abstractions;
+using Sethika.Application.Bookings.Live;
 using Sethika.Domain.Bookings;
 using Sethika.Domain.Core;
 
@@ -146,6 +147,11 @@ public sealed class BookingDecisionHandler(ISethikaDbContext db, ISlotInventory 
                 OccurredAt = now,
             });
         }
+
+        // Every move reaches the open calendars (plan 07, H10, H11): a place given back opens the day
+        // again for donors, and any decision - an approval, served, not happened - changes what the
+        // institution's other calendars show (their requests tray, the day's statuses). QA DEF-008.
+        db.OutboxMessages.Add(AvailabilityChange.Message(booking.InstitutionId, slotDate, slotDate, now));
 
         try
         {

@@ -534,6 +534,20 @@ as alive; asking B alone would have the late tab clear the shared cookie jar and
 same check covers a refresh that loses its claim to a concurrent logout. Outside the grace nothing
 changed: a replay still revokes the family.
 
+*Amended 2026-11-08 (hardening).* A page left while its refresh is in flight. The server rotates,
+the browser cancels the fetch with the page, the successor cookie never lands, and the next page
+presents the spent token: `409` inside the grace (no other tab holds the successor, so the retry
+gets `409` again), and the whole family revoked as a replay after it. The fix is on the client:
+every rotation is sent with `keepalive`, so it outlives the page and its `Set-Cookie` is stored,
+and the next page meets an ordinary two-tab race that the superseded retry already settles. The
+server and its rules are unchanged. Locally the Next dev proxy passes a cancelled request's abort
+on and the API rolls an uncommitted claim back, so the bug only had the moment between commit and
+response headers there; a proxy that does not pass aborts on (production's is not known) widens
+that to the whole round trip. The browser test holds the token's row with an update lock so the
+page is certain to be left mid-refresh, and asserts that the abandoned refresh is still carried
+out (two rotations a round, not one); with `keepalive` removed it fails. Not covered: a response
+lost on the network, and a phone app killed mid-refresh (its token is in the body, not a cookie).
+
 Rotation itself is claimed by a conditional `UPDATE … WHERE Id = @id AND RevokedAt IS NULL` rather
 than `UPDLOCK, ROWLOCK` as 5.2 first said. The guarantee is the same - of any number of requests with
 one token, exactly one finds it unrevoked - and it keeps the SQL Server hint out of Application (A16).

@@ -42,13 +42,15 @@ public sealed record BlockedDateInput(DateOnly? DateFrom, DateOnly? DateTo, Guid
 /// <param name="AffectedBookings">
 /// Active bookings the change falls on, which it does not cancel: the screen warns about them.
 /// </param>
+/// <param name="StandingDays">A block: the standing days it let go (plan 08, K7).</param>
 public sealed record SlotChangeResult(
     string? Error,
     IReadOnlyList<string> Fields,
     Guid? PublicId,
     byte[]? Version,
     int? BlockedDateId,
-    IReadOnlyList<string> AffectedBookings)
+    IReadOnlyList<string> AffectedBookings,
+    int StandingDays = 0)
 {
     /// <summary>Some fields are missing or malformed; <see cref="Fields"/> lists them.</summary>
     public const string InvalidDetails = "invalid_details";
@@ -75,7 +77,7 @@ public sealed record SlotChangeResult(
     internal static SlotChangeResult ForSlot(MealSlot slot, IReadOnlyList<string>? affected = null) =>
         new(null, [], slot.PublicId, slot.RowVersion, null, affected ?? []);
 
-    internal static SlotChangeResult ForBlock(int id, IReadOnlyList<string> affected) => new(null, [], null, null, id, affected);
+    internal static SlotChangeResult ForBlock(int id, IReadOnlyList<string> affected, int standingDays) => new(null, [], null, null, id, affected, standingDays);
 
     internal static SlotChangeResult Failed(string error) => new(error, [], null, null, null, []);
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { FormError } from "@/components/auth/FormError";
 import { textLink } from "@/components/auth/links";
 import { Button } from "@/components/ui/button";
@@ -10,21 +11,30 @@ import { Field } from "@/components/ui/field";
 import { inputClasses } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
-import { decide, getCalendar, type BookingFailure } from "@/lib/bookings/api";
+import { decide, getCalendar, getSharedWith, type BookingFailure } from "@/lib/bookings/api";
 import { addDays, colomboToday, firstOfMonth, lastOfMonth, monthOf } from "@/lib/bookings/calendar";
+import { touchesMonth } from "@/lib/bookings/live";
 import { inLocale } from "@/lib/bookings/names";
-import type { CalendarBooking, Decision, SlotDay } from "@/lib/bookings/types";
+import type { CalendarBooking, Decision, SharedWith, SlotDay } from "@/lib/bookings/types";
+import { useSession } from "@/lib/auth/useSession";
 import { usePermissions } from "@/lib/permissions/usePermissions";
+import { markShellStale } from "@/lib/shell/summary";
+import { listDayRequests } from "@/lib/sponsors/api";
+import type { InstitutionDayRequest } from "@/lib/sponsors/types";
 import { cn, focusRing } from "@/lib/utils";
 import { BookingStatusBadge } from "./BookingStatusBadge";
 import { Bowl } from "./Bowl";
 import { BowlCalendar } from "./BowlCalendar";
+import { DayRequestTray } from "./DayRequestTray";
 import { useBookingError } from "./useBookingError";
 import { useDates } from "./useDates";
+import { useLiveAvailability } from "./useLiveAvailability";
 
 /** How far ahead the "to decide" tray looks: the API's widest read (§8, E19). */
 const TRAY_DAYS = 62;
 const MAX_REASON = 300;
+
+const isIsoDate = (value: string | null): value is string => value !== null && /^\d{4}-\d{2}-\d{2}$/.test(value);
 
 /**
  * The institution's calendar (plan 03, 5.7). Requests waiting for an answer come first, in a tray
@@ -38,21 +48,40 @@ export function CalendarScreen() {
   const dates = useDates();
   const today = colomboToday();
 
-  const [month, setMonth] = useState(monthOf(today));
-  const [selected, setSelected] = useState<string | null>(today);
+  // `?date=` opens on a day and `&booking=` marks one booking on it: the palette's jump (plan 05, X3).
+  const params = useSearchParams();
+  const asked = isIsoDate(params.get("date")) ? params.get("date") : null;
+  const focus = params.get("booking");
+
+  const [month, setMonth] = useState(monthOf(asked ?? today));
+  const [selected, setSelected] = useState<string | null>(asked ?? today);
+
+  // A jump made while the calendar is open changes the query, not the component: follow it.
+  const [followed, setFollowed] = useState(asked);
+  if (asked !== followed) {
+    setFollowed(asked);
+    if (asked) {
+      setMonth(monthOf(asked));
+      setSelected(asked);
+    }
+  }
   const [days, setDays] = useState<SlotDay[] | null>(null);
   const [waiting, setWaiting] = useState<SlotDay[] | null>(null);
+  const [openAsks, setOpenAsks] = useState<InstitutionDayRequest[]>([]);
   const [failure, setFailure] = useState<BookingFailure | null>(null);
 
-  const loadMonth = useCallback(async (wanted: string) => {
-    setDays(null);
+  /** A month shown afresh; `quiet` keeps the days on screen while a live change refetches them. */
+  const loadMonth = useCallback(async (wanted: string, quiet = false) => {
+    if (!quiet) setDays(null);
     const result = await getCalendar(firstOfMonth(wanted), lastOfMonth(wanted));
     if (result.ok) setDays(result.value);
     else setFailure(result.failure);
   }, []);
 
+  // Requests for a regular donor's day (plan 08, K6) sit beside the booking requests; left out if unread.
   const loadWaiting = useCallback(async () => {
-    const result = await getCalendar(today, addDays(today, TRAY_DAYS - 1), "Requested");
+    const [result, dayRequests] = await Promise.all([getCalendar(today, addDays(today, TRAY_DAYS - 1), "Requested"), listDayRequests()]);
+    if (dayRequests.ok) setOpenAsks(dayRequests.value.filter((r) => r.status === "Open"));
     if (result.ok) setWaiting(result.value);
     else setFailure(result.failure);
   }, [today]);
@@ -67,10 +96,20 @@ export function CalendarScreen() {
     void loadWaiting();
   }, [loadWaiting]);
 
-  /** After any decision: both views may have changed. */
+  // Live (plan 07, H11): a donor's booking or cancellation, or a colleague's decision, shows here
+  // without a reload - the requests waiting, the month if the change touches it, the sidebar's count.
+  const session = useSession();
+  useLiveAvailability(session.status === "authenticated" ? session.activeInstitution : null, (change) => {
+    void loadWaiting();
+    if (touchesMonth(change, month)) void loadMonth(month, true);
+    markShellStale();
+  });
+
+  /** After any decision: both views may have changed, and so may the sidebar's count and table. */
   const reload = () => {
     void loadWaiting();
     void loadMonth(month);
+    markShellStale();
   };
 
   const onDate = (date: string) => days?.filter((d) => d.date === date) ?? [];
@@ -95,6 +134,7 @@ export function CalendarScreen() {
       )}
 
       <Tray days={waiting} onDecided={reload} />
+      <DayRequestTray requests={openAsks} onAnswered={reload} />
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_24rem]">
         <Card className="p-4 sm:p-6">
@@ -114,11 +154,14 @@ export function CalendarScreen() {
             <p className="flex items-center gap-2 text-sm text-muted">
               <span aria-hidden className="size-2.5 rounded-full bg-accent" /> {t("waitingDot")}
             </p>
+            <p className="flex items-center gap-2 text-sm text-muted">
+              <span aria-hidden className="size-2.5 rounded-full border-2 border-brand" /> {t("standingDot")}
+            </p>
           </BowlCalendar>
         </Card>
 
         <section aria-live="polite" className="grid gap-4">
-          {selected && <DayPanel date={selected} days={selectedDays} onDecided={reload} />}
+          {selected && <DayPanel date={selected} days={selectedDays} focus={focus} onDecided={reload} />}
         </section>
       </div>
     </div>
@@ -132,15 +175,18 @@ export function CalendarScreen() {
     const taken = booked.reduce((sum, d) => sum + d.bookedSponsors, 0);
     const places = booked.reduce((sum, d) => sum + d.maxSponsors, 0);
     const requests = booked.flatMap((d) => d.bookings).filter((b) => b.status === "Requested").length;
+    // A regular donor's day (plan 08, K3): their booking still holds its place.
+    const standing = booked.flatMap((d) => d.bookings).filter((b) => b.standing && (b.status === "Approved" || b.status === "Completed")).length;
 
     return {
       content: (
         <span className="relative">
           <Bowl fill={places ? taken / places : 0} className="text-brand" />
           {requests > 0 && <span className="absolute -top-0.5 -right-1.5 size-2.5 rounded-full bg-accent ring-2 ring-surface" />}
+          {standing > 0 && <span data-standing className="absolute -bottom-0.5 -left-1.5 size-2.5 rounded-full border-2 border-brand bg-surface" />}
         </span>
       ),
-      label: `${long}. ${t("dayLabel", { taken, places })}${requests > 0 ? ` ${t("waitingLabel", { count: requests })}` : ""}`,
+      label: `${long}. ${t("dayLabel", { taken, places })}${requests > 0 ? ` ${t("waitingLabel", { count: requests })}` : ""}${standing > 0 ? ` ${t("standingLabel", { count: standing })}` : ""}`,
       disabled: false,
     };
   }
@@ -183,7 +229,7 @@ function Tray({ days, onDecided }: { days: SlotDay[] | null; onDecided: () => vo
   );
 }
 
-function DayPanel({ date, days, onDecided }: { date: string; days: SlotDay[]; onDecided: () => void }) {
+function DayPanel({ date, days, focus, onDecided }: { date: string; days: SlotDay[]; focus: string | null; onDecided: () => void }) {
   const t = useTranslations("Calendar");
   const locale = useLocale();
   const dates = useDates();
@@ -197,7 +243,7 @@ function DayPanel({ date, days, onDecided }: { date: string; days: SlotDay[]; on
         days.map((day) => (
           <div key={day.mealSlot} className="grid gap-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h3 className="text-lg font-semibold text-fg">
+              <h3 className="min-w-0 wrap-anywhere text-lg font-semibold text-fg">
                 {inLocale(locale, day.slotName, day.slotNameSi, day.slotNameTa)} <span className="font-normal text-muted">{day.startTime}</span>
               </h3>
               <p className="text-sm tabular-nums text-muted">
@@ -207,7 +253,7 @@ function DayPanel({ date, days, onDecided }: { date: string; days: SlotDay[]; on
             <ul className="grid gap-3">
               {day.bookings.map((booking) => (
                 <li key={booking.bookingNo}>
-                  <BookingItem day={day} booking={booking} onDecided={onDecided} />
+                  <BookingItem day={day} booking={booking} focused={booking.bookingNo === focus} onDecided={onDecided} />
                 </li>
               ))}
             </ul>
@@ -218,9 +264,48 @@ function DayPanel({ date, days, onDecided }: { date: string; days: SlotDay[]; on
   );
 }
 
-/** One booking, and the decisions its status and the caller's permissions allow. */
-function BookingItem({ day, booking, showWhen = false, onDecided }: { day: SlotDay; booking: CalendarBooking; showWhen?: boolean; onDecided: () => void }) {
+/**
+ * One booking, and the decisions its status and the caller's permissions allow. The dashboard's
+ * "Waiting for you" (plan 05, R4) uses it too, so a decision there is the calendar's own call.
+ * `focused` marks the booking a jump opened the calendar on, and brings it into view.
+ */
+/** Who joined the booking as a co-sponsor (plan 07, H19, H37): the names the donor gave them, nothing else. */
+function SharedWithNames({ bookingNo }: { bookingNo: string }) {
   const t = useTranslations("Calendar.booking");
+  const [names, setNames] = useState<SharedWith[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getSharedWith(bookingNo).then((result) => {
+      if (!cancelled && result.ok) setNames(result.value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [bookingNo]);
+
+  if (names.length === 0) return null;
+  return <p className="text-sm text-fg">{t("sharedWith", { names: names.map((n) => n.name).join(", ") })}</p>;
+}
+
+export function BookingItem({
+  day,
+  booking,
+  showWhen = false,
+  focused = false,
+  onDecided,
+}: {
+  day: SlotDay;
+  booking: CalendarBooking;
+  showWhen?: boolean;
+  focused?: boolean;
+  onDecided: () => void;
+}) {
+  const t = useTranslations("Calendar.booking");
+  const article = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (focused) article.current?.scrollIntoView({ block: "center" });
+  }, [focused]);
   const fulfilment = useTranslations("Booking.fulfilment");
   const locale = useLocale();
   const dates = useDates();
@@ -257,16 +342,23 @@ function BookingItem({ day, booking, showWhen = false, onDecided }: { day: SlotD
   }
 
   return (
-    <article className="grid gap-2 rounded-cup border border-hairline bg-surface p-4">
+    <article
+      ref={article}
+      aria-current={focused ? "true" : undefined}
+      className={cn("grid gap-2 rounded-cup border border-hairline bg-surface p-4", focused && "border-accent ring-2 ring-accent/60")}
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="grid min-w-0 gap-0.5">
           {showWhen && (
-            <p className="text-sm font-medium text-brand">
+            <p className="wrap-anywhere text-sm font-medium text-brand">
               {dates.dayMonth(day.date)} ·{" "}
               {inLocale(locale, day.slotName, day.slotNameSi, day.slotNameTa)} {day.startTime}
             </p>
           )}
-          <p className="font-semibold text-fg">{booking.donorName}</p>
+          <p className="wrap-anywhere font-semibold text-fg">
+            {booking.donorName}
+            {booking.standing && <span className="ml-2 rounded-full border border-brand/50 px-2 py-0.5 align-middle text-xs font-medium text-brand">{t("standing")}</span>}
+          </p>
           <a href={`tel:${booking.donorPhone}`} className={cn(textLink, focusRing, "min-h-0 justify-self-start py-1 tabular-nums")}>
             {booking.donorPhone}
           </a>
@@ -277,10 +369,11 @@ function BookingItem({ day, booking, showWhen = false, onDecided }: { day: SlotD
       <p className="text-sm text-muted">
         {t("people", { count: booking.headcount })} · {fulfilment(booking.fulfilmentMode)} · {booking.bookingNo}
       </p>
-      {booking.inMemoryOf && <p className="font-tagline italic text-fg">{t("inMemoryOf", { name: booking.inMemoryOf })}</p>}
-      {booking.notes && <p className="rounded-cup bg-subtle px-3 py-2 text-sm text-fg">{booking.notes}</p>}
-      {booking.rejectReason && <p className="text-sm text-muted">{t("rejectedBecause", { reason: booking.rejectReason })}</p>}
-      {booking.cancelReason && <p className="text-sm text-muted">{t("cancelledBecause", { reason: booking.cancelReason })}</p>}
+      {booking.inMemoryOf && <p className="wrap-anywhere font-tagline italic text-fg">{t("inMemoryOf", { name: booking.inMemoryOf })}</p>}
+      {booking.notes && <p className="wrap-anywhere rounded-cup bg-subtle px-3 py-2 text-sm text-fg">{booking.notes}</p>}
+      {booking.rejectReason && <p className="wrap-anywhere text-sm text-muted">{t("rejectedBecause", { reason: booking.rejectReason })}</p>}
+      {booking.cancelReason && <p className="wrap-anywhere text-sm text-muted">{t("cancelledBecause", { reason: booking.cancelReason })}</p>}
+      <SharedWithNames bookingNo={booking.bookingNo} />
 
       {asking ? (
         <form onSubmit={submitReason} className="grid gap-3 pt-1">

@@ -10,7 +10,6 @@ export interface PermissionContextValue {
   canAll: (codes: PermissionCode[]) => boolean;
   canAny: (codes: PermissionCode[]) => boolean;
   isPlatform: boolean;
-  institutionId: number | null;
   /** The signed-in user's id (the token's sub), or null; screens use it to recognise "you". */
   userId: string | null;
   isAuthenticated: boolean;
@@ -67,7 +66,6 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
       canAll: (codes) => codes.every(can),
       canAny: (codes) => codes.some(can),
       isPlatform: effective?.isPlatform ?? false,
-      institutionId: effective?.institutionId ?? null,
       userId: effective?.userId ?? null,
       isAuthenticated: effective !== null,
       isLoading,

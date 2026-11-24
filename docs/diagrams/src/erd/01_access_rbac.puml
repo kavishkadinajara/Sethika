@@ -1,0 +1,324 @@
+@startuml
+!pragma layout smetana
+!include ../style.iuml
+skinparam linetype ortho
+hide circle
+hide methods
+hide stereotypes
+title ERD 1 — Access, RBAC and sessions (auth)
+package "auth" {
+entity "auth.DonorProfiles" as auth_DonorProfiles #E6F0EC {
+  * <b>UserId</b> : UNIQUEIDENTIFIER <<PK>>
+  --
+    DistrictId : SMALLINT <<FK>>
+  * CountryCode : CHAR(2)
+    ReligionLookupId : INT <<FK>>
+  * DefaultAnonymous : BIT
+    DefaultDisplayName : NVARCHAR(150)
+}
+entity "auth.FavoriteInstitutions" as auth_FavoriteInstitutions #E6F0EC {
+  * <b>UserId</b> : UNIQUEIDENTIFIER <<PK>>
+  * <b>InstitutionId</b> : INT <<PK>>
+  --
+  * AddedAt : DATETIME2(3)
+}
+entity "auth.ImpersonationSessions" as auth_ImpersonationSessions #E6F0EC {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * AdminUserId : UNIQUEIDENTIFIER <<FK>>
+  * TargetUserId : UNIQUEIDENTIFIER <<FK>>
+    InstitutionId : INT <<FK>>
+  * Reason : NVARCHAR(300)
+    TicketRef : VARCHAR(50)
+  * IsReadOnly : BIT
+  * StartedAt : DATETIME2(3)
+  * ExpiresAt : DATETIME2(3)
+    EndedAt : DATETIME2(3)
+}
+entity "auth.LoginHistory" as auth_LoginHistory #E6F0EC {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+    UserId : UNIQUEIDENTIFIER <<FK>>
+  * LoginName : NVARCHAR(256)
+  * Succeeded : BIT
+    FailureReason : VARCHAR(50)
+  * MfaUsed : BIT
+    IpAddress : VARCHAR(45)
+    UserAgent : NVARCHAR(400)
+  * AttemptedAt : DATETIME2(3)
+}
+entity "auth.Modules" as auth_Modules #E6F0EC {
+  * <b>Id</b> : SMALLINT <<PK>>
+  --
+  * PortalId : TINYINT <<FK>>
+  * Code : VARCHAR(50)
+  * Name : NVARCHAR(100)
+    Icon : VARCHAR(50)
+  * SortOrder : SMALLINT
+  * IsCore : BIT
+  * IsActive : BIT
+}
+entity "auth.PasswordHistory" as auth_PasswordHistory #E6F0EC {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * UserId : UNIQUEIDENTIFIER <<FK>>
+  * PasswordHash : NVARCHAR(MAX)
+  * CreatedAt : DATETIME2(3)
+}
+entity "auth.PermissionActions" as auth_PermissionActions #E6F0EC {
+  * <b>Id</b> : TINYINT <<PK>>
+  --
+  * Code : VARCHAR(20)
+  * Name : NVARCHAR(50)
+  * SortOrder : TINYINT
+}
+entity "auth.PermissionDependencies" as auth_PermissionDependencies #E6F0EC {
+  * <b>PermissionId</b> : INT <<PK>>
+  * <b>RequiresPermissionId</b> : INT <<PK>>
+  --
+}
+entity "auth.Permissions" as auth_Permissions #E6F0EC {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * Code : VARCHAR(150)
+  * ScreenId : SMALLINT <<FK>>
+    ScreenElementId : INT <<FK>>
+  * ActionId : TINYINT <<FK>>
+  * Scope : VARCHAR(20)
+  * Name : NVARCHAR(150)
+    Description : NVARCHAR(300)
+  * IsSensitive : BIT
+  * RequiresMfa : BIT
+  * IsActive : BIT
+}
+entity "auth.Portals" as auth_Portals #E6F0EC {
+  * <b>Id</b> : TINYINT <<PK>>
+  --
+  * Code : VARCHAR(20)
+  * Name : NVARCHAR(50)
+}
+entity "auth.RecoveryCodes" as auth_RecoveryCodes #E6F0EC {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * UserId : UNIQUEIDENTIFIER <<FK>>
+  * CodeHash : CHAR(64)
+  * CreatedAt : DATETIME2(3)
+    UsedAt : DATETIME2(3)
+}
+entity "auth.RefreshTokens" as auth_RefreshTokens #E6F0EC {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * UserId : UNIQUEIDENTIFIER <<FK>>
+  * TokenHash : CHAR(64)
+  * FamilyId : UNIQUEIDENTIFIER
+  * JwtId : VARCHAR(64)
+    ActiveInstitutionId : INT <<FK>>
+    DeviceInfo : NVARCHAR(200)
+    CreatedByIp : VARCHAR(45)
+  * CreatedAt : DATETIME2(3)
+  * ExpiresAt : DATETIME2(3)
+    RevokedAt : DATETIME2(3)
+    RevokedReason : NVARCHAR(100)
+    ReplacedByTokenId : BIGINT <<FK>>
+  * SecurityStamp : NVARCHAR(100)
+}
+entity "auth.RoleLevelPermissions" as auth_RoleLevelPermissions #E6F0EC {
+  * <b>RoleLevelId</b> : TINYINT <<PK>>
+  * <b>PermissionId</b> : INT <<PK>>
+  --
+  * LevelScope : VARCHAR(20) <<FK>>
+  * PermissionScope : VARCHAR(20) <<FK>>
+  * SysStartTime : DATETIME2(3)
+  * SysEndTime : DATETIME2(3)
+}
+entity "auth.RoleLevels" as auth_RoleLevels #E6F0EC {
+  * <b>Id</b> : TINYINT <<PK>>
+  --
+  * Scope : VARCHAR(20)
+  * Rank : TINYINT
+  * Code : VARCHAR(30)
+  * Name : NVARCHAR(100)
+  * IsActive : BIT
+}
+entity "auth.RolePermissions" as auth_RolePermissions #E6F0EC {
+  * <b>RoleId</b> : INT <<PK>>
+  * <b>PermissionId</b> : INT <<PK>>
+  --
+    GrantedBy : UNIQUEIDENTIFIER <<FK>>
+  * SysStartTime : DATETIME2(3)
+  * SysEndTime : DATETIME2(3)
+}
+entity "auth.Roles" as auth_Roles #E6F0EC {
+  * <b>Id</b> : INT <<PK>>
+  --
+    InstitutionId : INT <<FK>>
+  * Scope : VARCHAR(20) <<FK>>
+  * RoleLevelId : TINYINT <<FK>>
+  * Code : VARCHAR(50)
+  * Name : NVARCHAR(100)
+    Description : NVARCHAR(300)
+  * IsTemplate : BIT
+    TemplateRoleId : INT <<FK>>
+    InstitutionTypeId : SMALLINT <<FK>>
+  * IsSystem : BIT
+  * IsActive : BIT
+    CreatedBy : UNIQUEIDENTIFIER <<FK>>
+    UpdatedBy : UNIQUEIDENTIFIER <<FK>>
+  * SysStartTime : DATETIME2(3)
+  * SysEndTime : DATETIME2(3)
+    RowVersion : ROWVERSION
+}
+entity "auth.ScreenElements" as auth_ScreenElements #E6F0EC {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * ScreenId : SMALLINT <<FK>>
+    ParentElementId : INT <<FK>>
+  * Code : VARCHAR(120)
+  * Name : NVARCHAR(100)
+  * ElementType : VARCHAR(20)
+  * SortOrder : SMALLINT
+  * IsActive : BIT
+}
+entity "auth.Screens" as auth_Screens #E6F0EC {
+  * <b>Id</b> : SMALLINT <<PK>>
+  --
+  * ModuleId : SMALLINT <<FK>>
+    ParentScreenId : SMALLINT <<FK>>
+  * Code : VARCHAR(80)
+  * Name : NVARCHAR(100)
+    Route : VARCHAR(200)
+  * IsMenuItem : BIT
+  * SortOrder : SMALLINT
+  * IsActive : BIT
+}
+entity "auth.UserConsents" as auth_UserConsents #E6F0EC {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * UserId : UNIQUEIDENTIFIER <<FK>>
+  * LegalDocumentId : SMALLINT <<FK>>
+  * AcceptedAt : DATETIME2(3)
+    IpAddress : VARCHAR(45)
+    UserAgent : NVARCHAR(400)
+    WithdrawnAt : DATETIME2(3)
+}
+entity "auth.UserMfaMethods" as auth_UserMfaMethods #E6F0EC {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * UserId : UNIQUEIDENTIFIER <<FK>>
+  * Method : VARCHAR(10)
+    SecretEncrypted : VARBINARY(512)
+  * IsPrimary : BIT
+  * CreatedAt : DATETIME2(3)
+    LastUsedAt : DATETIME2(3)
+}
+entity "auth.UserPermissionOverrides" as auth_UserPermissionOverrides #E6F0EC {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * UserId : UNIQUEIDENTIFIER <<FK>>
+    InstitutionId : INT <<FK>>
+  * PermissionId : INT <<FK>>
+  * Effect : VARCHAR(5)
+  * Reason : NVARCHAR(300)
+    ValidTo : DATETIME2(3)
+  * CreatedBy : UNIQUEIDENTIFIER <<FK>>
+  * SysStartTime : DATETIME2(3)
+  * SysEndTime : DATETIME2(3)
+}
+entity "auth.UserRoles" as auth_UserRoles #E6F0EC {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * UserId : UNIQUEIDENTIFIER <<FK>>
+  * RoleId : INT <<FK>>
+    InstitutionId : INT <<FK>>
+    AssignedBy : UNIQUEIDENTIFIER <<FK>>
+    ValidFrom : DATETIME2(3)
+    ValidTo : DATETIME2(3)
+  * IsActive : BIT
+  * SysStartTime : DATETIME2(3)
+  * SysEndTime : DATETIME2(3)
+}
+entity "auth.Users" as auth_Users #E6F0EC {
+  * <b>Id</b> : UNIQUEIDENTIFIER <<PK>>
+  --
+  * UserType : VARCHAR(20)
+  * FullName : NVARCHAR(150)
+    DisplayName : NVARCHAR(80)
+    Email : NVARCHAR(256)
+    NormalizedEmail : NVARCHAR(256)
+  * EmailConfirmed : BIT
+    PhoneNumber : VARCHAR(20)
+  * PhoneConfirmed : BIT
+    NicNumber : VARCHAR(12)
+    PasswordHash : NVARCHAR(MAX)
+    PasswordChangedAt : DATETIME2(3)
+  * SecurityStamp : NVARCHAR(100)
+  * PermissionsVersion : INT
+  * TwoFactorEnabled : BIT
+  * MfaRequired : BIT
+    LockoutEnd : DATETIMEOFFSET
+  * AccessFailedCount : INT
+  * PreferredLanguage : CHAR(2)
+    ProfilePhotoFileId : BIGINT <<FK>>
+  * Status : VARCHAR(20)
+    LastLoginAt : DATETIME2(3)
+  * CreatedAt : DATETIME2(3)
+    CreatedBy : UNIQUEIDENTIFIER
+    UpdatedAt : DATETIME2(3)
+    UpdatedBy : UNIQUEIDENTIFIER
+  * IsDeleted : BIT
+    DeletedAt : DATETIME2(3)
+    RowVersion : ROWVERSION
+}
+}
+package "other modules" #FFFFFF {
+entity "core.Districts" as core_Districts #FFFFFF ##[dashed]
+entity "core.Files" as core_Files #FFFFFF ##[dashed]
+entity "core.LegalDocuments" as core_LegalDocuments #FFFFFF ##[dashed]
+entity "core.LookupValues" as core_LookupValues #FFFFFF ##[dashed]
+entity "org.InstitutionTypes" as org_InstitutionTypes #FFFFFF ##[dashed]
+entity "org.Institutions" as org_Institutions #FFFFFF ##[dashed]
+}
+auth_DonorProfiles }o--|| auth_Users
+auth_DonorProfiles }o..o| core_Districts
+auth_DonorProfiles }o..o| core_LookupValues
+auth_FavoriteInstitutions }o--|| auth_Users
+auth_ImpersonationSessions }o--|| auth_Users
+auth_LoginHistory }o..o| auth_Users
+auth_Modules }o--|| auth_Portals
+auth_PasswordHistory }o--|| auth_Users
+auth_PermissionDependencies }o--|| auth_Permissions
+auth_Permissions }o--|| auth_PermissionActions
+auth_Permissions }o..o| auth_ScreenElements
+auth_Permissions }o--|| auth_Screens
+auth_RecoveryCodes }o--|| auth_Users
+auth_RefreshTokens }o..o| auth_RefreshTokens
+auth_RefreshTokens }o--|| auth_Users
+auth_RefreshTokens }o..o| org_Institutions
+auth_RoleLevelPermissions }o--|| auth_Permissions
+auth_RoleLevelPermissions }o--|| auth_RoleLevels
+auth_RolePermissions }o--|| auth_Permissions
+auth_RolePermissions }o--|| auth_Roles
+auth_Roles }o--|| auth_RoleLevels
+auth_Roles }o..o| auth_Roles
+auth_Roles }o..o| org_InstitutionTypes
+auth_ScreenElements }o..o| auth_ScreenElements
+auth_ScreenElements }o--|| auth_Screens
+auth_Screens }o--|| auth_Modules
+auth_Screens }o..o| auth_Screens
+auth_UserConsents }o--|| auth_Users
+auth_UserConsents }o--|| core_LegalDocuments
+auth_UserMfaMethods }o--|| auth_Users
+auth_UserPermissionOverrides }o--|| auth_Permissions
+auth_UserPermissionOverrides }o--|| auth_Users
+auth_UserRoles }o--|| auth_Roles
+auth_UserRoles }o--|| auth_Users
+auth_Users }o..o| core_Files
+legend bottom right
+  * = NOT NULL    <<PK>> primary key    <<FK>> foreign key
+  solid line = mandatory FK, dotted = optional FK
+  CreatedBy / DecidedBy / ...By columns reference auth.Users (no line drawn)
+  InstitutionId (tenant key, Row-Level Security) references org.Institutions:
+  drawn only from org tables
+  Generated from src/Sethika.Database by docs/diagrams/tools/erd_from_sql.py
+endlegend
+@enduml

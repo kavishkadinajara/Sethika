@@ -71,6 +71,35 @@ up). Switch back before running `npm run e2e`:
 `dotnet user-secrets remove "Sms:Provider" --project src/Sethika.Api`.
 Outside Development the API refuses to start with the console sender.
 
+### Push through Expo (plan F, F30)
+Development defaults to `Push:Provider = Console`: a push goes to the API log and to
+`notify.Notifications`, with its token left out of the log. `dotnet user-secrets set "Push:Provider"
+"Expo" --project src/Sethika.Api` sends real ones; no key is needed unless the Expo project turns on
+enhanced push security. Outside Development the API refuses to start with the console gateway, so
+App Service needs `Push__Provider=Expo`.
+
+### The key that seals merchant secrets (plan 09, M21)
+The API does not start without one: each institution's PayHere secret is stored with AES-256-GCM under a
+key from configuration. Locally, make a random 32-byte key once:
+
+```powershell
+$bytes = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+dotnet user-secrets set "Payments:Keys:dev1" ([Convert]::ToBase64String($bytes)) --project src/Sethika.Api
+dotnet user-secrets set "Payments:CurrentKeyId" "dev1" --project src/Sethika.Api
+```
+
+Losing the key loses the stored secrets, and each owner enters theirs again. To rotate, add a new
+`Payments:Keys:{id}`, point `Payments:CurrentKeyId` at it and keep the old key listed: stored values name
+the key that sealed them. The integration tests set a key of their own (`PaymentKeysInTests`).
+
+In production these go in App Service settings (`Payments__CurrentKeyId`, `Payments__Keys__{id}`), with
+`Payments__PayHere__ApiPublicUrl` and `Payments__PayHere__WebPublicUrl`: the API refuses to start unless
+both are `https://` addresses. `Payments:PayHere:Sandbox` is `true` until the platform goes live.
+
+PayHere can only post its notification to a public address, so a real sandbox payment on this machine
+needs a tunnel, with `ApiPublicUrl` set to it. Nothing in the tests needs one: they sign their own notifications.
+
 ## 6. Web app and API together
 The browser only talks to the Next.js app; `/api/*` is proxied to the API (plan A3).
 `API_BASE_URL` (server-only) says where the API is and defaults to the API's `http` launch profile,

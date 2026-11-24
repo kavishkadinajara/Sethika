@@ -12,6 +12,8 @@ const apiUrl = process.env.E2E_API_URL ?? "http://localhost:5182";
 
 export default defineConfig({
   testDir: "./e2e",
+  // The QA suite runs on its own database with its own config (playwright.qa.config.ts).
+  testIgnore: ["qa/**"],
   outputDir: "./e2e/.results",
   globalSetup: "./e2e/support/global-setup.ts",
   fullyParallel: true,

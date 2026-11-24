@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { OtpInput } from "@/components/ui/otp-input";
 import { requestStepUpCode, verifyStepUpCode, type ApiFailure } from "@/lib/auth/api";
+import { afterStepUpSendFailure } from "@/lib/auth/step-up";
 import { FormError } from "./FormError";
 import { formatWait, useCountdown } from "./useCountdown";
 import { useApiErrorMessage } from "./useApiErrorMessage";
@@ -45,9 +46,10 @@ export function StepUpForm({ onVerified, onCancel }: { onVerified: () => void; o
   }
 
   function report(failure: ApiFailure) {
-    if (failure.status === 429 && failure.retryAfter) resend.start(failure.retryAfter);
-    if (failure.code === "no_verified_phone" || failure.code === "account_not_active") setBlocked(true);
-    setFormError(errorMessage(failure));
+    const next = afterStepUpSendFailure(failure);
+    if (next.wait) resend.start(next.wait);
+    if (next.blocked) setBlocked(true);
+    if (next.showError) setFormError(errorMessage(failure));
   }
 
   useEffect(() => {

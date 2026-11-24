@@ -34,6 +34,7 @@ public sealed class OtpSignInHandler(
     ISethikaDbContext db,
     IOtpService otp,
     SessionStarter sessions,
+    IDonorBookLinks donorBooks,
     TimeProvider timeProvider)
 {
     private const string ActiveStatus = "Active";
@@ -180,6 +181,13 @@ public sealed class OtpSignInHandler(
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        // After the commit, as password sign-in links (plan 08, K36). A first sign-in into an
+        // account the platform made has just confirmed its phone, so it links too.
+        if (session.Succeeded)
+        {
+            await donorBooks.LinkAsync(account.Id, cancellationToken).ConfigureAwait(false);
+        }
 
         return session;
     }

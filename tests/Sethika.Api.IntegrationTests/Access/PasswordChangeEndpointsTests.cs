@@ -155,7 +155,7 @@ public sealed class PasswordChangeEndpointsTests(SethikaTestDatabase database) :
     }
 
     private static async Task<Session> ParseAsync(HttpResponseMessage response) =>
-        Parse(response, JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement);
+        Parse(response, JsonElement.Parse(await response.Content.ReadAsStringAsync()));
 
     private async Task<HttpResponseMessage> LogInAsync(string phone, string password)
     {
@@ -208,7 +208,7 @@ public sealed class PasswordChangeEndpointsTests(SethikaTestDatabase database) :
     }
 
     private static async Task<string?> CodeOf(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("code").GetString();
+        JsonElement.Parse(await response.Content.ReadAsStringAsync()).GetProperty("code").GetString();
 
     // ------------------------------------------------------------------ the 5.8 box
 
@@ -288,7 +288,7 @@ public sealed class PasswordChangeEndpointsTests(SethikaTestDatabase database) :
         Assert.Equal("PasswordChanged", outbox.EventType);
         Assert.Equal(
             ["userId"],
-            JsonDocument.Parse(outbox.Payload).RootElement.EnumerateObject().Select(p => p.Name));
+            JsonElement.Parse(outbox.Payload).EnumerateObject().Select(p => p.Name));
         Assert.DoesNotContain(phone[1..], outbox.Payload, StringComparison.Ordinal);
     }
 
@@ -478,7 +478,7 @@ public sealed class PasswordChangeEndpointsTests(SethikaTestDatabase database) :
         using var response = await ChangeAsync(session, Password, "short");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        var body = JsonElement.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal("password_rejected", body.GetProperty("code").GetString());
         Assert.Contains("TooShort", body.GetProperty("failures").EnumerateArray().Select(f => f.GetString()));
 
@@ -496,7 +496,7 @@ public sealed class PasswordChangeEndpointsTests(SethikaTestDatabase database) :
         using var response = await ChangeAsync(session, Password, "Dana!" + phone[^7..] + "x");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var failures = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement
+        var failures = JsonElement.Parse(await response.Content.ReadAsStringAsync())
             .GetProperty("failures").EnumerateArray().Select(f => f.GetString());
         Assert.Equal(["ContainsPersonalData"], failures);
     }
@@ -549,7 +549,7 @@ public sealed class PasswordChangeEndpointsTests(SethikaTestDatabase database) :
         using (var back = await ChangeFromAsync(passwords[2], passwords[0]))
         {
             Assert.Equal(HttpStatusCode.BadRequest, back.StatusCode);
-            var body = JsonDocument.Parse(await back.Content.ReadAsStringAsync()).RootElement;
+            var body = JsonElement.Parse(await back.Content.ReadAsStringAsync());
             Assert.Equal("password_rejected", body.GetProperty("code").GetString());
             Assert.Equal(["RecentlyUsed"], body.GetProperty("failures").EnumerateArray().Select(f => f.GetString()));
         }

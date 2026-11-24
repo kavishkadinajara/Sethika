@@ -17,6 +17,18 @@ public sealed record NumberSeriesDefinition(string Code, string Prefix, byte Pad
 
     /// <summary>Meal bookings' <c>BookingNo</c> (plan 03, C7), one series for the whole platform.</summary>
     public static NumberSeriesDefinition Booking { get; } = new("BOOKING", "BK", 6);
+
+    /// <summary>Service appointments' <c>AppointmentNo</c> (Phase E), one series for the whole platform like bookings.</summary>
+    public static NumberSeriesDefinition Appointment { get; } = new("APPOINTMENT", "APT", 6);
+
+    /// <summary>Requests for a standing sponsor's day (plan 08, K6), one series for the whole platform.</summary>
+    public static NumberSeriesDefinition DayRequest { get; } = new("DAYREQUEST", "DR", 6);
+
+    /// <summary>
+    /// Receipts' <c>ReceiptNo</c> (plan 09, M2): one series per institution, scoped by its code, so each
+    /// institution's book of receipts runs without gaps and without another institution's numbers.
+    /// </summary>
+    public static NumberSeriesDefinition Receipt { get; } = new("RECEIPT", "RCP", 6);
 }
 
 /// <summary>

@@ -1,0 +1,344 @@
+@startuml
+!pragma layout smetana
+!include ../style.iuml
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam nodesep 40
+skinparam ranksep 60
+skinparam class {
+  BackgroundColor<<static>> #FFF8EA
+  BackgroundColor<<constants>> #F7F4EC
+  BackgroundColor<<record>> #F2F7F4
+}
+title Class diagram 1 — Booking domain (Sethika.Domain.Bookings)
+package "Meal slots" {
+class MealSlot {
+  {static} +EveryDay : const
+  +Id : int
+  +PublicId : Guid
+  +InstitutionId : int
+  +Name : string
+  +NameSi : string?
+  +NameTa : string?
+  +StartTime : TimeOnly
+  +EndTime : TimeOnly
+  +DaysOfWeekMask : byte
+  +BookingMode : string
+  +MaxSponsors : byte
+  +MinHeadcount : short
+  +MaxHeadcount : short
+  +EstimatedCostPerHead : decimal?
+  +MinAdvanceDays : short
+  +MaxAdvanceDays : short
+  +RequiresApproval : bool
+  +AllowedFulfilment : string
+  +SortOrder : short
+  +IsActive : bool
+  +CreatedAt : DateTime
+  +CreatedBy : Guid
+  +UpdatedAt : DateTime?
+  +UpdatedBy : Guid?
+  --
+  {static} +DayBit(day) : byte
+  +RunsOn(date) : bool
+  +Offers(fulfilment) : bool
+}
+class MealSlotSeason {
+  +Id : int
+  +MealSlotId : int
+  +Name : string
+  +DateFrom : DateOnly
+  +DateTo : DateOnly
+  --
+  +Covers(date) : bool
+}
+class BlockedDate {
+  +Id : int
+  +InstitutionId : int
+  +MealSlotId : int?
+  +DateFrom : DateOnly
+  +DateTo : DateOnly
+  +Reason : string
+  +CreatedBy : Guid
+  +CreatedAt : DateTime
+  --
+  +Blocks(slot, date) : bool
+}
+class SlotInstance {
+  +Id : long
+  +InstitutionId : int
+  +MealSlotId : int
+  +SlotDate : DateOnly
+  +MaxSponsors : byte {readOnly}
+  +MaxHeadcount : short {readOnly}
+  +BookedSponsors : byte {readOnly}
+  +BookedHeadcount : short {readOnly}
+  +Status : string {readOnly}
+  +RemainingSponsors : int
+  +RemainingHeadcount : int
+  --
+  {static} +Open(slot, date) : SlotInstance
+}
+class MealSlotRules <<static>> {
+  {static} +ActiveInstitution : const
+  --
+  {static} +CanBookOn(slot, institutionStatus, seasons, blocks, date, utcNow) : string?
+  {static} +Serves(slot, seasons, date) : bool
+  {static} +IsServedDay(refused) : bool
+  {static} +CanBook(slot, institutionStatus, seasons, blocks, date, utcNow, headcount, fulfilment) : string?
+  {static} +Openings(slot, institutionStatus, seasons, blocks, date, utcNow, instance) : SlotDayOpenings
+  {static} +IsHeld(slot, openings, instance, standing, standingHeadcount) : bool
+}
+enum SlotInstanceStatus <<constants>> {
+  Open
+  Full
+  Blocked
+  Closed
+}
+}
+package "Bookings" {
+class Booking {
+  {static} +OnlineSource : const
+  {static} +RecurringSource : const
+  {static} +MemorialSource : const
+  {static} +StandingSource : const
+  {static} +MaxReason : const
+  +Id : long
+  +BookingNo : string
+  +InstitutionId : int
+  +SlotInstanceId : long
+  +DonorUserId : Guid?
+  +DonorName : string
+  +DonorPhone : string
+  +Headcount : short
+  +FulfilmentMode : string
+  +OccasionLookupId : int?
+  +InMemoryOf : string?
+  +Notes : string?
+  +Source : string
+  +MemorialPlanId : int?
+  +MemorialRuleId : short?
+  +RecurringBookingId : int?
+  +InstitutionDonorId : int?
+  +StandingSponsorshipId : int?
+  +Status : string {readOnly}
+  +CreatedBy : Guid
+  +CreatedAt : DateTime
+  +DecidedBy : Guid? {readOnly}
+  +DecidedAt : DateTime? {readOnly}
+  +RejectReason : string? {readOnly}
+  +CancelledBy : Guid? {readOnly}
+  +CancelledAt : DateTime? {readOnly}
+  +CancelReason : string? {readOnly}
+  +CompletedAt : DateTime? {readOnly}
+  --
+  {static} +Request(bookingNo, slot, slotInstanceId, donorUserId, donorName, donorPhone, headcount, fulfilment, now) : Booking
+  {static} +Standing(bookingNo, sponsorship, slotInstanceId, donorUserId, donorName, donorPhone, madeBy, now) : Booking
+  +Approve(userId, now) : BookingResult
+  +Reject(reason, userId, now) : BookingResult
+  +CancelAsDonor(reason, userId, slotDate, today, now) : BookingResult
+  {static} +DonorMayCancel(status, slotDate, today, regular) : bool
+  +CancelAsInstitution(reason, userId, now) : BookingResult
+  +Complete(userId, slotDate, today, now) : BookingResult
+  +MarkNoShow(userId, slotDate, today, now) : BookingResult
+}
+class BookingStatusChange {
+  +Id : long
+  +BookingId : long
+  +FromStatus : string?
+  +ToStatus : string
+  +ChangedBy : Guid
+  +ChangedAt : DateTime
+  +Comment : string?
+}
+class BookingContributor {
+  {static} +MaxName : const
+  {static} +MaxNote : const
+  {static} +MaxPerBooking : const
+  +Id : long
+  +PublicId : Guid
+  +BookingId : long
+  +InstitutionId : int
+  +UserId : Guid?
+  +Name : string
+  +ContributionNote : string?
+  +InviteTokenHash : string
+  +Status : string
+  +JoinedAt : DateTime?
+  +DeclinedAt : DateTime?
+  +InvitedBy : Guid
+  +InvitedAt : DateTime
+  --
+  {static} +IsShareable(status, date, today) : bool
+}
+class BookingStatus <<static>> {
+  {static} +Requested : const
+  {static} +Approved : const
+  {static} +Rejected : const
+  {static} +Cancelled : const
+  {static} +Completed : const
+  {static} +NoShow : const
+  --
+  {static} +HoldsPlace(status) : bool
+}
+class InstitutionDonor {
+  +Id : int
+  +PublicId : Guid
+  +InstitutionId : int
+  +UserId : Guid?
+  +FullName : string
+  +Phone : string
+  +Notes : string?
+  +Language : string
+  +TextConsentAt : DateTime?
+  +TextConsentBy : Guid?
+  +IsActive : bool
+  +CreatedAt : DateTime
+  +CreatedBy : Guid
+  +UpdatedAt : DateTime?
+  +UpdatedBy : Guid?
+  --
+  +SetTextConsent(agreed, by, utcNow) : void
+}
+}
+package "Recurring, standing and memorial" {
+class RecurringBooking {
+  +Id : int
+  +PublicId : Guid
+  +DonorUserId : Guid
+  +InstitutionId : int
+  +MealSlotId : int
+  +MemorialPlanId : int?
+  +RecurMonth : byte
+  +RecurDay : byte
+  +StartYear : short
+  +EndYear : short?
+  +OccasionLookupId : int?
+  +InMemoryOf : string?
+  +Headcount : short
+  +FulfilmentMode : string
+  +LastGeneratedYear : short?
+  +IsActive : bool
+  +CreatedAt : DateTime
+  +NextYear : int?
+  --
+  {static} +From(booking, mealSlotId, date, publicId, now) : RecurringBooking
+  {static} +NextYearOf(startYear, endYear, lastGeneratedYear, isActive) : int?
+  {static} +OccursIn(month, day, year) : DateOnly
+  +OccursIn(year) : DateOnly
+  {static} +IsDue(occurrence, maxAdvanceDays, today) : bool
+}
+class StandingSponsorship {
+  {static} +MaxMonthInterval : const
+  {static} +ActiveStatus : const
+  {static} +EndedStatus : const
+  +Id : int
+  +PublicId : Guid
+  +InstitutionId : int
+  +InstitutionDonorId : int
+  +MealSlotId : int
+  +Pattern : string
+  +MonthInterval : byte
+  +WeekDays : byte?
+  +MonthDays : int?
+  +YearMonth : byte?
+  +YearDay : byte?
+  +StartDate : DateOnly
+  +EndDate : DateOnly?
+  +Headcount : short
+  +FulfilmentMode : string
+  +InMemoryOf : string?
+  +Notes : string?
+  +Status : string {readOnly}
+  +EndedAt : DateTime? {readOnly}
+  +EndedBy : Guid? {readOnly}
+  +CreatedBy : Guid
+  +CreatedAt : DateTime
+  +UpdatedBy : Guid?
+  +UpdatedAt : DateTime?
+  +IsActive : bool
+  --
+  +OccursOn(date) : bool
+  +DaysBetween(from, to) : IEnumerable<DateOnly>
+  +NextDays(from, count, horizonDays) : IReadOnlyList<DateOnly>
+  +End(userId, now) : bool
+  +EndBefore(day, userId, now) : bool
+  +TakingOver(other, start, publicId, userId, now) : StandingSponsorship
+}
+class StandingDayChange {
+  {static} +Skipped : const
+  {static} +Released : const
+  {static} +Blocked : const
+  {static} +MovedTo : const
+  {static} +MovedFrom : const
+  {static} +MaxReason : const
+  +Id : long
+  +InstitutionId : int
+  +StandingSponsorshipId : int
+  +ExceptionDate : DateOnly
+  +Kind : string
+  +OtherDate : DateOnly?
+  +BookingId : long?
+  +DayRequestId : int?
+  +Reason : string?
+  +CreatedBy : Guid
+  +CreatedAt : DateTime
+}
+class MemorialPlan {
+  {static} +MaxDeceasedName : const
+  {static} +MaxNotes : const
+  +Id : int
+  +PublicId : Guid
+  +DonorUserId : Guid
+  +DeceasedName : string
+  +RelationshipLookupId : int?
+  +DateOfPassing : DateOnly
+  +ReligionLookupId : int
+  +PhotoFileId : long?
+  +Notes : string?
+  +IsActive : bool
+  +CreatedAt : DateTime
+}
+class MemorialRule {
+  +Id : short
+  +ReligionLookupId : int
+  +Code : string
+  +Name : string
+  +NameSi : string?
+  +NameTa : string?
+  +OffsetDays : short
+  +OffsetMonths : short
+  +RepeatsAnnually : bool
+  +SortOrder : short
+  +IsActive : bool
+}
+class MemorialObservances <<static>> {
+  --
+  {static} +Date(dateOfPassing, rule, number) : DateOnly
+  {static} +NumberOn(dateOfPassing, rule, date) : int?
+  {static} +For(dateOfPassing, rules, today) : IReadOnlyList<MemorialObservance>
+}
+}
+MealSlot "1" -- "*" MealSlotSeason
+BlockedDate "*" -- "0..1" MealSlot
+SlotInstance "*" -- "1" MealSlot
+Booking "*" -- "1" SlotInstance
+Booking "*" -- "0..1" MemorialPlan
+Booking "*" -- "0..1" MemorialRule
+Booking "*" -- "0..1" RecurringBooking
+Booking "*" -- "0..1" InstitutionDonor
+Booking "*" -- "0..1" StandingSponsorship
+Booking "1" -- "*" BookingStatusChange
+BookingContributor "*" -- "1" Booking
+RecurringBooking "*" -- "1" MealSlot
+RecurringBooking "*" -- "0..1" MemorialPlan
+StandingSponsorship "*" -- "1" InstitutionDonor
+StandingSponsorship "*" -- "1" MealSlot
+StandingDayChange "*" -- "1" StandingSponsorship
+StandingDayChange "*" -- "0..1" Booking
+legend bottom right
+  +Name : Type {readOnly} = changed only through the class's own methods
+  <<static>> = rules with no state    <<constants>> = readable status values (VARCHAR + CHECK)
+  Generated from the C# code by docs/diagrams/tools/class_from_cs.py
+endlegend
+@enduml

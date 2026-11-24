@@ -1,0 +1,157 @@
+@startuml
+!pragma layout smetana
+!include ../style.iuml
+skinparam linetype ortho
+hide circle
+hide methods
+hide stereotypes
+title ERD 4 — Religious services and leaders (Phase E)
+package "booking" {
+entity "booking.AppointmentLeaders" as booking_AppointmentLeaders #EAF2FA {
+  * <b>AppointmentId</b> : BIGINT <<PK>>
+  * <b>LeaderId</b> : INT <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+  * Response : VARCHAR(10)
+  * AssignedBy : UNIQUEIDENTIFIER <<FK>>
+  * AssignedAt : DATETIME2(3)
+    RespondedBy : UNIQUEIDENTIFIER <<FK>>
+    RespondedAt : DATETIME2(3)
+  * RespondedOnBehalf : BIT
+    DeclineReason : NVARCHAR(300)
+}
+entity "booking.AppointmentStatusHistory" as booking_AppointmentStatusHistory #EAF2FA {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * AppointmentId : BIGINT <<FK>>
+    FromStatus : VARCHAR(15)
+  * ToStatus : VARCHAR(15)
+  * ChangedBy : UNIQUEIDENTIFIER <<FK>>
+  * ChangedAt : DATETIME2(3)
+    Comment : NVARCHAR(500)
+}
+entity "booking.LeaderTimeBlocks" as booking_LeaderTimeBlocks #EAF2FA {
+  * <b>LeaderId</b> : INT <<PK>>
+  * <b>BlockStart</b> : DATETIME2(3) <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+  * Kind : VARCHAR(12)
+    AppointmentId : BIGINT <<FK>>
+    TimeOffId : INT <<FK>>
+}
+entity "booking.ServiceAppointments" as booking_ServiceAppointments #EAF2FA {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * AppointmentNo : VARCHAR(20)
+  * InstitutionId : INT <<FK>>
+  * ServiceTypeId : INT <<FK>>
+  * DonorUserId : UNIQUEIDENTIFIER <<FK>>
+  * DonorName : NVARCHAR(150)
+  * DonorPhone : VARCHAR(20)
+  * StartsAt : DATETIME2(3)
+  * EndsAt : DATETIME2(3)
+  * LocationMode : VARCHAR(15)
+    Address : NVARCHAR(300)
+    Occasion : NVARCHAR(200)
+    DonorNote : NVARCHAR(500)
+  * Status : VARCHAR(15)
+  * CreatedAt : DATETIME2(3)
+  * CreatedBy : UNIQUEIDENTIFIER <<FK>>
+    DecidedBy : UNIQUEIDENTIFIER <<FK>>
+    DecidedAt : DATETIME2(3)
+    RejectReason : NVARCHAR(300)
+    CancelledBy : UNIQUEIDENTIFIER <<FK>>
+    CancelledAt : DATETIME2(3)
+    CancelReason : NVARCHAR(300)
+    CompletedAt : DATETIME2(3)
+    RowVersion : ROWVERSION
+}
+entity "booking.ServiceTypes" as booking_ServiceTypes #EAF2FA {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+  * Name : NVARCHAR(100)
+    NameSi : NVARCHAR(100)
+    NameTa : NVARCHAR(100)
+    Description : NVARCHAR(300)
+  * DurationMinutes : SMALLINT
+  * BufferMinutes : SMALLINT
+  * LeadersRequired : TINYINT
+  * LocationMode : VARCHAR(15)
+  * MinAdvanceDays : SMALLINT
+  * MaxAdvanceDays : SMALLINT
+  * IsActive : BIT
+  * CreatedAt : DATETIME2(3)
+  * CreatedBy : UNIQUEIDENTIFIER <<FK>>
+    UpdatedAt : DATETIME2(3)
+    UpdatedBy : UNIQUEIDENTIFIER <<FK>>
+    RowVersion : ROWVERSION
+  * PublicId : UNIQUEIDENTIFIER
+}
+}
+package "org" {
+entity "org.LeaderTimeOff" as org_LeaderTimeOff #FBF1DF {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * LeaderId : INT <<FK>>
+  * InstitutionId : INT <<FK>>
+  * StartsAt : DATETIME2(3)
+  * EndsAt : DATETIME2(3)
+    Reason : NVARCHAR(200)
+  * CreatedAt : DATETIME2(3)
+  * CreatedBy : UNIQUEIDENTIFIER <<FK>>
+}
+entity "org.LeaderWeeklyHours" as org_LeaderWeeklyHours #FBF1DF {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * LeaderId : INT <<FK>>
+  * InstitutionId : INT <<FK>>
+  * DayOfWeek : TINYINT
+  * StartTime : TIME(0)
+  * EndTime : TIME(0)
+}
+entity "org.ReligiousLeaders" as org_ReligiousLeaders #FBF1DF {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+    UserId : UNIQUEIDENTIFIER <<FK>>
+  * DisplayName : NVARCHAR(100)
+    NameSi : NVARCHAR(100)
+    NameTa : NVARCHAR(100)
+    Title : NVARCHAR(40)
+    Phone : VARCHAR(20)
+  * Language : CHAR(2)
+  * IsActive : BIT
+  * CreatedAt : DATETIME2(3)
+  * CreatedBy : UNIQUEIDENTIFIER <<FK>>
+    UpdatedAt : DATETIME2(3)
+    UpdatedBy : UNIQUEIDENTIFIER <<FK>>
+    RowVersion : ROWVERSION
+  * PublicId : UNIQUEIDENTIFIER
+}
+}
+package "other modules" #FFFFFF {
+entity "auth.Users" as auth_Users #FFFFFF ##[dashed]
+entity "org.Institutions" as org_Institutions #FFFFFF ##[dashed]
+}
+booking_AppointmentLeaders }o--|| booking_ServiceAppointments
+booking_AppointmentLeaders }o--|| org_ReligiousLeaders
+booking_AppointmentStatusHistory }o--|| booking_ServiceAppointments
+booking_LeaderTimeBlocks }o..o| booking_AppointmentLeaders
+booking_LeaderTimeBlocks }o..o| org_LeaderTimeOff
+booking_LeaderTimeBlocks }o--|| org_ReligiousLeaders
+booking_ServiceAppointments }o--|| auth_Users
+booking_ServiceAppointments }o--|| booking_ServiceTypes
+org_LeaderTimeOff }o--|| org_ReligiousLeaders
+org_LeaderWeeklyHours }o--|| org_ReligiousLeaders
+org_ReligiousLeaders }o..o| auth_Users
+org_ReligiousLeaders }o--|| org_Institutions
+legend bottom right
+  * = NOT NULL    <<PK>> primary key    <<FK>> foreign key
+  solid line = mandatory FK, dotted = optional FK
+  CreatedBy / DecidedBy / ...By columns reference auth.Users (no line drawn)
+  InstitutionId (tenant key, Row-Level Security) references org.Institutions:
+  drawn only from org tables
+  Generated from src/Sethika.Database by docs/diagrams/tools/erd_from_sql.py
+endlegend
+@enduml

@@ -12,6 +12,7 @@ const accessCodes = [
   "invitation_pending",
   "invitation_closed",
   "invitation_expired",
+  "institution_not_active",
   "invitation_not_found",
   "own_roles",
   "rank_not_junior",

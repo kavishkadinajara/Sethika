@@ -33,6 +33,7 @@ public sealed class SignUpDonorHandler(
     IPhoneNumberNormalizer phoneNumbers,
     IPasswordPolicy passwordPolicy,
     IPasswordHasher<User> passwordHasher,
+    IDonorBookLinks donorBooks,
     TimeProvider timeProvider)
 {
     private const int FullNameMaxLength = 150;
@@ -49,7 +50,8 @@ public sealed class SignUpDonorHandler(
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        if (!phoneNumbers.TryNormalize(command.PhoneNumber, out var phoneNumber))
+        // An account signs in and steps up by texted codes, so its phone must take a text.
+        if (!phoneNumbers.TryNormalizeMobile(command.PhoneNumber, out var phoneNumber))
         {
             return SignUpDonorResult.Failed(SignUpFailure.InvalidPhoneNumber);
         }
@@ -188,6 +190,10 @@ public sealed class SignUpDonorHandler(
 
             throw;
         }
+
+        // The phone was just proved by the ticket: a donor book that already has it gains the
+        // account, and its standing days show in My bookings (plan 08, K36).
+        await donorBooks.LinkAsync(user.Id, cancellationToken).ConfigureAwait(false);
 
         return SignUpDonorResult.Success(user.Id);
     }

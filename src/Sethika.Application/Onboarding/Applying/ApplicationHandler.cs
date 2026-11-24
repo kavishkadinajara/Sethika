@@ -89,16 +89,25 @@ public sealed class ApplicationHandler(
             return ApplicationResult.Invalid(invalid);
         }
 
-        return await ChangeAsync(applicantId, requestNo, request =>
+        try
         {
-            var allowed = request.BeginApplicantEdit(applicantId, now);
-            if (allowed.Succeeded)
+            return await ChangeAsync(applicantId, requestNo, request =>
             {
-                Apply(tidy, typeId, districtId, request);
-            }
+                var allowed = request.BeginApplicantEdit(applicantId, now);
+                if (allowed.Succeeded)
+                {
+                    Apply(tidy, typeId, districtId, request);
+                }
 
-            return Task.FromResult(allowed);
-        }, cancellationToken).ConfigureAwait(false);
+                return Task.FromResult(allowed);
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        catch (DuplicateKeyException ex) when (ex.KeyName == ActiveRegistrationNoIndex)
+        {
+            // InfoRequested is a live status (the index's filter), so an edit while answering a
+            // question can move onto another live application's number or type, as a submit can (QA DEF-004).
+            return ApplicationResult.Failed(ApplicationResult.RegistrationNoInUse);
+        }
     }
 
     /// <summary>Replaces the office bearers as a set.</summary>

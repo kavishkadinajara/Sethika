@@ -140,7 +140,7 @@ public sealed partial class MeLanguageEndpointsTests(SethikaTestDatabase databas
         using var response = await client.PostAsJsonAsync("/api/auth/login", new { login = phone, password = Password });
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        return JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("accessToken").GetString()!;
+        return JsonElement.Parse(await response.Content.ReadAsStringAsync()).GetProperty("accessToken").GetString()!;
     }
 
     private async Task<HttpResponseMessage> PutLanguageAsync(string? accessToken, string language)
@@ -180,7 +180,7 @@ public sealed partial class MeLanguageEndpointsTests(SethikaTestDatabase databas
     }
 
     private static async Task<string?> CodeOf(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("code").GetString();
+        JsonElement.Parse(await response.Content.ReadAsStringAsync()).GetProperty("code").GetString();
 
     // ------------------------------------------------------------------ tests
 
@@ -329,7 +329,7 @@ public sealed partial class MeLanguageEndpointsTests(SethikaTestDatabase databas
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("no-store", response.Headers.CacheControl?.ToString(), StringComparison.Ordinal);
 
-        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        var body = JsonElement.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal(["fullName", "displayName", "preferredLanguage"], body.EnumerateObject().Select(p => p.Name));
         Assert.Equal("ta", body.GetProperty("preferredLanguage").GetString());
         Assert.Equal("Language Test", body.GetProperty("fullName").GetString());
@@ -349,7 +349,7 @@ public sealed partial class MeLanguageEndpointsTests(SethikaTestDatabase databas
 
         using var client = NewClient(await LogInAsync(phone));
         using var mine = await client.GetAsync("/api/me");
-        var body = JsonDocument.Parse(await mine.Content.ReadAsStringAsync()).RootElement;
+        var body = JsonElement.Parse(await mine.Content.ReadAsStringAsync());
         Assert.Equal("en", body.GetProperty("preferredLanguage").GetString());
         Assert.Equal("Language Test", body.GetProperty("fullName").GetString());
 

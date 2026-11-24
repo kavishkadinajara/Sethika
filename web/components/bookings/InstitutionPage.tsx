@@ -1,39 +1,51 @@
 "use client";
 
-import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FormError } from "@/components/auth/FormError";
+import { GiveOnline } from "@/components/giving/GiveOnline";
+import { InstitutionNeeds } from "@/components/giving/InstitutionNeeds";
+import { ServicesOffered } from "@/components/services/ServicesOffered";
 import { textLink } from "@/components/auth/links";
 import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { getAvailability, getInstitution, type BookingFailure } from "@/lib/bookings/api";
 import { addDays, addMonths, colomboToday, maskDays, monthOf, weekdayDate } from "@/lib/bookings/calendar";
+import { parseMemorial } from "@/lib/bookings/find-query";
+import { touchesMonth } from "@/lib/bookings/live";
 import { inLocale, localName } from "@/lib/bookings/names";
 import type { Availability, DayAvailability, PublicInstitution, PublicMealSlot } from "@/lib/bookings/types";
 import { cn, focusRing } from "@/lib/utils";
+import { AskDaySheet } from "./AskDaySheet";
 import { Bowl } from "./Bowl";
 import { BookingSheet } from "./BookingSheet";
 import { BowlCalendar, type DayView } from "./BowlCalendar";
-import { EmptyState } from "./InstitutionDirectory";
+import { EmptyState } from "./EmptyState";
+import { PlaceHeart } from "./PlaceHeart";
 import { useBookingError } from "./useBookingError";
 import { useDates } from "./useDates";
+import { useLiveAvailability } from "./useLiveAvailability";
 
 /**
  * An institution's own page (plan 03, C10): who they are, the meals they offer, and a month of
- * each meal's days as bowls - empty, filling, full. Choosing an open day opens the booking form.
+ * each meal's days as bowls - empty, filling, full. Choosing an open day opens the booking form; a
+ * day a regular donor holds opens a request for it instead (plan 08, K6).
  * Anyone can look; booking asks for a sign-in, and comes back here to the same meal and day.
+ *
+ * `initial` is the institution as the server read it (plan 06, G9): rendered at once, in the
+ * server's HTML too, and not fetched again. Without it the page loads the institution itself.
  */
-export function InstitutionPage({ slug }: { slug: string }) {
+export function InstitutionPage({ slug, initial = null }: { slug: string; initial?: PublicInstitution | null }) {
   const t = useTranslations("Discover");
   const locale = useLocale();
   const errorMessage = useBookingError();
   const dates = useDates();
   const search = useSearchParams();
 
-  const [institution, setInstitution] = useState<PublicInstitution | null>(null);
+  const [institution, setInstitution] = useState<PublicInstitution | null>(initial);
   const [failure, setFailure] = useState<BookingFailure | null>(null);
-  const [slotId, setSlotId] = useState<string | null>(search.get("slot"));
+  const [slotId, setSlotId] = useState<string | null>(() => (initial ? slotFor(initial, search.get("slot")) : search.get("slot")));
   const [month, setMonth] = useState(() => monthOf(validDate(search.get("date")) ?? colomboToday()));
   const [months, setMonths] = useState<Record<string, Availability>>({});
   const [monthFailed, setMonthFailed] = useState(false);
@@ -41,6 +53,10 @@ export function InstitutionPage({ slug }: { slug: string }) {
   // The day as it was when chosen: the sheet keeps it while the month refreshes under it, so a
   // booking's confirmation is not lost when its own booking fills the day.
   const [chosen, setChosen] = useState<DayAvailability | null>(null);
+  // From the memorial planner (plan 07, H6): the observance falls on the address's day, and only a
+  // booking of that day is made for it.
+  const [memorial] = useState(() => (validDate(search.get("date")) ? parseMemorial(search) : null));
+  const memorialDay = memorial ? validDate(search.get("date")) : null;
   // Opening on a month with no open day for the meal moves on to the next one, once.
   const movedOn = useRef(search.get("date") !== null);
 
@@ -52,7 +68,7 @@ export function InstitutionPage({ slug }: { slug: string }) {
       return;
     }
     setInstitution(result.value);
-    setSlotId((current) => (result.value.slots.some((s) => s.publicId === current) ? current : (result.value.slots[0]?.publicId ?? null)));
+    setSlotId((current) => slotFor(result.value, current));
   }, [slug]);
 
   const loadMonth = useCallback(
@@ -66,18 +82,28 @@ export function InstitutionPage({ slug }: { slug: string }) {
   );
 
   useEffect(() => {
-    // Loading the page's data is what this component is for.
+    // Loading the page's data is what this component is for, unless the server already did.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [load]);
+    if (!initial) void load();
+  }, [load, initial]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (institution && !months[month]) void loadMonth(month);
   }, [institution, month, months, loadMonth]);
 
+  // Live (plan 07, H11): another donor's booking, a decision or a blocked day changes the bowls
+  // without a reload. The month on screen is fetched again in place; other months it touches are
+  // forgotten, and fetched when shown.
+  useLiveAvailability(institution ? slug : null, (change) => {
+    setMonths((loaded) => Object.fromEntries(Object.entries(loaded).filter(([m]) => m === month || !touchesMonth(change, m))));
+    if (touchesMonth(change, month)) void loadMonth(month);
+  });
+
   const slot = institution?.slots.find((s) => s.publicId === slotId) ?? null;
   const days = months[month]?.slots.find((s) => s.mealSlot === slotId)?.days ?? null;
+  // A held day chosen (or named in the address, back from signing in): it is asked for, not booked.
+  const held = date !== null && !chosen && days?.find((d) => d.date === date)?.reason === "held" ? date : null;
 
   // A day named in the address (a donor back from signing in) opens its sheet once it is loaded.
   useEffect(() => {
@@ -145,7 +171,7 @@ export function InstitutionPage({ slug }: { slug: string }) {
           {slot && (
             <Card accent className="p-4 sm:p-6">
               <h2 className="mb-1 text-xl font-semibold text-brand">{t("chooseDay")}</h2>
-              <p className="mb-4 text-sm text-muted">{t("chooseDayHint", { meal: localName(locale, slot) })}</p>
+              <p className="mb-4 wrap-anywhere text-sm text-muted">{t("chooseDayHint", { meal: localName(locale, slot) })}</p>
 
               <BowlCalendar
                 month={month}
@@ -173,11 +199,25 @@ export function InstitutionPage({ slug }: { slug: string }) {
             </Card>
           )}
 
+          {slot && held && institution && (
+            <AskDaySheet
+              institution={institution}
+              slot={slot}
+              date={held}
+              onClose={() => choose(null)}
+              onMoved={() => {
+                choose(null);
+                refresh();
+              }}
+            />
+          )}
+
           {slot && chosen && (
             <BookingSheet
               institution={institution}
               slot={slot}
               day={chosen}
+              memorial={chosen.date === memorialDay ? memorial : null}
               onClose={() => choose(null)}
               onBooked={refresh}
               onTaken={() => {
@@ -188,6 +228,12 @@ export function InstitutionPage({ slug }: { slug: string }) {
           )}
         </>
       )}
+
+      <ServicesOffered institution={institution} />
+
+      <GiveOnline institution={institution} />
+
+      <InstitutionNeeds slug={slug} givesOnline={institution.givesOnline} />
     </div>
   );
 
@@ -201,6 +247,14 @@ export function InstitutionPage({ slug }: { slug: string }) {
       return {
         content: <Bowl fill={taken} className="text-brand" />,
         label: `${long}. ${meal.bookingMode === "Shared" ? t("placesLeft", { count: found.sponsors }) : t("open")}`,
+        disabled: false,
+      };
+    }
+
+    if (found.reason === "held") {
+      return {
+        content: <Bowl fill={1} className="text-accent" />,
+        label: `${long}. ${t("heldAsk")}`,
         disabled: false,
       };
     }
@@ -223,7 +277,10 @@ function Profile({ institution }: { institution: PublicInstitution }) {
       <p className="text-sm font-medium text-muted">
         {inLocale(locale, institution.typeName, institution.typeNameSi, institution.typeNameTa)}
       </p>
-      <h1 className="text-3xl font-semibold leading-tight text-brand">{localName(locale, institution)}</h1>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <h1 className="min-w-0 wrap-anywhere text-3xl font-semibold leading-tight text-brand">{localName(locale, institution)}</h1>
+        <PlaceHeart slug={institution.slug} name={localName(locale, institution)} />
+      </div>
       <p className="text-fg">
         {[institution.addressLine1, institution.addressLine2, institution.city].filter(Boolean).join(", ")} ·{" "}
         {inLocale(locale, institution.district, institution.districtSi, institution.districtTa)}
@@ -238,11 +295,17 @@ function Profile({ institution }: { institution: PublicInstitution }) {
   );
 }
 
+/**
+ * The cost's digits. The card renders on the server too (plan 06, G9), and Node knows Sinhala's
+ * currency format while Chromium does not ("රු." against "LKR"): the page would not hydrate. Plain
+ * English digits read the same in both, and the message carries the currency in each language.
+ */
+const costFormat = new Intl.NumberFormat("en", { maximumFractionDigits: 2 });
+
 /** The meals on offer as a choice of cards; each says what sponsoring it means. */
 function SlotChooser({ slots, selected, onSelect }: { slots: PublicMealSlot[]; selected: string | null; onSelect: (id: string) => void }) {
   const t = useTranslations("Discover");
   const locale = useLocale();
-  const formatter = useFormatter();
   const dates = useDates();
 
   return (
@@ -268,7 +331,7 @@ function SlotChooser({ slots, selected, onSelect }: { slots: PublicMealSlot[]; s
               )}
             >
               <span className="flex items-start justify-between gap-3">
-                <span className="text-lg font-semibold leading-snug text-brand">{localName(locale, slot)}</span>
+                <span className="min-w-0 wrap-anywhere text-lg font-semibold leading-snug text-brand">{localName(locale, slot)}</span>
                 <span
                   aria-hidden
                   className={cn(
@@ -293,7 +356,7 @@ function SlotChooser({ slots, selected, onSelect }: { slots: PublicMealSlot[]; s
               </span>
               {slot.estimatedCostPerHead !== null && (
                 <span className="text-sm text-muted">
-                  {t("costPerHead", { cost: formatter.number(slot.estimatedCostPerHead, { style: "currency", currency: "LKR", minimumFractionDigits: 0, maximumFractionDigits: 2 }) })}
+                  {t("costPerHead", { cost: costFormat.format(slot.estimatedCostPerHead) })}
                 </span>
               )}
             </button>
@@ -320,6 +383,9 @@ function Legend({ shared }: { shared: boolean }) {
         <Bowl fill={1} className="text-muted" /> {t("full")}
       </li>
       <li className="flex items-center gap-2">
+        <Bowl fill={1} className="text-accent" /> {t("held")}
+      </li>
+      <li className="flex items-center gap-2">
         <span aria-hidden className="w-7 text-center font-medium">
           7
         </span>
@@ -327,6 +393,11 @@ function Legend({ shared }: { shared: boolean }) {
       </li>
     </ul>
   );
+}
+
+/** The meal to show: the one named, if the institution has it, else its first. */
+function slotFor(institution: PublicInstitution, wanted: string | null): string | null {
+  return institution.slots.some((s) => s.publicId === wanted) ? wanted : (institution.slots[0]?.publicId ?? null);
 }
 
 function validDate(value: string | null): string | null {

@@ -5,6 +5,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Sethika.Application.Abstractions;
 using Sethika.Domain.Access;
@@ -53,7 +54,10 @@ public static class DependencyInjection
         // On the scoped context, so each runs inside the handler's own transaction.
         services.AddScoped<INumberSeries, SqlNumberSeries>();
         services.AddScoped<IRegistrationLocks, SqlRegistrationLocks>();
+        services.AddScoped<IBookingRowLocks, SqlBookingRowLocks>();
+        services.AddScoped<IStandingLocks, SqlStandingLocks>();
         services.AddScoped<IInstitutionModules, SqlInstitutionModules>();
+        services.AddScoped<IRoleGrantHistory, SqlRoleGrantHistory>();
         services.AddScoped<ISlotInventory, SqlSlotInventory>();
 
         services.AddScoped<IDbConnectionFactory>(serviceProvider =>
@@ -69,12 +73,33 @@ public static class DependencyInjection
         services.AddScoped<IRoleLevelQueries, RoleLevelQueries>();
         services.AddScoped<IAccessQueries, AccessQueries>();
         services.AddScoped<IAdminQueries, AdminQueries>();
+        services.AddScoped<IShellQueries, ShellQueries>();
         services.AddScoped<IOnboardingApplicationQueries, OnboardingApplicationQueries>();
         services.AddScoped<IRegistrationReviewQueries, RegistrationReviewQueries>();
         services.AddScoped<IInstitutionBookingQueries, InstitutionBookingQueries>();
         services.AddScoped<IDonorBookingQueries, DonorBookingQueries>();
+        services.AddScoped<IMemorialQueries, MemorialQueries>();
+        services.AddScoped<ISharingQueries, SharingQueries>();
+        services.AddScoped<IShareLinks>(_ => new SqlShareLinks(connectionString));
+        services.AddScoped<IStandingHolds>(_ => new SqlStandingHolds(connectionString));
+        services.AddScoped<IDonorBookLinks>(_ => new SqlDonorBookLinks(connectionString));
+        services.AddScoped<IOwnStandingDays, PlatformOwnStandingDays>();
+        services.AddScoped<IOwnPledges, PlatformPledges>();
+        services.AddScoped<IPlatformPayments, PlatformPayments>();
+        services.AddScoped<IOnlineGiving>(_ => new SqlOnlineGiving(connectionString));
         services.AddScoped<IBookingNotificationQueries, BookingNotificationQueries>();
         services.AddScoped<IServiceSetupQueries, ServiceSetupQueries>();
+        services.AddScoped<IDonorBookQueries, DonorBookQueries>();
+        services.AddScoped<IGivingQueries, GivingQueries>();
+        services.AddScoped<IReportQueries, ReportQueries>();
+        services.AddScoped<INeedQueries, NeedQueries>();
+        services.AddScoped<IPaymentQueries, PaymentQueries>();
+        services.AddScoped<IStandingSponsorshipQueries, StandingSponsorshipQueries>();
+        services.AddScoped<IDayRequestQueries, DayRequestQueries>();
+        services.AddScoped<IDonorAppointmentQueries, DonorAppointmentQueries>();
+        services.AddScoped<IAppointmentQueries, AppointmentQueries>();
+        services.AddScoped<IAppointmentNotificationQueries, AppointmentNotificationQueries>();
+        services.AddScoped<IDiscoveryQueries, DiscoveryQueries>();
 
         return services;
     }
@@ -124,6 +149,11 @@ public static class DependencyInjection
         services.AddOptions<LeaderLockOptions>().BindConfiguration(LeaderLockOptions.SectionName);
         services.AddSingleton<ILeaderLocks, RedisLeaderLocks>();
 
+        // The search's geo index (plan 06, G4). Scoped, not singleton: a rebuild reads SQL Server
+        // through the connection factory, which stamps the scope's session context.
+        services.AddOptions<GeoIndexOptions>().BindConfiguration(GeoIndexOptions.SectionName);
+        services.AddScoped<IInstitutionGeoIndex, RedisInstitutionGeoIndex>();
+
         return services;
     }
 
@@ -169,6 +199,10 @@ public static class DependencyInjection
 
         AddSmsSender(services, smsSection.Get<SmsOptions>() ?? new SmsOptions(), isDevelopment);
 
+        var pushSection = configuration.GetSection(PushOptions.SectionName);
+        services.Configure<PushOptions>(pushSection);
+        AddPushGateway(services, pushSection.Get<PushOptions>() ?? new PushOptions(), isDevelopment);
+
         services.Configure<IdentityOptions>(options =>
         {
             // Identity's default lockout is five minutes. Five guesses per five minutes is 1 440 a
@@ -201,6 +235,30 @@ public static class DependencyInjection
 
         // Stateless over the singleton multiplexer, like the step-up grants.
         services.AddSingleton<IPasswordResetTickets, RedisPasswordResetTickets>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers what online giving needs from configuration: the keys that seal merchant secrets (plan 09,
+    /// M21) and the addresses PayHere is given (M10).
+    /// </summary>
+    /// <remarks>
+    /// Read at registration for the same reason as <see cref="AddSethikaAccess"/>: a missing key fails the
+    /// start-up, not a donor's payment.
+    /// </remarks>
+    public static IServiceCollection AddSethikaPayments(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        bool isDevelopment)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var options = configuration.GetSection(PaymentOptions.SectionName).Get<PaymentOptions>() ?? new PaymentOptions();
+
+        services.AddSingleton<IMerchantSecrets>(AesGcmMerchantSecrets.Create(options));
+        services.AddSingleton<IPayHereSite>(ConfiguredPayHereSite.Create(options.PayHere, isDevelopment));
 
         return services;
     }
@@ -287,15 +345,37 @@ public static class DependencyInjection
 
         services.Configure<OutboxOptions>(configuration.GetSection(OutboxOptions.SectionName));
         services.AddScoped<OutboxProcessor>();
-        services.AddScoped<IUserTextMessages, UserTextMessages>();
+
+        // Every text goes through the push decorator (plan F, F26). Registered by hand: the
+        // container has no decorators, and the inner one must not resolve to the outer one.
+        services.AddScoped<UserTextMessages>();
+        services.AddScoped<IUserTextMessages>(provider => new PushingUserTextMessages(
+            provider.GetRequiredService<UserTextMessages>(),
+            provider.GetRequiredService<IDbConnectionFactory>(),
+            provider.GetRequiredService<IPushGateway>(),
+            provider.GetRequiredService<ILogger<PushingUserTextMessages>>()));
+        services.AddScoped<PushReceipts>();
+
         services.AddTransient<OutboxJob>();
         services.AddTransient<BookingReminderJob>();
+        services.AddTransient<RecurringBookingJob>();
+        services.AddTransient<StandingBookingJob>();
+        services.AddTransient<MemorialReminderJob>();
+        services.AddTransient<AppointmentReminderJob>();
+        services.AddTransient<GeoIndexRebuildJob>();
+        services.AddTransient<PushReceiptsJob>();
 
         var jobs = configuration.GetSection(JobsOptions.SectionName).Get<JobsOptions>() ?? new JobsOptions();
         if (!jobs.Enabled)
         {
+            services.AddSingleton<IOutboxWake, NoOutboxWake>();
+            services.AddSingleton<IStandingBookingWake, NoStandingBookingWake>();
             return services;
         }
+
+        // A change that wrote an outbox message queues the outbox job at once (plan 07, H10).
+        services.AddScoped<IOutboxWake, HangfireOutboxWake>();
+        services.AddScoped<IStandingBookingWake, HangfireStandingBookingWake>();
 
         services.AddHangfire(hangfire => hangfire
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
@@ -307,6 +387,38 @@ public static class DependencyInjection
         services.AddHostedService<RecurringJobs>();
 
         return services;
+    }
+
+    /// <summary>Registers the gateway named by <c>Push:Provider</c>, or refuses to start.</summary>
+    private static void AddPushGateway(IServiceCollection services, PushOptions push, bool isDevelopment)
+    {
+        if (string.Equals(push.Provider, PushOptions.ConsoleProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!isDevelopment)
+            {
+                throw new InvalidOperationException(
+                    "Push:Provider is Console outside Development: no push would be delivered, and every " +
+                    "one would be written to the log. Set Push:Provider to Expo.");
+            }
+
+            services.AddScoped<IPushGateway, ConsolePushGateway>();
+            return;
+        }
+
+        if (string.Equals(push.Provider, PushOptions.ExpoProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            // A typed factory client, for the same reasons as the SMS gateways'.
+            services.AddHttpClient<IPushGateway, ExpoPushGateway>(client =>
+            {
+                client.BaseAddress = new Uri(push.ExpoBaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(push.ExpoTimeoutSeconds);
+            });
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Push:Provider '{push.Provider}' is not recognised. Use {PushOptions.ConsoleProvider} " +
+            $"(Development only) or {PushOptions.ExpoProvider}.");
     }
 
     /// <summary>Registers the sender named by <c>Sms:Provider</c>, or refuses to start.</summary>

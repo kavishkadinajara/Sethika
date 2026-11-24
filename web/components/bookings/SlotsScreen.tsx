@@ -26,7 +26,7 @@ import { localName } from "@/lib/bookings/names";
 import type { BlockedDate, InstitutionMealSlot, Listing } from "@/lib/bookings/types";
 import { usePermissions } from "@/lib/permissions/usePermissions";
 import { cn, focusRing } from "@/lib/utils";
-import { EmptyState } from "./InstitutionDirectory";
+import { EmptyState } from "./EmptyState";
 import { SlotFormSheet } from "./SlotFormSheet";
 import { Switch } from "./Switch";
 import { useBookingError } from "./useBookingError";
@@ -241,7 +241,7 @@ function SlotCard({ slot, canEdit, onEdit, onToggled }: { slot: InstitutionMealS
     <article className={cn("grid gap-3 rounded-bowl border border-hairline bg-surface p-5 shadow-lift", !slot.isActive && "opacity-75 shadow-none")}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="grid min-w-0 gap-0.5">
-          <h3 className="text-lg font-semibold leading-snug text-brand">{localName(locale, slot)}</h3>
+          <h3 className="wrap-anywhere text-lg font-semibold leading-snug text-brand">{localName(locale, slot)}</h3>
           <p className="tabular-nums text-fg">
             {slot.startTime}–{slot.endTime} ·{" "}
             {days.length === 7 ? t("everyDay") : days.map((d) => dates.weekday(weekdayDate(d), "short")).join(" ")}

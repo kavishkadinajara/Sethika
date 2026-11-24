@@ -1,0 +1,322 @@
+@startuml
+!pragma layout smetana
+!include ../style.iuml
+skinparam linetype ortho
+hide circle
+hide methods
+hide stereotypes
+title ERD 3 — Meal slots, booking engine, recurring and memorial (booking)
+package "booking" {
+entity "booking.AvailabilityAlerts" as booking_AvailabilityAlerts #EAF2FA {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * UserId : UNIQUEIDENTIFIER <<FK>>
+  * DateFrom : DATE
+  * DateTo : DATE
+    InstitutionTypeId : SMALLINT <<FK>>
+    DistrictId : SMALLINT <<FK>>
+    Latitude : DECIMAL(9,6)
+    Longitude : DECIMAL(9,6)
+    RadiusKm : SMALLINT
+    MinHeadcount : SMALLINT
+  * IsActive : BIT
+    LastNotifiedAt : DATETIME2(3)
+  * CreatedAt : DATETIME2(3)
+}
+entity "booking.AvailabilitySearches" as booking_AvailabilitySearches #EAF2FA {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * SearchedAt : DATETIME2(3)
+    UserId : UNIQUEIDENTIFIER
+  * TargetDate : DATE
+    InstitutionTypeId : SMALLINT
+    DistrictId : SMALLINT
+    RadiusKm : SMALLINT
+  * ResultCount : SMALLINT
+}
+entity "booking.BlockedDates" as booking_BlockedDates #EAF2FA {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+    MealSlotId : INT <<FK>>
+  * DateFrom : DATE
+  * DateTo : DATE
+  * Reason : NVARCHAR(200)
+    SpecialDayId : INT <<FK>>
+  * CreatedBy : UNIQUEIDENTIFIER <<FK>>
+  * CreatedAt : DATETIME2(3)
+}
+entity "booking.BookingContributors" as booking_BookingContributors #EAF2FA {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * BookingId : BIGINT <<FK>>
+    UserId : UNIQUEIDENTIFIER <<FK>>
+  * Name : NVARCHAR(150)
+    Phone : VARCHAR(20)
+    ContributionNote : NVARCHAR(200)
+    InviteTokenHash : CHAR(64)
+  * Status : VARCHAR(10)
+    JoinedAt : DATETIME2(3)
+  * InstitutionId : INT <<FK>>
+  * InvitedBy : UNIQUEIDENTIFIER <<FK>>
+  * PublicId : UNIQUEIDENTIFIER
+  * InvitedAt : DATETIME2(3)
+    DeclinedAt : DATETIME2(3)
+}
+entity "booking.BookingStatusHistory" as booking_BookingStatusHistory #EAF2FA {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * BookingId : BIGINT <<FK>>
+    FromStatus : VARCHAR(20)
+  * ToStatus : VARCHAR(20)
+  * ChangedBy : UNIQUEIDENTIFIER <<FK>>
+  * ChangedAt : DATETIME2(3)
+    Comment : NVARCHAR(500)
+}
+entity "booking.Bookings" as booking_Bookings #EAF2FA {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * BookingNo : VARCHAR(20)
+  * InstitutionId : INT <<FK>>
+  * SlotInstanceId : BIGINT <<FK>>
+    DonorUserId : UNIQUEIDENTIFIER <<FK>>
+    InstitutionDonorId : INT <<FK>>
+  * DonorName : NVARCHAR(150)
+  * DonorPhone : VARCHAR(20)
+    SponsorDisplayName : NVARCHAR(150)
+  * IsAnonymous : BIT
+  * Headcount : SMALLINT
+    ActualHeadcount : SMALLINT
+  * FulfilmentMode : VARCHAR(20)
+    OccasionLookupId : INT <<FK>>
+    InMemoryOf : NVARCHAR(200)
+    MemorialPlanId : INT <<FK>>
+    MemorialRuleId : SMALLINT <<FK>>
+    RecurringBookingId : INT <<FK>>
+    Notes : NVARCHAR(500)
+  * Source : VARCHAR(20)
+  * Status : VARCHAR(20)
+  * CreatedBy : UNIQUEIDENTIFIER <<FK>>
+  * CreatedAt : DATETIME2(3)
+    DecidedBy : UNIQUEIDENTIFIER <<FK>>
+    DecidedAt : DATETIME2(3)
+    RejectReason : NVARCHAR(300)
+    CancelledBy : UNIQUEIDENTIFIER <<FK>>
+    CancelledAt : DATETIME2(3)
+    CancelReason : NVARCHAR(300)
+    CompletedAt : DATETIME2(3)
+    RowVersion : ROWVERSION
+    StandingSponsorshipId : INT <<FK>>
+}
+entity "booking.DayRequests" as booking_DayRequests #EAF2FA {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * RequestNo : VARCHAR(20)
+  * InstitutionId : INT <<FK>>
+  * MealSlotId : INT <<FK>>
+  * RequestedDate : DATE
+  * DonorUserId : UNIQUEIDENTIFIER <<FK>>
+  * Headcount : SMALLINT
+    Note : NVARCHAR(300)
+  * Status : VARCHAR(10)
+    StandingSponsorshipId : INT <<FK>>
+    BookingId : BIGINT <<FK>>
+    DecidedBy : UNIQUEIDENTIFIER <<FK>>
+    DecidedAt : DATETIME2(3)
+    DeclineReason : NVARCHAR(300)
+  * CreatedAt : DATETIME2(3)
+    RowVersion : ROWVERSION
+  * FulfilmentMode : VARCHAR(20)
+}
+entity "booking.MealSlotSeasons" as booking_MealSlotSeasons #EAF2FA {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * MealSlotId : INT <<FK>>
+  * Name : NVARCHAR(100)
+  * DateFrom : DATE
+  * DateTo : DATE
+}
+entity "booking.MealSlots" as booking_MealSlots #EAF2FA {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+  * Name : NVARCHAR(100)
+    NameSi : NVARCHAR(100)
+    NameTa : NVARCHAR(100)
+  * StartTime : TIME(0)
+  * EndTime : TIME(0)
+  * DaysOfWeekMask : TINYINT
+  * BookingMode : VARCHAR(10)
+  * MaxSponsors : TINYINT
+  * MinHeadcount : SMALLINT
+  * MaxHeadcount : SMALLINT
+    EstimatedCostPerHead : DECIMAL(10,2)
+  * MinAdvanceDays : SMALLINT
+  * MaxAdvanceDays : SMALLINT
+  * RequiresApproval : BIT
+  * AllowedFulfilment : VARCHAR(40)
+  * SortOrder : SMALLINT
+  * IsActive : BIT
+  * CreatedAt : DATETIME2(3)
+  * CreatedBy : UNIQUEIDENTIFIER <<FK>>
+    UpdatedAt : DATETIME2(3)
+    UpdatedBy : UNIQUEIDENTIFIER <<FK>>
+    RowVersion : ROWVERSION
+  * PublicId : UNIQUEIDENTIFIER
+}
+entity "booking.MemorialPlans" as booking_MemorialPlans #EAF2FA {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * DonorUserId : UNIQUEIDENTIFIER <<FK>>
+  * DeceasedName : NVARCHAR(150)
+    RelationshipLookupId : INT <<FK>>
+  * DateOfPassing : DATE
+  * ReligionLookupId : INT <<FK>>
+    PhotoFileId : BIGINT <<FK>>
+    Notes : NVARCHAR(500)
+  * IsActive : BIT
+  * CreatedAt : DATETIME2(3)
+  * PublicId : UNIQUEIDENTIFIER
+}
+entity "booking.RecurringBookings" as booking_RecurringBookings #EAF2FA {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * DonorUserId : UNIQUEIDENTIFIER <<FK>>
+  * InstitutionId : INT <<FK>>
+  * MealSlotId : INT <<FK>>
+    MemorialPlanId : INT <<FK>>
+  * RecurMonth : TINYINT
+  * RecurDay : TINYINT
+  * StartYear : SMALLINT
+    EndYear : SMALLINT
+    OccasionLookupId : INT <<FK>>
+    InMemoryOf : NVARCHAR(200)
+  * Headcount : SMALLINT
+    LastGeneratedYear : SMALLINT
+  * IsActive : BIT
+  * CreatedAt : DATETIME2(3)
+  * PublicId : UNIQUEIDENTIFIER
+  * FulfilmentMode : VARCHAR(20)
+}
+entity "booking.SlotInstances" as booking_SlotInstances #EAF2FA {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+  * MealSlotId : INT <<FK>>
+  * SlotDate : DATE
+  * MaxSponsors : TINYINT
+  * MaxHeadcount : SMALLINT
+  * BookedSponsors : TINYINT
+  * BookedHeadcount : SMALLINT
+  * Status : VARCHAR(10)
+    RowVersion : ROWVERSION
+}
+entity "booking.StandingExceptions" as booking_StandingExceptions #EAF2FA {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * InstitutionId : INT <<FK>>
+  * StandingSponsorshipId : INT <<FK>>
+  * ExceptionDate : DATE
+  * Kind : VARCHAR(10)
+    OtherDate : DATE
+    BookingId : BIGINT <<FK>>
+    DayRequestId : INT <<FK>>
+    Reason : NVARCHAR(300)
+  * CreatedBy : UNIQUEIDENTIFIER <<FK>>
+  * CreatedAt : DATETIME2(3)
+}
+entity "booking.StandingSponsorships" as booking_StandingSponsorships #EAF2FA {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * PublicId : UNIQUEIDENTIFIER
+  * InstitutionId : INT <<FK>>
+  * InstitutionDonorId : INT <<FK>>
+  * MealSlotId : INT <<FK>>
+  * Pattern : VARCHAR(10)
+  * MonthInterval : TINYINT
+    WeekDays : TINYINT
+    MonthDays : INT
+    YearMonth : TINYINT
+    YearDay : TINYINT
+  * StartDate : DATE
+    EndDate : DATE
+  * Headcount : SMALLINT
+  * FulfilmentMode : VARCHAR(20)
+    InMemoryOf : NVARCHAR(200)
+    Notes : NVARCHAR(500)
+  * Status : VARCHAR(10)
+    EndedAt : DATETIME2(3)
+    EndedBy : UNIQUEIDENTIFIER <<FK>>
+  * CreatedBy : UNIQUEIDENTIFIER <<FK>>
+  * CreatedAt : DATETIME2(3)
+    UpdatedBy : UNIQUEIDENTIFIER <<FK>>
+    UpdatedAt : DATETIME2(3)
+    RowVersion : ROWVERSION
+}
+entity "booking.Waitlist" as booking_Waitlist #EAF2FA {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * SlotInstanceId : BIGINT <<FK>>
+  * DonorUserId : UNIQUEIDENTIFIER <<FK>>
+  * Position : SMALLINT
+  * Status : VARCHAR(20)
+    OfferedAt : DATETIME2(3)
+    OfferExpiresAt : DATETIME2(3)
+  * CreatedAt : DATETIME2(3)
+}
+}
+package "other modules" #FFFFFF {
+entity "auth.Users" as auth_Users #FFFFFF ##[dashed]
+entity "core.Districts" as core_Districts #FFFFFF ##[dashed]
+entity "core.Files" as core_Files #FFFFFF ##[dashed]
+entity "core.LookupValues" as core_LookupValues #FFFFFF ##[dashed]
+entity "core.MemorialRules" as core_MemorialRules #FFFFFF ##[dashed]
+entity "core.SpecialDays" as core_SpecialDays #FFFFFF ##[dashed]
+entity "org.InstitutionDonors" as org_InstitutionDonors #FFFFFF ##[dashed]
+entity "org.InstitutionTypes" as org_InstitutionTypes #FFFFFF ##[dashed]
+}
+booking_AvailabilityAlerts }o--|| auth_Users
+booking_AvailabilityAlerts }o..o| core_Districts
+booking_AvailabilityAlerts }o..o| org_InstitutionTypes
+booking_BlockedDates }o..o| booking_MealSlots
+booking_BlockedDates }o..o| core_SpecialDays
+booking_BookingContributors }o..o| auth_Users
+booking_BookingContributors }o--|| booking_Bookings
+booking_BookingStatusHistory }o--|| booking_Bookings
+booking_Bookings }o..o| auth_Users
+booking_Bookings }o..o| booking_MemorialPlans
+booking_Bookings }o..o| booking_RecurringBookings
+booking_Bookings }o--|| booking_SlotInstances
+booking_Bookings }o..o| booking_StandingSponsorships
+booking_Bookings }o..o| core_LookupValues
+booking_Bookings }o..o| core_MemorialRules
+booking_Bookings }o..o| org_InstitutionDonors
+booking_DayRequests }o--|| auth_Users
+booking_DayRequests }o..o| booking_Bookings
+booking_DayRequests }o--|| booking_MealSlots
+booking_DayRequests }o..o| booking_StandingSponsorships
+booking_MealSlotSeasons }o--|| booking_MealSlots
+booking_MemorialPlans }o--|| auth_Users
+booking_MemorialPlans }o..o| core_Files
+booking_MemorialPlans }o--|| core_LookupValues
+booking_RecurringBookings }o--|| auth_Users
+booking_RecurringBookings }o--|| booking_MealSlots
+booking_RecurringBookings }o..o| booking_MemorialPlans
+booking_RecurringBookings }o..o| core_LookupValues
+booking_SlotInstances }o--|| booking_MealSlots
+booking_StandingExceptions }o..o| booking_Bookings
+booking_StandingExceptions }o..o| booking_DayRequests
+booking_StandingExceptions }o--|| booking_StandingSponsorships
+booking_StandingSponsorships }o--|| booking_MealSlots
+booking_StandingSponsorships }o--|| org_InstitutionDonors
+booking_Waitlist }o--|| auth_Users
+booking_Waitlist }o--|| booking_SlotInstances
+legend bottom right
+  * = NOT NULL    <<PK>> primary key    <<FK>> foreign key
+  solid line = mandatory FK, dotted = optional FK
+  CreatedBy / DecidedBy / ...By columns reference auth.Users (no line drawn)
+  InstitutionId (tenant key, Row-Level Security) references org.Institutions:
+  drawn only from org tables
+  Generated from src/Sethika.Database by docs/diagrams/tools/erd_from_sql.py
+endlegend
+@enduml

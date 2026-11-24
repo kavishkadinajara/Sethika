@@ -3,20 +3,19 @@
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { FormError } from "@/components/auth/FormError";
-import { PersonalSwitch } from "@/components/shell/PersonalSwitch";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { CheckCircleIcon } from "@/components/ui/icons";
 import { Input, inputClasses } from "@/components/ui/input";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Spinner } from "@/components/ui/spinner";
 import { Link } from "@/i18n/navigation";
-import { useSession } from "@/lib/auth/useSession";
 import { book, type BookingFailure } from "@/lib/bookings/api";
+import { memorialSearch, type Memorial } from "@/lib/bookings/find-query";
 import { localName } from "@/lib/bookings/names";
 import type { BookingStatus, DayAvailability, FulfilmentMode, PublicInstitution, PublicMealSlot } from "@/lib/bookings/types";
-import { usePermissions } from "@/lib/permissions/usePermissions";
 import { cn } from "@/lib/utils";
+import { DonorSheetGate } from "./DonorSheetGate";
+import { Switch } from "./Switch";
 import { useBookingError } from "./useBookingError";
 import { useWide } from "./useWide";
 import { useDates } from "./useDates";
@@ -36,6 +35,8 @@ type BookingSheetProps = {
   onBooked: () => void;
   /** The day went while the form was open: close, and show the month as it is now. */
   onTaken: () => void;
+  /** The memorial observance this day is booked for (plan 07, H6), when the donor came from the planner. */
+  memorial?: Memorial | null;
 };
 
 /**
@@ -43,7 +44,7 @@ type BookingSheetProps = {
  * thumb reaches on a phone, a side sheet on a wider screen. It asks for a sign-in only here, at the
  * moment it is needed, and the sign-in returns to this meal and day.
  */
-export function BookingSheet({ institution, slot, day, onClose, onBooked, onTaken }: BookingSheetProps) {
+export function BookingSheet({ institution, slot, day, onClose, onBooked, onTaken, memorial = null }: BookingSheetProps) {
   const t = useTranslations("Discover.sheet");
   const locale = useLocale();
   const wide = useWide();
@@ -56,19 +57,20 @@ export function BookingSheet({ institution, slot, day, onClose, onBooked, onTake
     <Sheet open onOpenChange={(open) => !open && onClose()}>
       <SheetContent side={wide ? "right" : "bottom"}>
         <SheetHeader>
-          <SheetTitle>{t("title", { meal: localName(locale, slot) })}</SheetTitle>
+          <SheetTitle className="wrap-anywhere">{t("title", { meal: localName(locale, slot) })}</SheetTitle>
           <SheetDescription>
             {when} · {slot.startTime}–{slot.endTime} · {localName(locale, institution)}
           </SheetDescription>
         </SheetHeader>
 
         {done ? (
-          <Done bookingNo={done.bookingNo} status={done.status} onClose={onClose} />
+          <Done bookingNo={done.bookingNo} status={done.status} memorial={memorial !== null} onClose={onClose} />
         ) : (
-          <Gate institution={institution} slot={slot} date={day.date}>
+          <Gate institution={institution} slot={slot} date={day.date} memorial={memorial}>
             <BookingForm
               slot={slot}
               day={day}
+              memorial={memorial}
               onBooked={(result) => {
                 setDone(result);
                 onBooked();
@@ -83,57 +85,43 @@ export function BookingSheet({ institution, slot, day, onClose, onBooked, onTake
 }
 
 /** Booking needs a donor's own session (plan 02, B1); say how to get one, and come back here. */
-function Gate({ institution, slot, date, children }: { institution: PublicInstitution; slot: PublicMealSlot; date: string; children: ReactNode }) {
+function Gate({
+  institution,
+  slot,
+  date,
+  memorial,
+  children,
+}: {
+  institution: PublicInstitution;
+  slot: PublicMealSlot;
+  date: string;
+  memorial: Memorial | null;
+  children: ReactNode;
+}) {
   const t = useTranslations("Discover.sheet");
-  const session = useSession();
-  const { can, isLoading } = usePermissions();
-
-  if (session.status === "loading" || (session.status === "authenticated" && isLoading)) {
-    return (
-      <div className="flex justify-center py-12 text-brand">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (session.status !== "authenticated") {
-    const back = `/i/${institution.slug}?slot=${encodeURIComponent(slot.publicId)}&date=${date}`;
-    const next = `?next=${encodeURIComponent(back)}`;
-    return (
-      <SheetBody className="grid gap-4">
-        <p className="text-fg">{t("signInFirst")}</p>
-        <div className="flex flex-wrap gap-3">
-          <Button asChild>
-            <Link href={`/login${next}`}>{t("signIn")}</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href={`/signup${next}`}>{t("createAccount")}</Link>
-          </Button>
-        </div>
-      </SheetBody>
-    );
-  }
-
-  if (session.activeInstitution)
-    return (
-      <SheetBody className="text-fg">
-        <p>{t("institutionSession")}</p>
-        <PersonalSwitch className="mt-4" />
-      </SheetBody>
-    );
-  if (!can("MYBOOKINGS.BOOKINGS.CREATE")) return <SheetBody className="text-fg">{t("notAllowed")}</SheetBody>;
-
-  return <>{children}</>;
+  return (
+    <DonorSheetGate
+      back={`/i/${institution.slug}?slot=${encodeURIComponent(slot.publicId)}&date=${date}${memorialSearch(memorial)}`}
+      permission="MYBOOKINGS.BOOKINGS.CREATE"
+      signInFirst={t("signInFirst")}
+      institutionSession={t("institutionSession")}
+      notAllowed={t("notAllowed")}
+    >
+      {children}
+    </DonorSheetGate>
+  );
 }
 
 function BookingForm({
   slot,
   day,
+  memorial,
   onBooked,
   onTaken,
 }: {
   slot: PublicMealSlot;
   day: DayAvailability;
+  memorial: Memorial | null;
   onBooked: (result: { bookingNo: string; status: BookingStatus }) => void;
   onTaken: () => void;
 }) {
@@ -148,6 +136,7 @@ function BookingForm({
   const [fulfilment, setFulfilment] = useState<FulfilmentMode>(slot.allowedFulfilment[0]);
   const [inMemoryOf, setInMemoryOf] = useState("");
   const [notes, setNotes] = useState("");
+  const [everyYear, setEveryYear] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<BookingFailure | null>(null);
   const [headcountError, setHeadcountError] = useState<string | null>(null);
@@ -178,6 +167,9 @@ function BookingForm({
       fulfilment,
       inMemoryOf: inMemoryOf.trim() || null,
       notes: notes.trim() || null,
+      everyYear,
+      memorialPlan: memorial?.plan ?? null,
+      memorialRule: memorial?.rule ?? null,
     });
     setSubmitting(false);
 
@@ -195,6 +187,8 @@ function BookingForm({
   return (
     <form onSubmit={submit} noValidate className="contents">
       <SheetBody className="grid gap-5">
+        {memorial && <p className="rounded-cup bg-accent/12 px-4 py-3 text-sm text-fg">{t("forMemorial")}</p>}
+
         <Field
           label={t("headcount")}
           description={t("headcountHint", { min: slot.minHeadcount, max })}
@@ -252,7 +246,17 @@ function BookingForm({
           />
         </Field>
 
-        <FormError>{failure && errorMessage(failure)}</FormError>
+        <div className="grid gap-1">
+          <Switch checked={everyYear} onChange={setEveryYear}>
+            {t("everyYear")}
+          </Switch>
+          <p className="px-1 text-sm text-muted">{t("everyYearHint")}</p>
+        </div>
+
+        <FormError>
+          {failure &&
+            (failure.fields.includes("everyYear") ? t("everyYearNotYearly") : errorMessage(failure))}
+        </FormError>
 
         <p className="text-sm text-muted">{slot.requiresApproval ? t("approvalNote") : t("instantNote")}</p>
       </SheetBody>
@@ -306,7 +310,7 @@ function Stepper({
 }
 
 /** The booking made: its number, and what happens next. */
-function Done({ bookingNo, status, onClose }: { bookingNo: string; status: BookingStatus; onClose: () => void }) {
+function Done({ bookingNo, status, memorial, onClose }: { bookingNo: string; status: BookingStatus; memorial: boolean; onClose: () => void }) {
   const t = useTranslations("Discover.sheet");
   const confirmed = status === "Approved";
 
@@ -322,7 +326,7 @@ function Done({ bookingNo, status, onClose }: { bookingNo: string; status: Booki
       </SheetBody>
       <SheetFooter className="justify-center">
         <Button asChild>
-          <Link href="/bookings/mine">{t("seeMine")}</Link>
+          <Link href={memorial ? "/memorial" : "/bookings/mine"}>{memorial ? t("seePlan") : t("seeMine")}</Link>
         </Button>
         <Button variant="ghost" onClick={onClose}>
           {t("close")}

@@ -15,12 +15,17 @@ namespace Sethika.Application.Access.Session;
 /// grants, a donor's own bookings and applications (plan 02, B1). Never set with
 /// <paramref name="SwitchToInstitution"/>.
 /// </param>
+/// <param name="PresentedAccess">
+/// The user and <c>jti</c> of a valid access token sent with the refresh, if any: a step-up it holds
+/// moves to the successor (plan 09, M28). Only when it is the same user as the refresh token's.
+/// </param>
 public sealed record RefreshCommand(
     string? RefreshToken,
     string? SwitchToInstitution,
     string? IpAddress,
     string? UserAgent,
-    bool SwitchToPersonal = false)
+    bool SwitchToPersonal = false,
+    PresentedAccessToken? PresentedAccess = null)
 {
     /// <summary>Leaves the refresh token - a bearer secret for two weeks - out of <see cref="object.ToString"/>.</summary>
     private bool PrintMembers(StringBuilder builder)
@@ -30,6 +35,9 @@ public sealed record RefreshCommand(
         return true;
     }
 }
+
+/// <summary>The access token a refresh request also carried, as the JWT handler validated it.</summary>
+public sealed record PresentedAccessToken(Guid UserId, string TokenId);
 
 /// <summary>Why a refresh was refused.</summary>
 public enum SessionFailure

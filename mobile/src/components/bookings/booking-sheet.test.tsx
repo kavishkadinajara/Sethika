@@ -131,7 +131,7 @@ describe("the gate", () => {
     mockSession = { ...DONOR, status: "authenticated", activeInstitution: "test-elders-home" } as SessionState;
     const screen = await render(sheet().element);
 
-    screen.getText(/^You are signed in for an institution\./);
+    screen.getText(/^You are acting for an institution\. To book as yourself, change to your own account in Profile\.$/);
     expect(screen.queryText("Book this day")).toBeNull();
   });
 });

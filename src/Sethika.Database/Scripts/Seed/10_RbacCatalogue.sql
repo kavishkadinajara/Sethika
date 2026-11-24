@@ -5,7 +5,9 @@
     each new screen adds its rows here. BOOKINGS and the donor's BOOK are the booking plan's
     (plan 03, 5.1): the institution's meal slots and calendar, and a donor's own bookings.
     SERVICES and the donor's REQUEST are Phase E's: religious services, the leader roster and
-    appointments, and a donor's own appointment requests.
+    appointments, and a donor's own appointment requests. GIVING and the donor's GIVE are Phase D's
+    (plan 09, M19): donations and receipts, needs, the monthly report, the institution's own payment
+    merchant, and a donor's own giving.
 
     Rows are matched on Code, never on Id: Ids are IDENTITY values and differ between databases.
     A code that matches nothing stops the deploy (THROW) rather than being skipped by a JOIN, so a
@@ -27,11 +29,14 @@ USING (
         -- Not IsCore: a care home has no religious leaders. On by default for the religious
         -- institution types (InstitutionTypeDefaultModules, below; Phase E, V12).
         ('INSTITUTION', 'SERVICES',    N'Religious services',  30, 0),
+        -- Core: every institution receives gifts (plan 09, M19).
+        ('INSTITUTION', 'GIVING',      N'Giving',              40, 1),
         ('INSTITUTION', 'ACCESS',      N'Access control',      90, 1),
         -- Not IsCore: core means "on in every institution", and these belong to no institution.
         ('DONOR',       'APPLY',       N'Register an institution', 10, 0),
         ('DONOR',       'BOOK',        N'Book a meal',             20, 0),
         ('DONOR',       'REQUEST',     N'Request a religious service', 30, 0),
+        ('DONOR',       'GIVE',        N'My giving',               40, 0),
         ('ADMIN',       'ONBOARDING',  N'Institution onboarding',  10, 0),
         -- Plan 04, U4: the platform's own administration.
         ('ADMIN',       'INSTITUTIONS', N'Institutions',           20, 0),
@@ -53,15 +58,22 @@ USING (
         ('INSTITUTION', 'INSTITUTION.PROFILE', N'Institution profile',   '/institution/profile', 1),
         ('BOOKINGS',    'BOOKINGS.CALENDAR',   N'Booking calendar',      '/bookings/calendar',   1),
         ('BOOKINGS',    'BOOKINGS.SLOTS',      N'Meal slots',            '/bookings/slots',      2),
+        ('BOOKINGS',    'BOOKINGS.SPONSORS',   N'Standing sponsors',     '/bookings/sponsors',   3),
         ('SERVICES',    'SERVICES.TYPES',        N'Religious services',    '/services/types',        1),
         ('SERVICES',    'SERVICES.LEADERS',      N'Religious leaders',     '/services/leaders',      2),
         ('SERVICES',    'SERVICES.APPOINTMENTS', N'Service appointments',  '/services/appointments', 3),
         ('SERVICES',    'SERVICES.MYSCHEDULE',   N'My schedule',           '/services/schedule',     4),
+        ('GIVING',      'GIVING.DONATIONS',      N'Donations and receipts', '/giving/donations',      1),
+        ('GIVING',      'GIVING.NEEDS',          N'Needs',                  '/giving/needs',          2),
+        ('GIVING',      'GIVING.REPORTS',        N'Monthly report',         '/reports',               3),
+        ('GIVING',      'GIVING.PAYMENTS',       N'Online payments',        '/giving/payments',       4),
         ('ACCESS',      'ACCESS.ROLES',        N'Roles',                 '/access/roles',        1),
         ('ACCESS',      'ACCESS.MEMBERS',      N'Staff and their roles', '/access/members',      2),
         ('APPLY',       'ONBOARDING.APPLICATION', N'Institution application', '/apply',               1),
         ('BOOK',        'MYBOOKINGS.BOOKINGS',    N'My bookings',             '/bookings/mine',       1),
+        ('BOOK',        'MYMEMORIAL.PLANS',       N'Memorial dana planner',   '/memorial',            2),
         ('REQUEST',     'MYSERVICES.APPOINTMENTS', N'My service requests',    '/services/mine',       1),
+        ('GIVE',        'MYGIVING.DONATIONS',     N'My giving',               '/giving/mine',         1),
         ('ONBOARDING',  'ONBOARDING.REQUESTS',    N'Registration requests',   '/admin/registrations', 1),
         ('INSTITUTIONS', 'PLATFORM.INSTITUTIONS', N'All institutions',        '/admin/institutions',  1),
         ('USERS',       'PLATFORM.USERS',         N'All users',               '/admin/users',         1)
@@ -101,6 +113,11 @@ VALUES
     ('BOOKINGS.SLOTS.VIEW',       'BOOKINGS.SLOTS',      'VIEW',    'Institution', N'View meal slots and blocked dates', 0, 0),
     ('BOOKINGS.SLOTS.CREATE',     'BOOKINGS.SLOTS',      'CREATE',  'Institution', N'Create meal slots',            0, 0),
     ('BOOKINGS.SLOTS.EDIT',       'BOOKINGS.SLOTS',      'EDIT',    'Institution', N'Change meal slots and blocked dates', 0, 0),
+    /*  Standing sponsors (plan 08, K11): the donor book and the regular donors' patterns. EDIT is
+        changing a donor or a sponsorship, ending one, skipping and swapping days.            */
+    ('BOOKINGS.SPONSORS.VIEW',    'BOOKINGS.SPONSORS',   'VIEW',    'Institution', N'View the donor book and standing sponsors', 0, 0),
+    ('BOOKINGS.SPONSORS.CREATE',  'BOOKINGS.SPONSORS',   'CREATE',  'Institution', N'Add donors and standing sponsorships', 0, 0),
+    ('BOOKINGS.SPONSORS.EDIT',    'BOOKINGS.SPONSORS',   'EDIT',    'Institution', N'Change, end, skip and swap standing sponsorships', 0, 0),
     /*  Religious services (Phase E, section 5). APPROVE on appointments is assigning leaders, which
         approves a request; EDIT is reassigning, answering for a leader, cancelling and completing.
         MYSCHEDULE is a leader's own: EDIT is accepting or declining their own assignments.     */
@@ -116,6 +133,23 @@ VALUES
     ('SERVICES.APPOINTMENTS.EDIT',   'SERVICES.APPOINTMENTS', 'EDIT',    'Institution', N'Reassign, answer for a leader, cancel and complete appointments', 0, 0),
     ('SERVICES.MYSCHEDULE.VIEW',     'SERVICES.MYSCHEDULE',   'VIEW',    'Institution', N'See my schedule as a religious leader',          0, 0),
     ('SERVICES.MYSCHEDULE.EDIT',     'SERVICES.MYSCHEDULE',   'EDIT',    'Institution', N'Accept or decline my assignments',               0, 0),
+    /*  Giving (plan 09, M19). DELETE on donations is voiding one: the fixed actions have no VOID,
+        and a donation is never edited, so EDIT would mislead more. Voiding hides money from every
+        total, hence step-up (M6). EDIT on needs is opening, closing, cancelling and changing one,
+        and receiving and cancelling its pledges. The payment merchant's secret is money's way in:
+        sensitive, and saving it needs a step-up (M10).                                         */
+    ('GIVING.DONATIONS.VIEW',     'GIVING.DONATIONS',    'VIEW',    'Institution', N'View donations and receipts',  0, 0),
+    ('GIVING.DONATIONS.CREATE',   'GIVING.DONATIONS',    'CREATE',  'Institution', N'Record donations',             0, 0),
+    ('GIVING.DONATIONS.DELETE',   'GIVING.DONATIONS',    'DELETE',  'Institution', N'Void donations',               1, 1),
+    ('GIVING.DONATIONS.EXPORT',   'GIVING.DONATIONS',    'EXPORT',  'Institution', N'Export donations',             1, 0),
+    ('GIVING.NEEDS.VIEW',         'GIVING.NEEDS',        'VIEW',    'Institution', N'View needs and pledges',       0, 0),
+    ('GIVING.NEEDS.CREATE',       'GIVING.NEEDS',        'CREATE',  'Institution', N'Add needs',                    0, 0),
+    ('GIVING.NEEDS.EDIT',         'GIVING.NEEDS',        'EDIT',    'Institution', N'Change needs, receive and cancel pledges', 0, 0),
+    ('GIVING.REPORTS.VIEW',       'GIVING.REPORTS',      'VIEW',    'Institution', N'View the monthly report',      0, 0),
+    ('GIVING.REPORTS.EXPORT',     'GIVING.REPORTS',      'EXPORT',  'Institution', N'Export the monthly report',    0, 0),
+    ('GIVING.REPORTS.PRINT',      'GIVING.REPORTS',      'PRINT',   'Institution', N'Print the monthly report',     0, 0),
+    ('GIVING.PAYMENTS.VIEW',      'GIVING.PAYMENTS',     'VIEW',    'Institution', N'View the online payment settings', 0, 0),
+    ('GIVING.PAYMENTS.EDIT',      'GIVING.PAYMENTS',     'EDIT',    'Institution', N'Set the online payment merchant', 1, 1),
     ('ACCESS.ROLES.VIEW',         'ACCESS.ROLES',        'VIEW',    'Institution', N'View roles',                   0, 0),
     ('ACCESS.ROLES.CREATE',       'ACCESS.ROLES',        'CREATE',  'Institution', N'Create roles',                 1, 0),
     ('ACCESS.ROLES.EDIT',         'ACCESS.ROLES',        'EDIT',    'Institution', N'Change what a role can do',    1, 1),
@@ -136,6 +170,8 @@ VALUES
         hence sensitive; making, suspending and giving platform roles need a step-up.           */
     ('PLATFORM.INSTITUTIONS.VIEW',    'PLATFORM.INSTITUTIONS',  'VIEW',    'Platform', N'View every institution',                      0, 0),
     ('PLATFORM.INSTITUTIONS.EXECUTE', 'PLATFORM.INSTITUTIONS',  'EXECUTE', 'Platform', N'Work inside any institution as platform support', 1, 1),
+    -- Plan 09, Q4: what an institution's roles and modules gained since it was approved, added.
+    ('PLATFORM.INSTITUTIONS.EDIT',    'PLATFORM.INSTITUTIONS',  'EDIT',    'Platform', N'Bring an institution''s roles up to their templates', 1, 1),
     ('PLATFORM.USERS.VIEW',           'PLATFORM.USERS',         'VIEW',    'Platform', N'View every account',                          1, 0),
     ('PLATFORM.USERS.CREATE',         'PLATFORM.USERS',         'CREATE',  'Platform', N'Make accounts for people who cannot sign up', 1, 1),
     ('PLATFORM.USERS.EDIT',           'PLATFORM.USERS',         'EDIT',    'Platform', N'Suspend accounts and give platform roles',    1, 1),
@@ -143,10 +179,19 @@ VALUES
     ('MYBOOKINGS.BOOKINGS.VIEW',      'MYBOOKINGS.BOOKINGS',    'VIEW',    'Self',     N'See my bookings',                             0, 0),
     ('MYBOOKINGS.BOOKINGS.CREATE',    'MYBOOKINGS.BOOKINGS',    'CREATE',  'Self',     N'Book a meal slot',                            0, 0),
     ('MYBOOKINGS.BOOKINGS.EDIT',      'MYBOOKINGS.BOOKINGS',    'EDIT',    'Self',     N'Cancel my bookings',                          0, 0),
+    /*  A donor's memorial plans (plan 07, H6): Self scope, like bookings. EDIT is archiving one.  */
+    ('MYMEMORIAL.PLANS.VIEW',         'MYMEMORIAL.PLANS',       'VIEW',    'Self',     N'See my memorial plans',                       0, 0),
+    ('MYMEMORIAL.PLANS.CREATE',       'MYMEMORIAL.PLANS',       'CREATE',  'Self',     N'Make a memorial plan',                        0, 0),
+    ('MYMEMORIAL.PLANS.EDIT',         'MYMEMORIAL.PLANS',       'EDIT',    'Self',     N'Archive my memorial plans',                   0, 0),
     /*  A donor's own service requests (Phase E): Self scope, like bookings. EDIT is cancelling one. */
     ('MYSERVICES.APPOINTMENTS.VIEW',   'MYSERVICES.APPOINTMENTS', 'VIEW',   'Self',    N'See my service requests',                     0, 0),
     ('MYSERVICES.APPOINTMENTS.CREATE', 'MYSERVICES.APPOINTMENTS', 'CREATE', 'Self',    N'Request a religious service',                 0, 0),
-    ('MYSERVICES.APPOINTMENTS.EDIT',   'MYSERVICES.APPOINTMENTS', 'EDIT',   'Self',    N'Cancel my service requests',                  0, 0);
+    ('MYSERVICES.APPOINTMENTS.EDIT',   'MYSERVICES.APPOINTMENTS', 'EDIT',   'Self',    N'Cancel my service requests',                  0, 0),
+    /*  A donor's own giving (plan 09, M19): Self scope. CREATE is giving online and pledging, EDIT
+        cancelling one of my pledges.                                                            */
+    ('MYGIVING.DONATIONS.VIEW',        'MYGIVING.DONATIONS',      'VIEW',   'Self',    N'See my gifts and receipts',                   0, 0),
+    ('MYGIVING.DONATIONS.CREATE',      'MYGIVING.DONATIONS',      'CREATE', 'Self',    N'Give online and pledge to needs',             0, 0),
+    ('MYGIVING.DONATIONS.EDIT',        'MYGIVING.DONATIONS',      'EDIT',   'Self',    N'Cancel my pledges',                           0, 0);
 
 IF EXISTS (SELECT 1 FROM @RbacPermissions WHERE Code <> ScreenCode + '.' + ActionCode)
     THROW 51001, '10_RbacCatalogue: a permission code is not <screen>.<action>.', 1;
@@ -187,6 +232,9 @@ VALUES
     ('BOOKINGS.CALENDAR.VIEW',    'BOOKINGS.SLOTS.VIEW'),      -- a booking is read beside its slot
     ('BOOKINGS.SLOTS.CREATE',     'BOOKINGS.SLOTS.VIEW'),
     ('BOOKINGS.SLOTS.EDIT',       'BOOKINGS.SLOTS.VIEW'),
+    ('BOOKINGS.SPONSORS.CREATE',  'BOOKINGS.SPONSORS.VIEW'),
+    ('BOOKINGS.SPONSORS.EDIT',    'BOOKINGS.SPONSORS.VIEW'),
+    ('BOOKINGS.SPONSORS.VIEW',    'BOOKINGS.SLOTS.VIEW'),      -- a sponsorship is read beside its slot
     ('ACCESS.ROLES.CREATE',       'ACCESS.ROLES.VIEW'),
     ('ACCESS.ROLES.EDIT',         'ACCESS.ROLES.VIEW'),
     ('ACCESS.MEMBERS.EDIT',       'ACCESS.MEMBERS.VIEW'),
@@ -197,10 +245,13 @@ VALUES
     ('ONBOARDING.REQUESTS.APPROVE',   'ONBOARDING.REQUESTS.VIEW'),
     ('ONBOARDING.REQUESTS.REJECT',    'ONBOARDING.REQUESTS.VIEW'),
     ('PLATFORM.INSTITUTIONS.EXECUTE', 'PLATFORM.INSTITUTIONS.VIEW'),
+    ('PLATFORM.INSTITUTIONS.EDIT',    'PLATFORM.INSTITUTIONS.VIEW'),
     ('PLATFORM.USERS.CREATE',        'PLATFORM.USERS.VIEW'),
     ('PLATFORM.USERS.EDIT',          'PLATFORM.USERS.VIEW'),
     ('MYBOOKINGS.BOOKINGS.CREATE',    'MYBOOKINGS.BOOKINGS.VIEW'),
     ('MYBOOKINGS.BOOKINGS.EDIT',      'MYBOOKINGS.BOOKINGS.VIEW'),
+    ('MYMEMORIAL.PLANS.CREATE',       'MYMEMORIAL.PLANS.VIEW'),
+    ('MYMEMORIAL.PLANS.EDIT',         'MYMEMORIAL.PLANS.VIEW'),
     ('SERVICES.TYPES.CREATE',         'SERVICES.TYPES.VIEW'),
     ('SERVICES.TYPES.EDIT',           'SERVICES.TYPES.VIEW'),
     ('SERVICES.LEADERS.CREATE',       'SERVICES.LEADERS.VIEW'),
@@ -212,7 +263,18 @@ VALUES
     ('SERVICES.APPOINTMENTS.VIEW',    'SERVICES.TYPES.VIEW'),
     ('SERVICES.MYSCHEDULE.EDIT',      'SERVICES.MYSCHEDULE.VIEW'),
     ('MYSERVICES.APPOINTMENTS.CREATE','MYSERVICES.APPOINTMENTS.VIEW'),
-    ('MYSERVICES.APPOINTMENTS.EDIT',  'MYSERVICES.APPOINTMENTS.VIEW');
+    ('MYSERVICES.APPOINTMENTS.EDIT',  'MYSERVICES.APPOINTMENTS.VIEW'),
+    ('GIVING.DONATIONS.CREATE',       'GIVING.DONATIONS.VIEW'),
+    ('GIVING.DONATIONS.DELETE',       'GIVING.DONATIONS.VIEW'),
+    ('GIVING.DONATIONS.EXPORT',       'GIVING.DONATIONS.VIEW'),
+    ('GIVING.DONATIONS.CREATE',       'BOOKINGS.SPONSORS.VIEW'),   -- a gift is recorded against the donor book
+    ('GIVING.NEEDS.CREATE',           'GIVING.NEEDS.VIEW'),
+    ('GIVING.NEEDS.EDIT',             'GIVING.NEEDS.VIEW'),
+    ('GIVING.REPORTS.EXPORT',         'GIVING.REPORTS.VIEW'),
+    ('GIVING.REPORTS.PRINT',          'GIVING.REPORTS.VIEW'),
+    ('GIVING.PAYMENTS.EDIT',          'GIVING.PAYMENTS.VIEW'),
+    ('MYGIVING.DONATIONS.CREATE',     'MYGIVING.DONATIONS.VIEW'),
+    ('MYGIVING.DONATIONS.EDIT',       'MYGIVING.DONATIONS.VIEW');
 
 IF EXISTS (SELECT 1 FROM @RbacDependencies d
            WHERE NOT EXISTS (SELECT 1 FROM auth.Permissions p WHERE p.Code = d.Code)
@@ -258,11 +320,17 @@ FROM (VALUES
     ('BOOKINGS.CALENDAR.APPROVE'),
     ('BOOKINGS.CALENDAR.REJECT'),
     ('BOOKINGS.CALENDAR.EDIT'),
+    ('BOOKINGS.SPONSORS.VIEW'),
     ('SERVICES.TYPES.VIEW'),
     ('SERVICES.LEADERS.VIEW'),
     ('SERVICES.APPOINTMENTS.VIEW'),
     ('SERVICES.MYSCHEDULE.VIEW'),
-    ('SERVICES.MYSCHEDULE.EDIT')
+    ('SERVICES.MYSCHEDULE.EDIT'),
+    -- Plan 09, M19: staff at the counter record gifts and see the needs; voiding, the report and
+    -- the merchant are for those who answer to the committee.
+    ('GIVING.DONATIONS.VIEW'),
+    ('GIVING.DONATIONS.CREATE'),
+    ('GIVING.NEEDS.VIEW')
 ) AS v(Code)
 UNION ALL
 SELECT 'DONOR', v.Code
@@ -273,9 +341,15 @@ FROM (VALUES
     ('MYBOOKINGS.BOOKINGS.VIEW'),
     ('MYBOOKINGS.BOOKINGS.CREATE'),
     ('MYBOOKINGS.BOOKINGS.EDIT'),
+    ('MYMEMORIAL.PLANS.VIEW'),
+    ('MYMEMORIAL.PLANS.CREATE'),
+    ('MYMEMORIAL.PLANS.EDIT'),
     ('MYSERVICES.APPOINTMENTS.VIEW'),
     ('MYSERVICES.APPOINTMENTS.CREATE'),
-    ('MYSERVICES.APPOINTMENTS.EDIT')
+    ('MYSERVICES.APPOINTMENTS.EDIT'),
+    ('MYGIVING.DONATIONS.VIEW'),
+    ('MYGIVING.DONATIONS.CREATE'),
+    ('MYGIVING.DONATIONS.EDIT')
 ) AS v(Code)
 UNION ALL
 SELECT 'PLATFORM_ADMIN', p.Code FROM @RbacPermissions p WHERE p.Scope = 'Platform'
@@ -338,7 +412,7 @@ WHEN NOT MATCHED THEN
     VALUES (NULL, 'Institution', s.RoleLevelId, s.Code, s.Name, 1, 1, 1);
 
 /*  What each template grants by default: the owner everything, the manager everything but the
-    profile, staff the calendar, the slots, the services and the profile to read, and a leader only
+    profile and the payment merchant, staff the calendar, the slots, the services and the profile to read, and a leader only
     their own schedule. A leader's schedule is nobody else's, so the owner and manager templates
     leave it out; an owner who is also a leader is given LEADER too. Each must be inside its level's
     ceiling, or the view would drop it without a word - so that is checked, not trusted.       */
@@ -348,9 +422,11 @@ INSERT @RbacTemplateGrants (RoleCode, PermissionCode)
 SELECT 'OWNER', p.Code FROM @RbacPermissions p WHERE p.Scope = 'Institution' AND p.ScreenCode <> 'SERVICES.MYSCHEDULE'
 UNION ALL
 SELECT 'MANAGER', p.Code FROM @RbacPermissions p WHERE p.Scope = 'Institution' AND p.ScreenCode <> 'SERVICES.MYSCHEDULE' AND p.Code <> 'INSTITUTION.PROFILE.EDIT'
+                                                   AND p.ScreenCode <> 'GIVING.PAYMENTS'   -- the merchant is the owner's (M19)
 UNION ALL
 SELECT 'STAFF', v.Code FROM (VALUES ('INSTITUTION.PROFILE.VIEW'), ('BOOKINGS.SLOTS.VIEW'), ('BOOKINGS.CALENDAR.VIEW'),
-                                    ('SERVICES.TYPES.VIEW'), ('SERVICES.LEADERS.VIEW'), ('SERVICES.APPOINTMENTS.VIEW')) AS v(Code)
+                                    ('BOOKINGS.SPONSORS.VIEW'), ('SERVICES.TYPES.VIEW'), ('SERVICES.LEADERS.VIEW'), ('SERVICES.APPOINTMENTS.VIEW'),
+                                    ('GIVING.DONATIONS.VIEW'), ('GIVING.DONATIONS.CREATE'), ('GIVING.NEEDS.VIEW')) AS v(Code)
 UNION ALL
 SELECT 'LEADER', v.Code FROM (VALUES ('SERVICES.MYSCHEDULE.VIEW'), ('SERVICES.MYSCHEDULE.EDIT')) AS v(Code);
 
@@ -410,9 +486,15 @@ FROM (VALUES
     ('MYBOOKINGS.BOOKINGS.VIEW'),
     ('MYBOOKINGS.BOOKINGS.CREATE'),
     ('MYBOOKINGS.BOOKINGS.EDIT'),
+    ('MYMEMORIAL.PLANS.VIEW'),
+    ('MYMEMORIAL.PLANS.CREATE'),
+    ('MYMEMORIAL.PLANS.EDIT'),
     ('MYSERVICES.APPOINTMENTS.VIEW'),
     ('MYSERVICES.APPOINTMENTS.CREATE'),
-    ('MYSERVICES.APPOINTMENTS.EDIT')
+    ('MYSERVICES.APPOINTMENTS.EDIT'),
+    ('MYGIVING.DONATIONS.VIEW'),
+    ('MYGIVING.DONATIONS.CREATE'),
+    ('MYGIVING.DONATIONS.EDIT')
 ) AS v(Code)
 UNION ALL
 SELECT 'PLATFORM_ADMIN', p.Code FROM @RbacPermissions p WHERE p.Scope = 'Platform'

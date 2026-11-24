@@ -172,6 +172,17 @@ public sealed partial class RoleManagementHandler
             return RoleChangeResult.Failed(RoleChangeFailure.InvitationNotFound);
         }
 
+        // The statuses the permissions view counts: anything else takes no new staff.
+        var takesStaff = await db.Institutions
+            .AsNoTracking()
+            .AnyAsync(i => i.Id == invitation.InstitutionId && !i.IsDeleted && (i.Status == "Active" || i.Status == "Onboarding"), cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!takesStaff)
+        {
+            return RoleChangeResult.Failed(RoleChangeFailure.InstitutionNotActive);
+        }
+
         if (Refused(invitation.Accept(userId, at)) is { } refused)
         {
             return refused;

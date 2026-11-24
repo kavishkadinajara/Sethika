@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
+using Sethika.Api.RateLimiting;
 using Sethika.Application.Abstractions;
 using Sethika.Application.Access.Language;
 using Sethika.Application.Access.Roles;
+using Sethika.Application.Bookings.Places;
+using Sethika.Application.Notifications.Devices;
+using Sethika.Domain.Bookings;
 
 namespace Sethika.Api.Endpoints;
 
@@ -19,12 +23,23 @@ internal static class MeEndpoints
 
         me.MapGet(string.Empty, GetProfileAsync);
         me.MapGet("/permissions", GetPermissionsAsync);
+        me.MapGet("/summary", GetSummaryAsync);
         me.MapPut("/language", SetLanguageAsync);
 
         // Invitations onto an institution's staff, addressed to this account (plan 04, X1-X4).
         me.MapGet("/invitations", GetInvitationsAsync);
         me.MapPost("/invitations/{id:guid}/accept", AcceptInvitationAsync);
         me.MapPost("/invitations/{id:guid}/decline", DeclineInvitationAsync);
+
+        // The places this person keeps, the heart on an institution's page (plan 07, H12).
+        me.MapGet("/places", ListPlacesAsync);
+        me.MapPut("/places/{slug}", KeepPlaceAsync).RateLimitPerUser(BookingRateLimits.PlacePerUser);
+        me.MapDelete("/places/{slug}", LetPlaceGoAsync);
+
+        // The phones this person is pushed to (plan F, F31). The token goes in the body, never the
+        // URL: URLs land in logs, and the token is what lets anyone push to that phone.
+        me.MapPut("/devices", RegisterDeviceAsync).RateLimitPerUser(DeviceRateLimits.ChangePerUser);
+        me.MapPost("/devices/remove", RemoveDeviceAsync).RateLimitPerUser(DeviceRateLimits.ChangePerUser);
 
         return app;
     }
@@ -82,14 +97,125 @@ internal static class MeEndpoints
         var effective = await permissions
             .GetEffectivePermissionsAsync(userId, currentUser.InstitutionId, cancellationToken);
 
+        // No institution in the answer: its internal Id is not for clients (CLAUDE.md, QA DEF-005),
+        // and the session already names its institution by slug.
         return Results.Ok(new
         {
             userId,
-            institutionId = currentUser.InstitutionId,
             isPlatform = currentUser.IsPlatform,
             permissions = effective.Codes.OrderBy(c => c, StringComparer.Ordinal),
         });
     }
+
+    /// <summary>The counts beside the sidebar's links (plan 05, R3).</summary>
+    /// <remarks>
+    /// A count is read only when the caller holds the permission of the screen it counts, and is
+    /// <c>null</c> (no badge) otherwise: a count is itself information, so it is guarded like the
+    /// screen. Never cached; the sidebar asks again on focus and once a minute.
+    /// </remarks>
+    private static async Task<IResult> GetSummaryAsync(
+        HttpContext httpContext,
+        ICurrentUserContext currentUser,
+        IPermissionService permissions,
+        IShellQueries shell,
+        IAccessQueries access,
+        TimeProvider timeProvider,
+        CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        var held = await permissions.GetEffectivePermissionsAsync(userId, currentUser.InstitutionId, cancellationToken);
+        var today = SriLankaTime.Today(timeProvider.GetUtcNow().UtcDateTime);
+
+        int? bookingsToAnswer = currentUser.InstitutionId is { } institutionId && held.Allows("BOOKINGS.CALENDAR.APPROVE")
+            ? await shell.CountBookingsToAnswerAsync(institutionId, today, cancellationToken)
+            : null;
+
+        int? registrationsWaiting = held.Allows("ONBOARDING.REQUESTS.VIEW")
+            ? await shell.CountRegistrationsWaitingAsync(cancellationToken)
+            : null;
+
+        var invitations = (await access.GetMyInvitationsAsync(userId, cancellationToken)).Count;
+
+        httpContext.Response.Headers.CacheControl = "no-store";
+        return Results.Ok(new { bookingsToAnswer, registrationsWaiting, invitations });
+    }
+
+    /// <summary><c>org.Institutions.Slug</c>'s length; anything longer cannot be one.</summary>
+    private const int MaxSlugLength = 150;
+
+    /// <summary>The active places the caller keeps, the newest first.</summary>
+    private static async Task<IResult> ListPlacesAsync(ICurrentUserContext currentUser, IDonorBookingQueries queries, CancellationToken cancellationToken) =>
+        currentUser.UserId is { } userId
+            ? Results.Ok(await queries.ListPlacesAsync(userId, cancellationToken))
+            : Results.Unauthorized();
+
+    /// <summary>Keeps a place: 204, also when it was kept already; 404 for no active institution by that slug.</summary>
+    private static async Task<IResult> KeepPlaceAsync(string slug, ICurrentUserContext currentUser, FavoritePlacesHandler handler, CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        return IsSlug(slug) && await handler.AddAsync(userId, slug.Trim(), cancellationToken) is null
+            ? Results.NoContent()
+            : ApiErrors.Error(StatusCodes.Status404NotFound, FavoritePlacesHandler.NotFound);
+    }
+
+    /// <summary>Registers or refreshes the caller's phone: 204, or 400 with what was wrong.</summary>
+    private static async Task<IResult> RegisterDeviceAsync(
+        [FromBody] RegisterDeviceBody body,
+        ICurrentUserContext currentUser,
+        MobileDevicesHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        return await handler.RegisterAsync(userId, body.ExpoPushToken, body.Platform, body.AppVersion, cancellationToken) is { } error
+            ? ApiErrors.Error(StatusCodes.Status400BadRequest, error)
+            : Results.NoContent();
+    }
+
+    /// <summary>Stops pushes to one of the caller's phones: 204 whether or not it was theirs.</summary>
+    private static async Task<IResult> RemoveDeviceAsync(
+        [FromBody] RemoveDeviceBody body,
+        ICurrentUserContext currentUser,
+        MobileDevicesHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        await handler.RemoveAsync(userId, body.ExpoPushToken, cancellationToken);
+        return Results.NoContent();
+    }
+
+    /// <summary>Lets a place go: 204 whether or not it was kept.</summary>
+    private static async Task<IResult> LetPlaceGoAsync(string slug, ICurrentUserContext currentUser, FavoritePlacesHandler handler, CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (IsSlug(slug))
+        {
+            await handler.RemoveAsync(userId, slug.Trim(), cancellationToken);
+        }
+
+        return Results.NoContent();
+    }
+
+    private static bool IsSlug(string slug) => !string.IsNullOrWhiteSpace(slug) && slug.Trim().Length <= MaxSlugLength;
 
     /// <summary>The caller's invitations still waiting for an answer.</summary>
     /// <remarks>Their own only: the user is the token's, and RLS shows an invitation to its invitee.</remarks>

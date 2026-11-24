@@ -49,3 +49,12 @@ export const DONOR: SessionState = {
   institutions: [],
   activeInstitution: null,
 };
+
+/** Staff acting for an institution: sign-in puts anyone with exactly one straight into it. */
+export const STAFF: SessionState = {
+  status: "authenticated",
+  accessToken: "access",
+  expiresAt: Number.MAX_SAFE_INTEGER,
+  institutions: [{ slug: "alpha-temple", name: "Alpha Temple" }],
+  activeInstitution: "alpha-temple",
+};

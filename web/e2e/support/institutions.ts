@@ -105,6 +105,17 @@ export async function bookingBy(baseURL: string, donor: Account, mealSlot: strin
   }
 }
 
+/** Puts <institution> in the public list, which takes a meal to offer; `unlist` takes it out again. */
+export async function listed(baseURL: string, institution: Institution) {
+  await slotOf(baseURL, institution);
+  const api = await apiAs(baseURL, institution.owner);
+  try {
+    await ok(await api.put("/api/institution/listing", { data: { listed: true } }), "List");
+  } finally {
+    await api.dispose();
+  }
+}
+
 /** Takes <institution> out of the public list again, so runs do not fill it with test places. */
 export async function unlist(baseURL: string, institution: Institution) {
   const api = await apiAs(baseURL, institution.owner);

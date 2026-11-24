@@ -1,0 +1,54 @@
+@startuml
+!include ../style.iuml
+autonumber
+title Sequence 1 — Donor sign-up with phone OTP
+
+actor Donor
+participant "Web / mobile app" as App
+participant "POST /api/auth/otp/*\nPOST /api/auth/signup" as Api
+participant "OtpService" as Otp
+database "Redis" as Redis
+participant "SMS gateway" as Sms
+participant "SignUpDonorHandler" as H
+database "SQL Server" as Sql
+
+Donor -> App : phone number
+App -> Api : otp/request (purpose = Signup)
+Api -> Otp : request code (rate limited per client and per phone)
+Otp -> Redis : TTL of outstanding code (60 s resend cooldown)
+Otp -> Redis : HMSET otp:{purpose}:{phone}\nh = SHA-256(code), att = 0, EXPIRE 5 min
+note right of Redis : only the hash is stored;\nthe code never touches SQL
+Otp -> Sql : SMS template for purpose + language
+Otp -> Sql : notify.Notifications row (DedupKey) before sending
+Otp -> Sms : "Your Sethika code is …"
+Sms --> Donor : SMS
+
+Donor -> App : 6-digit code
+App -> Api : otp/verify
+Api -> Otp : verify
+Otp -> Redis : compare hash, count attempt
+alt wrong code
+  Otp --> App : 400 (after 5 wrong attempts: otp_attempts_exhausted)
+else right code
+  Otp -> Redis : delete code, store otp:ticket:{purpose}:{phone}\n= SHA-256(ticket), 15 min
+  Otp --> App : 200 { ticket }
+end
+
+Donor -> App : name, password, consent to legal documents
+App -> Api : signup { ticket, ... }
+Api -> H : SignUpAsync
+H -> H : validate phone, name, email, language,\npassword policy, consent (no ticket spent yet)
+H -> Otp : RedeemTicketAsync
+Otp -> Redis : Lua script: delete ticket only if hash matches (atomic)
+alt ticket invalid / already used
+  H --> App : 400
+end
+H -> Sql : phone already registered?
+alt yes
+  H --> App : 409 already_registered\n(said only to someone who proved they hold the phone)
+end
+H -> Sql : one SaveChanges (one transaction):\nauth.Users (PhoneConfirmed), DonorProfiles,\nUserRoles (DONOR), UserConsents,\nOutboxMessage DonorSignedUp
+H --> Api : user
+Api -> Api : issue JWT + refresh token (new family)
+Api --> App : 201, refresh token in httpOnly cookie\n(mobile: in the body, kept in secure store)
+@enduml

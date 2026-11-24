@@ -20,17 +20,22 @@ public sealed partial class UserTextMessages(
 {
     private const string FallbackLanguage = "en";
 
-    private const string Sql =
+    private const string TemplatesSql =
         """
+        SELECT t.Language AS Language,
+               t.Body     AS Body
+        FROM notify.Templates AS t
+        WHERE t.Code = @code AND t.Channel = 'SMS' AND t.IsActive = 1;
+        """;
+
+    private const string Sql =
+        $"""
         SELECT u.PhoneNumber       AS PhoneNumber,
                u.PreferredLanguage AS Language
         FROM auth.Users AS u
         WHERE u.Id = @userId AND u.IsDeleted = 0 AND u.PhoneConfirmed = 1 AND u.PhoneNumber IS NOT NULL;
 
-        SELECT t.Language AS Language,
-               t.Body     AS Body
-        FROM notify.Templates AS t
-        WHERE t.Code = @code AND t.Channel = 'SMS' AND t.IsActive = 1;
+        {TemplatesSql}
         """;
 
     public async Task<UserTextOutcome> SendAsync(
@@ -63,22 +68,48 @@ public sealed partial class UserTextMessages(
             return UserTextOutcome.NoPhone;
         }
 
-        var body = templates.Find(t => t.Language == recipient.Language)?.Body;
+        await sms.SendAsync(recipient.PhoneNumber, Fill(templates, templateCode, recipient.Language, values), dedupKey, cancellationToken).ConfigureAwait(false);
+        return UserTextOutcome.Sent;
+    }
+
+    public async Task SendToPhoneAsync(
+        string phoneNumber,
+        string language,
+        string templateCode,
+        IReadOnlyDictionary<string, string> values,
+        string dedupKey,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(phoneNumber);
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateCode);
+        ArgumentNullException.ThrowIfNull(values);
+        ArgumentException.ThrowIfNullOrWhiteSpace(dedupKey);
+
+        List<Template> templates;
+        await using (var connection = await connections.OpenConnectionAsync(cancellationToken).ConfigureAwait(false))
+        {
+            templates = (await connection.QueryAsync<Template>(new CommandDefinition(
+                TemplatesSql,
+                new { code = templateCode },
+                cancellationToken: cancellationToken)).ConfigureAwait(false)).AsList();
+        }
+
+        await sms.SendAsync(phoneNumber, Fill(templates, templateCode, language, values), dedupKey, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>The template in <paramref name="language"/>, or English, with every placeholder filled in.</summary>
+    private string Fill(List<Template> templates, string templateCode, string language, IReadOnlyDictionary<string, string> values)
+    {
+        var body = templates.Find(t => t.Language == language)?.Body;
         if (body is null)
         {
             body = templates.Find(t => t.Language == FallbackLanguage)?.Body
                    ?? throw new InvalidOperationException(
-                       $"No active SMS template {templateCode} in '{recipient.Language}' or in English. Seed notify.Templates.");
-            LogFellBack(logger, templateCode, recipient.Language);
+                       $"No active SMS template {templateCode} in '{language}' or in English. Seed notify.Templates.");
+            LogFellBack(logger, templateCode, language);
         }
 
-        foreach (var (name, value) in values)
-        {
-            body = body.Replace("{" + name + "}", value, StringComparison.Ordinal);
-        }
-
-        await sms.SendAsync(recipient.PhoneNumber, body, dedupKey, cancellationToken).ConfigureAwait(false);
-        return UserTextOutcome.Sent;
+        return TemplateText.Fill(body, values);
     }
 
     private sealed record Recipient(string PhoneNumber, string Language);

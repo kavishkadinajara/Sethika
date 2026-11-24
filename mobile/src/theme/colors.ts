@@ -1,6 +1,9 @@
+import type { ViewStyle } from "react-native";
+
 /*  The web's semantic colour tokens (web/app/globals.css), with the same values, so a screen
     looks like the same product on a phone and in a browser. Contrast was measured there for
-    both themes; change a value in both places or neither.                                   */
+    both themes. colors.test.ts reads that file and fails if the two differ, so change a value
+    in both places or neither. Dark is true black with Offering Gold as primary (plan 05, R1). */
 
 export const colors = {
   light: {
@@ -16,30 +19,38 @@ export const colors = {
     primaryStrong: "#0f3d2e",
     onPrimary: "#f7f4ec",
     accent: "#e0a33e",
+    accentStrong: "#c98a2a",
     onAccent: "#0e2a21",
     danger: "#b42318",
+    dangerStrong: "#8f1c13",
     dangerSoft: "#fbeae7",
+    onDanger: "#ffffff",
     success: "#1d6b4f",
     successSoft: "#e5f1ea",
+    scrim: "rgba(14, 42, 33, 0.45)",
   },
   dark: {
-    canvas: "#0e2a21",
-    surface: "#15382d",
-    subtle: "#1c4237",
-    hairline: "#2a5345",
-    line: "#6e9384",
-    fg: "#f2eee3",
-    muted: "#a9beb4",
-    brand: "#82d0ac",
-    primary: "#79cba5",
-    primaryStrong: "#99d9bb",
-    onPrimary: "#0b231c",
+    canvas: "#000000",
+    surface: "#0c0c0c",
+    subtle: "#161616",
+    hairline: "#242424",
+    line: "#6b665c",
+    fg: "#f4f1e8",
+    muted: "#a39e92",
+    brand: "#e0a33e",
+    primary: "#e0a33e",
+    primaryStrong: "#f0c273",
+    onPrimary: "#0a0a0a",
     accent: "#e6ae4f",
-    onAccent: "#0e2a21",
+    accentStrong: "#f0c273",
+    onAccent: "#0a0a0a",
     danger: "#ff9a8c",
-    dangerSoft: "#3d1f1a",
+    dangerStrong: "#ffb7ad",
+    dangerSoft: "#2a1512",
+    onDanger: "#2a0c08",
     success: "#86d6ae",
-    successSoft: "#183f32",
+    successSoft: "#0f2a1f",
+    scrim: "rgba(0, 0, 0, 0.72)",
   },
 } as const;
 
@@ -69,11 +80,23 @@ export const cup = {
   borderBottomRightRadius: 18,
 } as const;
 
-/** Warm depth (signature 3): one level, a green-tinted shadow, never grey. */
-export const lift = {
-  shadowColor: brand.ink,
-  shadowOpacity: 0.1,
-  shadowRadius: 14,
-  shadowOffset: { width: 0, height: 6 },
-  elevation: 3,
-} as const;
+/*  Warm depth (signature 3), one level. Light: a green-tinted shadow, never grey. Dark (F20,
+    plan 05 R5): a 1 px light top edge and a black shadow, the web's --shadow-lift, because a
+    green shadow on black reads as mud. The edge is an inset shadow, which needs Android 10; on
+    an older phone the card keeps its hairline border. Read it through useLift().             */
+export const lifts = {
+  light: {
+    shadowColor: brand.ink,
+    shadowOpacity: 0.1,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  dark: {
+    boxShadow: [
+      { inset: true, offsetX: 0, offsetY: 1, blurRadius: 0, color: "rgba(255, 255, 255, 0.07)" },
+      { offsetX: 0, offsetY: 1, blurRadius: 2, color: "rgba(0, 0, 0, 0.6)" },
+      { offsetX: 0, offsetY: 14, blurRadius: 30, spreadDistance: -18, color: "rgba(0, 0, 0, 0.9)" },
+    ],
+  },
+} as const satisfies Record<"light" | "dark", ViewStyle>;

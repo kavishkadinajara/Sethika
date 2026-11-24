@@ -43,8 +43,29 @@ public class Booking
     public string? InMemoryOf { get; set; }
     public string? Notes { get; set; }
 
-    /// <summary>Always <c>Online</c> in plan 03; staff booking for a donor is cut (§4).</summary>
+    /// <summary>
+    /// <c>Online</c> when the donor booked it, <c>Recurring</c> when the yearly job did (plan 07, H2),
+    /// <c>Memorial</c> when the donor booked it for an observance in a memorial plan (H6).
+    /// </summary>
     public string Source { get; set; } = OnlineSource;
+
+    /// <summary>The memorial plan it was booked for: by the donor from an observance, or by the yearly job for one.</summary>
+    public int? MemorialPlanId { get; set; }
+
+    /// <summary>The observance it was booked for; <see langword="null"/> on a year the yearly job made.</summary>
+    public short? MemorialRuleId { get; set; }
+
+    /// <summary>The yearly booking this one belongs to: the one it started, or the one that made it.</summary>
+    public int? RecurringBookingId { get; set; }
+
+    /// <summary>Set to add a new yearly booking with this one, in the same save.</summary>
+    public RecurringBooking? RecurringBooking { get; set; }
+
+    /// <summary>The institution's donor it is for: a standing day's sponsor (plan 08, K3).</summary>
+    public int? InstitutionDonorId { get; set; }
+
+    /// <summary>The standing sponsorship whose day it is (K3).</summary>
+    public int? StandingSponsorshipId { get; set; }
 
     public string Status { get; private set; } = BookingStatus.Requested;
     public Guid CreatedBy { get; set; }
@@ -62,6 +83,15 @@ public class Booking
 
     /// <summary><c>booking.Bookings.Source</c> for a donor booking on the site.</summary>
     public const string OnlineSource = "Online";
+
+    /// <summary><c>booking.Bookings.Source</c> for a year's booking made by the yearly job.</summary>
+    public const string RecurringSource = "Recurring";
+
+    /// <summary><c>booking.Bookings.Source</c> for a donor booking made for a memorial plan's observance.</summary>
+    public const string MemorialSource = "Memorial";
+
+    /// <summary><c>booking.Bookings.Source</c> for a day of an institution's standing sponsorship (plan 08, K3).</summary>
+    public const string StandingSource = "Standing";
 
     /// <summary>The longest reject or cancel reason: <c>RejectReason</c> and <c>CancelReason</c> are <c>NVARCHAR(300)</c>.</summary>
     public const int MaxReason = 300;
@@ -117,6 +147,62 @@ public class Booking
         return booking;
     }
 
+    /// <summary>
+    /// A day of <paramref name="sponsorship"/>, booked by the institution for its own donor (plan 08,
+    /// K3): <see cref="BookingStatus.Approved"/> at once, whatever the slot's approval setting, because
+    /// the institution made the arrangement itself.
+    /// </summary>
+    /// <param name="donorUserId">The donor's account when the donor book links one (K14), so the day is in their My bookings.</param>
+    /// <param name="madeBy">Who it is recorded as made by: the staff member who set the sponsorship up.</param>
+    /// <remarks>Bookability (<see cref="MealSlotRules"/>) and the place on the slot-day are the caller's to have checked.</remarks>
+    public static Booking Standing(
+        string bookingNo,
+        StandingSponsorship sponsorship,
+        long slotInstanceId,
+        Guid? donorUserId,
+        string donorName,
+        string donorPhone,
+        Guid madeBy,
+        DateTime now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bookingNo);
+        ArgumentNullException.ThrowIfNull(sponsorship);
+        ArgumentException.ThrowIfNullOrWhiteSpace(donorName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(donorPhone);
+
+        var booking = new Booking
+        {
+            BookingNo = bookingNo,
+            InstitutionId = sponsorship.InstitutionId,
+            SlotInstanceId = slotInstanceId,
+            DonorUserId = donorUserId,
+            InstitutionDonorId = sponsorship.InstitutionDonorId,
+            StandingSponsorshipId = sponsorship.Id,
+            Source = StandingSource,
+            DonorName = donorName,
+            DonorPhone = donorPhone,
+            Headcount = sponsorship.Headcount,
+            FulfilmentMode = sponsorship.FulfilmentMode,
+            InMemoryOf = sponsorship.InMemoryOf,
+            Status = BookingStatus.Approved,
+            CreatedBy = madeBy,
+            CreatedAt = now,
+            DecidedBy = madeBy,
+            DecidedAt = now,
+        };
+
+        booking.StatusHistory.Add(new BookingStatusChange
+        {
+            FromStatus = null,
+            ToStatus = BookingStatus.Approved,
+            ChangedBy = madeBy,
+            ChangedAt = now,
+            Comment = "A day of the institution's standing sponsorship.",
+        });
+
+        return booking;
+    }
+
     // ------------------------------------------------------------------ the institution's decision
 
     /// <summary>Requested → Approved.</summary>
@@ -162,7 +248,8 @@ public class Booking
 
     /// <summary>
     /// Requested or Approved → Cancelled, by the donor who booked, until the end of the day before
-    /// the meal (Q1). After that only the institution can. Gives the place back.
+    /// the meal (Q1). After that only the institution can. Gives the place back. A regular day is not
+    /// cancelled but let go (plan 08, K24): the skip records the day, a cancel would not.
     /// </summary>
     /// <param name="slotDate">The booking's slot-day.</param>
     /// <param name="today">Today in Sri Lanka (<see cref="SriLankaTime"/>).</param>
@@ -176,6 +263,11 @@ public class Booking
         if (Status is not (BookingStatus.Requested or BookingStatus.Approved))
         {
             return BookingResult.Fail(BookingErrors.InvalidTransition);
+        }
+
+        if (StandingSponsorshipId is not null)
+        {
+            return BookingResult.Fail(BookingErrors.RegularDay);
         }
 
         if (!DonorMayStillCancel(slotDate, today))
@@ -198,8 +290,9 @@ public class Booking
     /// cancel button.
     /// </summary>
     /// <param name="today">Today in Sri Lanka (<see cref="SriLankaTime"/>).</param>
-    public static bool DonorMayCancel(string status, DateOnly slotDate, DateOnly today) =>
-        status is BookingStatus.Requested or BookingStatus.Approved && DonorMayStillCancel(slotDate, today);
+    /// <param name="regular">It is a standing day, so it is let go instead.</param>
+    public static bool DonorMayCancel(string status, DateOnly slotDate, DateOnly today, bool regular) =>
+        !regular && status is BookingStatus.Requested or BookingStatus.Approved && DonorMayStillCancel(slotDate, today);
 
     /// <summary>Q1: until the end of the day before the meal.</summary>
     private static bool DonorMayStillCancel(DateOnly slotDate, DateOnly today) => today < slotDate;

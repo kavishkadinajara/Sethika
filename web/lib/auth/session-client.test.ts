@@ -31,6 +31,7 @@ function sessionBody(accessToken: string, now: number, ttl = 15 * MINUTE) {
 /** A client wired to a fake transport, cookie jar and clock that the test controls. */
 function harness() {
   const calls: Call[] = [];
+  const inits: RequestInit[] = [];
   const clock = { now: T0 };
   const jar = { csrf: "csrf-1" as string | null };
   let handler: Handler = () => json(500, { code: "unscripted" });
@@ -44,6 +45,7 @@ function harness() {
       csrf: headers.get(CSRF_HEADER),
     };
     calls.push(call);
+    inits.push(init);
     return handler(call);
   });
 
@@ -58,6 +60,7 @@ function harness() {
   return {
     client,
     calls,
+    inits,
     clock,
     jar,
     sleep,
@@ -132,7 +135,8 @@ describe("the fetch wrapper", () => {
     expect(response.status).toBe(200);
     expect(h.calls.map((c) => [c.path, c.bearer])).toEqual([
       ["/api/bookings/calendar", "token-1"],
-      ["/api/auth/session/refresh", null],
+      // The token in hand goes with the refresh, to carry a step-up it holds (plan 09, M28).
+      ["/api/auth/session/refresh", "token-1"],
       ["/api/bookings/calendar", "token-2"],
     ]);
   });
@@ -151,7 +155,7 @@ describe("the fetch wrapper", () => {
     );
     // Hold the refresh open until every call has been refused and is waiting on it.
     await vi.waitFor(() => {
-      expect(h.calls.filter((c) => c.bearer === "token-1")).toHaveLength(5);
+      expect(h.calls.filter((c) => c.bearer === "token-1" && !c.path.endsWith("/refresh"))).toHaveLength(5);
       expect(h.refreshes().length).toBeGreaterThan(0);
     });
     refreshAnswer.resolve(sessionBody("token-2", h.clock.now));
@@ -175,6 +179,34 @@ describe("the fetch wrapper", () => {
     expect(h.client.getState()).toEqual({ status: "anonymous" });
     expect(h.to("/api/me/permissions")).toHaveLength(1);
     expect(h.refreshes()).toHaveLength(1);
+  });
+});
+
+describe("rotations outlive the page (A19)", () => {
+  /*  A page left while its refresh is in flight: the server has rotated the cookie, and a plain
+      fetch is cancelled with the page, so the browser never stores the successor and the next
+      page presents the spent token. keepalive lets the request finish and its Set-Cookie land. */
+  it("every rotation is sent with keepalive, and nothing else is", async () => {
+    const h = harness();
+    await signedIn(h);
+    h.inits.length = 0;
+    h.serve((call) => (call.path.startsWith("/api/auth/session/") ? sessionBody("token-2", h.clock.now) : json(200, {})));
+
+    h.clock.now += 20 * MINUTE;
+    await h.client.fetch("/api/me");
+    await h.client.switchInstitution("kandy-elders-home");
+    await h.client.switchToPersonal();
+
+    const rotations = h.calls
+      .map((call, i) => ({ path: call.path, keepalive: h.inits[i].keepalive === true }))
+      .filter((c) => c.path !== "/api/me");
+    expect(rotations.map((r) => r.path)).toEqual([
+      "/api/auth/session/refresh",
+      "/api/auth/session/switch-institution",
+      "/api/auth/session/switch-personal",
+    ]);
+    expect(rotations.every((r) => r.keepalive)).toBe(true);
+    expect(h.inits[h.calls.findIndex((c) => c.path === "/api/me")].keepalive).not.toBe(true);
   });
 });
 

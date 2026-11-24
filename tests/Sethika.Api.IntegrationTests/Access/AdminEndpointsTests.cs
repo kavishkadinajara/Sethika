@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
@@ -12,9 +13,11 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.Net.Http.Headers;
 using Sethika.Api.IntegrationTests.Persistence;
+using Sethika.Application.Abstractions;
 using Sethika.Domain.Access;
 using Sethika.Infrastructure.Security;
 using StackExchange.Redis;
@@ -36,8 +39,17 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
     private const string SigningKey = "admin-endpoint-test-signing-key-at-least-32-bytes!!!";
     private const string Password = "Dana!2026Sethika";
 
+    /// <summary>org.Institutions' statuses, in the order of an institution's life.</summary>
+    private static readonly string[] InstitutionStatuses = ["Onboarding", "Active", "Suspended", "Deactivated"];
+
     private readonly List<string> _phones = [];
     private WebApplicationFactory<Program> _host = null!;
+
+    /// <summary>Per ticket issued: was its audit row already committed when Redis was asked to store it.</summary>
+    private readonly ConcurrentDictionary<(Guid User, int Institution), bool> _auditedBeforeIssue = new();
+
+    /// <summary>Users whose ticket the store refuses, as Redis does when it is unreachable.</summary>
+    private readonly ConcurrentDictionary<Guid, bool> _storeDownFor = new();
     private ConnectionMultiplexer _redis = null!;
 
     public async Task InitializeAsync()
@@ -66,8 +78,48 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
             builder.UseSetting("ConnectionStrings:Redis", database.RedisConnectionString);
             builder.UseSetting("Jwt:SigningKey", SigningKey);
             builder.ConfigureTestServices(services =>
-                services.AddSingleton<IStartupFilter>(new LoopbackConnectionStartupFilter()));
+            {
+                services.AddSingleton<IStartupFilter>(new LoopbackConnectionStartupFilter());
+
+                // The real Redis tickets, watched: each issue records whether its audit row was
+                // already committed, read on a connection of its own (RCSI: committed rows only).
+                services.RemoveAll<ISupportTickets>();
+                services.AddSingleton<ISupportTickets>(provider => new AuditWatchingTickets(
+                    ActivatorUtilities.CreateInstance<RedisSupportTickets>(provider),
+                    database.ConnectionString,
+                    _auditedBeforeIssue,
+                    _storeDownFor));
+            });
         });
+    }
+
+    private sealed class AuditWatchingTickets(
+        ISupportTickets inner,
+        string connectionString,
+        ConcurrentDictionary<(Guid User, int Institution), bool> auditedBeforeIssue,
+        ConcurrentDictionary<Guid, bool> storeDownFor) : ISupportTickets
+    {
+        public async Task<bool> IssueAsync(Guid userId, int institutionId, CancellationToken cancellationToken = default)
+        {
+            auditedBeforeIssue[(userId, institutionId)] = await AuditRowsAsync(connectionString, userId, institutionId, "SupportTicketIssued") > 0;
+            return !storeDownFor.ContainsKey(userId) && await inner.IssueAsync(userId, institutionId, cancellationToken);
+        }
+
+        public Task<bool> SpendAsync(Guid userId, int institutionId, CancellationToken cancellationToken = default) =>
+            inner.SpendAsync(userId, institutionId, cancellationToken);
+    }
+
+    /// <summary>The platform's outbox rows that record <paramref name="change"/> by <paramref name="by"/> at one institution.</summary>
+    private static async Task<int> AuditRowsAsync(string connectionString, Guid by, int institutionId, string change)
+    {
+        await using var connection = new SqlConnection(connectionString);
+        return await connection.ExecuteScalarAsync<int>(
+            """
+            SELECT COUNT(*) FROM core.OutboxMessages
+            WHERE EventType = 'PlatformAdministration' AND AggregateId = @institution
+              AND JSON_VALUE(Payload, '$.change') = @change AND JSON_VALUE(Payload, '$.by') = @by;
+            """,
+            new { institution = institutionId.ToString(CultureInfo.InvariantCulture), change, by = by.ToString("D") });
     }
 
     public async Task DisposeAsync()
@@ -186,7 +238,7 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
         using var client = NewClient();
         using var response = await client.PostAsJsonAsync("/api/auth/login", new { login = phone, password = Password });
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        var body = JsonElement.Parse(await response.Content.ReadAsStringAsync());
         var userId = Guid.Parse(new JsonWebToken(body.GetProperty("accessToken").GetString()!).GetClaim(SethikaClaimTypes.UserId).Value);
         return Parse(userId, phone, response, body);
     }
@@ -200,7 +252,7 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
         request.Headers.Add("X-CSRF-Token", session.Csrf);
         using var response = await client.SendAsync(request);
         var text = await response.Content.ReadAsStringAsync();
-        var json = text.Length > 0 ? JsonDocument.Parse(text).RootElement : default;
+        var json = text.Length > 0 ? JsonElement.Parse(text) : default;
         return response.IsSuccessStatusCode
             ? (response.StatusCode, Parse(session.UserId, session.Phone, response, json), null)
             : (response.StatusCode, null, json.ValueKind == JsonValueKind.Object && json.TryGetProperty("code", out var code) ? code.GetString() : null);
@@ -220,14 +272,14 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
     private static async Task<string?> CodeOf(HttpResponseMessage response)
     {
         var text = await response.Content.ReadAsStringAsync();
-        return text.Length > 0 && JsonDocument.Parse(text).RootElement.TryGetProperty("code", out var code) ? code.GetString() : null;
+        return text.Length > 0 && JsonElement.Parse(text).TryGetProperty("code", out var code) ? code.GetString() : null;
     }
 
     private async Task<string[]> PermissionsAsync(Session session)
     {
         using var response = await SendAsync(session, HttpMethod.Get, "/api/me/permissions");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        return [.. JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("permissions").EnumerateArray().Select(p => p.GetString()!)];
+        return [.. JsonElement.Parse(await response.Content.ReadAsStringAsync()).GetProperty("permissions").EnumerateArray().Select(p => p.GetString()!)];
     }
 
     /// <summary>An administrator, stepped up, who has just entered Alpha as support.</summary>
@@ -263,6 +315,44 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
         Assert.Contains("ACCESS.MEMBERS.EDIT", held);
         Assert.Contains("INSTITUTION.PROFILE.EDIT", held);
         Assert.DoesNotContain("PLATFORM.USERS.VIEW", held); // the platform's own hold only outside
+    }
+
+    [Fact]
+    public async Task ATicketIsStoredOnlyOnceItsAuditRowIsCommitted()
+    {
+        // Access audit, 2026-11-08: the ticket used to be stored first, so a failed save left a
+        // working way into the institution that no audit row named.
+        var admin = await LogInAsync(await AccountAsync("PLATFORM_ADMIN"));
+        await SteppedUpAsync(admin);
+
+        using (var ticket = await SendAsync(admin, HttpMethod.Post, "/api/admin/institutions/alpha-temple/support"))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, ticket.StatusCode);
+        }
+
+        Assert.True(_auditedBeforeIssue[(admin.UserId, database.AlphaInstitutionId)]);
+        Assert.Equal(1, await AuditRowsAsync(database.ConnectionString, admin.UserId, database.AlphaInstitutionId, "SupportTicketIssued"));
+        Assert.Equal(0, await AuditRowsAsync(database.ConnectionString, admin.UserId, database.AlphaInstitutionId, "SupportTicketFailed"));
+    }
+
+    [Fact]
+    public async Task ATicketTheStoreCouldNotKeep_IsRecordedAsFailed_AndOpensNothing()
+    {
+        var admin = await LogInAsync(await AccountAsync("PLATFORM_ADMIN"));
+        await SteppedUpAsync(admin);
+        _storeDownFor[admin.UserId] = true;
+
+        using (var ticket = await SendAsync(admin, HttpMethod.Post, "/api/admin/institutions/alpha-temple/support"))
+        {
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, ticket.StatusCode);
+            Assert.Equal("unavailable", await CodeOf(ticket));
+        }
+
+        Assert.Equal(1, await AuditRowsAsync(database.ConnectionString, admin.UserId, database.AlphaInstitutionId, "SupportTicketIssued"));
+        Assert.Equal(1, await AuditRowsAsync(database.ConnectionString, admin.UserId, database.AlphaInstitutionId, "SupportTicketFailed"));
+        var (entered, _, code) = await SessionPostAsync("switch-institution", admin, new { institution = "alpha-temple" });
+        Assert.Equal(HttpStatusCode.Forbidden, entered);
+        Assert.Equal("institution_not_available", code);
     }
 
     [Fact]
@@ -347,13 +437,13 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
         await SteppedUpAsync(inside);
 
         using var roles = await SendAsync(inside, HttpMethod.Get, "/api/institution/roles");
-        var owner = JsonDocument.Parse(await roles.Content.ReadAsStringAsync()).RootElement.EnumerateArray()
+        var owner = JsonElement.Parse(await roles.Content.ReadAsStringAsync()).EnumerateArray()
             .Single(r => r.GetProperty("code").GetString() == "A_OWNER");
         Assert.True(owner.GetProperty("canManage").GetBoolean());
 
         using var levels = await SendAsync(inside, HttpMethod.Get, "/api/institution/role-levels");
         Assert.Contains(
-            JsonDocument.Parse(await levels.Content.ReadAsStringAsync()).RootElement.EnumerateArray(),
+            JsonElement.Parse(await levels.Content.ReadAsStringAsync()).EnumerateArray(),
             l => l.GetProperty("level").GetString() == "OWNER");
 
         using var edited = await SendAsync(inside, HttpMethod.Put, "/api/institution/roles/A_OWNER/permissions",
@@ -460,8 +550,13 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
         Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
         Assert.Equal("already_registered", await CodeOf(again));
 
+        // The account first signs in with a texted code, which a landline never gets (QA DEF-002).
+        using var landline = await SendAsync(admin, HttpMethod.Post, "/api/admin/users", new { fullName = "Office Line", phone = "0112345678", language = "en" });
+        Assert.Equal(HttpStatusCode.BadRequest, landline.StatusCode);
+        Assert.Equal("invalid_phone_number", await CodeOf(landline));
+
         using var found = await SendAsync(admin, HttpMethod.Get, "/api/admin/users?search=Made%20By%20Admin");
-        Assert.Contains(JsonDocument.Parse(await found.Content.ReadAsStringAsync()).RootElement.EnumerateArray(),
+        Assert.Contains(JsonElement.Parse(await found.Content.ReadAsStringAsync()).GetProperty("items").EnumerateArray(),
             u => u.GetProperty("status").GetString() == "PendingVerification");
     }
 
@@ -550,13 +645,285 @@ public sealed class AdminEndpointsTests(SethikaTestDatabase database) : IAsyncLi
         var admin = await LogInAsync(await AccountAsync("PLATFORM_ADMIN"));
 
         using var all = await SendAsync(admin, HttpMethod.Get, "/api/admin/institutions?search=alpha");
-        var rows = JsonDocument.Parse(await all.Content.ReadAsStringAsync()).RootElement.EnumerateArray().ToList();
+        var rows = JsonElement.Parse(await all.Content.ReadAsStringAsync()).GetProperty("items").EnumerateArray().ToList();
 
         var alpha = Assert.Single(rows, r => r.GetProperty("slug").GetString() == "alpha-temple");
         Assert.Equal("Active", alpha.GetProperty("status").GetString());
         Assert.DoesNotContain(rows, r => r.GetProperty("slug").GetString() == "beta-temple");
 
         using var wildcard = await SendAsync(admin, HttpMethod.Get, "/api/admin/institutions?search=%25");
-        Assert.Empty(JsonDocument.Parse(await wildcard.Content.ReadAsStringAsync()).RootElement.EnumerateArray());
+        Assert.Empty(JsonElement.Parse(await wildcard.Content.ReadAsStringAsync()).GetProperty("items").EnumerateArray());
+    }
+
+    // ------------------------------------------------------------------ the lists' pages, filters and order (plan 05, X4)
+
+    /// <summary>A page of a list as "name|name ... of total", its rows read by <paramref name="name"/>.</summary>
+    private async Task<string> PageAsync(Session session, string path, string name)
+    {
+        using var response = await SendAsync(session, HttpMethod.Get, path);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = JsonElement.Parse(await response.Content.ReadAsStringAsync());
+        var rows = page.GetProperty("items").EnumerateArray().Select(r => r.GetProperty(name).GetString());
+        return $"{string.Join("|", rows)} of {page.GetProperty("total").GetInt32()}";
+    }
+
+    [Fact]
+    public async Task TheAccountsListIsPaged_FilteredByKindAndStatus_AndSortedNewestOrByName()
+    {
+        const string AsPlatform = "EXEC sys.sp_set_session_context @key = N'IsPlatform', @value = 1;";
+        var admin = await LogInAsync(await AccountAsync("PLATFORM_ADMIN"));
+        var cara = await AccountAsync();
+        var amal = await AccountAsync();
+        var bimal = await AccountAsync("PLATFORM_REVIEWER");
+
+        // Distinct names and creation times, so every order is fixed; Amal is suspended.
+        await ExecuteAsync(
+            AsPlatform +
+            """
+            UPDATE auth.Users SET FullName = N'Pager Cara',  CreatedAt = DATEADD(MINUTE, -3, SYSUTCDATETIME()) WHERE PhoneNumber = @cara;
+            UPDATE auth.Users SET FullName = N'Pager Amal',  CreatedAt = DATEADD(MINUTE, -2, SYSUTCDATETIME()), Status = 'Suspended' WHERE PhoneNumber = @amal;
+            UPDATE auth.Users SET FullName = N'Pager Bimal', CreatedAt = DATEADD(MINUTE, -1, SYSUTCDATETIME()) WHERE PhoneNumber = @bimal;
+            """,
+            new { cara, amal, bimal });
+
+        const string Users = "/api/admin/users?search=Pager";
+        Assert.Equal("Pager Bimal|Pager Amal|Pager Cara of 3", await PageAsync(admin, Users, "fullName"));
+        Assert.Equal("Pager Amal|Pager Bimal|Pager Cara of 3", await PageAsync(admin, Users + "&sort=name", "fullName"));
+        Assert.Equal("Pager Amal|Pager Cara of 2", await PageAsync(admin, Users + "&kind=Donor", "fullName"));
+        Assert.Equal("Pager Bimal of 1", await PageAsync(admin, Users + "&kind=PlatformStaff", "fullName"));
+        Assert.Equal("Pager Amal of 1", await PageAsync(admin, Users + "&status=Suspended", "fullName"));
+        Assert.Equal("Pager Cara of 1", await PageAsync(admin, Users + "&kind=Donor&status=Active", "fullName"));
+
+        // The second page of two, and a page past the end that still knows the total.
+        Assert.Equal("Pager Cara of 3", await PageAsync(admin, Users + "&sort=name&pageSize=2&page=2", "fullName"));
+        Assert.Equal(" of 3", await PageAsync(admin, Users + "&page=9", "fullName"));
+
+        foreach (var (query, code) in new[]
+        {
+            ("kind=Robot", "invalid_filter"), ("status=Gone", "invalid_filter"), ("sort=oldest", "invalid_filter"),
+            ("page=0", "invalid_page"), ("pageSize=0", "invalid_page"), ("pageSize=101", "invalid_page"),
+        })
+        {
+            using var refused = await SendAsync(admin, HttpMethod.Get, $"/api/admin/users?{query}");
+            Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+            Assert.Equal(code, await CodeOf(refused));
+        }
+    }
+
+    [Fact]
+    public async Task TheAccountsKindAndInstitution_AreReadFromTheRolesHeldNow_NotTheStoredType()
+    {
+        const string AsPlatform = "EXEC sys.sp_set_session_context @key = N'IsPlatform', @value = 1;";
+        var admin = await LogInAsync(await AccountAsync("PLATFORM_ADMIN"));
+        // All three institution holders are stored as donors, as approval and invitations leave them.
+        var staff = await AccountAsync(alphaRole: "A_OWNER");
+        var lapsed = await AccountAsync(alphaRole: "A_OWNER");
+        var platform = await AccountAsync("PLATFORM_REVIEWER", "A_OWNER");
+        var donor = await AccountAsync();
+
+        await ExecuteAsync(
+            AsPlatform +
+            """
+            UPDATE auth.Users SET FullName = N'Kinded Staff'    WHERE PhoneNumber = @staff;
+            UPDATE auth.Users SET FullName = N'Kinded Lapsed'   WHERE PhoneNumber = @lapsed;
+            UPDATE auth.Users SET FullName = N'Kinded Platform' WHERE PhoneNumber = @platform;
+            UPDATE auth.Users SET FullName = N'Kinded Donor'    WHERE PhoneNumber = @donor;
+            UPDATE ur SET ValidTo = DATEADD(DAY, -1, SYSUTCDATETIME())
+            FROM auth.UserRoles ur JOIN auth.Users u ON u.Id = ur.UserId
+            WHERE u.PhoneNumber = @lapsed AND ur.InstitutionId IS NOT NULL;
+            """,
+            new { staff, lapsed, platform, donor });
+
+        const string Users = "/api/admin/users?search=Kinded&sort=name";
+        Assert.Equal("Donor|Donor|PlatformStaff|InstitutionStaff of 4", await PageAsync(admin, Users, "userType"));
+        Assert.Equal("Kinded Staff of 1", await PageAsync(admin, Users + "&kind=InstitutionStaff", "fullName"));
+        Assert.Equal("Kinded Donor|Kinded Lapsed of 2", await PageAsync(admin, Users + "&kind=Donor", "fullName"));
+
+        // An institution's people: those holding one of its roles now, platform staff among them.
+        Assert.Equal("Kinded Platform|Kinded Staff of 2", await PageAsync(admin, Users + "&institution=alpha-temple", "fullName"));
+        Assert.Equal("Kinded Staff of 1", await PageAsync(admin, Users + "&institution=alpha-temple&kind=InstitutionStaff", "fullName"));
+        Assert.Equal(" of 0", await PageAsync(admin, Users + "&institution=beta-temple", "fullName"));
+
+        using var refused = await SendAsync(admin, HttpMethod.Get, $"/api/admin/users?institution={new string('x', 151)}");
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Equal("invalid_filter", await CodeOf(refused));
+    }
+
+    [Fact]
+    public async Task TheInstitutionsListIsPaged_FilteredByStatusTypeAndDistrict_AndSortedByNameOrNewest()
+    {
+        const string AsPlatform = "EXEC sys.sp_set_session_context @key = N'IsPlatform', @value = 1;";
+        var admin = await LogInAsync(await AccountAsync("PLATFORM_ADMIN"));
+        var beta = database.BetaInstitutionId;
+
+        // The seed gives both temples one type and one district; Beta moves to others, is suspended,
+        // and is approved a day after Alpha. All of it is put back after.
+        (string Status, int TypeId, int DistrictId, DateTime ApprovedAt) original;
+        await using (var connection = new SqlConnection(database.ConnectionString))
+        {
+            await connection.OpenAsync();
+            original = await connection.QuerySingleAsync<(string, int, int, DateTime)>(
+                AsPlatform + "SELECT Status, CAST(InstitutionTypeId AS INT), CAST(DistrictId AS INT), ApprovedAt FROM org.Institutions WHERE Id = @beta;",
+                new { beta });
+        }
+
+        var codes = await ScalarAsync<string>(
+            AsPlatform +
+            """
+            SELECT CONCAT(t.Code, '|', d.Code, '|',
+                          (SELECT TOP (1) t2.Code FROM org.InstitutionTypes t2 WHERE t2.Id <> t.Id ORDER BY t2.Id), '|',
+                          (SELECT TOP (1) d2.Code FROM core.Districts d2 WHERE d2.Id <> d.Id ORDER BY d2.Id))
+            FROM org.Institutions i JOIN org.InstitutionTypes t ON t.Id = i.InstitutionTypeId JOIN core.Districts d ON d.Id = i.DistrictId
+            WHERE i.Id = @beta;
+            """,
+            new { beta });
+        var (type, district, otherType, otherDistrict) = codes.Split('|') is [var a, var b, var c, var d] ? (a, b, c, d) : throw new InvalidOperationException(codes);
+
+        try
+        {
+            await ExecuteAsync(
+                AsPlatform +
+                """
+                UPDATE org.Institutions
+                SET Status = 'Suspended',
+                    InstitutionTypeId = (SELECT Id FROM org.InstitutionTypes WHERE Code = @otherType),
+                    DistrictId = (SELECT Id FROM core.Districts WHERE Code = @otherDistrict),
+                    ApprovedAt = DATEADD(DAY, 1, (SELECT ApprovedAt FROM org.Institutions WHERE Id = @alpha))
+                WHERE Id = @beta;
+                """,
+                new { beta, alpha = database.AlphaInstitutionId, otherType, otherDistrict });
+
+            const string List = "/api/admin/institutions";
+            Assert.Equal("alpha-temple|beta-temple of 2", await PageAsync(admin, List, "slug"));
+            Assert.Equal("beta-temple|alpha-temple of 2", await PageAsync(admin, List + "?sort=newest", "slug"));
+            Assert.Equal("beta-temple of 2", await PageAsync(admin, List + "?pageSize=1&page=2", "slug"));
+            Assert.Equal(" of 2", await PageAsync(admin, List + "?page=3", "slug"));
+
+            Assert.Equal("beta-temple of 1", await PageAsync(admin, List + "?status=Suspended", "slug"));
+            Assert.Equal("alpha-temple of 1", await PageAsync(admin, List + "?status=Active", "slug"));
+            Assert.Equal("alpha-temple of 1", await PageAsync(admin, $"{List}?type={type}", "slug"));
+            Assert.Equal("beta-temple of 1", await PageAsync(admin, $"{List}?type={otherType}", "slug"));
+            Assert.Equal("alpha-temple of 1", await PageAsync(admin, $"{List}?district={district}", "slug"));
+            Assert.Equal("beta-temple of 1", await PageAsync(admin, $"{List}?district={otherDistrict}&status=Suspended", "slug"));
+            Assert.Equal(" of 0", await PageAsync(admin, $"{List}?district={otherDistrict}&status=Active", "slug"));
+
+            foreach (var (query, code) in new[]
+            {
+                ("status=Closed", "invalid_filter"), ("sort=oldest", "invalid_filter"), ("type=" + new string('X', 31), "invalid_filter"),
+                ("page=0", "invalid_page"), ("pageSize=101", "invalid_page"),
+            })
+            {
+                using var refused = await SendAsync(admin, HttpMethod.Get, $"{List}?{query}");
+                Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+                Assert.Equal(code, await CodeOf(refused));
+            }
+        }
+        finally
+        {
+            await ExecuteAsync(
+                AsPlatform + "UPDATE org.Institutions SET Status = @Status, InstitutionTypeId = @TypeId, DistrictId = @DistrictId, ApprovedAt = @ApprovedAt WHERE Id = @beta;",
+                new { original.Status, original.TypeId, original.DistrictId, original.ApprovedAt, beta });
+        }
+    }
+
+    [Fact]
+    public async Task TheInstitutionsOwnerIsWhoeverHoldsAnOwnerLevelRole_NotAStaleMemberFlag()
+    {
+        const string AsPlatform = "EXEC sys.sp_set_session_context @key = N'IsPlatform', @value = 1;";
+        var admin = await LogInAsync(await AccountAsync("PLATFORM_ADMIN"));
+        var owner = await AccountAsync(alphaRole: "A_OWNER");
+        var stale = await AccountAsync();
+
+        // A member flagged as owner but holding no owner role: what the list used to read.
+        await ExecuteAsync(
+            AsPlatform +
+            """
+            UPDATE auth.Users SET FullName = N'Owner By Role' WHERE PhoneNumber = @owner;
+            UPDATE auth.Users SET FullName = N'Stale Flag'    WHERE PhoneNumber = @stale;
+            INSERT org.InstitutionMembers (InstitutionId, UserId, IsOwner, Status, AddedBy)
+            SELECT i.Id, u.Id, 1, 'Active', u.Id FROM org.Institutions i CROSS JOIN auth.Users u
+            WHERE i.Id IN (@alpha, @beta) AND u.PhoneNumber = @stale;
+            """,
+            new { owner, stale, alpha = database.AlphaInstitutionId, beta = database.BetaInstitutionId });
+
+        try
+        {
+            // Alpha's longest-standing owner-level assignment in force; other tests may have made one first.
+            var expected = await ScalarAsync<string>(
+                AsPlatform +
+                """
+                SELECT TOP (1) u.FullName
+                FROM auth.UserRoles ur
+                JOIN auth.Roles r      ON r.Id = ur.RoleId AND r.IsActive = 1
+                JOIN auth.RoleLevels l ON l.Id = r.RoleLevelId AND l.Rank = 1 AND l.Scope = 'Institution'
+                JOIN auth.Users u      ON u.Id = ur.UserId
+                WHERE ur.InstitutionId = @alpha AND ur.IsActive = 1
+                ORDER BY ur.Id;
+                """,
+                new { alpha = database.AlphaInstitutionId });
+
+            using var response = await SendAsync(admin, HttpMethod.Get, "/api/admin/institutions");
+            var rows = JsonElement.Parse(await response.Content.ReadAsStringAsync()).GetProperty("items").EnumerateArray()
+                .ToDictionary(r => r.GetProperty("slug").GetString()!, r => r.GetProperty("owner").GetString());
+
+            Assert.NotNull(expected);
+            Assert.Equal(expected, rows["alpha-temple"]);
+            Assert.Null(rows["beta-temple"]);
+
+            // Only while the assignment is in force: once it lapses, Alpha's owner is someone else's or none.
+            await ExecuteAsync(
+                AsPlatform +
+                """
+                UPDATE ur SET ValidTo = DATEADD(MINUTE, -1, SYSUTCDATETIME()), ValidFrom = DATEADD(DAY, -1, SYSUTCDATETIME())
+                FROM auth.UserRoles ur JOIN auth.Users u ON u.Id = ur.UserId WHERE u.PhoneNumber = @owner;
+                """,
+                new { owner });
+            using var lapsed = await SendAsync(admin, HttpMethod.Get, "/api/admin/institutions?search=alpha");
+            var alpha = JsonElement.Parse(await lapsed.Content.ReadAsStringAsync()).GetProperty("items")[0];
+            Assert.NotEqual("Owner By Role", alpha.GetProperty("owner").GetString());
+            Assert.NotEqual("Stale Flag", alpha.GetProperty("owner").GetString());
+        }
+        finally
+        {
+            await ExecuteAsync(
+                AsPlatform + "DELETE m FROM org.InstitutionMembers m JOIN auth.Users u ON u.Id = m.UserId WHERE u.PhoneNumber = @stale;",
+                new { stale });
+        }
+    }
+
+    [Fact]
+    public async Task TheDashboardCountsInstitutionsByStatus_EveryStatusEvenAtZero_NoneDeleted()
+    {
+        const string AsPlatform = "EXEC sys.sp_set_session_context @key = N'IsPlatform', @value = 1;";
+        var admin = await LogInAsync(await AccountAsync("PLATFORM_ADMIN"));
+        var donor = await LogInAsync(await AccountAsync());
+
+        var original = await ScalarAsync<string>(AsPlatform + "SELECT Status FROM org.Institutions WHERE Id = @beta;", new { beta = database.BetaInstitutionId });
+        try
+        {
+            // Deleted, so in no status at all, though its row still says Deactivated.
+            await ExecuteAsync(AsPlatform + "UPDATE org.Institutions SET Status = 'Deactivated', IsDeleted = 1 WHERE Id = @beta;", new { beta = database.BetaInstitutionId });
+
+            await using var connection = new SqlConnection(database.ConnectionString);
+            await connection.OpenAsync();
+            await connection.ExecuteAsync(AsPlatform);
+            var counted = (await connection.QueryAsync<(string Status, int Count)>(
+                "SELECT Status, COUNT(*) FROM org.Institutions WHERE IsDeleted = 0 GROUP BY Status;")).ToDictionary(r => r.Status, r => r.Count);
+
+            using var response = await SendAsync(admin, HttpMethod.Get, "/api/admin/institutions/statuses");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var rows = JsonElement.Parse(await response.Content.ReadAsStringAsync()).EnumerateArray()
+                .Select(r => $"{r.GetProperty("status").GetString()} {r.GetProperty("count").GetInt32()}");
+
+            Assert.Equal(InstitutionStatuses.Select(s => $"{s} {counted.GetValueOrDefault(s)}"), rows);
+            Assert.Equal(0, counted.GetValueOrDefault("Deactivated"));
+
+            using var refused = await SendAsync(donor, HttpMethod.Get, "/api/admin/institutions/statuses");
+            Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+        }
+        finally
+        {
+            await ExecuteAsync(AsPlatform + "UPDATE org.Institutions SET Status = @original, IsDeleted = 0 WHERE Id = @beta;", new { original, beta = database.BetaInstitutionId });
+        }
     }
 }

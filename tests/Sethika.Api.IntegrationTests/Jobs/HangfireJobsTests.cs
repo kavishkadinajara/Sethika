@@ -122,16 +122,45 @@ public sealed class HangfireJobsTests(SethikaTestDatabase database) : IAsyncLife
             using (var storage = host.Services.GetRequiredService<JobStorage>().GetConnection())
             {
                 var jobs = storage.GetRecurringJobs().OrderBy(j => j.Id, StringComparer.Ordinal).ToList();
-                Assert.Equal(2, jobs.Count);
+                Assert.Equal(8, jobs.Count);
 
-                var reminders = jobs[0];
+                var services = jobs[0];
+                Assert.Equal((AppointmentReminderJob.RecurringJobId, "0 18 * * *", typeof(AppointmentReminderJob)), (services.Id, services.Cron, services.Job?.Type));
+
+                var reminders = jobs[1];
                 Assert.Equal((BookingReminderJob.RecurringJobId, "0 18 * * *", typeof(BookingReminderJob)), (reminders.Id, reminders.Cron, reminders.Job?.Type));
 
-                // 18:00 in Colombo (plan 03, Q3), whatever zone the server is in.
+                // 18:00 in Colombo (plan 03, Q3; Phase E, V15), whatever zone the server is in.
                 Assert.Equal(TimeSpan.FromHours(5.5), TimeZoneInfo.FindSystemTimeZoneById(reminders.TimeZoneId).BaseUtcOffset);
+                Assert.Equal(TimeSpan.FromHours(5.5), TimeZoneInfo.FindSystemTimeZoneById(services.TimeZoneId).BaseUtcOffset);
 
-                var outbox = jobs[1];
+                // 03:00 in Colombo (plan 06, G5), and triggered once as the host started.
+                var geo = jobs[2];
+                Assert.Equal((GeoIndexRebuildJob.RecurringJobId, "0 3 * * *", typeof(GeoIndexRebuildJob)), (geo.Id, geo.Cron, geo.Job?.Type));
+                Assert.Equal(TimeSpan.FromHours(5.5), TimeZoneInfo.FindSystemTimeZoneById(geo.TimeZoneId).BaseUtcOffset);
+                Assert.NotNull(geo.LastJobId);
+
+                // 18:00 in Colombo (plan 07, H8), with the booking reminders.
+                var memorial = jobs[3];
+                Assert.Equal((MemorialReminderJob.RecurringJobId, "0 18 * * *", typeof(MemorialReminderJob)), (memorial.Id, memorial.Cron, memorial.Job?.Type));
+                Assert.Equal(TimeSpan.FromHours(5.5), TimeZoneInfo.FindSystemTimeZoneById(memorial.TimeZoneId).BaseUtcOffset);
+
+                var outbox = jobs[4];
                 Assert.Equal((OutboxJob.RecurringJobId, Cron.Minutely(), typeof(OutboxJob)), (outbox.Id, outbox.Cron, outbox.Job?.Type));
+
+                // Every 15 minutes (plan F, F29), the wait Expo advises.
+                var receipts = jobs[5];
+                Assert.Equal((PushReceiptsJob.RecurringJobId, "*/15 * * * *", typeof(PushReceiptsJob)), (receipts.Id, receipts.Cron, receipts.Job?.Type));
+
+                // 00:30 in Colombo (plan 07, H3): just after a new day opens every slot's window a day further.
+                var yearly = jobs[6];
+                Assert.Equal((RecurringBookingJob.RecurringJobId, "30 0 * * *", typeof(RecurringBookingJob)), (yearly.Id, yearly.Cron, yearly.Job?.Type));
+                Assert.Equal(TimeSpan.FromHours(5.5), TimeZoneInfo.FindSystemTimeZoneById(yearly.TimeZoneId).BaseUtcOffset);
+
+                // 00:45 in Colombo (plan 08, K3), after the yearly run.
+                var standing = jobs[7];
+                Assert.Equal((StandingBookingJob.RecurringJobId, "45 0 * * *", typeof(StandingBookingJob)), (standing.Id, standing.Cron, standing.Job?.Type));
+                Assert.Equal(TimeSpan.FromHours(5.5), TimeZoneInfo.FindSystemTimeZoneById(standing.TimeZoneId).BaseUtcOffset);
             }
 
             recurring.Trigger(OutboxJob.RecurringJobId);
@@ -150,6 +179,24 @@ public sealed class HangfireJobsTests(SethikaTestDatabase database) : IAsyncLife
 
             // The same run, in the job's own scope: the platform, so Row-Level Security showed both tenants' rows.
             Assert.Equal((true, 2), await host.Services.GetRequiredService<ProbeRecorder>().Seen.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+
+            // A change wakes the outbox at once (plan 07, H10): the wake queues the outbox job
+            // itself, unlike the recurring job's runs, which carry their RecurringJobId.
+            var woken = DateTime.UtcNow.AddSeconds(-1);
+            using (var scope = host.Services.CreateScope())
+            {
+                var wake = scope.ServiceProvider.GetRequiredService<IOutboxWake>();
+                Assert.Equal("HangfireOutboxWake", wake.GetType().Name);
+                wake.Wake();
+            }
+
+            Assert.Equal(1, await connection.ExecuteScalarAsync<int>(
+                """
+                SELECT COUNT(*) FROM HangFire.Job j
+                WHERE j.CreatedAt >= @woken AND j.InvocationData LIKE '%OutboxJob%'
+                  AND NOT EXISTS (SELECT 1 FROM HangFire.JobParameter p WHERE p.JobId = j.Id AND p.Name = 'RecurringJobId');
+                """,
+                new { woken }));
         }
         finally
         {

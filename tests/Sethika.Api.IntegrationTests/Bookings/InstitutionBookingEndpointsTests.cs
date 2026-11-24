@@ -163,7 +163,7 @@ public sealed class InstitutionBookingEndpointsTests(SethikaTestDatabase databas
     }
 
     private static async Task<JsonElement> BodyOf(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        JsonElement.Parse(await response.Content.ReadAsStringAsync());
 
     private static async Task AssertRefusedAsync(HttpResponseMessage response, HttpStatusCode status, string code)
     {
@@ -269,6 +269,230 @@ public sealed class InstitutionBookingEndpointsTests(SethikaTestDatabase databas
         [.. days.EnumerateArray().SelectMany(d => d.GetProperty("bookings").EnumerateArray()).Select(b => b.GetProperty("bookingNo").GetString()!)];
 
     private static string[] Strings(JsonElement array) => [.. array.EnumerateArray().Select(e => e.GetString()!)];
+
+    // ------------------------------------------------------------------ the sidebar's counts (plan 05, R3)
+
+    [Fact]
+    public async Task TheSidebarCountsRequestsStillToAnswer_OnlyForThoseWhoMayAnswerThem()
+    {
+        var (slot, _) = await CreateSlotAsync(Alpha(_alphaOwner));
+        var (betaSlot, _) = await CreateSlotAsync(Beta(_betaOwner));
+
+        await BookedAsync(slot, SlotDay);                    // counted
+        var decided = await BookedAsync(slot, SlotDay.AddDays(1));
+        var past = await BookedAsync(slot, SlotDay.AddDays(2));
+        await BookedAsync(betaSlot, SlotDay);                // another institution's
+
+        await using (var connection = await PlatformConnectionAsync())
+        {
+            // One already answered, and one whose day has gone (its slot-day moved into the past).
+            await connection.ExecuteAsync(
+                """
+                UPDATE booking.Bookings SET Status = 'Approved', DecidedAt = SYSUTCDATETIME(), DecidedBy = @owner WHERE BookingNo = @decided;
+                UPDATE si SET SlotDate = DATEADD(DAY, -30, si.SlotDate)
+                FROM booking.SlotInstances si JOIN booking.Bookings b ON b.SlotInstanceId = si.Id WHERE b.BookingNo = @past;
+                """,
+                new { owner = _alphaOwner, decided, past });
+        }
+
+        using var forOwner = await SendAsync(Alpha(_alphaOwner), HttpMethod.Get, "/api/me/summary");
+        using var forStaff = await SendAsync(Alpha(_alphaStaff), HttpMethod.Get, "/api/me/summary");
+        using var forBeta = await SendAsync(Beta(_betaOwner), HttpMethod.Get, "/api/me/summary");
+
+        Assert.Equal(HttpStatusCode.OK, forOwner.StatusCode);
+        var ownerSummary = await BodyOf(forOwner);
+        Assert.Equal(1, ownerSummary.GetProperty("bookingsToAnswer").GetInt32());
+        Assert.Equal(JsonValueKind.Null, ownerSummary.GetProperty("registrationsWaiting").ValueKind);
+        Assert.Equal(0, ownerSummary.GetProperty("invitations").GetInt32());
+
+        // Staff see the calendar but may not approve: no count, not a zero.
+        Assert.Equal(JsonValueKind.Null, (await BodyOf(forStaff)).GetProperty("bookingsToAnswer").ValueKind);
+        Assert.Equal(1, (await BodyOf(forBeta)).GetProperty("bookingsToAnswer").GetInt32());
+    }
+
+    [Fact]
+    public async Task TodaysTableLaysEveryMealOfTheDay_BookedOrNot_AndOnlyTheInstitutionsOwn()
+    {
+        var today = SriLankaTime.Today(DateTime.UtcNow);
+        var (full, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Table full");
+        var (shared, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Table shared", "Shared", 4);
+        var (empty, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Table empty");
+        var (blocked, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Table blocked");
+        var (offDay, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Table off day");
+        var (outOfSeason, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Table out of season");
+        var (inactive, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Table inactive");
+        var (betaSlot, _) = await CreateSlotAsync(Beta(_betaOwner), "Table beta");
+
+        await BookedAsync(full, SlotDay);
+        await BookedAsync(shared, SlotDay);
+        var approved = await BookedAsync(shared, SlotDay);
+        await BookedAsync(betaSlot, SlotDay);
+
+        await using (var connection = await PlatformConnectionAsync())
+        {
+            // Booked ten days ahead, then moved to today: nobody may book a slot for today here.
+            await connection.ExecuteAsync(
+                """
+                UPDATE booking.Bookings SET Status = 'Approved', DecidedAt = SYSUTCDATETIME(), DecidedBy = @owner WHERE BookingNo = @approved;
+                UPDATE booking.SlotInstances SET SlotDate = @today WHERE SlotDate = @slotDay;
+                UPDATE booking.MealSlots SET StartTime = '07:00', MaxSponsors = 6 WHERE PublicId = @shared; -- the slot-day keeps its 4 (C3)
+                UPDATE booking.MealSlots SET DaysOfWeekMask = 127 - @todayBit WHERE PublicId = @offDay;
+                UPDATE booking.MealSlots SET IsActive = 0 WHERE PublicId = @inactive;
+                INSERT booking.MealSlotSeasons (MealSlotId, Name, DateFrom, DateTo)
+                SELECT s.Id, N'Next season', DATEADD(DAY, 30, @today), DATEADD(DAY, 60, @today) FROM booking.MealSlots s WHERE s.PublicId = @outOfSeason;
+                INSERT booking.BlockedDates (InstitutionId, MealSlotId, DateFrom, DateTo, Reason, CreatedBy)
+                SELECT s.InstitutionId, s.Id, @today, @today, N'Festival', @owner FROM booking.MealSlots s WHERE s.PublicId = @blocked;
+                """,
+                new
+                {
+                    owner = _alphaOwner,
+                    approved,
+                    today = today.ToDateTime(TimeOnly.MinValue),
+                    slotDay = SlotDay.ToDateTime(TimeOnly.MinValue),
+                    shared,
+                    offDay,
+                    todayBit = (int)MealSlot.DayBit(today.DayOfWeek),
+                    inactive,
+                    outOfSeason,
+                    blocked,
+                });
+        }
+
+        using var forStaff = await SendAsync(Alpha(_alphaStaff), HttpMethod.Get, "/api/institution/today");
+        Assert.Equal(HttpStatusCode.OK, forStaff.StatusCode);
+        var table = await BodyOf(forStaff);
+        Assert.Equal(Iso(today), table.GetProperty("date").GetString());
+
+        // The seed's own slots run every day too; only this test's are compared, and the ones that
+        // must not be laid are among them.
+        HashSet<Guid> made = [full, shared, empty, blocked, offDay, outOfSeason, inactive, betaSlot];
+        var slots = table.GetProperty("slots").EnumerateArray().Where(s => made.Contains(s.GetProperty("mealSlot").GetGuid())).ToList();
+        Assert.Equal([shared, blocked, empty, full], slots.Select(s => s.GetProperty("mealSlot").GetGuid()));
+
+        static string Line(JsonElement s) =>
+            $"{s.GetProperty("name").GetString()} {s.GetProperty("startTime").GetString()} " +
+            $"{s.GetProperty("bookedSponsors").GetInt32()}/{s.GetProperty("maxSponsors").GetInt32()} " +
+            $"requested {s.GetProperty("requested").GetInt32()} {s.GetProperty("state").GetString()}";
+
+        Assert.Equal(
+            [
+                "Table shared 07:00 2/4 requested 1 Open",
+                "Table blocked 11:00 0/1 requested 0 Closed",
+                "Table empty 11:00 0/1 requested 0 Open",
+                "Table full 11:00 1/1 requested 1 Full",
+            ],
+            slots.Select(Line));
+
+        using var forBeta = await SendAsync(Beta(_betaOwner), HttpMethod.Get, "/api/institution/today");
+        Assert.Equal([betaSlot], (await BodyOf(forBeta)).GetProperty("slots").EnumerateArray().Select(s => s.GetProperty("mealSlot").GetGuid()).Where(made.Contains));
+    }
+
+    [Fact]
+    public async Task TodaysTableIsTheCalendarsToRead()
+    {
+        // A member holding no role in Alpha: no calendar, no table.
+        var nobody = await UserAsync("InstitutionStaff");
+
+        using var refused = await SendAsync(Alpha(nobody), HttpMethod.Get, "/api/institution/today");
+        using var anonymous = await SendAsync(_host.CreateClient(), HttpMethod.Get, "/api/institution/today");
+
+        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+    }
+
+    // ------------------------------------------------------------------ the dashboard's ledger and the palette's jump (plan 05, X3)
+
+    [Fact]
+    public async Task TheLedgerListsTheLatestTenChanges_NewestFirst_AndOnlyTheInstitutionsOwn()
+    {
+        var (slot, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Ledger");
+        var (betaSlot, _) = await CreateSlotAsync(Beta(_betaOwner), "Ledger beta");
+
+        var first = await BookedAsync(slot, SlotDay);
+        var second = await BookedAsync(slot, SlotDay.AddDays(1));
+        List<string> more = [];
+        for (var day = 2; day <= 7; day++)
+        {
+            more.Add(await BookedAsync(slot, SlotDay.AddDays(day)));
+        }
+
+        var betas = await BookedAsync(betaSlot, SlotDay);
+
+        using (var approved = await SendAsync(Alpha(_alphaOwner), HttpMethod.Post, $"/api/institution/bookings/{first}/approve"))
+        using (var rejected = await SendAsync(Alpha(_alphaOwner), HttpMethod.Post, $"/api/institution/bookings/{second}/reject", new { reason = "Full that day" }))
+        using (var cancelled = await SendAsync(Alpha(_alphaOwner), HttpMethod.Post, $"/api/institution/bookings/{first}/cancel", new { reason = "Almsgiving moved" }))
+        {
+            Assert.Equal(HttpStatusCode.OK, approved.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, rejected.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, cancelled.StatusCode);
+        }
+
+        // Staff may read the calendar, so they read its ledger too.
+        using var forStaff = await SendAsync(Alpha(_alphaStaff), HttpMethod.Get, "/api/institution/ledger");
+        Assert.Equal(HttpStatusCode.OK, forStaff.StatusCode);
+
+        static string Line(JsonElement e) =>
+            $"{e.GetProperty("bookingNo").GetString()} {e.GetProperty("status").GetString()} " +
+            $"{e.GetProperty("date").GetString()} {e.GetProperty("slotName").GetString()} {e.GetProperty("donorName").GetString()}";
+
+        string Expected(string bookingNo, string status, int day) => $"{bookingNo} {status} {Iso(SlotDay.AddDays(day))} Ledger Calendar Test";
+
+        // Eleven changes: the first booking's own making is the one too old to show.
+        Assert.Equal(
+            [
+                Expected(first, "Cancelled", 0),
+                Expected(second, "Rejected", 1),
+                Expected(first, "Approved", 0),
+                .. Enumerable.Range(0, more.Count).Reverse().Select(i => Expected(more[i], "Requested", i + 2)),
+                Expected(second, "Requested", 1),
+            ],
+            (await BodyOf(forStaff)).EnumerateArray().Select(Line));
+
+        using var forBeta = await SendAsync(Beta(_betaOwner), HttpMethod.Get, "/api/institution/ledger");
+        var betaLines = (await BodyOf(forBeta)).EnumerateArray().Select(e => e.GetProperty("bookingNo").GetString()).ToList();
+        Assert.Contains(betas, betaLines);
+        Assert.DoesNotContain(first, betaLines);
+    }
+
+    [Fact]
+    public async Task ABookingNumberOpensItsDay_OnlyInItsOwnInstitution()
+    {
+        var (slot, _) = await CreateSlotAsync(Alpha(_alphaOwner), "Jump");
+        var (betaSlot, _) = await CreateSlotAsync(Beta(_betaOwner), "Jump beta");
+        var booked = await BookedAsync(slot, SlotDay.AddDays(3));
+        var betas = await BookedAsync(betaSlot, SlotDay);
+
+        // Typed in lower case into the palette, it still finds the booking: the collation ignores case.
+        using var found = await SendAsync(Alpha(_alphaStaff), HttpMethod.Get, $"/api/institution/bookings/{booked.ToLowerInvariant()}");
+        Assert.Equal(HttpStatusCode.OK, found.StatusCode);
+        var place = await BodyOf(found);
+        Assert.Equal(booked, place.GetProperty("bookingNo").GetString());
+        Assert.Equal(Iso(SlotDay.AddDays(3)), place.GetProperty("date").GetString());
+        Assert.Equal(slot, place.GetProperty("mealSlot").GetGuid());
+        Assert.Equal("Requested", place.GetProperty("status").GetString());
+
+        // Another institution's booking is not found, exactly like one that does not exist.
+        await AssertRefusedAsync(
+            await SendAsync(Alpha(_alphaOwner), HttpMethod.Get, $"/api/institution/bookings/{betas}"),
+            HttpStatusCode.NotFound, "booking_not_found");
+        await AssertRefusedAsync(
+            await SendAsync(Alpha(_alphaOwner), HttpMethod.Get, "/api/institution/bookings/BK-2026-999999"),
+            HttpStatusCode.NotFound, "booking_not_found");
+    }
+
+    [Fact]
+    public async Task TheLedgerAndTheJumpAreTheCalendarsToRead()
+    {
+        var nobody = await UserAsync("InstitutionStaff");
+
+        using var ledger = await SendAsync(Alpha(nobody), HttpMethod.Get, "/api/institution/ledger");
+        using var jump = await SendAsync(Alpha(nobody), HttpMethod.Get, "/api/institution/bookings/BK-2026-000001");
+        using var anonymous = await SendAsync(_host.CreateClient(), HttpMethod.Get, "/api/institution/ledger");
+
+        Assert.Equal(HttpStatusCode.Forbidden, ledger.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, jump.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+    }
 
     // ------------------------------------------------------------------ meal slots
 

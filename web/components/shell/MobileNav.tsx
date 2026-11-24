@@ -7,14 +7,27 @@ import { MenuIcon } from "@/components/ui/icons";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import type { NavSection } from "@/lib/shell/nav";
-import { ContextChip } from "./ContextChip";
-import { SidebarNav } from "./SidebarNav";
+import { SidebarBody } from "./Sidebar";
+import type { ShellData } from "./useShellData";
 
 /**
- * Below `lg`: the menu button in the top bar opens the sidebar's list in a sheet from the left,
- * so a phone reaches the same screens, with the same glide pill. Choosing a link closes it.
+ * Below `lg`: the menu button in the top bar opens the sidebar's body in a sheet from the left
+ * (plan 05, R2), so a phone reaches the same screens, counts and today's table. Choosing a link,
+ * switching context or opening jump-to closes it.
  */
-export function MobileNav({ sections, pathname }: { sections: NavSection[]; pathname: string }) {
+export function MobileNav({
+  sections,
+  pathname,
+  data,
+  busy,
+  onJump,
+}: {
+  sections: NavSection[];
+  pathname: string;
+  data: ShellData;
+  busy: boolean;
+  onJump: () => void;
+}) {
   const t = useTranslations("Shell");
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -31,10 +44,19 @@ export function MobileNav({ sections, pathname }: { sections: NavSection[]; path
           <BrandMark className="size-9" />
           <SheetTitle className="text-xl">{t("mainMenu")}</SheetTitle>
         </div>
-        <div className="px-5 pt-4">
-          <ContextChip onSwitched={close} />
+        <div className="px-4 pt-4 pb-8">
+          <SidebarBody
+            sections={sections}
+            pathname={pathname}
+            data={data}
+            busy={busy}
+            onNavigate={close}
+            onJump={() => {
+              close();
+              onJump();
+            }}
+          />
         </div>
-        <SidebarNav id="sheet" sections={sections} pathname={pathname} onNavigate={close} className="px-4 pt-5 pb-8" />
       </SheetContent>
     </Sheet>
   );

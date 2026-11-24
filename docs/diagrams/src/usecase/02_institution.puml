@@ -1,0 +1,94 @@
+@startuml
+!pragma layout smetana
+!include ../style.iuml
+left to right direction
+skinparam packageStyle rectangle
+title Use case diagram 2 — Institution staff (Institution portal)
+
+actor "Institution staff" as Staff
+actor "Owner" as Owner
+actor "Religious leader" as Leader
+Owner -|> Staff
+Leader -|> Staff
+actor "SMS gateway" as Sms <<external>>
+
+rectangle "Sethika — Institution portal" {
+  usecase "Verify with SMS code\n(step-up MFA)" as StepUp
+
+  package "Profile and slots" {
+    usecase "Edit institution profile" as Profile
+    usecase "Manage meal slots\nand seasons" as Slots
+    usecase "Block dates" as Block
+  }
+  package "Bookings" {
+    usecase "View booking calendar" as Cal
+    usecase "Approve / reject booking" as Decide
+    usecase "Complete / no-show / cancel" as Complete
+    usecase "Today's sponsors,\nmark served" as Today
+  }
+  package "Sponsors" {
+    usecase "Keep the donor book" as DonorBook
+    usecase "Manage standing\nsponsorships" as Standing
+    usecase "Skip / swap a\nstanding day" as Swap
+  }
+  package "Religious services (Phase E)" {
+    usecase "Manage service types" as Types
+    usecase "Manage leaders,\nhours and leave" as Leaders
+    usecase "Assign a leader to\na service request" as Assign
+    usecase "Check leader is free\n(no clash)" as Free
+    usecase "See my schedule" as Schedule
+    usecase "Accept / decline\nmy assignment" as Accept
+  }
+  package "Giving" {
+    usecase "Record donation\n(receipt number)" as Record
+    usecase "Void donation\n(voider ≠ recorder)" as Void
+    usecase "Manage needs,\nreceive pledges" as ManageNeeds
+    usecase "Monthly report\n(view, CSV, print)" as Report
+    usecase "Set PayHere merchant" as Merchant
+  }
+  package "Staff and roles" {
+    usecase "Invite staff" as Invite
+    usecase "Create role,\nchange what it can do" as Roles
+    usecase "Assign / revoke roles" as Members
+  }
+}
+
+Staff --> Cal
+Staff --> Decide
+Staff --> Complete
+Staff --> Today
+Staff --> DonorBook
+Staff --> Standing
+Staff --> Types
+Staff --> Leaders
+Staff --> Assign
+Staff --> Record
+Staff --> ManageNeeds
+Staff --> Report
+Owner --> Profile
+Owner --> Slots
+Owner --> Block
+Owner --> Void
+Owner --> Merchant
+Owner --> Invite
+Owner --> Roles
+Owner --> Members
+Leader --> Schedule
+Leader --> Accept
+
+Standing <.. Swap : <<extend>>
+Assign ..> Free : <<include>>
+Void ..> StepUp : <<include>>
+Merchant ..> StepUp : <<include>>
+Roles ..> StepUp : <<include>>
+Members ..> StepUp : <<include>>
+Invite ..> StepUp : <<include>>
+StepUp --> Sms
+
+legend bottom right
+  What each staff member can do comes from their roles (RBAC) and is checked on every API call;
+  the Owner / staff split drawn here is the template roles' default, not a fixed rule.
+  Owner gets the cloned OWNER role on approval; other roles are made by the institution and can only
+  hold permissions their maker holds (anti-escalation). A switched-off module removes its use cases.
+endlegend
+@enduml

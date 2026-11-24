@@ -28,6 +28,7 @@ public sealed class SignInHandler(
     IPhoneNumberNormalizer phoneNumbers,
     PasswordVerifier passwords,
     SessionStarter sessions,
+    IDonorBookLinks donorBooks,
     TimeProvider timeProvider)
 {
     /// <summary>The history reason for a right password refused because the account locked meanwhile.</summary>
@@ -143,6 +144,13 @@ public sealed class SignInHandler(
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        // After the commit: the link reads the account on its own connection, which would wait on
+        // this transaction's lock on the account's row (plan 08, K36).
+        if (session.Succeeded)
+        {
+            await donorBooks.LinkAsync(account.Id, cancellationToken).ConfigureAwait(false);
+        }
 
         return session;
     }

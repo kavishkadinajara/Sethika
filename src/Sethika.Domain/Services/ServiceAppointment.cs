@@ -68,8 +68,11 @@ public class ServiceAppointment
     /// Whether an approved appointment has fewer live leaders than <paramref name="leadersRequired"/>:
     /// computed, never stored (V6). A decline makes it true again.
     /// </summary>
-    public bool NeedsLeaders(int leadersRequired) =>
-        Status is AppointmentStatus.Requested or AppointmentStatus.Approved && LiveLeaders.Count() < leadersRequired;
+    public bool NeedsLeaders(int leadersRequired) => NeedsLeaders(Status, LiveLeaders.Count(), leadersRequired);
+
+    /// <summary>The same rule from a list's columns: <see cref="NeedsLeaders(int)"/> for a row read with Dapper.</summary>
+    public static bool NeedsLeaders(string status, int liveLeaders, int leadersRequired) =>
+        status is AppointmentStatus.Requested or AppointmentStatus.Approved && liveLeaders < leadersRequired;
 
     /// <summary>
     /// A new request by the signed-in donor, <see cref="AppointmentStatus.Requested"/>. It holds no

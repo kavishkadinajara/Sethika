@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { inLocale } from "./names";
-import { emptySlotForm, malformedSlotFields, slotFormFrom, slotInputFrom } from "./slot-form";
+import { emptySlotForm, formAfterStale, malformedSlotFields, nameError, slotFormFrom, slotInputFrom } from "./slot-form";
 import type { InstitutionMealSlot } from "./types";
 
 const saved: InstitutionMealSlot = {
@@ -71,5 +71,31 @@ describe("inLocale", () => {
     expect(inLocale("ta", "Lunch", "දිවා දානය", null)).toBe("Lunch");
     expect(inLocale("ta", "Lunch", null, "  ")).toBe("Lunch");
     expect(inLocale("en", "Lunch", "දිවා දානය", "மதிய உணவு")).toBe("Lunch");
+  });
+});
+
+describe("after a refused save (QA DEF-006, DEF-007)", () => {
+  it("names a taken name as taken, not as a missing one, though the field is marked", () => {
+    expect(nameError(new Set(["name"]), "slot_name_taken")).toBe("taken");
+    expect(nameError(new Set(), "slot_name_taken")).toBe("taken");
+    expect(nameError(new Set(["name"]), null)).toBe("invalid");
+    expect(nameError(new Set(["name"]), "invalid_details")).toBe("invalid");
+    expect(nameError(new Set(["maxHeadcount"]), "stale")).toBeNull();
+    expect(nameError(new Set(), undefined)).toBeNull();
+  });
+
+  it("after a stale save, holds the meal as someone else saved it, with its new version", () => {
+    const changed = { ...saved, maxHeadcount: 25, version: "AAAAAAAAB+A=" };
+    const other = { ...saved, publicId: "0193f0c2-0000-7000-8000-000000000002", maxHeadcount: 99, version: "AAAAAAAAB+B=" };
+    const form = formAfterStale([other, changed], saved.publicId);
+    expect(form).toEqual(slotFormFrom(changed));
+    expect(form?.maxHeadcount).toBe("25");
+    expect(form?.version).toBe("AAAAAAAAB+A=");
+    // A switched-off meal can still be edited: it is reloaded too.
+    expect(formAfterStale([{ ...changed, isActive: false }], saved.publicId)?.version).toBe("AAAAAAAAB+A=");
+  });
+
+  it("after a stale save, has no form when the meal is gone", () => {
+    expect(formAfterStale([], saved.publicId)).toBeNull();
   });
 });

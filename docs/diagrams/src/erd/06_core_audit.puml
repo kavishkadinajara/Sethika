@@ -1,0 +1,172 @@
+@startuml
+!pragma layout smetana
+!include ../style.iuml
+skinparam linetype ortho
+hide circle
+hide methods
+hide stereotypes
+title ERD 6 — Core reference data, outbox and audit (core, audit)
+package "audit" {
+entity "audit.AuditLogs" as audit_AuditLogs #F2F2F2 {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+    UserId : UNIQUEIDENTIFIER
+    ImpersonationSessionId : INT
+    InstitutionId : INT
+  * Action : VARCHAR(50)
+  * EntityName : VARCHAR(100)
+  * EntityId : VARCHAR(50)
+    OldValues : NVARCHAR(MAX)
+    NewValues : NVARCHAR(MAX)
+    IpAddress : VARCHAR(45)
+    UserAgent : NVARCHAR(400)
+    CorrelationId : VARCHAR(64)
+  * OccurredAt : DATETIME2(3)
+}
+}
+package "core" {
+entity "core.Districts" as core_Districts #F2F2F2 {
+  * <b>Id</b> : SMALLINT <<PK>>
+  --
+  * ProvinceId : TINYINT <<FK>>
+  * Code : VARCHAR(10)
+  * Name : NVARCHAR(100)
+    NameSi : NVARCHAR(100)
+    NameTa : NVARCHAR(100)
+}
+entity "core.DsDivisions" as core_DsDivisions #F2F2F2 {
+  * <b>Id</b> : SMALLINT <<PK>>
+  --
+  * DistrictId : SMALLINT <<FK>>
+  * Name : NVARCHAR(100)
+    NameSi : NVARCHAR(100)
+    NameTa : NVARCHAR(100)
+}
+entity "core.Files" as core_Files #F2F2F2 {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * PublicId : UNIQUEIDENTIFIER
+  * StorageProvider : VARCHAR(20)
+  * StorageKey : NVARCHAR(400)
+  * OriginalName : NVARCHAR(255)
+  * ContentType : VARCHAR(100)
+  * SizeBytes : BIGINT
+  * Sha256Hash : CHAR(64)
+  * IsPrivate : BIT
+  * ScanStatus : VARCHAR(15)
+  * UploadedBy : UNIQUEIDENTIFIER <<FK>>
+  * UploadedAt : DATETIME2(3)
+  * IsDeleted : BIT
+}
+entity "core.LegalDocuments" as core_LegalDocuments #F2F2F2 {
+  * <b>Id</b> : SMALLINT <<PK>>
+  --
+  * Code : VARCHAR(40)
+  * Version : VARCHAR(10)
+  * Language : CHAR(2)
+  * Title : NVARCHAR(200)
+  * Content : NVARCHAR(MAX)
+  * ContentSha256 : CHAR(64)
+  * EffectiveFrom : DATETIME2(3)
+  * IsCurrent : BIT
+}
+entity "core.LookupTypes" as core_LookupTypes #F2F2F2 {
+  * <b>Id</b> : SMALLINT <<PK>>
+  --
+  * Code : VARCHAR(50)
+  * Name : NVARCHAR(100)
+  * IsSystem : BIT
+}
+entity "core.LookupValues" as core_LookupValues #F2F2F2 {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * LookupTypeId : SMALLINT <<FK>>
+    ParentId : INT <<FK>>
+  * Code : VARCHAR(50)
+  * Name : NVARCHAR(150)
+    NameSi : NVARCHAR(150)
+    NameTa : NVARCHAR(150)
+  * SortOrder : SMALLINT
+  * IsActive : BIT
+}
+entity "core.MemorialRules" as core_MemorialRules #F2F2F2 {
+  * <b>Id</b> : SMALLINT <<PK>>
+  --
+  * ReligionLookupId : INT <<FK>>
+  * Code : VARCHAR(40)
+  * Name : NVARCHAR(100)
+    NameSi : NVARCHAR(100)
+    NameTa : NVARCHAR(100)
+  * OffsetDays : SMALLINT
+  * OffsetMonths : SMALLINT
+  * RepeatsAnnually : BIT
+  * SortOrder : SMALLINT
+  * IsActive : BIT
+}
+entity "core.NumberSeries" as core_NumberSeries #F2F2F2 {
+  * <b>SeriesCode</b> : VARCHAR(20) <<PK>>
+  * <b>ScopeKey</b> : VARCHAR(20) <<PK>>
+  * <b>SeriesYear</b> : SMALLINT <<PK>>
+  --
+  * Prefix : VARCHAR(20)
+  * LastNumber : INT
+  * PadLength : TINYINT
+}
+entity "core.OutboxMessages" as core_OutboxMessages #F2F2F2 {
+  * <b>Id</b> : BIGINT <<PK>>
+  --
+  * EventType : VARCHAR(100)
+  * AggregateType : VARCHAR(50)
+  * AggregateId : VARCHAR(50)
+  * Payload : NVARCHAR(MAX)
+    CorrelationId : VARCHAR(64)
+  * OccurredAt : DATETIME2(3)
+    ProcessedAt : DATETIME2(3)
+  * Attempts : TINYINT
+    LastError : NVARCHAR(1000)
+}
+entity "core.Provinces" as core_Provinces #F2F2F2 {
+  * <b>Id</b> : TINYINT <<PK>>
+  --
+  * Code : VARCHAR(10)
+  * Name : NVARCHAR(100)
+    NameSi : NVARCHAR(100)
+    NameTa : NVARCHAR(100)
+}
+entity "core.SpecialDays" as core_SpecialDays #F2F2F2 {
+  * <b>Id</b> : INT <<PK>>
+  --
+  * CalendarDate : DATE
+  * Code : VARCHAR(40)
+  * Name : NVARCHAR(150)
+    NameSi : NVARCHAR(150)
+    NameTa : NVARCHAR(150)
+  * DayType : VARCHAR(20)
+    ReligionLookupId : INT <<FK>>
+}
+entity "core.SystemSettings" as core_SystemSettings #F2F2F2 {
+  * <b>SettingKey</b> : VARCHAR(100) <<PK>>
+  --
+  * SettingValue : NVARCHAR(MAX)
+  * DataType : VARCHAR(20)
+    Description : NVARCHAR(300)
+  * IsSecret : BIT
+  * UpdatedAt : DATETIME2(3)
+    UpdatedBy : UNIQUEIDENTIFIER
+}
+}
+core_Districts }o--|| core_Provinces
+core_DsDivisions }o--|| core_Districts
+core_LookupValues }o--|| core_LookupTypes
+core_LookupValues }o..o| core_LookupValues
+core_MemorialRules }o--|| core_LookupValues
+core_SpecialDays }o..o| core_LookupValues
+legend bottom right
+  * = NOT NULL    <<PK>> primary key    <<FK>> foreign key
+  solid line = mandatory FK, dotted = optional FK
+  CreatedBy / DecidedBy / ...By columns reference auth.Users (no line drawn)
+  InstitutionId (tenant key, Row-Level Security) references org.Institutions:
+  drawn only from org tables
+  Generated from src/Sethika.Database by docs/diagrams/tools/erd_from_sql.py
+endlegend
+@enduml

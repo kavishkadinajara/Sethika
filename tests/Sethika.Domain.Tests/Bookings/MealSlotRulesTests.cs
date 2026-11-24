@@ -140,6 +140,23 @@ public class MealSlotRulesTests
         Assert.Equal(BookingErrors.DateBlocked, CanBookOn(Slot(), Friday, blocks: [Block(Friday, Friday, slotId: SlotId)]));
     }
 
+    // ------------------------------------------------------------------ the day as planned (today's table)
+
+    [Fact]
+    public void ASlotServesOnItsDaysInItsSeasons_WhateverTheAdvanceWindow()
+    {
+        var fridays = Slot(s => { s.DaysOfWeekMask = MealSlot.DayBit(DayOfWeek.Friday); s.MinAdvanceDays = 5; });
+        MealSlotSeason[] seasons = [new() { MealSlotId = SlotId, Name = "Season", DateFrom = Friday, DateTo = Friday.AddDays(7) }];
+
+        // Too soon to book on Friday, and still laid that day.
+        Assert.True(MealSlotRules.Serves(fridays, seasons, Friday));
+        Assert.False(MealSlotRules.Serves(fridays, seasons, Friday.AddDays(1)));
+        Assert.True(MealSlotRules.Serves(fridays, seasons, Friday.AddDays(7)));
+        Assert.False(MealSlotRules.Serves(fridays, seasons, Friday.AddDays(14)));
+        Assert.True(MealSlotRules.Serves(fridays, [], Friday.AddDays(14)));
+        Assert.False(MealSlotRules.Serves(Slot(s => s.IsActive = false), [], Friday));
+    }
+
     // ------------------------------------------------------------------ the advance window, in Colombo dates
 
     [Fact]
@@ -325,4 +342,67 @@ public class MealSlotRulesTests
         Assert.Equal(BookingErrors.DateBlocked, Openings(slot, SlotDay(slot, bookedSponsors: 1, bookedHeadcount: 10), [Block(Friday, Friday)]).Refused);
         Assert.Equal(BookingErrors.TooSoon, MealSlotRules.Openings(slot, MealSlotRules.ActiveInstitution, [], [], Friday, Friday.ToDateTime(new TimeOnly(10, 0), DateTimeKind.Utc), null).Refused);
     }
+
+    // ------------------------------------------------------------------ held by a regular donor (plan 08, K6)
+
+    private static bool IsHeld(MealSlot slot, SlotInstance? day, int standing, int standingHeadcount) =>
+        MealSlotRules.IsHeld(slot, Openings(slot, day), day, standing, standingHeadcount);
+
+    [Fact]
+    public void AFullDay_IsHeld_WhenAStandingDayFillsIt()
+    {
+        var slot = Slot();
+        var day = SlotDay(slot, bookedSponsors: 1, bookedHeadcount: 25, SlotInstanceStatus.Full);
+
+        Assert.True(IsHeld(slot, day, standing: 1, standingHeadcount: 25));
+        Assert.False(IsHeld(slot, day, standing: 0, standingHeadcount: 0));
+    }
+
+    [Fact]
+    public void ADayWithRoom_IsNotHeld_WhoeverIsOnIt()
+    {
+        var slot = Slot(s => (s.BookingMode, s.MaxSponsors) = (BookingMode.Shared, 4));
+
+        Assert.False(IsHeld(slot, SlotDay(slot, bookedSponsors: 1, bookedHeadcount: 25), standing: 1, standingHeadcount: 25));
+    }
+
+    [Theory]
+    [InlineData(SlotInstanceStatus.Blocked)]
+    [InlineData(SlotInstanceStatus.Closed)]
+    public void AClosedDay_IsNotHeld(string status)
+    {
+        var slot = Slot();
+
+        Assert.False(IsHeld(slot, SlotDay(slot, bookedSponsors: 1, bookedHeadcount: 25, status), standing: 1, standingHeadcount: 25));
+    }
+
+    [Fact]
+    public void ADayIsHeld_OnlyIfLettingTheStandingDayGoLeavesRoomForABooking()
+    {
+        // Two places, 60 people: an ordinary booking of 55 and a standing day of 5. Letting the standing
+        // day go leaves 5 people, fewer than the smallest booking (10): asking would be for nothing.
+        var slot = Slot(s => (s.BookingMode, s.MaxSponsors) = (BookingMode.Shared, 2));
+        var day = SlotDay(slot, bookedSponsors: 2, bookedHeadcount: 60, SlotInstanceStatus.Full);
+
+        Assert.False(IsHeld(slot, day, standing: 1, standingHeadcount: 5));
+        Assert.True(IsHeld(slot, day, standing: 1, standingHeadcount: 10));
+    }
+
+    [Fact]
+    public void ADayNobodyBooked_IsNotHeld() =>
+        Assert.False(IsHeld(Slot(), day: null, standing: 1, standingHeadcount: 25));
+
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData(BookingErrors.TooSoon, true)]
+    [InlineData(BookingErrors.TooFar, true)]
+    [InlineData(BookingErrors.SlotFull, true)]
+    [InlineData(BookingErrors.Held, true)]
+    [InlineData(BookingErrors.NotOnThisDay, false)]
+    [InlineData(BookingErrors.OutOfSeason, false)]
+    [InlineData(BookingErrors.DateBlocked, false)]
+    [InlineData(BookingErrors.SlotInactive, false)]
+    [InlineData(BookingErrors.InstitutionNotActive, false)]
+    public void AServedDay_IsOneTheSlotWasLaidOn_HoweverFullOrFarAway(string? refused, bool served) =>
+        Assert.Equal(served, MealSlotRules.IsServedDay(refused));
 }

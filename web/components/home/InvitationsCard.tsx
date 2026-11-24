@@ -12,6 +12,7 @@ import { answerInvitation, myInvitations } from "@/lib/access/api";
 import type { MyInvitation } from "@/lib/access/types";
 import { session } from "@/lib/auth";
 import { colomboToday } from "@/lib/bookings/calendar";
+import { markShellStale } from "@/lib/shell/summary";
 
 /**
  * Invitations onto an institution's staff waiting for this person (plan 04, X1-X4), at the top of
@@ -48,6 +49,7 @@ export function InvitationsCard() {
       return;
     }
     setInvitations((current) => current.filter((i) => i.id !== invitation.id));
+    markShellStale();
     if (choice === "accept") {
       setJoined(invitation);
       toast({ variant: "success", title: t("accepted", { institution: invitation.institution }) });

@@ -1,3 +1,5 @@
+using Sethika.Domain.Bookings;
+
 namespace Sethika.Application.Abstractions;
 
 /// <summary>A meal slot as the institution's slot screen shows and edits it.</summary>
@@ -35,6 +37,7 @@ public sealed record InstitutionListingView(string Slug, bool Listed);
 
 /// <summary>One booking on the institution's calendar.</summary>
 /// <param name="DonorPhone">For arranging the meal with the donor.</param>
+/// <param name="Standing">A regular donor's day (plan 08, K3): its sponsorship's <c>PublicId</c>; otherwise <see langword="null"/>.</param>
 public sealed record CalendarBookingView(
     string BookingNo,
     string Status,
@@ -46,7 +49,8 @@ public sealed record CalendarBookingView(
     string? Notes,
     DateTime CreatedAt,
     string? RejectReason,
-    string? CancelReason);
+    string? CancelReason,
+    Guid? Standing);
 
 /// <summary>A slot on a day that has been booked: its places, and the bookings that took them.</summary>
 /// <param name="Status">The slot-day's: <c>Open</c> or <c>Full</c>.</param>
@@ -64,6 +68,35 @@ public sealed record SlotDayView(
     short BookedHeadcount,
     string Status,
     IReadOnlyList<CalendarBookingView> Bookings);
+
+/// <summary>A slot-day of today's table as booked so far.</summary>
+/// <param name="Status">The slot-day's <see cref="SlotInstanceStatus"/>.</param>
+/// <param name="Requested">Bookings on it still waiting for an answer.</param>
+public sealed record TableSlotDay(int MealSlotId, byte MaxSponsors, byte BookedSponsors, string Status, int Requested);
+
+/// <summary>One change of one booking, as the dashboard's ledger lists it (plan 05, R4).</summary>
+/// <param name="Status">The status the booking moved to; <c>Requested</c> is the booking being made.</param>
+/// <param name="At">When, in UTC.</param>
+/// <param name="Date">The day the meal is for.</param>
+public sealed record LedgerEntryView(
+    string BookingNo,
+    string Status,
+    DateTime At,
+    DateOnly Date,
+    string SlotName,
+    string? SlotNameSi,
+    string? SlotNameTa,
+    string DonorName);
+
+/// <summary>Where one booking sits on the calendar: what the jump-to palette opens (plan 05, R2).</summary>
+public sealed record BookingPlaceView(string BookingNo, DateOnly Date, Guid MealSlot, string Status);
+
+/// <summary>What one day's table is laid from: the active slots, their seasons, and the day's blocks and slot-days.</summary>
+public sealed record TableSource(
+    IReadOnlyList<MealSlot> Slots,
+    IReadOnlyList<MealSlotSeason> Seasons,
+    IReadOnlyList<BlockedDate> Blocks,
+    IReadOnlyList<TableSlotDay> SlotDays);
 
 /// <summary>
 /// Dapper reads for the institution's booking screens (plan 03, 5.4), always of the one institution
@@ -90,4 +123,13 @@ public interface IInstitutionBookingQueries
         DateOnly last,
         string? status,
         CancellationToken cancellationToken = default);
+
+    /// <summary>The institution's active slots with their seasons, and the blocks and slot-days of <paramref name="day"/>.</summary>
+    Task<TableSource> GetTableSourceAsync(int institutionId, DateOnly day, CancellationToken cancellationToken = default);
+
+    /// <summary>The latest <paramref name="take"/> status changes of the institution's bookings, newest first.</summary>
+    Task<IReadOnlyList<LedgerEntryView>> GetLedgerAsync(int institutionId, int take, CancellationToken cancellationToken = default);
+
+    /// <summary>The institution's booking numbered <paramref name="bookingNo"/>, or null if it has none by that number.</summary>
+    Task<BookingPlaceView?> FindBookingAsync(int institutionId, string bookingNo, CancellationToken cancellationToken = default);
 }

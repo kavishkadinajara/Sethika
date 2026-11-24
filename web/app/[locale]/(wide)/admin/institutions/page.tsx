@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { hasLocale, NextIntlClientProvider, useMessages, useTranslations } from "next-intl";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { AdminGate } from "@/components/admin/AdminGate";
 import { InstitutionsScreen } from "@/components/admin/InstitutionsScreen";
 import { pickMessages, sharedClientNamespaces } from "@/i18n/pick";
@@ -28,7 +29,10 @@ export default function Page({ params }: PageProps<"/[locale]/admin/institutions
         <p className="max-w-3xl text-muted">{t("intro")}</p>
       </header>
       <AdminGate permission="PLATFORM.INSTITUTIONS.VIEW">
-        <InstitutionsScreen />
+        {/* The list's filters, order and page are in the address; on a static page that waits for the browser. */}
+        <Suspense>
+          <InstitutionsScreen />
+        </Suspense>
       </AdminGate>
     </NextIntlClientProvider>
   );

@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { StyleSheet } from "react-native";
 
 import { createApiStub } from "@/test-utils/api-stub";
 import { institution } from "@/test-utils/fixtures";
@@ -9,7 +10,9 @@ import { InstitutionDirectory } from "./institution-directory";
 /*  Explore's list against GET /api/institutions (anonymous), stubbed at the app's boundary. */
 
 const mockApi = createApiStub();
+let mockScheme: "light" | "dark" = "light";
 
+jest.mock("react-native/Libraries/Utilities/useColorScheme", () => ({ __esModule: true, default: () => mockScheme }));
 jest.mock("@/api/http", () => ({ getJson: (path: string) => mockApi.getJson(path) }));
 jest.mock("@/auth/session-provider", () => ({ useSession: () => ({ status: "anonymous" }), useSessionClient: () => mockApi.client }));
 jest.mock("expo-router", () => ({ router: { push: jest.fn(), navigate: jest.fn(), dismissTo: jest.fn() } }));
@@ -26,7 +29,23 @@ const summary = (slug: string, name: string, district: string, districtSi: strin
 
 beforeEach(() => {
   mockApi.sent.length = 0;
+  mockScheme = "light";
   jest.mocked(router.push).mockClear();
+});
+
+it("gives a place's card the theme's depth: a light edge on black, a green-tinted shadow on ivory", async () => {
+  mockApi.serve({ "GET /api/institutions": () => json(200, [summary("galle-childrens-home", "Galle Children's Home", "Galle")]) });
+  const cardStyle = async () => {
+    const screen = await render(<InstitutionDirectory />);
+    const [card] = screen.where((props) => props.accessibilityRole === "link");
+    return StyleSheet.flatten(card.props.style) as Record<string, unknown>;
+  };
+
+  expect(await cardStyle()).toMatchObject({ shadowColor: "#0E2A21" });
+  mockScheme = "dark";
+  const dark = await cardStyle();
+  expect(dark.shadowColor).toBeUndefined();
+  expect(dark.boxShadow).toEqual(expect.arrayContaining([expect.objectContaining({ inset: true })]));
 });
 
 it("lists each institution with its type and district, and opens one by its slug", async () => {

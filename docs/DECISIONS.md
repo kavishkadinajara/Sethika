@@ -39,6 +39,7 @@ Decisions made while planning the project, with the reasoning behind each.
 | D8 | Transactional outbox | No lost SMS/events if the app crashes after commit |
 | D9 | Dynamic data masking on NIC/phone/email; PDPA consents with versioned legal texts | Privacy and legal proof |
 | D10 | CHECK constraints are always named, and never use `IN` or `BETWEEN`; masking functions are written with SQL Server's own spacing | Keeps `dotnet build` → SqlPackage publish a true no-op when nothing changed (see below) |
+| D11 | `READ_COMMITTED_SNAPSHOT` is on in every database (`<ReadCommittedSnapshot>` in the SQL project, 2026-11-01) | Azure SQL runs with it on. With it off locally, plain reads waited for writers, so a race that only shows when they stop waiting could not be found before production, and a read under a write could deadlock (seen on the admin institution list). Sethika's guarantees rest on conditional writes, keys, `UPDLOCK` and `RowVersion` rather than on a plain read waiting; the one test that relied on a read queueing now holds an `UPDLOCK` instead, and the 230 race-class tests passed with it on |
 
 ### D10 — keeping the dacpac deploy convergent
 DacFx compares its model against what SQL Server *stored*, so any expression the server rewrites on the
@@ -162,7 +163,7 @@ Full reasoning in `docs/plans/03-BOOKING.md` §2; choices made while building ar
 | C7 | `BookingNo` is platform-wide per year (`BK-2026-000123`), drawn inside the booking transaction | A rolled-back booking leaves a gap, as with registration numbers (B5) |
 | C8 | `booking.SlotInstances` has **no** RLS | See the exposure below |
 | C9 | `booking.MealSlots.PublicId` (UUID v7, unique) | A slot is addressed from the donor's side, and URLs never carry `Id` |
-| C10 | Discovery is a shared link `/i/{slug}` plus a plain `/institutions` list of `Active` and `IsPubliclyListed` institutions; both anonymous and rate-limited | Search, GEO and the map are Phase B. An institution is listed only once its Owner turns it on |
+| C10 | Discovery is a shared link `/i/{slug}` plus a plain `/institutions` list of `Active` and `IsPubliclyListed` institutions; both anonymous and rate-limited. **Superseded by Phase B:** the list became the search page `/find`, and `/institutions` redirects there (G11) | Search, GEO and the map are Phase B. An institution is listed only once its Owner turns it on |
 | C11 | SMS to the donor through the outbox, in their language, with `DedupKey`: received/confirmed, approved, rejected, cancelled, and a reminder at 18:00 Colombo the day before | The institution gets no SMS (cost); its calendar shows the waiting requests |
 | C12 / E32 | Sethika's own month grid (`BowlCalendar`), not FullCalendar | A CSS grid with Intl names and keyboard navigation did what was needed without a dependency |
 
@@ -178,6 +179,235 @@ recurring bookings and the Memorial Dana Planner (Phase C); staff booking on beh
 donor CRM (`InstitutionDonors`); a seasons screen (the rule is enforced, seasons have no UI); caterer
 fulfilment; SignalR live updates (Phase C); availability alerts; search, GEO and the map (Phase B).
 
+## Discovery (Phase B)
+
+Full reasoning in `docs/plans/06-DISCOVERY.md` §2 (G1-G11). All four promises of the proposal (its §0)
+are built; nothing on the cut order was cut.
+
+| # | Decision | Why |
+|---|----------|-----|
+| G1 | A search takes a date (Colombo), a time of day, an optional institution type, and where: near a point within 5, 10, 25 or 50 km, in a district, or anywhere. It answers the institutions with a slot that can be booked that day, nearest first (else by name), at most 100 | The proposal's question, word for word: "which institutions near Galle have a free lunch slot on 14 March?" |
+| G2 | The time of day comes from the slot's start time: morning before 10:30, midday until 15:00, evening after | Slots have no meal type, and dana times are fixed by custom; the boundaries live in one place (`MealTimes`) |
+| G3 | Where comes from the browser's location, the map's centre ("search this area") or a district; no geocoding. The browser's position is rounded to 3 decimals (about 100 m) before it is sent and is never stored | A geocoder is an outside service with its own terms, and district centre coordinates would be invented reference data |
+| G4, G5 | **SQL Server is the truth, the Redis GEO set is an index of it.** `GEORADIUS` (the local Redis is 3.2) or, when Redis is down or the key is missing, `Location.STDistance` under the existing spatial index only fetch candidates from a circle 2 % wider; SQL re-checks `Active` and listed, and one haversine (`GeoPoint.DistanceKmTo`) decides who is inside and in what order. The set is rebuilt at start and nightly (`MULTI/EXEC` of `DEL` + `GEOADD`) and kept current by an outbox handler on listing changes | Redis and SQL Server measure on different earths (a sphere and WGS 84, 0.12 % apart near Colombo): if each decided, the answer at the edge would depend on whether Redis was up. As with the booking lock (C2), Redis makes it fast and SQL makes it correct |
+| G6 | "One calendar": `GET /api/search/month` counts, for each day, the institutions a day search would answer | The proposal's calendar; it reuses G1's judgement for every day |
+| G7 | Every slot-day is judged by `MealSlotRules.Openings`, from one batch read for all candidates (`core.IntList`); results are not cached | The search, an institution's calendar and the booking engine cannot disagree, and a cached "free" would send donors to a full slot |
+| G8 | The search endpoints are anonymous and rate-limited per client, and answer only what the public page shows; each day search logs one row in `booking.AvailabilitySearches` with no user and no coordinates | Searching needs no account; the log is the demand signal for Phase D without knowing where a donor stood |
+| G9 | `/i/[slug]` renders on the server: the institution in the HTML, its metadata (canonical, `hreflang` en/si/ta, Open Graph), schema.org JSON-LD, a dynamic `sitemap.xml` and a `robots.txt` that keeps the signed-in screens out | Promise 1: a search engine reads HTML, not the API |
+| G10 | The map is Leaflet with OpenStreetMap tiles and our own numbered markers, loaded in the browser only | In the stack already; one package, no wrapper. Production would move to a tile provider |
+| G11 | The search page is `/find`: filters in the address (back undoes a filter; the phone's List/Map tab does not), list and map side by side on a wide screen, tabs on a phone; `/institutions` is a permanent redirect to it | One place to look; a search can be shared as a link |
+
+**Cut from Phase B, and the report says so:** geocoding typed place names, routes and directions;
+marker clustering (results are capped at 100); searching for religious services across institutions;
+availability alerts and the demand heat map (the search log is kept for them); a production tile
+provider.
+
+## Religious services (Phase E)
+
+Full reasoning in `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` §2 (V1-V16) and §10 (V17-V39, decided
+while building). All six promises of proposal v3 (its §0a) are built; nothing on the cut order was cut.
+
+| # | Decision | Why |
+|---|----------|-----|
+| V1, V21 | A leader is a person record (`org.ReligiousLeaders`) with an **optional** account, linked by phone number; an administrator can answer on their behalf | Many leaders (elderly monks, visiting clergy) never log in |
+| V2, V3 | **A leader can never be in two places at once:** every assignment and every leave period writes 15-minute rows to `booking.LeaderTimeBlocks`, whose primary key is `(LeaderId, BlockStart)`, so an overlap is a key violation (2627). A Redis lock `lock:leader:{id}`, taken in ascending id order, comes first; without Redis the key still holds | "No two intervals overlap" cannot be a constraint, "no two rows share a key" can. The database is the guarantee, as in C2; the fixed lock order means two admins cannot deadlock. The report sets it beside the booking engine as the second concurrency pattern (counted inventory vs interval overlap) |
+| V4 | Service types are typed by each institution; **no seeded suggestions per faith** | Which services a faith offers, and for how long, are facts nobody has confirmed (CLAUDE.md) |
+| V5, V7, V11, V28 | Times in UTC, shown in Asia/Colombo, on a 15-minute grid (05:00-21:00 offered); an at-home service adds the type's travel buffer to the blocks; the donor sends a Colombo date and start time | UTC+05:30 keeps the grid aligned in both; back-to-back home visits across town are refused |
+| V6, V32 | Appointment `Requested → Approved → Completed`, or `Rejected` / `Cancelled`; "needs leaders" is computed, not stored; the institution's agenda has four fixed views (upcoming, waiting, needs leaders, history) | No status that can disagree with its rows; an agenda answers "what needs me" and fits 320 px (no time grid, V10) |
+| V9, V16, V27 | RLS: appointments are `fn_TenantOrOwner` like bookings, the roster and blocks `fn_Tenant`. A donor's cancel frees the leaders' blocks through the outbox (platform session), and every `AppointmentCancelled` message does so idempotently | The donor's session cannot see the roster, and opening it would expose it. A stale block can only refuse an assignment, never allow a double one |
+| V12, V26 | Module `SERVICES` is on by default for the four religious institution types only; switched off, the page lists no services and requests are refused | Care homes have no religious leaders |
+| V13 | A donor may cancel until the end of the day before (Colombo) | The same rule as meals |
+| V17-V20, V22, V23 | Leave is at most 31 days, written from the current block on; leave over an appointment is refused naming it (`time_off_clashes`). Weekly hours only filter the picker (`null` = never recorded); taking a leader off the roster names their appointments and changes none | Weekly hours are a filter, not a guarantee, so last write wins; the institution decides what to do with a leader's appointments |
+| V30, V31, V33, V34 | Remove, respond, reject, cancel and complete take no lock (they only free time) but always write the appointment row, so two changes meet on `RowVersion` (409 `stale`). A leader answers from their own schedule, found through their roster row in the session's institution | A decline cannot slip past a cancellation; a loser frees nothing |
+| V14, V15, V35-V39 | SMS through the outbox: the donor on request, approval, rejection, cancellation and the reminder; a leader on assignment, removal, cancellation and the reminder while still expected. Reminders at 18:00 Colombo the day before, in their own Hangfire job, with `DedupKey`s | The institution gets no texts, as with bookings. A leader without a phone is skipped, not failed |
+| V25, V29 | Services ride on the existing public page (`GET /api/institutions/{slug}`); requests are limited to 10 per donor per hour | No new anonymous endpoint; each request takes a number from a platform-wide series |
+
+**Cut from Phase E, and the report says so** (its §6): searching for services across institutions
+and on the map; leaders shared by several institutions; assigning leaders to meal bookings; automatic
+assignment (the picker only filters); live SignalR updates; a time-grid calendar; per-faith seeded
+service types; a platform action to enable `SERVICES` for institutions approved before Phase E;
+inviting a leader to create an account from the roster.
+
+## Engagement (Phase C)
+
+Full reasoning in `docs/plans/07-ENGAGEMENT.md` §2 (H1-H19, and H20-H42 decided while building). The
+proposal's Phase C promises are built except email (cut by the user, H1); the Memorial Dana Planner and
+co-sponsors were added outside the proposal text. Nothing on the cut order was cut.
+
+| # | Decision | Why |
+|---|----------|-----|
+| H1 | Phase C is recurring yearly bookings, the Memorial Dana Planner, live slot updates, preferred institutions and co-sponsors. **Email is cut**: every confirmation and reminder already goes by SMS in the donor's language | The proposal's Phase C row plus the user's planner and co-sponsor decisions (plan 07 §8) |
+| H2, H3, H22 | **A yearly booking is a promise to try, not a held slot.** Each year's booking is an ordinary booking (`Source = 'Recurring'`) made by the same engine, by a daily job (`recurring-bookings`, 00:30 Colombo) on the first day the date enters the slot's booking window. The year is claimed by a conditional `UPDATE` of `LastGeneratedYear` in the booking's own transaction, so a rerun or two runs at once book it once; a busy lock claims nothing and the next run tries again. C#, not a stored procedure | One engine, one judge (C4, G7): the overbooking guarantee covers yearly bookings with no new code. A procedure would have re-implemented `MealSlotRules`, the lock and the outbox |
+| H4, H21 | A year that cannot be booked texts the donor once (`RECURRING_FULL` or `RECURRING_CLOSED`) with a link to `/find` for that day. No retries | A retry loop would compete with other donors for weeks; Phase B already answers "where else?" |
+| H5, H20 | "Book this every year" in the booking sheet; 29 February books 28 February in a common year; one active yearly booking per donor, meal and day (filtered unique index); named by a `PublicId`. Stopping keeps a year already booked | Stopping must never silently cancel what the institution has accepted |
+| H6, H23, H24 | **The Memorial Dana Planner is configuration, not code.** A pure domain function (`MemorialObservances`) computes the days from `core.MemorialRules` (date of passing + months, then days; "the 7th day" is + 6, the day of passing counted as the first). A booking for an observance must fall on its day; a yearly observance can become a yearly booking | A faith, or an institution's custom, is a row; a reviewer corrects an offset without a code change |
+| H7, H27 | Religions and memorial rules seeded as **drafts** (every rule name starts with `DRAFT`); relationships as plain words. The planner is its own screen `MYMEMORIAL.PLANS`; RLS `sec.fn_Owner(DonorUserId)`: the donor and the platform, never an institution | CLAUDE.md forbids inventing faith facts. The names of a family's dead are theirs alone |
+| H8, H25, H26 | One memorial reminder per observance, from tomorrow to 7 days ahead, if nothing is booked for it (`memorial:{plan}:{rule}:{date}`); never carries the deceased's name. Archiving a plan stops its reminders and cancels nothing | One text, never two; a late plan still gets its reminder |
+| H9, H10, H28-H31 | **Live updates are a hint, the API is the truth.** A booking, a rejection or cancellation that frees a place, a blocked range and a slot change each write an `AvailabilityChanged` outbox message in their own transaction; its handler sends `AvailabilityChanged { slug, from, to }` to the institution's SignalR group (`/api/hubs/availability`, anonymous, at most 3 institutions per connection). An endpoint filter (`WakesOutbox`) queues the outbox job after a successful change, so a calendar hears in about a second. Redis backplane with a channel prefix. The calendar refetches its month | A lost hint costs freshness, never correctness: the engine still refuses a full slot. Azure scales out, so a change on one instance must reach a calendar on another; the prefix keeps Sethika's channels apart from other users of the same Redis |
+| H11 | Live: the institution's public page and its booking calendar. `/find`'s counts are not live | The two calendars the proposal means; live counts across every institution would need a broadcast to every searcher |
+| H12, H39, H42 | **Preferred institutions:** a heart on `/i/[slug]`, `GET/PUT/DELETE /api/me/places`, "My places" on the donor's home; RLS `fn_Owner(UserId)`; the primary key, not a look-up, stops a double tap | The proposal's donor profile at its smallest real size |
+| H16-H18, H32-H36 | **Co-sponsors by a link the donor sends.** Sethika makes `/share/{token}` (32 random bytes, only the SHA-256 stored) and texts no one. At most 10 invitations per booking (the booking row is update-locked while counting). Joined and declined are final; withdrawing deletes the row. RLS `sec.fn_Contributor(InstitutionId, UserId, InvitedBy)`; the three things a contributor needs that no session can see go through one platform-scoped class, `SqlShareLinks`, and the answer is one conditional `UPDATE ... WHERE Status = 'Invited'` | A number typed by someone else is not consent to be texted; a link is a bearer secret, so only its hash is kept. Nothing else in a request gains the platform's reach |
+| H19, H37, H38 | Joined co-sponsors appear on the donor's booking, by name only on the institution's, and under "Shared with me"; each gets the 18:00 reminder in their own language (`booking-reminder:{BookingNo}:{UserId}`) | The point of sharing a memorial dana is that the siblings come |
+| H15 | New packages: `Microsoft.AspNetCore.SignalR.StackExchangeRedis`, `@microsoft/signalr`, and `Microsoft.AspNetCore.SignalR.Client` (tests only) | Microsoft's own package for each job |
+
+**Cut from Phase C, and the report says so** (plan 07 §6): email confirmations and reminders; texting
+a co-sponsor; contributors' shares of a cost; live counts on `/find` and live updates in the mobile app;
+a per-address limit on connecting to the hub; confirmed memorial rules and religion names;
+`core.SpecialDays` (poya, festivals).
+
+## Standing sponsors (plan 08)
+
+Full reasoning in `docs/plans/08-STANDING-SPONSORS.md` §2 (K1-K12 agreed with the user on 2026-11-02,
+K13-K37 decided while building). Not in the proposal: the user asked for it after Phase C ("an
+institution must be able to set up dana dates itself, for a donor ... any scenario. People give like that
+today"), and it took the place of the gratitude wall and part of Phase D's reports (plan 08 Q1).
+
+| # | Decision | Why |
+|---|----------|-----|
+| K1, K13, K14 | **The donor book.** `org.InstitutionDonors` (in the schema since the start, never used) holds the institution's own regular donors, most of whom never use the app: name, phone, notes, the language of their texts, and "this person agreed to receive texts" with who ticked it and when. A row is linked to the Sethika account whose *confirmed* phone it has, never a deleted one; one row per account per institution (`UX_InstDonor_User`) | One history per person per institution; an unconfirmed phone proves nothing about who holds it |
+| K2, K15 | **A standing sponsorship** is one row (`booking.StandingSponsorships`) for any of the user's scenarios: once, daily, weekly (a weekday mask), monthly on several days (a 1-31 mask) every N months from the start month, yearly. A day a month does not have is skipped, not moved (Q3). The database refuses any other shape (`CK_Standing_Shape`, `CK_Standing_YearDate`) | Every scenario in plan 08 §0 is one row, checked where it is stored |
+| K3, K18, K20-K22 | **Each day is an ordinary booking** (`Source = 'Standing'`), made by the same engine and approved at once, so calendars, places left, the overbooking guarantee, reminders and completing need no new code. A day *holds* its place (Q5). Setting one up books the next 31 days while staff wait; a nightly job (`standing-bookings`, 00:45 Colombo) books the rest of each slot's window. A day is booked once: a day with any booking or change is never booked again, and a day the engine refuses is tried again each night. No text per day | One engine, one judge (C4). A daily sponsor must not be texted daily; a 365-day window took 17.5 s in one request |
+| K4, K5, K19, K23 | **Changes to a day** are rows of `booking.StandingExceptions` (skipped, released, blocked, moved to or from), one per sponsorship and day. Skipping, ending and booking one of its days each take an update lock on the sponsorship's row after the slot-day's Redis lock, so none can cross another. Ending keeps today's meal | A cancelled booking alone would be booked again by the next night's run; with RCSI a reader does not wait for an uncommitted change, so the row lock is what serialises them (both races forced in the tests) |
+| K6, K25-K27 | **Asking for a held day.** A donor on `/i/[slug]` sees a regular donor's full day as "held: ask for it"; the institution gives it (one transaction: the standing day released, its booking cancelled, the asker booked approved, both texted) or keeps it. "Held" is read past Row-Level Security as counts only (`SqlStandingHolds`) | Scenario 4: the institution decides. Neither a donor's session nor the public calendar may read who holds a day |
+| K7, K28 | **A blocked date over standing days** lets each go (`Blocked`) in the block's own transaction and texts each sponsor once per block; ordinary donors' bookings are listed, not cancelled (Q4) | Scenario 6, as the user answered |
+| K8, K29 | **Swaps**, this time (both days booked; four changes recorded; both rebooked through the engine) or from now on (each sponsorship ends and a new one takes the other's pattern). Both slot-days' locks in date order, both row locks in id order | Scenario 7 in one transaction, so a swap never leaves a day empty or double (forced race: two staff swapping one day with different partners, one wins) |
+| K10, K30 | **Texts** through the outbox (`StandingTextDue`, `DayRequestAnswered`) with dedup keys: a linked donor is texted as their account; one without an account at the institution's phone only with the consent box ticked (Q2); otherwise not at all | Every change of someone's day reaches them, and only with consent |
+| K11, K17 | Screen `BOOKINGS.SPONSORS` (VIEW/CREATE/EDIT); giving or keeping a day is `BOOKINGS.CALENDAR.APPROVE`/`REJECT`. Institutions approved before this change keep their cloned roles | The catalogue's rules; cloning happens at approval |
+| K16 | **RLS**: the three new tables are tenant-only; a linked sponsor reads their days only as their own bookings (`DonorUserId`) | The narrowest reach that still lets each person see what is theirs |
+| K31-K33 | The form's preview of the next 12 days and their clashes is the server's (`/sponsorships/preview`, the night run's arithmetic and the calendar's rules); calendars mark regular donors' days | A TypeScript copy of the pattern and the engine's rules would drift |
+| K35 | **A linked sponsor's own "I can't give that day"** in My bookings (`POST /api/bookings/{bookingNo}/skip`) runs the staff skip itself in a scope stamped as the platform (`PlatformOwnStandingDays`), found only through a booking that is the caller's and a donor book row linked to the caller. Today is allowed (the user, 2026-11-04) | Their session cannot write `StandingExceptions` (K16); one judge, not a copy of the skip |
+| K36, K37 | **Linking at sign-up and sign-in**: `SqlDonorBookLinks` links every unlinked row with the account's confirmed phone, in every institution, and the standing days already booked for it become the person's in the same transaction. A staff change of link carries those days too | Without the days following, a newly linked person would see nothing until a new day was booked |
+
+Platform reach from a request is now in three narrow classes (`SqlShareLinks`, `SqlStandingHolds`,
+`SqlDonorBookLinks`) and one platform scope for one call (`PlatformOwnStandingDays`); each is keyed by
+what the caller holds and returns only what plan 07 H33 or plan 08 K25/K35/K36 lists.
+
+**Not built, and the report says so** (plan 08 §6): poya and festival patterns (`core.SpecialDays` is
+not seeded); importing a donor book; payments or pledges for standing days; withdrawing a day request;
+a person's own list of their arrangements (they see the days, not the pattern).
+
+## Giving (Phase D)
+
+Full reasoning in `docs/plans/09-GIVING.md` §2 (M1-M21 agreed with the user on 2026-11-04, M22-M41 decided
+while building). The report chapter is `docs/report/PHASE-D.md`. The user's answers: no PayHere account (Q1),
+each institution's own merchant (Q2), a one-step void by a second person (Q3), a platform action for
+institutions approved earlier (Q4), a printable receipt (Q5), the trigger (Q6).
+
+| # | Decision | Why |
+|---|----------|-----|
+| M1-M3, M23 | **Recording a gift**: money or items, a day, and who gave (a donor book row, a signed-in donor, or a typed name), in one transaction with the receipt number, an audit row and the outbox message. Receipt numbers are per institution and gap-free (`RCP-2026-000001`, `UNIQUE (InstitutionId, ReceiptNo)`), and URLs carry a `PublicId`. A gift on a past day is stored at noon in Colombo | Cash at the counter is how most giving happens, and a committee audits its own book: a gap or another institution's number in it is a question |
+| M4, M5, M24 | **The receipt is a printable page**, an acknowledgement and not a tax receipt. Its text goes to an account, or to a donor book row with consent; a walk-in's typed phone is never texted. Two templates, so no item typed by staff enters an SMS | No PDF package. A typed number is not consent. A tax receipt needs a status nobody has confirmed |
+| M6, M7, M22, M25 | **Void, never edit or delete**: a different person, `GIVING.DONATIONS.DELETE`, step-up, a reason and the version read. `giving.trg_Donations_Immutable`, the project's first trigger, refuses every delete and any change but the void, and lets one column move: `DonorUserId` of a gift recorded against a donor book row. A donor's session can never insert a donation | "Never edited" holds even against a bug in our own code, and linking at sign-in (K36) still carries a person's receipts |
+| M8, M9, M32-M35 | **Only PayHere's signed notification makes a donation.** An order is a row of `giving.OnlinePayments` with no receipt number. The notification is checked (order, merchant, `md5sig`, amount, currency), then one transaction claims the order (`Status <> 'Paid'`), writes the gift and marks it paid. A signed success beats an earlier failure. Every refusal is the same 400. Email, address and city go to PayHere and are stored nowhere. Order and notification run as the platform; a donor's session writes nothing on the table | The return URL can be forged. A retried notification waits on the row lock and stops before taking a number, so the book stays gap-free. A success ignored would be money received with no receipt |
+| M10, M21, M36 | **Each institution's own merchant** (`giving.PaymentMerchants`), so Sethika never holds donors' money. The secret is write-only and sealed with AES-256-GCM, the institution's id as associated data, with `KeyId` for rotation and keys from configuration; a bad key stops the start-up. `givesOnline` reaches the public page through a one-answer platform read | A backup or a SQL read never shows a secret, and one institution's secret cannot sign another's notification. AES-GCM is in .NET, so no package |
+| M11-M13, M29, M31 | **Needs are counted inventory**: a pledge is a conditional `UPDATE` on the need's row (`need_full`, `need_closed`), with the booking engine's guarantee and no Redis lock, since one row serialises itself. `QuantityPledged` means everything spoken for: what arrived plus what open pledges still promise. A need with open pledges cannot be closed. At most five open pledges per donor per need | Two donors on the last units: one wins. The plan's two rules only agree on that one meaning of the counter |
+| M14, M15, M30 | **A donor's session may not write a need**, so pledging runs in `PlatformPledges`, whose only inputs are the caller and the need's `PublicId`. Delivery records an in-kind receipt and moves the counters in one transaction. A void takes the gift out of the need and reopens one it had fulfilled | Closes a hole where any signed-in session could change a need's title. Progress is what arrived, and a need's progress is a total, which a void leaves |
+| M16, M17, M37-M41 | **The monthly report** (Dapper, the first embedded `.sql`). Utilisation = booked days ÷ served days, and served days are the calendar's own answer (`AvailabilityCalendar.GetAsync`, `MealSlotRules.IsServedDay`). A booking belongs to its meal's day and a gift to `DonatedAt` in Colombo. `giving.Needs` gained `OpenedAt` and `EndedAt`. CSVs have their own routes and one writer (`CsvDocument`: BOM, a leading apostrophe against formulas, no phone numbers) | The report cannot disagree with the calendar, a past month holds its own figures, `EXPORT` is a policy `EndpointPolicyTests` can see, and CSV injection is the one way the file could hurt its reader |
+| M18-M20 | **Role-based views on the dashboards that exist**: a giving line on the Day Ledger, "My giving" on the donor's home. Modules `GIVING` and `GIVE`; `DELETE` on donations means void. Seeded methods, categories and units are Sethika's own vocabulary, not drafts of fact | Same rules as every screen. The catalogue's actions are fixed, and `EDIT` would mislead more |
+| M26 | **`PLATFORM.INSTITUTIONS.EDIT`** (step-up): "Bring roles up to date" adds what a template gained, and reads `auth.RolePermissions`' temporal history so a grant the institution took away stays away | Institutions approved earlier held none of the new permissions, and the history tells "gained" from "removed" |
+| M28 | **A step-up survives a token rotation** only when the rotation also presents the access token holding it, with only the time it had left. The httpOnly cookie alone carries nothing (A20 holds) | A rotation no longer throws a step-up away, and a thief of the cookie still inherits none |
+
+Platform reach from a request grew by `PlatformPledges`, `PlatformPayments` and `SqlOnlineGiving`, each keyed
+by what the caller holds.
+
+**Not built, and the report says so** (plan 09 §6): the gratitude wall and any public list of donors; refunds from
+Sethika; recurring online gifts; tax receipts; a key vault for M21's keys; need images; pledge reminders;
+charts and per-donor analytics; Excel files; Phase D in the mobile app.
+
+**Sandbox payment, 2026-11-09.** One real PayHere sandbox payment (Rs. 5,000, test Visa) went through end to
+end over an ngrok tunnel: notification accepted, order `Paid`, receipt `RCP-2026-000003`. PayHere refuses
+subdomains as merchant domains, so the root `ngrok-free.dev` is registered. `next dev` refuses a tunnel host's
+requests, so `next.config.ts` reads `allowedDevOrigins` from `DEV_TUNNEL_HOST` (`web/.env.local`, unset in
+production). Only the success path was walked live.
+
+## Hardening (2026-11-08)
+
+An OWASP-style read of the API and the web's edge before the final week: IDOR on every business number
+and `PublicId`, RLS reach, mass assignment, endpoint policies, rate limits, cookies and CORS, secrets in
+configuration and logs, error bodies, uploads, CSV export and the PayHere notification. Those held, each
+already with a test; four findings did not, and are fixed or scheduled here.
+
+| # | Decision | Why |
+|---|----------|-----|
+| W1 | **Browser security headers on both sides.** The web sends `frame-ancestors 'none'` + `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, a `Permissions-Policy` that keeps geolocation for this origin, and HSTS (`web/lib/security-headers.ts`, applied by `next.config.ts`). The CSP holds only `frame-ancestors`, `base-uri` and `object-src`. The API sends its own on every response, 401 and 404 included: `default-src 'none'; frame-ancestors 'none'`, `DENY`, `nosniff`, `no-referrer` (`ApiSecurityHeaders`) | No header was set anywhere, so any site could frame an approve, void or grant button (clickjacking). Script and style rules would need Next's inline scripts, Leaflet, SignalR and PayHere's checkout tuned and walked, which a week before the deadline is more risk than it removes. Next's `headers()` did not reach a response the `/api` rewrite carried (seen with `next dev`), and the API is reachable without the web in front, so the API cannot rely on the web's |
+| W3 | **Access tokens are believed only under HS256** (`ValidAlgorithms`) | Left open, the token library accepted the API's own key under HS384, and would under HS512 with a 64-byte key: an algorithm nobody chose, measured as a 200 before the fix |
+| W4 | **Signed-in but no permission code is a listed decision**, like anonymous: `EndpointPolicyTests.AuthenticatedOnlyEndpoints` holds the 16 routes (`/api/me/*`, step-up, the two password changes), each acting only on the caller's own account | `RequireAuthorization()` alone satisfied the old test, so an institution route that lost its `[HasPermission]` would have passed |
+| W2 | **Scheduled for deployment, not code:** behind Vercel's rewrite and Azure's front end the client address may arrive as the proxy's, so every web visitor would share one per-client budget (sign-up 20 an hour). Set `ForwardedHeaders:KnownProxies` / the forward limit from the real deployment and check one request's `RemoteIpAddress` (01-AUTH A18) | Cannot be measured without the hosts. Per-phone and per-name limits and the lockout do not depend on it |
+
+Tests: JWT theory +1 case with its own control (a validator that takes HS384 believes the forgery),
+`EndpointPolicyTests` +1, `ApiSecurityHeadersTests` 4, vitest `security-headers.test.ts` 5, e2e
+`access/headers.spec.ts` 2. Mutants 13/13 killed.
+
+The same day, the dependencies: `dotnet list package --vulnerable` found nothing; `next` 16.3.6 carried a
+critical advisory and went to 16.4.5, with the .NET servicing packages to 10.0.14. The web's runtime audit is
+clean; what is left is lint tooling (dev only, npm's fix is a downgrade) and Expo's CLI in mobile (build
+tooling, not in the app; npm's fix is Expo 52). Dependabot now opens PRs against `develop`.
+
+2026-11-22: GHSA-wr8v-9x5q-ggcm (CVE-2026-114147, high, ASP.NET Core denial of service) named
+`Microsoft.AspNetCore.SignalR.StackExchangeRedis` ≤ 10.0.14, and NuGet audit with warnings as errors stopped
+every restore. The .NET servicing packages went to 10.0.15 together (SignalR Redis, JwtBearer, EF Core and its
+SQL Server provider, Identity.Core, Extensions.Http, Cryptography.Pkcs, Mvc.Testing, SignalR.Client);
+`dotnet list package --vulnerable --include-transitive` is clean, and the full suite passed (1,636). The
+advisory covers the ASP.NET Core runtime ≤ 10.0.14 as well: a machine that runs the API needs runtime 10.0.15
+(App Service updates its own). The same run found `PaymentEndpointsTests` reading a developer's user-secrets for
+PayHere's public URLs (set to the tunnel for the sandbox walk); the test now pins them, as it pins the rest.
+
+**The access audit's open items** (PR #14):
+
+| Item | Decision |
+|------|----------|
+| The admin list's stale Owner column | Already fixed on 2026-11-01 (c8933f5): the owner is read from the roles, with a test |
+| Platform-rank UX mismatch | The users list offers Suspend or Reactivate only on an account the caller outranks (`web/lib/admin/ranks.ts`, the API's `RankNotJunior` rule) |
+| Accepting an invitation into an institution that is not live | Refused with `409 institution_not_active` unless it is `Active` or `Onboarding` and not deleted, the statuses `vw_EffectivePermissions` counts; the invitation stays open |
+| A support ticket written before its audit row | The audit row is committed first, then Redis stores the ticket; if Redis cannot, a `SupportTicketFailed` row follows. A ticket with no audit row can no longer exist |
+| Global deny overrides | Not built: no API or screen writes `auth.UserPermissionOverrides`. As the view stands, an override with no institution applies to platform-scope grants only, and an institution's deny names that institution |
+
+Tests: invitation theory 3, support ticket 2 (the real Redis store, watched: was the audit row committed when
+it was asked), vitest `ranks.test.ts` 5, e2e "offered Suspend only on accounts they outrank". Mutants 9/9.
+
+**Not explained: lists stuck on "Loading" under two Playwright workers.** In the F.8 run (2026-11-07) 16
+admin, giving and shell tests waited past 15 s on a list and all passed again with `--workers=1`. A
+reproduction on 2026-11-08 (admin and giving, two workers, the API's request timings logged) did not reach
+the question: 49 of 50 tests failed because `sqlcmd` could not connect to SQL Server at all (login timeout),
+with about 3 GB of 16 GB free, and the same day the web dev server once died of Node running out of memory.
+What it shows is that this machine cannot hold SQL Server, the API, `next dev` and two browsers at once; it
+does not show that this is what held the lists. It is recorded as unexplained, not fixed. The suites run
+with `--workers=1` here, and the config keeps 2 for a machine with the memory.
+
+## QA cycle (2026-11-22)
+
+The first QA run (`docs/qa/QA-PLAN.md`, cases F01-F04 in `docs/qa/cases/`, an isolated `Sethika_QA`
+world built through the product by `scripts/qa/qa.ps1`) found three defects (`docs/qa/DEFECTS.md`).
+All three were agreed and fixed the same day, and so was OBS-05 (text consent on a landline in the donor book), seen while fixing DEF-002.
+
+| # | Decision | Why |
+|---|----------|-----|
+| Q1 (DEF-001) | **The LEADER role follows the leader record's account link.** Linking a roster entry to an account gives that account the institution's LEADER role; unlinking, or linking the entry to someone else, takes it back. Taking a leader off the roster keeps it. Inviting someone as LEADER stays refused (`not_held`) | No owner or manager template holds `SERVICES.MYSCHEDULE.*`, so anti-escalation let nobody hand LEADER out, and a leader with an account could never open their schedule. The e2e specs had hidden this by granting LEADER in SQL. The link needs no exception to anti-escalation: the role reaches only the person's own assignments, whose details their texts already carry. An off-roster leader may still hold appointments to answer for (V30) |
+| Q2 (DEF-002) | **A number that signs in, or that a leader's texts go to, must be a mobile** (`IPhoneNumberNormalizer.TryNormalizeMobile`: MOBILE or FIXED_LINE_OR_MOBILE): code requests of every purpose, sign-up, bootstrap, the platform's "create account", a leader's phone. Contact numbers take any line (`TryNormalize`): an application's office and contact phones, a walk-in donor (never texted, M5) and the donor book, which refuses **text consent** on a landline (OBS-05: an elderly sponsor may only have one, and staff call them) | `IsValidNumber` alone took Colombo landlines, and each one was sent a paid code that could never arrive. FIXED_LINE_OR_MOBILE keeps US and Canadian numbers, where the plan does not tell the two apart (diaspora donors) |
+| Q3 (DEF-003) | **A step-up asked for again within the resend minute answers `429 code_already_sent`**, and the form shows it as "code sent" with a countdown, not as an error. The hourly cap stays `429 too_many_requests`. The anonymous code endpoint is unchanged | The form asks for a code as it opens, so cancelling and reopening showed "too many tries" beside a code that still worked. The cooldown is read off the live code's own TTL (a used or burned code is deleted), so the answer is true. Guessing from `Retry-After` was rejected: near the end of the hour the cap's wait is under a minute too. Signed in, and about one's own phone, the more precise answer gives nothing away |
+
+Tests: see each defect's entry. Mutants 14/14 killed (13 C#, 1 vitest; OBS-05's included); the one that first survived - a save that keeps the same account re-moving the role - got its own assertion.
+
+The second run (F05-F08: onboarding, review, platform, access) found two more, both agreed and fixed the same day:
+
+| # | Decision | Why |
+|---|----------|-----|
+| Q4 (DEF-004) | **An applicant's edit that meets another live application's registration number answers `409 registration_no_in_use`**, as a submit does (`ApplicationHandler.UpdateDetailsAsync` catches `UX_RegReq_ActiveRegNo`) | The index covers `InfoRequested`, and the applicant may change details while answering a question, so the clash can be met on an edit; it surfaced as a 500. Nothing was ever saved - the transaction rolled back - but the applicant saw a server error instead of the message the web already had |
+| Q5 (DEF-005) | **`GET /api/me/permissions` no longer carries `institutionId`** - its answer is `{ userId, isPlatform, permissions }` | It was the internal `org.Institutions.Id`, against the rule that internal ids never leave the API. No client read it (the web stored it in `PermissionProvider`, the mobile app ignored it); the session already names its institution by slug |
+
+Tests: `ApplicationEndpointsTests.ANumberChangedWhileAnsweringAQuestionToALiveOnesIsRefused_AndNothingChanges`; `JwtTokenServiceEndpointTests` (both `/api/me/permissions` cases assert the field is gone). Mutants 3/3 killed.
+
+The third run (F09-F12: public page, meals, booking, calendar, 2026-11-24) found four, all S3, agreed and fixed the same day:
+
+| # | Decision | Why |
+|---|----------|-----|
+| Q6 (DEF-006) | **A meal save refused as `stale` reloads the meal into the form** (its values and new version, `formAfterStale`); a meal gone meanwhile closes the sheet and reloads the list | The message already said "it has been refreshed; check and try again", but nothing was: every later save was stale again until the sheet was closed. The person's typing is replaced by what the other person saved, which is what "check and try again" asks them to look at |
+| Q7 (DEF-007) | **The name field shows "You already have a meal with this name" for `slot_name_taken`** before its own "enter a name" rule (`nameError`); typing a new name clears it | The field was marked invalid for the clash, and the generic rule's message always won, so the right one could never show |
+| Q8 (DEF-008) | **Every booking decision writes the `AvailabilityChanged` hint for its day** (approve, served and not happened too, not only those that give a place back) | The institution's other open calendars (plan 07, H11) kept an accepted request in their tray with its Accept button. The hint names only the institution and the day; a donor's page that hears it refetches the same numbers, which is one cheap read |
+| Q9 (DEF-009) | **Free text in booking cards wraps anywhere** (`wrap-anywhere`, `min-w-0`): meal names on the slots screen, the institution page, the booking sheet and the calendar; donor name, in-memory line, notes and reasons on the calendar and My bookings | A word longer than a card (a pasted link, a name typed without spaces) ran over the next card, and on My bookings made the whole page scroll sideways at phone width. `break-words` would not do: it does not shrink a grid item's minimum width |
+
+Tests: vitest `slot-form.test.ts` (3 new: the name message, the reload, a meal gone); `LiveAvailabilityTests.ACalendarHearsEachChangeToItsInstitutionsDays_AndOneWatchingAnotherHearsNothing` (the approval is now heard); QA cases QA-F10-01/02/03, QA-F11-04, QA-F12-06 as the screen-level regression (the longest words on the slots screen, the public page, My bookings and the calendar at 390 px). Mutants: 3 vitest, 2 on the screens (stale reload off, the in-memory wrap off), 1 C# (the hint only when a place comes back) - see DEFECTS.md.
+
 ## Unconfirmed reference data (seeded as drafts)
 CLAUDE.md forbids inventing facts about real institutions. Where the flow cannot run without a row,
 the row is seeded as a visibly marked draft and listed here until someone confirms or replaces it.
@@ -188,7 +418,12 @@ the row is seeded as a visibly marked draft and listed here until someone confir
 | Institution declaration | `09_LegalDocuments.sql` | `0.1-draft` in title and body | a legal reviewer |
 | Document types and the documents each institution type must upload | `12_OnboardingDrafts.sql` | `DRAFT` in every name and instruction | real institutions of each type |
 | Reviewer checklist items | `12_OnboardingDrafts.sql` | `DRAFT` in every question | the platform's reviewers |
-| Religious service suggestions per institution type (name, duration, leaders needed) — Phase E, not seeded yet | to be written | `DRAFT` in every name | real institutions of each faith |
+| Religious service suggestions per institution type (name, duration, leaders needed) | not seeded (V4): each institution types its own | — | real institutions of each faith, if suggestions are ever added |
+| SMS texts for religious services (Sinhala and Tamil) | `11_NotifyTemplates.sql` | listed in `docs/translations-to-review.md` | a Sinhala and a Tamil reviewer |
+| Religions (Sinhala and Tamil names) and memorial rules per faith (which days, their offsets, H24's "day of passing is day 1") | `03_LookupTypes.sql`, `13_MemorialDrafts.sql` | `DRAFT` in every rule name; listed in `docs/translations-to-review.md` | a reviewer of each faith |
+| SMS texts and screen messages for Phase C (Sinhala and Tamil) | `11_NotifyTemplates.sql`, `web/messages` | listed in `docs/translations-to-review.md` | a Sinhala and a Tamil reviewer |
+| SMS texts and screen messages for standing sponsors (Sinhala and Tamil) | `11_NotifyTemplates.sql`, `web/messages` | listed in `docs/translations-to-review.md` | a Sinhala and a Tamil reviewer |
+| Sinhala and Tamil names of districts and institution types | not seeded: `NameSi`/`NameTa` are `NULL`, so the search page shows the English name in every language | — | a Sinhala and a Tamil reviewer |
 
 The registration reject reasons in the same seed are Sethika's own review policy, not facts about
 institutions, and are not drafts. Every row is read from the tables at run time, so a confirmed list
@@ -209,5 +444,11 @@ tables above once the code exists and the choice has held.
 | `docs/plans/01-AUTH.md` — authentication, MFA step-up, i18n foundation, design system | `2-authentication-and-i18n-foundation` | Merged into `develop` (PR #4, #5); browser walk-throughs still owed — see its status line |
 | `docs/plans/02-ONBOARDING.md` — institution onboarding and approval, outbox processor | `3-institution-onboarding` | Merged into `develop` (PR #6, #7 Text.lk) on 2026-10-23 |
 | `docs/plans/03-BOOKING.md` — meal slots, the booking engine (Redis lock + conditional UPDATE + CHECKs), donor booking, reminders | `5-booking-engine` | 5.1-5.7 built (engine, institution and donor APIs, SMS and reminders, screens); decisions summarised above under "Booking (plan 03)", the rest in its §8 |
-| `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` — religious services, leader roster, conflict-free assignment | not cut yet | Designed (S4); build after the booking engine |
-| `docs/plans/PHASE-F-MOBILE.md` — donor mobile app (Expo), mobile sessions, push notifications | `ccr-79f10240-uk4n3v` | F.1–F.2 built (app scaffold, mobile sessions); phone walk-through owed; F.3+ follow the API (S8) |
+| `docs/plans/04-UI-SHELL.md` — the app shell, dashboards, access screens, staff invitations | `ui-ux-overhaul`, `access-hardening` | Merged into `develop` (PR #13, #14) |
+| `docs/plans/05-REDESIGN.md` — true-black dark theme, living sidebar, Day Ledger dashboards, every screen on the new base | `redesign` | Merged into `develop` (PR #31) on 2026-11-01 |
+| `docs/plans/PHASE-E-RELIGIOUS-SERVICES.md` — religious services, leader roster, conflict-free assignment | `phase-e-religious-services`, `phase-e-donor` | Done. 8.1-8.4 and 8.6 merged (PR #12); 8.5 and 8.7-8.10 (donor requests, assignment endpoints, texts and reminders, screens) pushed to `develop` on 2026-11-01 without a pull request, described in `docs/plans/PHASE-E-DELIVERY.md`; decisions summarised above under "Religious services (Phase E)" |
+| `docs/plans/06-DISCOVERY.md` — public institution pages, cross-institution search, Redis GEO, the month view and the map | `rcsi-on` (with `READ_COMMITTED_SNAPSHOT`, D11) | B.1-B.4 built and committed; decisions summarised above under "Discovery (Phase B)" |
+| `docs/plans/07-ENGAGEMENT.md` — yearly bookings, the Memorial Dana Planner, live slot updates (SignalR), preferred institutions, co-sponsors | `phase-c-engagement` | C.1-C.5 built and committed; decisions summarised above under "Engagement (Phase C)" |
+| `docs/plans/08-STANDING-SPONSORS.md` — the institution's own regular donors on any pattern, day requests, swaps | `standing-sponsors` (after Phase C's PR) | K.1-K.5 built (K1-K37); decisions summarised above under "Standing sponsors (plan 08)" |
+| `docs/plans/09-GIVING.md` — donations and receipts, PayHere with each institution's own merchant, the needs board and pledges, the monthly report | `standing-sponsors` (one pull request with plan 08) | D.1-D.5 done (M1-M41), pull request #37 to `develop`; decisions summarised above under "Giving (Phase D)"; one real PayHere sandbox payment made 2026-11-09 (success path only) |
+| `docs/plans/PHASE-F-MOBILE.md` — donor mobile app (Expo), mobile sessions, push notifications, near me and the map, staff's Today tab | `ccr-79f10240-uk4n3v`, `mobile-booking`, `mobile-f5` | F.1-F.4 merged (PR #9, #11). F.0, U.1, F.5a, F.5b, F.2b, F.7, F.6a, U.2, F.6b and F.8 built on `mobile-f5` (F1-F73), pull request to `develop` to follow; report chapter `docs/report/PHASE-F.md`. **Walked through on the user's Android phone 2026-11-07 (Expo Go, real API, real Text.lk texts), no problems found; nothing was booked, cancelled or served there, and push has never reached a phone.** Real push waits on the EAS and Firebase steps (plan 10.6). A failed SMS is now resent on retry (F74, after the full run). Open: the real Privacy Policy must name OpenStreetMap |

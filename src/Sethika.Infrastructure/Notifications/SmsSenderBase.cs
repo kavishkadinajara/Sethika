@@ -48,8 +48,8 @@ public abstract class SmsSenderBase(IDbConnectionFactory connectionFactory, SmsO
 
         if (notificationId is null)
         {
-            // Another send already claimed this dedup key. Returning quietly is the point of the
-            // key: a retried Hangfire job must not text the same person a second time.
+            // Another send already holds this dedup key and did not fail. Returning quietly is the
+            // point of the key: a retried Hangfire job must not text the same person a second time.
             return;
         }
 
@@ -78,7 +78,8 @@ public abstract class SmsSenderBase(IDbConnectionFactory connectionFactory, SmsO
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// Inserts the queued row, or returns null when <paramref name="dedupKey"/> is already taken.
+    /// Inserts the queued row, or takes back a failed one holding <paramref name="dedupKey"/>, or returns
+    /// null when the key is held by a send that did not fail.
     /// </summary>
     /// <remarks>
     /// Uniqueness is enforced solely by <c>UX_Notifications_Dedup</c> rejecting the second insert.
@@ -125,11 +126,57 @@ public abstract class SmsSenderBase(IDbConnectionFactory connectionFactory, SmsO
         }
         catch (SqlException ex) when (ex.Number is 2601 or 2627)
         {
-            // 2601/2627 are duplicate-key violations: another send already holds this dedup key, so
-            // this one must not deliver. This catch is the entire dedup guarantee - removing it makes
-            // two tests fail, including the concurrent one.
-            return null;
+            // 2601/2627 are duplicate-key violations: another send already holds this dedup key. This
+            // catch is the entire dedup guarantee - removing it makes two tests fail, including the
+            // concurrent one. The key is only taken back if the earlier send failed.
+            return await ReclaimFailedAsync(connection, phoneNumber, message, dedupKey!, segments, cancellationToken)
+                .ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// Takes back the row holding <paramref name="dedupKey"/> when its send failed, or returns null.
+    /// </summary>
+    /// <remarks>
+    /// Without this a failed text was never sent: the retry's insert was refused by the key, it
+    /// returned quietly, and the caller marked its work done (plan F, 10.6). Only a <c>Failed</c> row
+    /// is taken: a <c>Sent</c> one must stay sent, and a <c>Queued</c> one is being sent right now.
+    /// The status test and the change are one statement, so of two retries racing for the same failed
+    /// row, one gets it and the other finds it <c>Queued</c> and stops.
+    /// </remarks>
+    private async Task<long?> ReclaimFailedAsync(
+        DbConnection connection,
+        string phoneNumber,
+        string message,
+        string dedupKey,
+        int segments,
+        CancellationToken cancellationToken)
+    {
+        const string sql =
+            """
+            UPDATE notify.Notifications
+            SET Status = 'Queued',
+                Recipient = @recipient,
+                Body = @body,
+                Attempts = Attempts + 1,
+                SmsSegments = @segments,
+                CostLkr = @cost,
+                ErrorMessage = NULL
+            OUTPUT inserted.Id
+            WHERE DedupKey = @dedupKey AND Status = 'Failed';
+            """;
+
+        return await connection.QuerySingleOrDefaultAsync<long?>(new CommandDefinition(
+            sql,
+            new
+            {
+                recipient = phoneNumber,
+                body = message,
+                dedupKey,
+                segments,
+                cost = segments * Options.CostPerSegmentLkr,
+            },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
     }
 
     private static async Task MarkSentAsync(

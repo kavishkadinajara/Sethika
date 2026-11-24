@@ -3,7 +3,8 @@
 Branch: `phase-e-religious-services`, cut on 2026-10-25 from `develop` at 59b10ab (plan 03 merged,
 PR #10).
 
-Status: **started 2026-10-25; §8 boxes show what is built.** Added to scope on 2026-10-23 after the
+Status: **built 2026-10-25 → 2026-11-01; all of §8 done and on `develop`** (8.5-8.10 were pushed
+to `develop` directly, without a pull request: their description is `PHASE-E-DELIVERY.md`). Added to scope on 2026-10-23 after the
 supervisor's feedback on the proposal: *"add a few more functions to the scope, like coordination of
 religious leaders and making appointments"*. Proposal v3 (`docs/proposal/Sethika_Project_Proposal.docx`)
 promises it as **Phase E**. It reuses the booking engine's patterns (Redis lock, a write the database
@@ -12,7 +13,7 @@ refuses when it would be wrong, outbox, number series).
 Deadline is about **2026-11-06** and the report needs the last week, so this plan aims at
 **~4 working days (2026-10-25 → 10-29)**. Plan 03 was estimated at 6.25 days and took three; this
 one is estimated the same way. If it runs over, the cut order is in §8.
-Last updated 2026-10-25 (8.1-8.4 and 8.6 built; 8.6's remove and the assign endpoint move to 8.7). Update this line and the §8 boxes whenever either changes. A fresh session
+Last updated 2026-11-01 (8.1-8.10 built; 8.5-8.10 on branch `phase-e-donor`, cut from `develop` at 3c74dc1; full `dotnet test` 973/973; e2e 87/92, the 5 shell failures fixed and that spec rerun 22/22). Update this line and the §8 boxes whenever either changes. A fresh session
 trusts them and will rebuild anything they claim is missing.
 
 The mobile app's F.3/F.4 (`docs/plans/PHASE-F-MOBILE.md`) are being built at the same time on the
@@ -222,8 +223,13 @@ active service types, shown on `/i/{slug}` beside its meals.
 - [x] **8.4 Roster and types API**: leaders (list, create, edit, deactivate, weekly hours), time off
       (add with clash 409, remove), service types (list, create, edit, deactivate); Dapper lists, EF
       commands; the leader picker (`GET /api/institution/appointments/{no}/candidates`). ~0.5 day
-- [ ] **8.5 Donor**: public service types on `/api/institutions/{slug}`; request; my appointments;
-      cancel. ~0.5 day
+- [x] **8.5 Donor**: public service types on `/api/institutions/{slug}`; request; my appointments;
+      cancel. ~0.5 day. Built as: `services` on the existing page (V25, so no new anonymous
+      endpoint); `POST /api/appointments`, `GET /api/appointments/mine`,
+      `POST /api/appointments/{no}/cancel` on `MYSERVICES.APPOINTMENTS.*`; `SriLankaTime.ToUtc`
+      (Colombo date + time to UTC); `APPOINTMENT` series (`APT`); `AppointmentCancelledHandler`
+      releases the blocks (V16, V27). Tests: `DonorAppointmentEndpointsTests` (21, real SQL and
+      Redis, the cancel race forced with `UPDLOCK`), `SriLankaTimeTests` (9).
 - [x] **8.6 Assign engine**: `ILeaderLocks` on the extracted Redis lease; `AssignLeadersHandler`.
       (Built without an HTTP endpoint, and **remove is not built**: only the domain's
       `ServiceAppointment.Remove`. Both move to 8.7. The picker query was built in 8.4.) **Concurrency tests against real SQL Server and
@@ -231,13 +237,35 @@ active service types, shown on `/i/{slug}` beside its meals.
       leader to overlapping times, exactly one succeeds; again with the lock bypassed, the PK still
       stops it; two admins assigning `{A,B}` and `{B,A}` do not deadlock. Mutations: drop the PK ⇒
       must fail; drop the 2627 mapping; lock order reversed. ~0.75 day
-- [ ] **8.7 Assign / remove endpoints** (remove = `Removed` + delete that leader's blocks), **respond,
-      reject, cancel, complete**. (Time-off clashes were built in 8.4.) ~0.5 day
-- [ ] **8.8 Texts and the reminder job** with `DedupKey` (V14, V15). ~0.25 day
-- [ ] **8.9 Screens**: `/services/types`, `/services/leaders`, `/services/appointments` (agenda +
+- [x] **8.7 Assign / remove endpoints** (remove = `Removed` + delete that leader's blocks), **respond,
+      reject, cancel, complete**. (Time-off clashes were built in 8.4.) ~0.5 day. Built as
+      `InstitutionAppointmentEndpoints`: `GET /api/institution/appointments?view=` (V32),
+      `POST .../{no}/leaders` (assign), `DELETE .../{no}/leaders/{leader}`,
+      `POST .../{no}/leaders/{leader}/respond` (on behalf), `.../reject`, `.../cancel`, `.../complete`;
+      `GET /api/institution/schedule` and `POST /api/institution/schedule/{no}/respond` for a leader
+      (V33). One change path in `AppointmentDecisionHandler` (V30, V31). Tests:
+      `InstitutionAppointmentEndpointsTests` (15; the cancel/decline race forced with `UPDLOCK`).
+- [x] **8.8 Texts and the reminder job** with `DedupKey` (V14, V15). ~0.25 day. Built as: 27 rows in
+      `11_NotifyTemplates.sql` (9 templates x en/si/ta, in `docs/translations-to-review.md`);
+      `AppointmentSmsHandler` and the texts in `AppointmentCancelledHandler` (V27); `AppointmentTexts`;
+      `IUserTextMessages.SendToPhoneAsync` for leaders without an account; `AppointmentReminders` +
+      `AppointmentReminderJob` at 18:00 Colombo (V35-V39). Tests: `AppointmentSmsTests` (9).
+- [x] **8.9 Screens**: `/services/types`, `/services/leaders`, `/services/appointments` (agenda +
       assign sheet), `/services/schedule`, the request sheet on `/i/[slug]`, `/services/mine`.
-      Playwright, desktop + 320 px, si/ta, `clipsSideways`. ~1 day
-- [ ] **8.10 Done**: §9, `docs/DECISIONS.md` (V1-V15 summary, the cut list), the PR.
+      Playwright, desktop + 320 px, si/ta, `clipsSideways`. ~1 day. Built as: `ServicesOffered` +
+      `ServiceRequestSheet` on the institution page (`?service=` opens it; the sign-in gate shared
+      with the booking sheet as `DonorSheetGate`), `MyServices`, `ServiceTypesScreen`,
+      `LeadersScreen` (roster, usual week, leave), `AppointmentsScreen` (the four views, assign
+      sheet, reasons), `ScheduleScreen`; `web/lib/services` (API client, Colombo times, tested in
+      Vitest); `Services` messages in en/si/ta (in `docs/translations-to-review.md`); sidebar items
+      under Giving and the institution. Tests: `e2e/services/services.spec.ts` (5 scenarios, 3 also
+      at 320 px; the si/ta screens and the request form checked for clipping).
+- [x] **8.10 Done**: §9, `docs/DECISIONS.md` (V1-V15 summary, the cut list), the PR. Done as: full
+      `dotnet test` 973/973 (227 + 71 + 675); `dotnet format --verify-no-changes`, `npm run lint`,
+      `npm test` (196), `npm run build` clean; full e2e 87/92, the 5 failures the shell spec's donor
+      menu counting 4 items before "My service requests" (fixed; shell spec 22/22); a second
+      `SqlPackage /Action:Script` shows seed MERGEs only. `docs/DECISIONS.md` summarises V1-V39 with
+      the cut list (§6; nothing on the cut order was cut). No pull request: see `PHASE-E-DELIVERY.md`.
 
 About **4.75 days** estimated. Order: 8.1 → 8.2 → 8.3 → **8.6 first among the APIs** (the report's
 second concurrency pattern) → 8.4 → 8.5 → 8.7 → 8.8 → 8.9.
@@ -272,3 +300,18 @@ Never cut the overlap guarantee or its concurrency tests.
 | V22 | Weekly hours are replaced whole (`PUT .../weekly-hours`), with no version: last write wins. Overlapping spans on one day are refused. | Only a filter (V2): a lost edit never lets a leader be double-booked. |
 | V23 | Taking a leader off the roster names their upcoming live assignments and changes none. | The same rule as deactivating a meal slot (plan 03): the institution decides. |
 | V24 | The test reseed (`RlsTestData.sql`) clears every Phase E table first. | A leader left by a failed test would otherwise block `DELETE FROM org.Institutions` for every later test. |
+| V25 | An institution's active services ride on its public page, `GET /api/institutions/{slug}` (`services`, beside `slots`), not a separate endpoint. Only what the donor chooses by: name, description, duration, where, advance window. No buffer, no leader count. | `/i/[slug]` shows them beside its meals, so one read serves the page; no new anonymous endpoint to review. Buffer and leaders are the institution's planning. |
+| V26 | With `SERVICES` switched off (or never on, V12), the page lists no services and a request is refused `service_inactive`, whatever the types say. Checked on `org.InstitutionModules`, which has no RLS. | Switching the module off must stop requests without retiring each type, and a care home never gets them. |
+| V27 | **Every** `AppointmentCancelled` message releases the appointment's blocks (`AppointmentCancelledHandler`), not only the donor's; the handler refuses (throws, so it is retried and logged) an appointment that is not `Cancelled`. Texts for the event (8.8) go in the same handler, since the outbox allows one handler per event type. | One rule, and idempotent: after an institution's cancel (8.7, blocks deleted in its own transaction) the message finds nothing. The status check means a stray message can never free a live appointment's time. |
+| V28 | A request sends the Colombo **date** and **start time** (`yyyy-MM-dd`, `HH:mm`); `SriLankaTime.ToUtc` makes the instant. Appointments come back in UTC, like leave (`TimeOffView`). | What a donor picks on the calendar; before 05:30 Colombo the UTC date is the day before, so the date cannot be carried over. |
+| V29 | Requests are limited to **10 per donor per hour** (`appointment-create-user`). | Each takes a number from a platform-wide series and the institution's attention; a household asks for a few a year. |
+| V30 | Remove, respond, reject, cancel and complete take **no leader lock**. | They only free time. A block deleted a moment early can only let through an assignment that is genuinely free; the key (V2) still guards every insert. |
+| V31 | Every change writes the appointment's row, even when only a leader's row changes, and deletes the freed blocks in the **same transaction** after the save. Two changes at once: one wins, the other is 409 `stale`. | Two changes then always meet on `RowVersion` (as assign does), so a decline cannot slip past a cancellation, and a loser frees nothing. |
+| V32 | The agenda has four fixed views: `upcoming` (default; requested or approved, not over, soonest first), `waiting`, `needs-leaders` (live leaders < required, not over), `history` (over or ended in a status, latest first). At most 200, no paging yet. Leaders removed are hidden; those who declined are listed after the live ones. Each view is its own SQL text, chosen in C#. | V10's "what needs me". Nothing the caller sends is written into SQL. |
+| V33 | A leader's schedule: approved appointments not yet over where their answer is `Pending` or `Accepted`. Their own answer finds them by the account's roster row **in the session's institution**; none is 403 `not_a_leader`. A leader not on the roster, named by an admin, is 409 `not_assigned` like one not assigned. | What they still have to attend or answer. The roster link is V21's; the session's institution keeps one roster from answering for another. |
+| V34 | New outbox events: `AppointmentRejected`, `LeaderDeclined`, `LeaderRemoved` (payload names the leader's internal id; texts in 8.8). Accepting and completing write none. | Each is someone to tell; an acceptance and a completion change nothing anyone waits for. |
+| V35 | A leader is texted at the roster's phone, else at the linked account's **confirmed** phone; in the account's language, else the roster's. A leader with neither phone is skipped, not failed. | V14. An unconfirmed number may be someone else's. A missing phone is ordinary for a roster, so it must not hold the outbox. |
+| V36 | Dedup keys: the donor's `{TEMPLATE}:{AppointmentNo}`; a leader's assignment or removal also carries the outbox message id; a cancellation `{TEMPLATE}:{AppointmentNo}:{leaderId}`; reminders `appt-reminder:{AppointmentNo}:donor` / `:leader-{id}` (V15). | Each donor move happens once. A leader can be assigned, decline and be assigned again, and must hear the second time too; a re-run of one message still texts nobody twice. |
+| V37 | Who hears what: the donor of the request, approval, rejection, the institution's cancellation and the reminder; a leader of being assigned or removed, of a cancellation and of the reminder **while still expected** (`Pending`/`Accepted`). A decline, an acceptance and a completion text nobody. | The institution gets no texts, as with bookings: a decline shows on its agenda as "needs leaders". A leader who declined or was removed is no longer expected. |
+| V38 | The Sinhala leader texts use no pronoun; the Tamil ones use `தாங்கள்`. Both are drafts for review. | A leader may be a monk, a priest, a kurukkal or a moulavi, each addressed differently; the text cannot know which. |
+| V39 | The service reminder is its own Hangfire job (`appointment-reminders`) at the same 18:00 Colombo, not folded into the meal job. | Either can fail and retry without the other; the job list shows both. |

@@ -75,6 +75,12 @@ public static class BookingErrors
     /// <summary>The donor already holds an active booking on this slot-day.</summary>
     public const string AlreadyBooked = "already_booked";
 
+    /// <summary>
+    /// The availability calendar's reason for a day full only through standing days (plan 08, K6): a
+    /// regular donor holds it, and a donor may ask the institution for it.
+    /// </summary>
+    public const string Held = "held";
+
     // -------------------------------------------------- transitions (C5)
 
     /// <summary>Not allowed from the booking's current status.</summary>
@@ -85,6 +91,9 @@ public static class BookingErrors
 
     /// <summary>A donor may cancel only until the end of the day before the meal (Q1).</summary>
     public const string CancelWindowClosed = "cancel_window_closed";
+
+    /// <summary>A regular day is let go through the skip, which records it, never cancelled (plan 08, K24).</summary>
+    public const string RegularDay = "regular_day";
 
     /// <summary>A meal can be marked completed or missed only on or after its day.</summary>
     public const string TooEarly = "too_early";

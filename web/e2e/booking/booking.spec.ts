@@ -61,11 +61,10 @@ test("an owner adds a meal and lists the place; a donor finds it and books; the 
     await expect(page.getByRole("switch")).toHaveAttribute("aria-checked", "true");
     await expect(page.getByText("Donors browsing Sethika can find you.").first()).toBeVisible();
 
-    // The donor finds it in the list and books the first open day.
+    // The donor finds it on the search page, in its district tomorrow, and books its first open day.
     const donorPage = await personPage(browser, donor);
-    await donorPage.goto("/institutions");
-    await field(donorPage, "Search").fill(name);
-    await donorPage.getByRole("link", { name: new RegExp(name) }).click();
+    await donorPage.goto(`/find?district=AMP&date=${colomboDate(1)}`);
+    await donorPage.getByRole("link", { name, exact: true }).click();
     await expect(donorPage.getByRole("heading", { name, level: 1 })).toBeVisible();
     await expect(donorPage.getByRole("radio", { name: /Lunch/ })).toHaveAttribute("aria-checked", "true");
     expect(await scrollsSideways(donorPage)).toBe(false);

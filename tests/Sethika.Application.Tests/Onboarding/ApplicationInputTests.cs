@@ -17,6 +17,10 @@ public class ApplicationInputTests
             normalized = digits.Length == 10 && digits[0] == '0' ? "+94" + digits[1..] : string.Empty;
             return normalized.Length > 0;
         }
+
+        // An application's phones are any line, so the form never asks this.
+        public bool TryNormalizeMobile(string? phoneNumber, out string normalized) =>
+            throw new NotSupportedException("An application takes landlines.");
     }
 
     private static readonly TenDigitPhones Phones = new();

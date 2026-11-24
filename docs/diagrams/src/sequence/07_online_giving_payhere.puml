@@ -1,0 +1,43 @@
+@startuml
+!include ../style.iuml
+autonumber
+title Sequence 7 — Giving online through the institution's PayHere merchant
+
+actor Donor
+participant "Web app" as App
+participant "POST /api/institutions/{slug}/give\nPOST /api/payments/payhere/notify" as Api
+participant "OnlinePaymentHandler\n(runs as platform)" as H
+database "SQL Server" as Sql
+participant "PayHere\n(checkout)" as PH
+
+Donor -> App : amount (or a need), address, email
+App -> Api : give
+Api -> H : StartAsync(callerId, input)
+H -> Sql : institution Active? merchant enabled? need open?
+H -> H : open the merchant secret (AES-GCM, per institution)
+H -> Sql : INSERT giving.OnlinePayments (Pending, OrderId = new Guid)
+H --> App : checkout form: merchant_id, order_id, amount,\nreturn_url, notify_url,\nhash = PayHereSignature.Checkout(…, secret)
+App -> PH : POST form (browser redirect)
+Donor -> PH : pays
+PH --> Donor : redirect to return_url ("checking your gift…")
+
+PH -> Api : notify (server to server): order_id, amount,\ncurrency, status_code, md5sig
+Api -> H : NotifyAsync
+H -> Sql : order by OrderId; merchant of that order
+alt unknown order / other merchant / bad signature /\nwrong amount or currency
+  H --> PH : refused (logged; nothing written)
+end
+alt status = 2 (success)
+  H -> Sql : BEGIN TRANSACTION
+  H -> Sql : UPDATE OnlinePayments … WHERE Id = @id AND Status <> 'Paid'\n(row lock: a repeated notify waits, then finds it paid)
+  H -> Sql : NextAsync(Receipt) → ReceiptNo
+  H -> Sql : INSERT giving.Donations (PAYMENT_METHOD online, NeedId)\n+ AuditLogs + OutboxMessage (receipt text)
+  H -> Sql : OnlinePayments.Status = 'Paid', DonationId
+  H -> Sql : COMMIT
+else status = -1 cancelled / -2 failed / -3 charged back
+  H -> Sql : close a Pending order only (a Paid one is never undone)
+end
+H --> PH : 200
+App -> Api : GET /api/me/payments/{orderId} (poll)
+Api --> App : Paid + receipt number
+@enduml

@@ -208,7 +208,7 @@ public sealed class AuthEndpointsTests(SethikaTestDatabase database) : IAsyncLif
         client.PostAsJsonAsync("/api/auth/login", new { login, password });
 
     private static async Task<JsonElement> JsonAsync(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        JsonElement.Parse(await response.Content.ReadAsStringAsync());
 
     private static IList<SetCookieHeaderValue> SetCookies(HttpResponseMessage response) =>
         response.Headers.TryGetValues("Set-Cookie", out var values)
@@ -590,6 +590,26 @@ public sealed class AuthEndpointsTests(SethikaTestDatabase database) : IAsyncLif
         using var otherSent = await RequestCodeAsync(client, other);
         Assert.Equal(HttpStatusCode.Accepted, otherSent.StatusCode);
         Assert.Single(_sms, m => m.Phone == other);
+    }
+
+    [Theory]
+    // QA DEF-002: a landline is a valid number but can never receive the code, so no purpose may
+    // pay to text it. Reset and sign-in answer it like any bad number: it can hold no account.
+    [InlineData("0112345678", "signup")]
+    [InlineData("+94 81 223 4567", "signup")]
+    [InlineData("0112345678", "reset")]
+    [InlineData("0112345678", "login")]
+    public async Task ALandlineIsRefusedBeforeACodeIsPaidFor(string landline, string purpose)
+    {
+        var host = Host();
+        using var client = Client(host);
+        var before = _sms.Count;
+
+        using var response = await client.PostAsJsonAsync("/api/auth/otp/request", new { phoneNumber = landline, purpose });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("invalid_phone_number", (await JsonAsync(response)).GetProperty("code").GetString());
+        Assert.Equal(before, _sms.Count);
     }
 
     [Theory]

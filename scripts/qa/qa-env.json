@@ -1,0 +1,12 @@
+{
+  "_comment": "QA environment (docs/qa/QA-PLAN.md section 4). Read by scripts/qa/qa.ps1 and web/playwright.qa.config.ts. No secrets here: the API's JWT key and payment keys still come from its user-secrets.",
+  "sqlServer": "localhost",
+  "database": "Sethika_QA",
+  "redisHost": "127.0.0.1",
+  "redisPort": 6379,
+  "redisDb": 5,
+  "signalRChannelPrefix": "sethika-qa",
+  "apiPort": 5190,
+  "webPort": 3000,
+  "filesFolder": "Sethika\\qa-files"
+}

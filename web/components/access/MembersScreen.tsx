@@ -155,7 +155,7 @@ export function MembersScreen() {
               return (
                 <li key={member.userId} className="grid gap-3 rounded-bowl border border-hairline bg-surface p-4 shadow-lift">
                   <div className="flex items-center gap-3">
-                    <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-estate font-semibold text-ivory">
+                    <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-primary font-semibold text-on-primary">
                       {initials(member.fullName)}
                     </span>
                     <div className="grid min-w-0">

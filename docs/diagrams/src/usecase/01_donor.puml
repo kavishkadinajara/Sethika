@@ -1,0 +1,93 @@
+@startuml
+!pragma layout smetana
+!include ../style.iuml
+left to right direction
+skinparam packageStyle rectangle
+title Use case diagram 1 — Visitor and donor (public pages, Self portal, mobile app)
+
+actor "Visitor" as Visitor
+actor "Donor" as Donor
+Donor -|> Visitor
+actor "Co-sponsor\n(invited donor)" as CoSponsor
+CoSponsor -|> Donor
+actor "SMS gateway" as Sms <<external>>
+actor "PayHere" as PayHere <<external>>
+
+rectangle "Sethika" {
+  package "Discovery (public)" {
+    usecase "Search institutions" as Search
+    usecase "Search near me\n(Redis GEO)" as Near
+    usecase "View institution page" as Page
+    usecase "View availability calendar" as Calendar
+    usecase "View needs board\nand gratitude wall" as Needs
+  }
+  package "Account" {
+    usecase "Sign up with phone OTP" as SignUp
+    usecase "Sign in\n(password or OTP)" as SignIn
+    usecase "Verify phone with SMS code" as Otp
+    usecase "Reset password" as Reset
+  }
+  package "My bookings" {
+    usecase "Book a meal slot" as Book
+    usecase "Check slot is open\nand has a place" as Check
+    usecase "Book every year" as Yearly
+    usecase "Book for a memorial\nobservance" as BookMemorial
+    usecase "See my bookings" as Mine
+    usecase "Cancel my booking" as Cancel
+    usecase "Invite co-sponsors\n(share link)" as Share
+    usecase "Join / decline a\nshared booking" as Join
+  }
+  package "My memorial plans" {
+    usecase "Make a memorial plan" as Plan
+    usecase "See upcoming observances\n(the faith's memorial rules)" as Observances
+  }
+  package "My services" {
+    usecase "Request a religious service" as RequestService
+    usecase "Cancel my service request" as CancelService
+  }
+  package "My giving" {
+    usecase "Give online" as GiveOnline
+    usecase "Pledge to a need" as Pledge
+    usecase "See my gifts and receipts" as Receipts
+  }
+}
+
+Visitor --> Search
+Visitor --> Page
+Visitor --> Calendar
+Visitor --> Needs
+Visitor --> SignUp
+Search <.. Near : <<extend>>
+Page ..> Calendar : <<include>>
+
+Donor --> SignIn
+Donor --> Reset
+Donor --> Book
+Donor --> Mine
+Donor --> Plan
+Donor --> RequestService
+Donor --> GiveOnline
+Donor --> Pledge
+Donor --> Receipts
+CoSponsor --> Join
+
+SignUp ..> Otp : <<include>>
+Reset ..> Otp : <<include>>
+Otp --> Sms
+
+Book ..> Check : <<include>>
+Book <.. Yearly : <<extend>>
+Book <.. BookMemorial : <<extend>>
+Plan ..> Observances : <<include>>
+BookMemorial ..> Observances : <<include>>
+Mine <.. Cancel : <<extend>>
+Mine <.. Share : <<extend>>
+RequestService <.. CancelService : <<extend>>
+GiveOnline --> PayHere
+
+legend bottom right
+  Permissions (Self scope): MYBOOKINGS.BOOKINGS.*, MYMEMORIAL.PLANS.*,
+  MYSERVICES.APPOINTMENTS.*, MYGIVING.DONATIONS.*
+  The mobile app (Phase F) covers search, near me, booking, my bookings and push notifications.
+endlegend
+@enduml

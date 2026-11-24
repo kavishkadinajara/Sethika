@@ -43,6 +43,16 @@ public sealed class AccessServiceRegistrationTests(SethikaTestDatabase database)
             // own reason; the test of this one setting overrides it with an empty value.
             builder.UseSetting("Files:LocalRoot", Path.Combine(Path.GetTempPath(), "sethika-registration-files"));
 
+            // Required outside Development too (plan 09, M10); PaymentConfigurationTests tests the refusals.
+            builder.UseSetting("Payments:PayHere:ApiPublicUrl", "https://api.sethika.example");
+            builder.UseSetting("Payments:PayHere:WebPublicUrl", "https://sethika.example");
+
+            // Required outside Development too (plan F, F30); the refusal is tested below.
+            if (environment != Environments.Development)
+            {
+                builder.UseSetting("Push:Provider", PushOptions.ExpoProvider);
+            }
+
             foreach (var (key, value) in settings)
             {
                 builder.UseSetting(key, value);
@@ -154,6 +164,49 @@ public sealed class AccessServiceRegistrationTests(SethikaTestDatabase database)
         var client = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(ISmsSender));
 
         Assert.Equal(new Uri(new SmsOptions().TextLkBaseUrl), client.BaseAddress);
+    }
+
+    [Fact]
+    public void RefusesToStartWithTheConsolePushGatewayOutsideDevelopment()
+    {
+        using var host = Host(
+            Environments.Production,
+            ("Sms:Provider", SmsOptions.TextLkProvider),
+            ("Push:Provider", PushOptions.ConsoleProvider));
+
+        Assert.Contains("Push:Provider is Console outside Development", StartupFailure(host), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RefusesToStartWithAnUnknownPushProvider()
+    {
+        using var host = Host(Environments.Development, ("Push:Provider", "Firebase"));
+
+        Assert.Contains("'Firebase' is not recognised", StartupFailure(host), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WritesPushesToTheLogInDevelopmentByDefault_BehindTheDecorator()
+    {
+        using var host = Host(Environments.Development);
+        using var scope = host.Services.CreateScope();
+
+        Assert.IsType<ConsolePushGateway>(scope.ServiceProvider.GetRequiredService<IPushGateway>());
+        Assert.IsType<PushingUserTextMessages>(scope.ServiceProvider.GetRequiredService<IUserTextMessages>());
+    }
+
+    [Fact]
+    public void UsesExpoWhenConfigured_ThroughAFactoryClientPointedAtItWithAShortTimeout()
+    {
+        using var host = Host(Environments.Production, ("Sms:Provider", SmsOptions.TextLkProvider));
+        using var scope = host.Services.CreateScope();
+
+        Assert.IsType<ExpoPushGateway>(scope.ServiceProvider.GetRequiredService<IPushGateway>());
+
+        var client = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(IPushGateway));
+
+        Assert.Equal(new Uri(new PushOptions().ExpoBaseUrl), client.BaseAddress);
+        Assert.Equal(TimeSpan.FromSeconds(10), client.Timeout);
     }
 
     [Fact]

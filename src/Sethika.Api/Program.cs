@@ -5,11 +5,13 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using Sethika.Api.Bootstrap;
 using Sethika.Api.Endpoints;
+using Sethika.Api.Hubs;
 using Sethika.Api.Security;
 using Sethika.Application;
 using Sethika.Application.Abstractions;
 using Sethika.Infrastructure;
 using Sethika.Infrastructure.Security;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +39,7 @@ builder.Services.AddSethikaPermissions(redisConnectionString);
 // one-time codes going to the log - fails to start rather than failing its first signup.
 builder.Services.AddSethikaAccess(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddSethikaFiles(builder.Configuration, builder.Environment.IsDevelopment());
+builder.Services.AddSethikaPayments(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddSethikaJobs(builder.Configuration, sqlConnectionString);
 builder.Services.AddSethikaApplication();
 
@@ -57,6 +60,9 @@ builder.Services
             ValidAudience = SethikaJwt.Audience,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = SethikaJwt.CreateSigningKey(jwtSigningKey),
+            // Only the algorithm the API issues with. Left open, the library takes any HMAC the key is
+            // long enough for (HS384 from 48 bytes, HS512 from 64), which nothing here ever chose.
+            ValidAlgorithms = [SethikaJwt.SigningAlgorithm],
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30),
         };
@@ -84,6 +90,19 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     }
 });
 
+// Live slot updates (plan 07, H9-H11): the hub, and the Redis backplane that carries a change made
+// on one instance to calendars connected to another. Pub/sub channels ignore the database number, so
+// the prefix is what keeps Sethika's channels (and its tests') apart from other apps on the Redis.
+var signalRPrefix = builder.Configuration["SignalR:ChannelPrefix"] is { Length: > 0 } prefix ? prefix : "sethika";
+builder.Services
+    .AddSignalR()
+    .AddStackExchangeRedis(redisConnectionString, options =>
+    {
+        options.Configuration.ChannelPrefix = RedisChannel.Literal(signalRPrefix);
+        options.Configuration.AbortOnConnectFail = false;
+    });
+builder.Services.AddSingleton<IAvailabilityNotifier, HubAvailabilityNotifier>();
+
 var app = builder.Build();
 
 // `dotnet run --project src/Sethika.Api -- bootstrap` creates the first platform administrator
@@ -95,6 +114,7 @@ if (args is [BootstrapCommand.Name, ..])
 }
 
 app.UseForwardedHeaders();
+app.UseApiSecurityHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -113,7 +133,20 @@ app.MapLegalEndpoints();
 app.MapMeEndpoints();
 app.MapInstitutionBookingEndpoints();
 app.MapDonorBookingEndpoints();
+app.MapMemorialEndpoints();
+app.MapSharingEndpoints();
+app.MapDonorBookEndpoints();
+app.MapGivingEndpoints();
+app.MapNeedEndpoints();
+app.MapReportEndpoints();
+app.MapPaymentEndpoints();
+app.MapSponsorshipEndpoints();
+app.MapDayRequestEndpoints();
+app.MapSearchEndpoints();
 app.MapServiceSetupEndpoints();
+app.MapDonorAppointmentEndpoints();
+app.MapInstitutionAppointmentEndpoints();
+app.MapHub<AvailabilityHub>(AvailabilityHub.Path).AllowAnonymous();
 
 app.Run();
 

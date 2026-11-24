@@ -1,0 +1,136 @@
+@startuml
+!pragma layout smetana
+!include ../style.iuml
+skinparam linetype ortho
+hide circle
+hide stereotypes
+title Sethika — database overview: 6 modules, 94 tables
+skinparam linetype polyline
+skinparam nodesep 60
+skinparam ranksep 90
+entity "Access & RBAC" as m01 #E6F0EC {
+  auth.DonorProfiles
+  auth.FavoriteInstitutions
+  auth.ImpersonationSessions
+  auth.LoginHistory
+  auth.Modules
+  auth.PasswordHistory
+  auth.PermissionActions
+  auth.PermissionDependencies
+  auth.Permissions
+  auth.Portals
+  auth.RecoveryCodes
+  auth.RefreshTokens
+  auth.RoleLevelPermissions
+  auth.RoleLevels
+  auth.RolePermissions
+  auth.Roles
+  auth.ScreenElements
+  auth.Screens
+  auth.UserConsents
+  auth.UserMfaMethods
+  auth.UserPermissionOverrides
+  auth.UserRoles
+  auth.Users
+}
+entity "Onboarding & institutions" as m02 #FBF1DF {
+  org.DocumentTypes
+  org.InstitutionDocuments
+  org.InstitutionDonors
+  org.InstitutionMembers
+  org.InstitutionModules
+  org.InstitutionReports
+  org.InstitutionSettings
+  org.InstitutionStatusHistory
+  org.InstitutionSubscriptions
+  org.InstitutionTypeDefaultModules
+  org.InstitutionTypeRequiredDocuments
+  org.InstitutionTypes
+  org.Institutions
+  org.PlanModules
+  org.Plans
+  org.RegistrationRequestChecklist
+  org.RegistrationRequestClarifications
+  org.RegistrationRequestDocuments
+  org.RegistrationRequestOfficeBearers
+  org.RegistrationRequestStatusHistory
+  org.RegistrationRequests
+  org.StaffInvitations
+  org.VerificationChecklistItems
+}
+entity "Booking" as m03 #EAF2FA {
+  booking.AvailabilityAlerts
+  booking.AvailabilitySearches
+  booking.BlockedDates
+  booking.BookingContributors
+  booking.BookingStatusHistory
+  booking.Bookings
+  booking.DayRequests
+  booking.MealSlotSeasons
+  booking.MealSlots
+  booking.MemorialPlans
+  booking.RecurringBookings
+  booking.SlotInstances
+  booking.StandingExceptions
+  booking.StandingSponsorships
+  booking.Waitlist
+}
+entity "Religious services" as m04 #EAF2FA {
+  booking.AppointmentLeaders
+  booking.AppointmentStatusHistory
+  booking.LeaderTimeBlocks
+  booking.ServiceAppointments
+  booking.ServiceTypes
+  org.LeaderTimeOff
+  org.LeaderWeeklyHours
+  org.ReligiousLeaders
+}
+entity "Giving & engagement" as m05 #EEF0E3 {
+  booking.GratitudePostPhotos
+  booking.GratitudePosts
+  giving.Donations
+  giving.Needs
+  giving.OnlinePayments
+  giving.PaymentMerchants
+  giving.Pledges
+  notify.MobileDevices
+  notify.Notifications
+  notify.PushSubscriptions
+  notify.Templates
+  notify.UserPreferences
+}
+entity "Core & audit" as m06 #F2F2F2 {
+  audit.AuditLogs
+  core.Districts
+  core.DsDivisions
+  core.Files
+  core.LegalDocuments
+  core.LookupTypes
+  core.LookupValues
+  core.MemorialRules
+  core.NumberSeries
+  core.OutboxMessages
+  core.Provinces
+  core.SpecialDays
+  core.SystemSettings
+}
+m01 --> m02 : 2 FK
+m01 --> m06 : 4 FK
+m02 --> m01 : 9 FK
+m02 --> m06 : 14 FK
+m03 --> m01 : 7 FK
+m03 --> m02 : 3 FK
+m03 --> m06 : 7 FK
+m04 --> m01 : 2 FK
+m04 --> m02 : 1 FK
+m05 --> m01 : 7 FK
+m05 --> m02 : 1 FK
+m05 --> m03 : 2 FK
+m05 --> m06 : 5 FK
+legend bottom right
+  arrow = foreign keys from one module's tables to another's
+  (actor columns such as CreatedBy and the tenant key InstitutionId are not counted)
+  Each module has its own ERD with every column.
+  Generated from src/Sethika.Database by docs/diagrams/tools/erd_from_sql.py
+endlegend
+@enduml

@@ -12,6 +12,7 @@ import { Toaster } from "@/components/ui/toast";
 import { pickMessages, sharedClientNamespaces } from "@/i18n/pick";
 import { routing } from "@/i18n/routing";
 import { fontVariables } from "@/lib/fonts";
+import { siteOrigin } from "@/lib/site";
 import "../globals.css";
 
 export async function generateMetadata({ params }: LayoutProps<"/[locale]">): Promise<Metadata> {
@@ -20,6 +21,8 @@ export async function generateMetadata({ params }: LayoutProps<"/[locale]">): Pr
 
   const t = await getTranslations({ locale });
   return {
+    // Canonical links, hreflang and Open Graph addresses are written relative to this (plan 06, G9).
+    metadataBase: new URL(siteOrigin()),
     title: t("Metadata.title"),
     description: t("Brand.tagline"),
   };

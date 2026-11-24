@@ -23,11 +23,8 @@
         "ASPNETCORE_ENVIRONMENT": "Development",
         "DOTNET_ENVIRONMENT": "Development"
       },
-      "serverReadyAction": {
-        "action": "startDebugging",
-        "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
-        "name": "Web: Chrome"
-      },
+      // No serverReadyAction here: "Web: Next.js server" opens the browser. Two launches
+      // share js-debug's Chrome profile, and the second fails with "Unable to attach to browser".
       "sourceFileMap": {
         "/Views": "${workspaceFolder}/Views"
       }
@@ -46,6 +43,28 @@
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    {
+      // Like "API (phone on Wi-Fi)", but sends REAL, paid SMS through Text.lk.
+      // It points at the empty SethikaWalk database and Redis db 5 on purpose: the dev
+      // Sethika database holds e2e bookings with random +9477 numbers, and every one of
+      // them would get a real reminder. Never put Sms__Provider=TextLk on that database.
+      // The Text.lk token still comes from User Secrets (Sms:TextLkApiToken).
+      "name": "API (phone, real SMS -> SethikaWalk)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: api",
+      "program": "${workspaceFolder}/src/Sethika.Api/bin/Debug/net10.0/Sethika.Api.dll",
+      "args": ["--urls", "http://0.0.0.0:5182"],
+      "cwd": "${workspaceFolder}/src/Sethika.Api",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development",
+        "ConnectionStrings__Sql": "Server=localhost;Database=SethikaWalk;Integrated Security=True;Encrypt=True;TrustServerCertificate=True",
+        "ConnectionStrings__Redis": "127.0.0.1:6379,defaultDatabase=5",
+        "Sms__Provider": "TextLk"
       }
     },
     {
@@ -74,11 +93,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "skipFiles": ["<node_internals>/**"],
+      // Opens "Web: Chrome" once Next.js is actually listening, so the browser gets the
+      // sourceMapPathOverrides defined there.
       "serverReadyAction": {
-        "action": "debugWithChrome",
+        "action": "startDebugging",
         "pattern": "- Local:\\s+(https?://\\S+)",
-        "uriFormat": "%s",
-        "webRoot": "${workspaceFolder}/web"
+        "name": "Web: Chrome"
       },
       "console": "integratedTerminal"
     },
@@ -126,6 +146,15 @@
       "presentation": {
         "group": "00-fullstack",
         "order": 2
+      }
+    },
+    {
+      "name": "Mobile on phone, real SMS (SethikaWalk + Expo)",
+      "configurations": ["API (phone, real SMS -> SethikaWalk)", "Mobile: Expo"],
+      "stopAll": true,
+      "presentation": {
+        "group": "00-fullstack",
+        "order": 3
       }
     }
   ]

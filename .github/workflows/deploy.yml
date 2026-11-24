@@ -1,0 +1,188 @@
+name: Deploy
+
+# Production release of the database schema and the API to Azure (the web is deployed by
+# Vercel's Git integration from the same push to main). A release is a push to main that CI
+# passed: this runs after CI, never instead of it. Each part is deployed only when its files
+# changed; "Run workflow" deploys whatever is ticked.
+#
+# Azure sign-in is OpenID Connect: no password is stored here. The app registration
+# github-sethika-deploy trusts only this repository's `production` environment and may change
+# only the rg-sethika resource group.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      database:
+        description: Publish the database schema
+        type: boolean
+        default: true
+      api:
+        description: Deploy the API
+        type: boolean
+        default: true
+
+# One release at a time, and never cancelled halfway through a schema publish.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  RESOURCE_GROUP: rg-sethika
+  SQL_SERVER: sethika-sql-nhnfg
+  WEBAPP_NAME: sethika-api-nhnfg
+  API_URL: https://sethika-api-nhnfg.azurewebsites.net
+
+jobs:
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    # After CI: only a green run of a push to main (a PR's CI run never deploys).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    outputs:
+      sha: ${{ steps.pick.outputs.sha }}
+      database: ${{ steps.pick.outputs.database }}
+      api: ${{ steps.pick.outputs.api }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 2
+
+      - name: Decide what to deploy
+        id: pick
+        env:
+          EVENT: ${{ github.event_name }}
+          WANT_DATABASE: ${{ inputs.database }}
+          WANT_API: ${{ inputs.api }}
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "database=$WANT_DATABASE" >> "$GITHUB_OUTPUT"
+            echo "api=$WANT_API" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # A release is one commit on main (a merged PR): compare it with main before it.
+          changed=$(git diff --name-only HEAD^1 HEAD)
+          echo "$changed"
+          database=false; api=false
+          if echo "$changed" | grep -q '^src/Sethika\.Database/'; then database=true; fi
+          if echo "$changed" | grep -v '^src/Sethika\.Database/' \
+               | grep -qE '^(src/|Directory\.Build\.props$|Sethika\.sln$|global\.json$|\.github/workflows/deploy\.yml$)'; then api=true; fi
+          echo "database=$database" >> "$GITHUB_OUTPUT"
+          echo "api=$api" >> "$GITHUB_OUTPUT"
+
+  database:
+    name: Database schema
+    needs: changes
+    if: needs.changes.outputs.database == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.changes.outputs.sha }}
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install SqlPackage
+        run: |
+          dotnet tool install -g microsoft.sqlpackage
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Build the dacpac
+        run: dotnet build src/Sethika.Database -c Release -v minimal
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # The SQL firewall admits Azure services and the developer's machine, not GitHub's
+      # runners: open it for this runner's address for the publish only.
+      - name: Open the firewall for this runner
+        run: |
+          ip=$(curl -fsS https://api.ipify.org)
+          az sql server firewall-rule create -g "$RESOURCE_GROUP" -s "$SQL_SERVER" \
+            -n "github-${{ github.run_id }}" --start-ip-address "$ip" --end-ip-address "$ip" -o none
+
+      # BlockOnPossibleDataLoss: a change that would drop or narrow data fails the release
+      # instead of running. DropObjectsNotInSource=false: nothing is removed that the project
+      # does not know about. Seeds are idempotent MERGEs (Scripts/PostDeployment.sql).
+      - name: Publish the schema
+        env:
+          TARGET: ${{ secrets.SQL_ADMIN_CONNECTION_STRING }}
+        run: |
+          sqlpackage /Action:Publish \
+            /SourceFile:src/Sethika.Database/bin/Release/Sethika.Database.dacpac \
+            /TargetConnectionString:"$TARGET" \
+            /p:AllowIncompatiblePlatform=true \
+            /p:BlockOnPossibleDataLoss=true \
+            /p:DropObjectsNotInSource=false
+
+      - name: Close the firewall again
+        if: always()
+        run: |
+          az sql server firewall-rule delete -g "$RESOURCE_GROUP" -s "$SQL_SERVER" \
+            -n "github-${{ github.run_id }}" -o none || true
+
+  api:
+    name: API
+    needs: [changes, database]
+    # After the schema when both changed; on its own when only the API did.
+    if: >-
+      always() && needs.changes.result == 'success' && needs.changes.outputs.api == 'true' &&
+      (needs.database.result == 'success' || needs.database.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ env.API_URL }}/health
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.changes.outputs.sha }}
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish
+        run: dotnet publish src/Sethika.Api -c Release -o publish -v minimal
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.WEBAPP_NAME }}
+          package: publish
+          clean: true
+
+      - name: Smoke test
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS --max-time 30 "$API_URL/health"; then echo; exit 0; fi
+            sleep 10
+          done
+          echo "The API did not answer /health after the deploy." >&2
+          exit 1
