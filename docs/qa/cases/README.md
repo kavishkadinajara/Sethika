@@ -61,8 +61,27 @@ hand-typed sign-ups `07703…`), so the personas stay usable for the later featu
 | F06 Registration review and approval (P1) | [F06-review.md](F06-review.md) | `web/e2e/qa/F06-review.spec.ts` | 9 |
 | F07 Platform: institutions, users, support access, template sync (P2) | [F07-platform.md](F07-platform.md) | `web/e2e/qa/F07-platform.spec.ts` | 8 (+1 N/A) |
 | F08 Roles, members, invitations, effective permissions (P1) | [F08-access.md](F08-access.md) | `web/e2e/qa/F08-access.spec.ts` | 9 (+1 N/A) |
+| F09 Institution profile and public page (P2) | [F09-profile-public.md](F09-profile-public.md) | `web/e2e/qa/F09-profile-public.spec.ts` | 5 (profile edit N/A, OBS-10) |
+| F10 Meal slots and blocked dates (P1) | [F10-slots.md](F10-slots.md) | `web/e2e/qa/F10-slots.spec.ts` | 8 (+1 N/A) |
+| F11 Donor booking and My bookings (P1) | [F11-booking.md](F11-booking.md) | `web/e2e/qa/F11-booking.spec.ts` | 7 (+1 moved to F18) |
+| F12 Booking calendar and live updates (P1) | [F12-calendar.md](F12-calendar.md) | `web/e2e/qa/F12-calendar.spec.ts` | 7 |
 
 F05–F08 add their own applications and accounts on every run: each approval in QA-F06-03 / 04 makes a
 new institution named "QA F06 … Home", and the applicants are `QA tmp applicant …` throwaways. A1's
 own applications are closed by the case that opened them, so A1 stays under the limit of three. A
 reset (`qa.ps1 reset` + `personas`) clears it all.
+
+F09–F12 make their own meals in T1 (and one in T2 / T4), named `QA Fxx … <stamp>`, through
+`web/e2e/qa/support/booking.ts`. Each case cancels the bookings still open on them (as the
+institution, with a reason), switches the meals off, removes its closed days and puts T1's listing
+back as it found it. A meal can only be switched off (OBS-11), so the switched-off ones stay on T1's
+slots screen; the donors' cancelled bookings stay in their My bookings. The longest-text edges are
+booked by throwaways, never by a persona, so the personas' screens stay readable (DEF-009). Days that
+depend on the clock (cancel window, served / did not happen) are reached by moving the slot-day in SQL
+(`moveSlotDay`), as the plan triggers jobs instead of waiting.
+
+Run of F09–F12 on 2026-11-24 (`develop` f93f710 + this QA suite): 39 runs (27 at 1366 px, 12 @phone);
+final state 32 pass, 7 fail, all on DEF-006 to DEF-009 — DEF-006 (1), DEF-007 (3 widths), DEF-008 (1), DEF-009 (2).
+After the fixes (same day) the 7 failing runs were re-run (F10-01 ×3 widths, F10-02, F10-03, F11-04, F12-06 with the whole F12 file): all pass.
+Full-page shots of the long slots / My bookings pages (up to 150,000 px tall at phone width, ~20 MB) are
+kept cropped to their top 6,000 px, where the case's screen state is.
