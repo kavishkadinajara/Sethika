@@ -41,3 +41,8 @@ example
 # generated native folders
 /ios
 /android
+
+# Firebase (push): kept out of the public repository. google-services.json reaches EAS builds as
+# the secret file variable GOOGLE_SERVICES_JSON; a service account key never belongs here at all.
+google-services.json
+*firebase-adminsdk*.json
