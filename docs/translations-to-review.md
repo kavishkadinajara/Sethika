@@ -2153,3 +2153,13 @@ A standing sponsor's phone may now be a landline, but a landline cannot be ticke
 | `Sponsors.form.phoneHint` | A mobile, or a landline to call them on, for example 077 123 4567 or 011 234 5678 | ජංගම අංකයක්, නැතිනම් ඇමතීමට ස්ථාවර දුරකථන අංකයක්, උදා. 077 123 4567 හෝ 011 234 5678 | கைபேசி எண், அல்லது அழைப்பதற்கான நிலையான தொலைபேசி எண், எ.கா. 077 123 4567 அல்லது 011 234 5678 |
 | `Sponsors.form.errors.phone` | Enter a phone number, for example 077 123 4567 or 011 234 5678. | දුරකථන අංකයක් ඇතුළත් කරන්න, උදා. 077 123 4567 හෝ 011 234 5678. | ஒரு தொலைபேசி எண்ணை உள்ளிடவும், எ.கா. 077 123 4567 அல்லது 011 234 5678. |
 | `Sponsors.form.errors.textConsent` | A landline cannot receive texts. Untick this, or enter a mobile number. | ස්ථාවර දුරකථනයකට කෙටි පණිවිඩ ලැබෙන්නේ නැත. මෙම සලකුණ ඉවත් කරන්න, නැතිනම් ජංගම අංකයක් ඇතුළත් කරන්න. | நிலையான தொலைபேசிக்கு குறுஞ்செய்தி வராது. இந்தக் குறியை நீக்கவும், அல்லது கைபேசி எண்ணை உள்ளிடவும். |
+
+## Giving from the phone (2026-11-24, `Giving`, plan F, F.9)
+
+The other 33 `Giving` strings in `mobile/src/i18n/messages` are copied from the web's, and are reviewed there.
+
+| Key | English (source) | Sinhala (draft) | Tamil (draft) |
+|---|---|---|---|
+| `Giving.give.checkoutTitle` | Pay on PayHere | PayHere හරහා ගෙවන්න | PayHere மூலம் செலுத்துங்கள் |
+| `Giving.give.checkoutFailed` | PayHere's page did not open. Check your connection and try again. | PayHere පිටුව විවෘත වුණේ නැහැ. ඔබේ සම්බන්ධතාවය පරීක්ෂා කර නැවත උත්සාහ කරන්න. | PayHere பக்கம் திறக்கவில்லை. உங்கள் இணைப்பைச் சரிபார்த்து மீண்டும் முயலுங்கள். |
+| `Giving.return.receiptNo` | Receipt number | රිසිට්පත් අංකය | ரசீது எண் |

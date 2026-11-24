@@ -10,6 +10,11 @@ export function bookingReturnPath(slug: string, slot: string, date: string): str
   return `/i/${encodeURIComponent(slug)}?${query}`;
 }
 
+/** The institution screen with the give sheet open again (plan 09, M8): the donor back from signing in. */
+export function giveReturnPath(slug: string): string {
+  return `/i/${encodeURIComponent(slug)}?give=1`;
+}
+
 /**
  * `next` if it is a route inside this app that sign-in may send the donor to, else null. Only
  * an institution screen qualifies; anything else (another scheme, "//host", a path outside /i/)

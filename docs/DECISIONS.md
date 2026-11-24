@@ -312,7 +312,13 @@ by what the caller holds.
 
 **Not built, and the report says so** (plan 09 §6): the gratitude wall and any public list of donors; refunds from
 Sethika; recurring online gifts; tax receipts; a key vault for M21's keys; need images; pledge reminders;
-charts and per-donor analytics; Excel files; Phase D in the mobile app.
+charts and per-donor analytics; Excel files; the rest of Phase D in the mobile app.
+
+**Giving online from the phone, 2026-11-24 (F75, PHASE-F-MOBILE F.9).** Asked for by the user after the release. The app
+uses the same two endpoints as the web, so the API and PayHere's notification are unchanged. PayHere's checkout is a web
+page, so it runs in a WebView fed with the API's signed form, not PayHere's React Native SDK, which has its own hash flow
+and native set-up. The WebView stops at Sethika's return or cancel address, and the app reads the order from the API;
+only the signed notification can make a gift *paid*, and closing the checkout is leaving it.
 
 **Sandbox payment, 2026-11-09.** One real PayHere sandbox payment (Rs. 5,000, test Visa) went through end to
 end over an ngrok tunnel: notification accepted, order `Paid`, receipt `RCP-2026-000003`. PayHere refuses

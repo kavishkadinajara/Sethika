@@ -17,6 +17,7 @@ jest.mock("@/api/http", () => ({ getJson: (path: string) => mockApi.getJson(path
 jest.mock("@/auth/session-provider", () => ({ useSession: () => mockSession, useSessionClient: () => mockApi.client }));
 jest.mock("expo-router", () => ({ router: { push: jest.fn(), navigate: jest.fn(), dismissTo: jest.fn() } }));
 jest.mock("react-native-safe-area-context", () => jest.requireActual("react-native-safe-area-context/jest/mock").default);
+jest.mock("react-native-webview", () => ({ WebView: () => null }));
 
 const SLUG = "test-elders-home";
 const NOVEMBER = month("2026-11", LUNCH, [
@@ -143,5 +144,36 @@ describe("back from signing in", () => {
 
     expect(screen.queryText("Sponsor Lunch")).toBeNull();
     screen.getText("Friday, 20 November 2026: Full");
+  });
+});
+
+describe("giving online (M8, M10)", () => {
+  it("offers it only where the institution takes gifts online", async () => {
+    const without = await render(<InstitutionPage slug={SLUG} chosen={null} />);
+    expect(without.queryText("Give online")).toBeNull();
+    without.unmount();
+
+    mockApi.also({ [`GET /api/institutions/${SLUG}`]: () => json(200, institution({ givesOnline: true })) });
+    const screen = await render(<InstitutionPage slug={SLUG} chosen={null} />);
+    await press(screen.getText("Give online"));
+    screen.getText("Give to Test Elders' Home");
+  });
+
+  it("sends a visitor to sign in and back to the give sheet", async () => {
+    mockApi.also({ [`GET /api/institutions/${SLUG}`]: () => json(200, institution({ givesOnline: true })) });
+    const screen = await render(<InstitutionPage slug={SLUG} chosen={null} />);
+    await press(screen.getText("Give online"));
+    await press(screen.getText("Sign in"));
+
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/sign-in", params: { next: `/i/${SLUG}?give=1` } });
+  });
+
+  it("opens the give sheet when the route asks for it, for a signed-in donor", async () => {
+    mockSession = DONOR;
+    mockApi.also({ [`GET /api/institutions/${SLUG}`]: () => json(200, institution({ givesOnline: true })) });
+    const screen = await render(<InstitutionPage slug={SLUG} chosen={null} give />);
+
+    screen.getText("Give to Test Elders' Home");
+    screen.getText("Go to PayHere");
   });
 });

@@ -60,6 +60,7 @@ export function institution(overrides: Partial<PublicInstitution> = {}): PublicI
     dietaryNotes: null,
     latitude: 7.27,
     longitude: 80.6,
+    givesOnline: false,
     slots: [mealSlot()],
     ...overrides,
   };
