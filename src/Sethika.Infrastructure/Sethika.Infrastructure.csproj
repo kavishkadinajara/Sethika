@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.1.89" />
+    <PackageReference Include="Dapper" Version="2.1.100" />
     <!-- Background jobs (plan 02, B10): the outbox processor now, reminders and recurring bookings
          later. NetCore rather than AspNetCore because there is no dashboard (5.7). -->
     <PackageReference Include="Hangfire.NetCore" Version="1.8.25" />
