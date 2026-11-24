@@ -29,7 +29,8 @@ jobs:
   backend:
     name: Backend (build, format, test)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # The integration suite alone takes ~20 minutes on a hosted runner (real SQL Server and Redis).
+    timeout-minutes: 50
 
     # Ephemeral throwaway credential for containers that are never reachable outside the job
     # network. Deliberately not a repository secret, because it is not one - and defined once
