@@ -19,7 +19,7 @@
     <PackageReference Include="Hangfire.SqlServer" Version="1.8.25" />
     <PackageReference Include="libphonenumber-csharp" Version="9.0.44" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.15" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.15" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="11.0.0" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
     <PackageReference Include="StackExchange.Redis" Version="3.4.35" />
     <!-- Not used directly. Pins a transitive dependency of Microsoft.Data.SqlClient (6.1.7 still asks
