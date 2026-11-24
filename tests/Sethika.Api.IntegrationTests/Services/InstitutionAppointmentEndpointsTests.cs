@@ -395,8 +395,8 @@ public sealed class InstitutionAppointmentEndpointsTests(SethikaTestDatabase dat
         Assert.Equal(1, await OutboxCountAsync(no, AppointmentDecisionHandler.RemovedEvent));
         Assert.Equal(
             a.Id,
-            JsonDocument.Parse(await ScalarAsync<string>("SELECT Payload FROM core.OutboxMessages WHERE AggregateId = @no AND EventType = 'LeaderRemoved';", new { no }))
-                .RootElement.GetProperty("leaderId").GetInt32());
+            JsonElement.Parse(await ScalarAsync<string>("SELECT Payload FROM core.OutboxMessages WHERE AggregateId = @no AND EventType = 'LeaderRemoved';", new { no }))
+                .GetProperty("leaderId").GetInt32());
 
         using (var again = await SendAsync(Alpha(_alphaOwner), HttpMethod.Delete, $"/api/institution/appointments/{no}/leaders/{a.PublicId}"))
         {
